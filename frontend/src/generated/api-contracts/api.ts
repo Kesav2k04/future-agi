@@ -220,6 +220,12 @@ import type {
   LangfuseHealthResponseApi,
   LangfuseTracesResponseApi,
   LinearTeamsResponseApi,
+  LiveKitCallExecutionUpdateRequestApi,
+  LiveKitErrorResponseApi,
+  LiveKitListenerTokenResponseApi,
+  LiveKitOkResponseApi,
+  LiveKitTemporalSignalRequestApi,
+  LiveKitTranscriptsRequestApi,
   ModelHubAnnotationQueuesAutomationRulesList200,
   ModelHubAnnotationQueuesAutomationRulesListParams,
   ModelHubAnnotationQueuesExportAnnotationsParams,
@@ -391,6 +397,10 @@ import type {
   SimulateApiAgentPromptOptimiserList200,
   SimulateApiAgentPromptOptimiserListParams,
   SimulateApiCallExecutionsListParams,
+  SimulateApiLivekitCallConfigRead200,
+  SimulateApiLivekitPhoneResolutionRead200,
+  SimulateApiLivekitTranscriptsCreate201,
+  SimulateApiLivekitWebhookCreateBody,
   SimulateApiPersonasFieldOptions200,
   SimulateApiPersonasFieldOptionsParams,
   SimulateApiPersonasList200,
@@ -571,6 +581,8 @@ import type {
   UserCodeExampleResponseApi,
   UserResponseSchemaApi,
   UsersResponseApi,
+  ValidateLiveKitCredentialsRequestApi,
+  ValidateLiveKitCredentialsResponseApi,
   WebhookRequestApi,
   WebhookResponseApi
 } from './api.schemas';
@@ -33677,16 +33689,23 @@ export const simulateApiCallExecutionsList = async (params?: SimulateApiCallExec
 
 
 export type simulateApiLivekitCallConfigReadResponse200 = {
-  data: void
+  data: SimulateApiLivekitCallConfigRead200
   status: 200
+}
+
+export type simulateApiLivekitCallConfigReadResponse404 = {
+  data: LiveKitErrorResponseApi
+  status: 404
 }
 
 export type simulateApiLivekitCallConfigReadResponseSuccess = (simulateApiLivekitCallConfigReadResponse200) & {
   headers: Headers;
 };
-;
+export type simulateApiLivekitCallConfigReadResponseError = (simulateApiLivekitCallConfigReadResponse404) & {
+  headers: Headers;
+};
 
-export type simulateApiLivekitCallConfigReadResponse = (simulateApiLivekitCallConfigReadResponseSuccess)
+export type simulateApiLivekitCallConfigReadResponse = (simulateApiLivekitCallConfigReadResponseSuccess | simulateApiLivekitCallConfigReadResponseError)
 
 export const getSimulateApiLivekitCallConfigReadUrl = (callId: string,) => {
 
@@ -33713,16 +33732,28 @@ export const simulateApiLivekitCallConfigRead = async (callId: string, options?:
 
 
 export type simulateApiLivekitCallExecutionPartialUpdateResponse200 = {
-  data: void
+  data: LiveKitOkResponseApi
   status: 200
+}
+
+export type simulateApiLivekitCallExecutionPartialUpdateResponse400 = {
+  data: LiveKitErrorResponseApi
+  status: 400
+}
+
+export type simulateApiLivekitCallExecutionPartialUpdateResponse404 = {
+  data: LiveKitErrorResponseApi
+  status: 404
 }
 
 export type simulateApiLivekitCallExecutionPartialUpdateResponseSuccess = (simulateApiLivekitCallExecutionPartialUpdateResponse200) & {
   headers: Headers;
 };
-;
+export type simulateApiLivekitCallExecutionPartialUpdateResponseError = (simulateApiLivekitCallExecutionPartialUpdateResponse400 | simulateApiLivekitCallExecutionPartialUpdateResponse404) & {
+  headers: Headers;
+};
 
-export type simulateApiLivekitCallExecutionPartialUpdateResponse = (simulateApiLivekitCallExecutionPartialUpdateResponseSuccess)
+export type simulateApiLivekitCallExecutionPartialUpdateResponse = (simulateApiLivekitCallExecutionPartialUpdateResponseSuccess | simulateApiLivekitCallExecutionPartialUpdateResponseError)
 
 export const getSimulateApiLivekitCallExecutionPartialUpdateUrl = (callId: string,) => {
 
@@ -33735,30 +33766,49 @@ export const getSimulateApiLivekitCallExecutionPartialUpdateUrl = (callId: strin
 /**
  * Update lifecycle fields on a call execution.
  */
-export const simulateApiLivekitCallExecutionPartialUpdate = async (callId: string, options?: RequestInit): Promise<simulateApiLivekitCallExecutionPartialUpdateResponse> => {
+export const simulateApiLivekitCallExecutionPartialUpdate = async (callId: string,
+    liveKitCallExecutionUpdateRequestApi: LiveKitCallExecutionUpdateRequestApi, options?: RequestInit): Promise<simulateApiLivekitCallExecutionPartialUpdateResponse> => {
 
   return apiMutator<simulateApiLivekitCallExecutionPartialUpdateResponse>(getSimulateApiLivekitCallExecutionPartialUpdateUrl(callId),
   {
     ...options,
-    method: 'PATCH'
-
-
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      liveKitCallExecutionUpdateRequestApi,)
   }
 );}
 
 
 
 export type simulateApiLivekitListenerTokenReadResponse200 = {
-  data: void
+  data: LiveKitListenerTokenResponseApi
   status: 200
+}
+
+export type simulateApiLivekitListenerTokenReadResponse400 = {
+  data: ApiErrorResponseApi
+  status: 400
+}
+
+export type simulateApiLivekitListenerTokenReadResponse404 = {
+  data: ApiErrorResponseApi
+  status: 404
+}
+
+export type simulateApiLivekitListenerTokenReadResponse500 = {
+  data: ApiErrorResponseApi
+  status: 500
 }
 
 export type simulateApiLivekitListenerTokenReadResponseSuccess = (simulateApiLivekitListenerTokenReadResponse200) & {
   headers: Headers;
 };
-;
+export type simulateApiLivekitListenerTokenReadResponseError = (simulateApiLivekitListenerTokenReadResponse400 | simulateApiLivekitListenerTokenReadResponse404 | simulateApiLivekitListenerTokenReadResponse500) & {
+  headers: Headers;
+};
 
-export type simulateApiLivekitListenerTokenReadResponse = (simulateApiLivekitListenerTokenReadResponseSuccess)
+export type simulateApiLivekitListenerTokenReadResponse = (simulateApiLivekitListenerTokenReadResponseSuccess | simulateApiLivekitListenerTokenReadResponseError)
 
 export const getSimulateApiLivekitListenerTokenReadUrl = (callId: string,) => {
 
@@ -33790,16 +33840,23 @@ export const simulateApiLivekitListenerTokenRead = async (callId: string, option
 
 
 export type simulateApiLivekitPhoneResolutionReadResponse200 = {
-  data: void
+  data: SimulateApiLivekitPhoneResolutionRead200
   status: 200
+}
+
+export type simulateApiLivekitPhoneResolutionReadResponse404 = {
+  data: LiveKitErrorResponseApi
+  status: 404
 }
 
 export type simulateApiLivekitPhoneResolutionReadResponseSuccess = (simulateApiLivekitPhoneResolutionReadResponse200) & {
   headers: Headers;
 };
-;
+export type simulateApiLivekitPhoneResolutionReadResponseError = (simulateApiLivekitPhoneResolutionReadResponse404) & {
+  headers: Headers;
+};
 
-export type simulateApiLivekitPhoneResolutionReadResponse = (simulateApiLivekitPhoneResolutionReadResponseSuccess)
+export type simulateApiLivekitPhoneResolutionReadResponse = (simulateApiLivekitPhoneResolutionReadResponseSuccess | simulateApiLivekitPhoneResolutionReadResponseError)
 
 export const getSimulateApiLivekitPhoneResolutionReadUrl = (phoneNumber: string,) => {
 
@@ -33825,17 +33882,29 @@ export const simulateApiLivekitPhoneResolutionRead = async (phoneNumber: string,
 
 
 
-export type simulateApiLivekitTemporalSignalCreateResponse201 = {
-  data: void
-  status: 201
+export type simulateApiLivekitTemporalSignalCreateResponse200 = {
+  data: LiveKitOkResponseApi
+  status: 200
 }
 
-export type simulateApiLivekitTemporalSignalCreateResponseSuccess = (simulateApiLivekitTemporalSignalCreateResponse201) & {
+export type simulateApiLivekitTemporalSignalCreateResponse400 = {
+  data: LiveKitErrorResponseApi
+  status: 400
+}
+
+export type simulateApiLivekitTemporalSignalCreateResponse502 = {
+  data: LiveKitErrorResponseApi
+  status: 502
+}
+
+export type simulateApiLivekitTemporalSignalCreateResponseSuccess = (simulateApiLivekitTemporalSignalCreateResponse200) & {
   headers: Headers;
 };
-;
+export type simulateApiLivekitTemporalSignalCreateResponseError = (simulateApiLivekitTemporalSignalCreateResponse400 | simulateApiLivekitTemporalSignalCreateResponse502) & {
+  headers: Headers;
+};
 
-export type simulateApiLivekitTemporalSignalCreateResponse = (simulateApiLivekitTemporalSignalCreateResponseSuccess)
+export type simulateApiLivekitTemporalSignalCreateResponse = (simulateApiLivekitTemporalSignalCreateResponseSuccess | simulateApiLivekitTemporalSignalCreateResponseError)
 
 export const getSimulateApiLivekitTemporalSignalCreateUrl = () => {
 
@@ -33848,30 +33917,43 @@ export const getSimulateApiLivekitTemporalSignalCreateUrl = () => {
 /**
  * Send a call_ended signal to a Temporal workflow.
  */
-export const simulateApiLivekitTemporalSignalCreate = async ( options?: RequestInit): Promise<simulateApiLivekitTemporalSignalCreateResponse> => {
+export const simulateApiLivekitTemporalSignalCreate = async (liveKitTemporalSignalRequestApi: LiveKitTemporalSignalRequestApi, options?: RequestInit): Promise<simulateApiLivekitTemporalSignalCreateResponse> => {
 
   return apiMutator<simulateApiLivekitTemporalSignalCreateResponse>(getSimulateApiLivekitTemporalSignalCreateUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      liveKitTemporalSignalRequestApi,)
   }
 );}
 
 
 
 export type simulateApiLivekitTranscriptsCreateResponse201 = {
-  data: void
+  data: SimulateApiLivekitTranscriptsCreate201
   status: 201
+}
+
+export type simulateApiLivekitTranscriptsCreateResponse400 = {
+  data: LiveKitErrorResponseApi
+  status: 400
+}
+
+export type simulateApiLivekitTranscriptsCreateResponse404 = {
+  data: LiveKitErrorResponseApi
+  status: 404
 }
 
 export type simulateApiLivekitTranscriptsCreateResponseSuccess = (simulateApiLivekitTranscriptsCreateResponse201) & {
   headers: Headers;
 };
-;
+export type simulateApiLivekitTranscriptsCreateResponseError = (simulateApiLivekitTranscriptsCreateResponse400 | simulateApiLivekitTranscriptsCreateResponse404) & {
+  headers: Headers;
+};
 
-export type simulateApiLivekitTranscriptsCreateResponse = (simulateApiLivekitTranscriptsCreateResponseSuccess)
+export type simulateApiLivekitTranscriptsCreateResponse = (simulateApiLivekitTranscriptsCreateResponseSuccess | simulateApiLivekitTranscriptsCreateResponseError)
 
 export const getSimulateApiLivekitTranscriptsCreateUrl = (callId: string,) => {
 
@@ -33884,30 +33966,39 @@ export const getSimulateApiLivekitTranscriptsCreateUrl = (callId: string,) => {
 /**
  * Create transcript row(s) for a call execution.
  */
-export const simulateApiLivekitTranscriptsCreate = async (callId: string, options?: RequestInit): Promise<simulateApiLivekitTranscriptsCreateResponse> => {
+export const simulateApiLivekitTranscriptsCreate = async (callId: string,
+    liveKitTranscriptsRequestApi: LiveKitTranscriptsRequestApi, options?: RequestInit): Promise<simulateApiLivekitTranscriptsCreateResponse> => {
 
   return apiMutator<simulateApiLivekitTranscriptsCreateResponse>(getSimulateApiLivekitTranscriptsCreateUrl(callId),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      liveKitTranscriptsRequestApi,)
   }
 );}
 
 
 
-export type simulateApiLivekitValidateCredentialsCreateResponse201 = {
-  data: void
-  status: 201
+export type simulateApiLivekitValidateCredentialsCreateResponse200 = {
+  data: ValidateLiveKitCredentialsResponseApi
+  status: 200
 }
 
-export type simulateApiLivekitValidateCredentialsCreateResponseSuccess = (simulateApiLivekitValidateCredentialsCreateResponse201) & {
+export type simulateApiLivekitValidateCredentialsCreateResponse400 = {
+  data: ApiErrorResponseApi
+  status: 400
+}
+
+export type simulateApiLivekitValidateCredentialsCreateResponseSuccess = (simulateApiLivekitValidateCredentialsCreateResponse200) & {
   headers: Headers;
 };
-;
+export type simulateApiLivekitValidateCredentialsCreateResponseError = (simulateApiLivekitValidateCredentialsCreateResponse400) & {
+  headers: Headers;
+};
 
-export type simulateApiLivekitValidateCredentialsCreateResponse = (simulateApiLivekitValidateCredentialsCreateResponseSuccess)
+export type simulateApiLivekitValidateCredentialsCreateResponse = (simulateApiLivekitValidateCredentialsCreateResponseSuccess | simulateApiLivekitValidateCredentialsCreateResponseError)
 
 export const getSimulateApiLivekitValidateCredentialsCreateUrl = () => {
 
@@ -33925,30 +34016,38 @@ credentials and immediately deletes it. Returns whether the credentials
 are valid.
  * @summary Validate customer-provided LiveKit credentials.
  */
-export const simulateApiLivekitValidateCredentialsCreate = async ( options?: RequestInit): Promise<simulateApiLivekitValidateCredentialsCreateResponse> => {
+export const simulateApiLivekitValidateCredentialsCreate = async (validateLiveKitCredentialsRequestApi: ValidateLiveKitCredentialsRequestApi, options?: RequestInit): Promise<simulateApiLivekitValidateCredentialsCreateResponse> => {
 
   return apiMutator<simulateApiLivekitValidateCredentialsCreateResponse>(getSimulateApiLivekitValidateCredentialsCreateUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      validateLiveKitCredentialsRequestApi,)
   }
 );}
 
 
 
-export type simulateApiLivekitWebhookCreateResponse201 = {
-  data: void
-  status: 201
+export type simulateApiLivekitWebhookCreateResponse200 = {
+  data: LiveKitOkResponseApi
+  status: 200
 }
 
-export type simulateApiLivekitWebhookCreateResponseSuccess = (simulateApiLivekitWebhookCreateResponse201) & {
+export type simulateApiLivekitWebhookCreateResponse401 = {
+  data: LiveKitErrorResponseApi
+  status: 401
+}
+
+export type simulateApiLivekitWebhookCreateResponseSuccess = (simulateApiLivekitWebhookCreateResponse200) & {
   headers: Headers;
 };
-;
+export type simulateApiLivekitWebhookCreateResponseError = (simulateApiLivekitWebhookCreateResponse401) & {
+  headers: Headers;
+};
 
-export type simulateApiLivekitWebhookCreateResponse = (simulateApiLivekitWebhookCreateResponseSuccess)
+export type simulateApiLivekitWebhookCreateResponse = (simulateApiLivekitWebhookCreateResponseSuccess | simulateApiLivekitWebhookCreateResponseError)
 
 export const getSimulateApiLivekitWebhookCreateUrl = () => {
 
@@ -33965,14 +34064,15 @@ lifecycle and signaling Temporal — it fires even if the agent worker
 crashes mid-call.
  * @summary Receive and process LiveKit server webhooks.
  */
-export const simulateApiLivekitWebhookCreate = async ( options?: RequestInit): Promise<simulateApiLivekitWebhookCreateResponse> => {
+export const simulateApiLivekitWebhookCreate = async (simulateApiLivekitWebhookCreateBody: SimulateApiLivekitWebhookCreateBody, options?: RequestInit): Promise<simulateApiLivekitWebhookCreateResponse> => {
 
   return apiMutator<simulateApiLivekitWebhookCreateResponse>(getSimulateApiLivekitWebhookCreateUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      simulateApiLivekitWebhookCreateBody,)
   }
 );}
 

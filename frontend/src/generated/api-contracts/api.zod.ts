@@ -16368,12 +16368,36 @@ export const SimulateApiLivekitCallConfigReadParams = zod.object({
   "call_id": zod.string()
 })
 
+export const SimulateApiLivekitCallConfigReadResponse = zod.object({
+
+}).passthrough()
+
 
 /**
  * Update lifecycle fields on a call execution.
  */
 export const SimulateApiLivekitCallExecutionPartialUpdateParams = zod.object({
   "call_id": zod.string()
+})
+
+export const simulateApiLivekitCallExecutionPartialUpdateBodyDurationSecondsMin = 0;
+
+
+
+export const SimulateApiLivekitCallExecutionPartialUpdateBody = zod.object({
+  "provider_call_data": zod.object({
+
+}).passthrough().optional(),
+  "started_at": zod.string().datetime({"offset":true}).optional(),
+  "completed_at": zod.string().datetime({"offset":true}).optional(),
+  "ended_at": zod.string().datetime({"offset":true}).optional(),
+  "duration_seconds": zod.number().min(simulateApiLivekitCallExecutionPartialUpdateBodyDurationSecondsMin).optional(),
+  "ended_reason": zod.string().optional(),
+  "service_provider_call_id": zod.string().optional()
+})
+
+export const SimulateApiLivekitCallExecutionPartialUpdateResponse = zod.object({
+  "ok": zod.boolean()
 })
 
 
@@ -16389,6 +16413,20 @@ export const SimulateApiLivekitListenerTokenReadParams = zod.object({
   "call_id": zod.string()
 })
 
+export const simulateApiLivekitListenerTokenReadResponseStatusDefault = true;
+
+
+
+
+export const SimulateApiLivekitListenerTokenReadResponse = zod.object({
+  "status": zod.boolean().default(simulateApiLivekitListenerTokenReadResponseStatusDefault),
+  "result": zod.object({
+  "token": zod.string().min(1),
+  "url": zod.string().min(1),
+  "room_name": zod.string().min(1)
+})
+})
+
 
 /**
  * Resolve a phone number to its linked call config.
@@ -16397,12 +16435,106 @@ export const SimulateApiLivekitPhoneResolutionReadParams = zod.object({
   "phone_number": zod.string()
 })
 
+export const SimulateApiLivekitPhoneResolutionReadResponse = zod.object({
+
+}).passthrough()
+
+
+/**
+ * Send a call_ended signal to a Temporal workflow.
+ */
+export const simulateApiLivekitTemporalSignalCreateBodyStatusDefault = `completed`;
+
+export const simulateApiLivekitTemporalSignalCreateBodyDurationSecondsDefault = 0;
+export const simulateApiLivekitTemporalSignalCreateBodyDurationSecondsMin = 0;
+
+export const simulateApiLivekitTemporalSignalCreateBodyEndReasonDefault = `agent_session_closed`;
+
+export const SimulateApiLivekitTemporalSignalCreateBody = zod.object({
+  "workflow_id": zod.string().optional(),
+  "call_id": zod.string().uuid().optional(),
+  "status": zod.string().min(1).default(simulateApiLivekitTemporalSignalCreateBodyStatusDefault),
+  "duration_seconds": zod.number().min(simulateApiLivekitTemporalSignalCreateBodyDurationSecondsMin).default(simulateApiLivekitTemporalSignalCreateBodyDurationSecondsDefault),
+  "end_reason": zod.string().default(simulateApiLivekitTemporalSignalCreateBodyEndReasonDefault)
+})
+
+export const SimulateApiLivekitTemporalSignalCreateResponse = zod.object({
+  "ok": zod.boolean()
+})
+
 
 /**
  * Create transcript row(s) for a call execution.
  */
 export const SimulateApiLivekitTranscriptsCreateParams = zod.object({
   "call_id": zod.string()
+})
+
+
+
+export const simulateApiLivekitTranscriptsCreateBodyEndTimeMsDefault = 0;
+
+export const simulateApiLivekitTranscriptsCreateBodyTranscriptsItemEndTimeMsDefault = 0;
+
+export const SimulateApiLivekitTranscriptsCreateBody = zod.object({
+  "role": zod.string().min(1).optional(),
+  "content": zod.string().min(1).optional(),
+  "start_time_ms": zod.number().optional(),
+  "end_time_ms": zod.number().default(simulateApiLivekitTranscriptsCreateBodyEndTimeMsDefault),
+  "transcripts": zod.array(zod.object({
+  "role": zod.string().min(1).optional(),
+  "content": zod.string().min(1).optional(),
+  "start_time_ms": zod.number().optional(),
+  "end_time_ms": zod.number().default(simulateApiLivekitTranscriptsCreateBodyTranscriptsItemEndTimeMsDefault)
+})).optional()
+})
+
+
+/**
+ * POST /simulate/api/livekit/validate-credentials/
+
+Creates a temporary room on the customer's LiveKit server using their
+credentials and immediately deletes it. Returns whether the credentials
+are valid.
+ * @summary Validate customer-provided LiveKit credentials.
+ */
+
+
+
+
+
+export const SimulateApiLivekitValidateCredentialsCreateBody = zod.object({
+  "livekit_url": zod.string().min(1),
+  "api_key": zod.string().min(1),
+  "api_secret": zod.string().min(1),
+  "agent_name": zod.string().optional(),
+  "agent_definition_id": zod.string().uuid().optional()
+})
+
+export const simulateApiLivekitValidateCredentialsCreateResponseStatusDefault = true;
+
+export const SimulateApiLivekitValidateCredentialsCreateResponse = zod.object({
+  "status": zod.boolean().default(simulateApiLivekitValidateCredentialsCreateResponseStatusDefault),
+  "result": zod.object({
+  "valid": zod.boolean(),
+  "error": zod.string().optional()
+})
+})
+
+
+/**
+ * Handles lifecycle events (room start/finish, participant join/leave,
+egress completion). This is the **reliable** path for updating call
+lifecycle and signaling Temporal — it fires even if the agent worker
+crashes mid-call.
+ * @summary Receive and process LiveKit server webhooks.
+ */
+export const SimulateApiLivekitWebhookCreateBody = zod.object({
+
+}).passthrough().describe('LiveKit webhook payload verified against the Authorization JWT.')
+
+export const SimulateApiLivekitWebhookCreateResponse = zod.object({
+  "ok": zod.boolean()
 })
 
 

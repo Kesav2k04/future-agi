@@ -4422,6 +4422,92 @@ export interface CallExecutionErrorResponseApi {
   readonly details?: CallExecutionErrorResponseApiDetails;
 }
 
+export interface LiveKitErrorResponseApi {
+  /** @minLength 1 */
+  error: string;
+}
+
+export type LiveKitCallExecutionUpdateRequestApiProviderCallData = { [key: string]: unknown };
+
+export interface LiveKitCallExecutionUpdateRequestApi {
+  provider_call_data?: LiveKitCallExecutionUpdateRequestApiProviderCallData;
+  started_at?: string;
+  completed_at?: string;
+  ended_at?: string;
+  /** @minimum 0 */
+  duration_seconds?: number;
+  ended_reason?: string;
+  service_provider_call_id?: string;
+}
+
+export interface LiveKitOkResponseApi {
+  ok: boolean;
+}
+
+export interface LiveKitListenerTokenResultApi {
+  /** @minLength 1 */
+  token: string;
+  /** @minLength 1 */
+  url: string;
+  /** @minLength 1 */
+  room_name: string;
+}
+
+export interface LiveKitListenerTokenResponseApi {
+  status?: boolean;
+  result: LiveKitListenerTokenResultApi;
+}
+
+export interface LiveKitTemporalSignalRequestApi {
+  workflow_id?: string;
+  call_id?: string;
+  /** @minLength 1 */
+  status?: string;
+  /** @minimum 0 */
+  duration_seconds?: number;
+  end_reason?: string;
+}
+
+export interface LiveKitTranscriptRowApi {
+  /** @minLength 1 */
+  role?: string;
+  /** @minLength 1 */
+  content?: string;
+  start_time_ms?: number;
+  end_time_ms?: number;
+}
+
+export interface LiveKitTranscriptsRequestApi {
+  /** @minLength 1 */
+  role?: string;
+  /** @minLength 1 */
+  content?: string;
+  start_time_ms?: number;
+  end_time_ms?: number;
+  transcripts?: LiveKitTranscriptRowApi[];
+}
+
+export interface ValidateLiveKitCredentialsRequestApi {
+  /** @minLength 1 */
+  livekit_url: string;
+  /** @minLength 1 */
+  api_key: string;
+  /** @minLength 1 */
+  api_secret: string;
+  agent_name?: string;
+  agent_definition_id?: string;
+}
+
+export interface ValidateLiveKitCredentialsResultApi {
+  valid: boolean;
+  error?: string;
+}
+
+export interface ValidateLiveKitCredentialsResponseApi {
+  status?: boolean;
+  result: ValidateLiveKitCredentialsResultApi;
+}
+
 /**
  * Type of persona (system or workspace-level)
  */
@@ -9708,6 +9794,17 @@ page?: number;
  */
 limit?: number;
 };
+
+export type SimulateApiLivekitCallConfigRead200 = { [key: string]: unknown };
+
+export type SimulateApiLivekitPhoneResolutionRead200 = { [key: string]: unknown };
+
+export type SimulateApiLivekitTranscriptsCreate201 = {[key: string]: { [key: string]: unknown }};
+
+/**
+ * LiveKit webhook payload verified against the Authorization JWT.
+ */
+export type SimulateApiLivekitWebhookCreateBody = { [key: string]: unknown };
 
 export type SimulateApiPersonasListParams = {
 /**

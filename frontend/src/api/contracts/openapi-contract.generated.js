@@ -12813,15 +12813,34 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "simulate_api_livekit_call-config_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "type": "object"
+          },
+          "404": {
+            "$ref": "#/definitions/LiveKitErrorResponse"
+          }
+        }
       }
     },
     "/simulate/api/livekit/call-execution/{call_id}/": {
       "patch": {
         "operationId": "simulate_api_livekit_call-execution_partial_update",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/LiveKitCallExecutionUpdateRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/LiveKitOkResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/LiveKitErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/LiveKitErrorResponse"
+          }
+        }
       }
     },
     "/simulate/api/livekit/listener-token/{call_id}/": {
@@ -12829,7 +12848,20 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "simulate_api_livekit_listener-token_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/LiveKitListenerTokenResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/simulate/api/livekit/phone-resolution/{phone_number}/": {
@@ -12837,39 +12869,92 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "simulate_api_livekit_phone-resolution_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "type": "object"
+          },
+          "404": {
+            "$ref": "#/definitions/LiveKitErrorResponse"
+          }
+        }
       }
     },
     "/simulate/api/livekit/temporal-signal/": {
       "post": {
         "operationId": "simulate_api_livekit_temporal-signal_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/LiveKitTemporalSignalRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/LiveKitOkResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/LiveKitErrorResponse"
+          },
+          "502": {
+            "$ref": "#/definitions/LiveKitErrorResponse"
+          }
+        }
       }
     },
     "/simulate/api/livekit/transcripts/{call_id}/": {
       "post": {
         "operationId": "simulate_api_livekit_transcripts_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/LiveKitTranscriptsRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "201": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "$ref": "#/definitions/LiveKitErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/LiveKitErrorResponse"
+          }
+        }
       }
     },
     "/simulate/api/livekit/validate-credentials/": {
       "post": {
         "operationId": "simulate_api_livekit_validate-credentials_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/ValidateLiveKitCredentialsRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ValidateLiveKitCredentialsResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/simulate/api/livekit/webhook/": {
       "post": {
         "operationId": "simulate_api_livekit_webhook_create",
-        "requestBody": null,
+        "requestBody": {
+          "description": "LiveKit webhook payload verified against the Authorization JWT.",
+          "type": "object"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/LiveKitOkResponse"
+          },
+          "401": {
+            "$ref": "#/definitions/LiveKitErrorResponse"
+          }
+        }
       }
     },
     "/simulate/api/personas/": {
@@ -28499,6 +28584,145 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "LiveKitCallExecutionUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "provider_call_data": {
+          "title": "Provider call data",
+          "type": "object"
+        },
+        "started_at": {
+          "title": "Started at",
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "title": "Completed at",
+          "type": "string",
+          "format": "date-time"
+        },
+        "ended_at": {
+          "title": "Ended at",
+          "type": "string",
+          "format": "date-time"
+        },
+        "duration_seconds": {
+          "title": "Duration seconds",
+          "type": "integer",
+          "minimum": 0
+        },
+        "ended_reason": {
+          "title": "Ended reason",
+          "type": "string"
+        },
+        "service_provider_call_id": {
+          "title": "Service provider call id",
+          "type": "string"
+        }
+      }
+    },
+    "LiveKitErrorResponse": {
+      "required": [
+        "error"
+      ],
+      "type": "object",
+      "properties": {
+        "error": {
+          "title": "Error",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "LiveKitListenerTokenResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/LiveKitListenerTokenResult"
+        }
+      }
+    },
+    "LiveKitOkResponse": {
+      "required": [
+        "ok"
+      ],
+      "type": "object",
+      "properties": {
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        }
+      }
+    },
+    "LiveKitTemporalSignalRequest": {
+      "type": "object",
+      "properties": {
+        "workflow_id": {
+          "title": "Workflow id",
+          "type": "string"
+        },
+        "call_id": {
+          "title": "Call id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "default": "completed",
+          "minLength": 1
+        },
+        "duration_seconds": {
+          "title": "Duration seconds",
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
+        },
+        "end_reason": {
+          "title": "End reason",
+          "type": "string",
+          "default": "agent_session_closed"
+        }
+      }
+    },
+    "LiveKitTranscriptsRequest": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "title": "Role",
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "title": "Content",
+          "type": "string",
+          "minLength": 1
+        },
+        "start_time_ms": {
+          "title": "Start time ms",
+          "type": "integer"
+        },
+        "end_time_ms": {
+          "title": "End time ms",
+          "type": "integer",
+          "default": 0
+        },
+        "transcripts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/LiveKitTranscriptRow"
+          }
+        }
+      }
+    },
     "NodeRead": {
       "type": "object",
       "properties": {
@@ -34468,6 +34692,56 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "ValidateLiveKitCredentialsRequest": {
+      "required": [
+        "livekit_url",
+        "api_key",
+        "api_secret"
+      ],
+      "type": "object",
+      "properties": {
+        "livekit_url": {
+          "title": "Livekit url",
+          "type": "string",
+          "minLength": 1
+        },
+        "api_key": {
+          "title": "Api key",
+          "type": "string",
+          "minLength": 1
+        },
+        "api_secret": {
+          "title": "Api secret",
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_name": {
+          "title": "Agent name",
+          "type": "string"
+        },
+        "agent_definition_id": {
+          "title": "Agent definition id",
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "ValidateLiveKitCredentialsResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/ValidateLiveKitCredentialsResult"
+        }
+      }
+    },
     "WebhookRequest": {
       "required": [
         "call"
@@ -36022,6 +36296,55 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "LiveKitListenerTokenResult": {
+      "required": [
+        "token",
+        "url",
+        "room_name"
+      ],
+      "type": "object",
+      "properties": {
+        "token": {
+          "title": "Token",
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "title": "Url",
+          "type": "string",
+          "minLength": 1
+        },
+        "room_name": {
+          "title": "Room name",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "LiveKitTranscriptRow": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "title": "Role",
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "title": "Content",
+          "type": "string",
+          "minLength": 1
+        },
+        "start_time_ms": {
+          "title": "Start time ms",
+          "type": "integer"
+        },
+        "end_time_ms": {
+          "title": "End time ms",
+          "type": "integer",
+          "default": 0
+        }
+      }
+    },
     "PortRead": {
       "type": "object",
       "properties": {
@@ -37336,6 +37659,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "total_pages": {
           "title": "Total pages",
           "type": "integer"
+        }
+      }
+    },
+    "ValidateLiveKitCredentialsResult": {
+      "required": [
+        "valid"
+      ],
+      "type": "object",
+      "properties": {
+        "valid": {
+          "title": "Valid",
+          "type": "boolean"
+        },
+        "error": {
+          "title": "Error",
+          "type": "string"
         }
       }
     },

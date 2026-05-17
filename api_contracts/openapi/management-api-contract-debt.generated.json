@@ -3,8 +3,8 @@
   "summary": {
     "paths": 964,
     "operations": 1326,
-    "mutation_endpoints_without_body_schema": 332,
-    "operations_without_response_schema": 568
+    "mutation_endpoints_without_body_schema": 327,
+    "operations_without_response_schema": 560
   },
   "by_group": {
     "accounts": {
@@ -88,8 +88,8 @@
     "simulate": {
       "paths": 105,
       "operations": 125,
-      "mutation_endpoints_without_body_schema": 24,
-      "operations_without_response_schema": 45
+      "mutation_endpoints_without_body_schema": 19,
+      "operations_without_response_schema": 37
     },
     "tracer": {
       "paths": 159,
@@ -2393,51 +2393,6 @@
       "method": "POST",
       "path": "/simulate/agent-definitions/{agent_id}/versions/{version_id}/restore/",
       "operation_id": "simulate_agent-definitions_versions_restore_create",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "PATCH",
-      "path": "/simulate/api/livekit/call-execution/{call_id}/",
-      "operation_id": "simulate_api_livekit_call-execution_partial_update",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "POST",
-      "path": "/simulate/api/livekit/temporal-signal/",
-      "operation_id": "simulate_api_livekit_temporal-signal_create",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "POST",
-      "path": "/simulate/api/livekit/transcripts/{call_id}/",
-      "operation_id": "simulate_api_livekit_transcripts_create",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "POST",
-      "path": "/simulate/api/livekit/validate-credentials/",
-      "operation_id": "simulate_api_livekit_validate-credentials_create",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "POST",
-      "path": "/simulate/api/livekit/webhook/",
-      "operation_id": "simulate_api_livekit_webhook_create",
       "tags": [
         "simulate"
       ]
@@ -7012,78 +6967,6 @@
       "method": "GET",
       "path": "/simulate/agent-definitions/{agent_id}/versions/{version_id}/eval-summary/",
       "operation_id": "simulate_agent-definitions_versions_eval-summary_list",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "GET",
-      "path": "/simulate/api/livekit/call-config/{call_id}/",
-      "operation_id": "simulate_api_livekit_call-config_read",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "PATCH",
-      "path": "/simulate/api/livekit/call-execution/{call_id}/",
-      "operation_id": "simulate_api_livekit_call-execution_partial_update",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "GET",
-      "path": "/simulate/api/livekit/listener-token/{call_id}/",
-      "operation_id": "simulate_api_livekit_listener-token_read",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "GET",
-      "path": "/simulate/api/livekit/phone-resolution/{phone_number}/",
-      "operation_id": "simulate_api_livekit_phone-resolution_read",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "POST",
-      "path": "/simulate/api/livekit/temporal-signal/",
-      "operation_id": "simulate_api_livekit_temporal-signal_create",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "POST",
-      "path": "/simulate/api/livekit/transcripts/{call_id}/",
-      "operation_id": "simulate_api_livekit_transcripts_create",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "POST",
-      "path": "/simulate/api/livekit/validate-credentials/",
-      "operation_id": "simulate_api_livekit_validate-credentials_create",
-      "tags": [
-        "simulate"
-      ]
-    },
-    {
-      "group": "simulate",
-      "method": "POST",
-      "path": "/simulate/api/livekit/webhook/",
-      "operation_id": "simulate_api_livekit_webhook_create",
       "tags": [
         "simulate"
       ]

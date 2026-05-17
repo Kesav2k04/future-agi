@@ -349,3 +349,18 @@ class PreviewDatasetOperationRequestSerializer(serializers.Serializer):
     language_model_id = serializers.CharField(required=False, allow_blank=True)
     config = serializers.JSONField(required=False)
     code = serializers.CharField(required=False, allow_blank=True)
+
+
+class ExperimentFeedbackSubmitRequestSerializer(serializers.Serializer):
+    action_type = serializers.ChoiceField(
+        choices=[
+            "retune",
+            "recalculate_row",
+            "recalculate_dataset",
+            "retune_recalculate",
+        ]
+    )
+    feedback_id = serializers.UUIDField()
+    user_eval_metric_id = serializers.UUIDField()
+    value = serializers.JSONField(required=False)
+    explanation = serializers.CharField(required=False, allow_blank=True)

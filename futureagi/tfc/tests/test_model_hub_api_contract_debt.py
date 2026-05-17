@@ -80,6 +80,10 @@ def test_model_hub_ai_writer_and_custom_model_apis_stay_out_of_contract_debt():
         "/model-hub/datasets/{dataset_id}/extract-entities/",
         "/model-hub/datasets/{dataset_id}/preview/{operation_type}/",
         "/model-hub/develops/{dataset_id}/extract-json-column/",
+        "/model-hub/experiments/v2/{experiment_id}/feedback/",
+        "/model-hub/experiments/v2/{experiment_id}/feedback/get-feedback-details/",
+        "/model-hub/experiments/v2/{experiment_id}/feedback/get-template/",
+        "/model-hub/experiments/v2/{experiment_id}/feedback/submit-feedback/",
         "/model-hub/kb/",
         "/model-hub/kb/supported-embedding-models",
         "/model-hub/kb/supported_embedding_models/",
@@ -168,6 +172,11 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
         ("POST", "/model-hub/develops/{dataset_id}/extract-json-column/"): (
             "ExtractJsonColumnRequest"
         ),
+        ("POST", "/model-hub/experiments/v2/{experiment_id}/feedback/"): "Feedback",
+        (
+            "POST",
+            "/model-hub/experiments/v2/{experiment_id}/feedback/submit-feedback/",
+        ): "ExperimentFeedbackSubmitRequest",
         ("POST", "/model-hub/kb/"): "KnowledgeBaseCreate",
         ("PUT", "/model-hub/kb/{id}/"): "KnowledgeBase",
         ("POST", "/model-hub/knowledge-base/"): (
@@ -283,6 +292,20 @@ def test_model_hub_ai_writer_and_custom_model_endpoints_have_response_contracts(
         ("POST", "/model-hub/develops/{dataset_id}/extract-json-column/"): (
             "ModelHubJSONResponse"
         ),
+        ("GET", "/model-hub/experiments/v2/{experiment_id}/feedback/get-template/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("POST", "/model-hub/experiments/v2/{experiment_id}/feedback/"): (
+            "ModelHubJSONResponse"
+        ),
+        (
+            "GET",
+            "/model-hub/experiments/v2/{experiment_id}/feedback/get-feedback-details/",
+        ): "ModelHubJSONResponse",
+        (
+            "POST",
+            "/model-hub/experiments/v2/{experiment_id}/feedback/submit-feedback/",
+        ): "ModelHubJSONResponse",
         ("GET", "/model-hub/kb/"): "ModelHubJSONResponse",
         ("POST", "/model-hub/kb/"): "ModelHubJSONResponse",
         ("GET", "/model-hub/kb/supported-embedding-models"): (

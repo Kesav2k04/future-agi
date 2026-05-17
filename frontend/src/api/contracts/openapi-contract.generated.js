@@ -12196,9 +12196,30 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/model-hub/experiments/v2/{experiment_id}/feedback/": {
       "post": {
         "operationId": "model-hub_experiments_v2_feedback_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/Feedback"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/experiments/v2/{experiment_id}/feedback/get-feedback-details/": {
@@ -12206,7 +12227,26 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "model-hub_experiments_v2_feedback_get-feedback-details_list",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/experiments/v2/{experiment_id}/feedback/get-template/": {
@@ -12214,15 +12254,55 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "model-hub_experiments_v2_feedback_get-template_list",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/experiments/v2/{experiment_id}/feedback/submit-feedback/": {
       "post": {
         "operationId": "model-hub_experiments_v2_feedback_submit-feedback_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/ExperimentFeedbackSubmitRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/experiments/v2/{experiment_id}/json-schema/": {
@@ -36682,6 +36762,44 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "type": "string",
           "default": "tasks_l",
           "minLength": 1
+        }
+      }
+    },
+    "ExperimentFeedbackSubmitRequest": {
+      "required": [
+        "action_type",
+        "feedback_id",
+        "user_eval_metric_id"
+      ],
+      "type": "object",
+      "properties": {
+        "action_type": {
+          "title": "Action type",
+          "type": "string",
+          "enum": [
+            "retune",
+            "recalculate_row",
+            "recalculate_dataset",
+            "retune_recalculate"
+          ]
+        },
+        "feedback_id": {
+          "title": "Feedback id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_eval_metric_id": {
+          "title": "User eval metric id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "value": {
+          "title": "Value",
+          "type": "object"
+        },
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
         }
       }
     },

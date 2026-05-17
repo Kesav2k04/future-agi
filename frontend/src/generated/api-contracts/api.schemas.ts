@@ -5009,6 +5009,26 @@ export interface FeedbackApi {
   action_type?: string;
 }
 
+export type ExperimentFeedbackSubmitRequestApiActionType = typeof ExperimentFeedbackSubmitRequestApiActionType[keyof typeof ExperimentFeedbackSubmitRequestApiActionType];
+
+
+export const ExperimentFeedbackSubmitRequestApiActionType = {
+  retune: 'retune',
+  recalculate_row: 'recalculate_row',
+  recalculate_dataset: 'recalculate_dataset',
+  retune_recalculate: 'retune_recalculate',
+} as const;
+
+export type ExperimentFeedbackSubmitRequestApiValue = { [key: string]: unknown };
+
+export interface ExperimentFeedbackSubmitRequestApi {
+  action_type: ExperimentFeedbackSubmitRequestApiActionType;
+  feedback_id: string;
+  user_eval_metric_id: string;
+  value?: ExperimentFeedbackSubmitRequestApiValue;
+  explanation?: string;
+}
+
 export type KnowledgeBaseCreateApiEmbeddingModel = typeof KnowledgeBaseCreateApiEmbeddingModel[keyof typeof KnowledgeBaseCreateApiEmbeddingModel];
 
 

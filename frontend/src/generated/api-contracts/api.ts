@@ -272,6 +272,7 @@ import type {
   ExecutePromptSimulationRequestApi,
   ExecutePromptSimulationResponseApi,
   ExecuteRequestApi,
+  ExperimentFeedbackSubmitRequestApi,
   ExtractEntitiesRequestApi,
   ExtractJsonColumnRequestApi,
   FalconAiFilesUploadCreateBody,
@@ -28447,17 +28448,44 @@ export const modelHubExperimentsV2EvaluationsStatsList = async (experimentId: st
 
 
 
-export type modelHubExperimentsV2FeedbackCreateResponse201 = {
-  data: void
-  status: 201
+export type modelHubExperimentsV2FeedbackCreateResponse200 = {
+  data: ModelHubJSONResponseApi
+  status: 200
 }
 
-export type modelHubExperimentsV2FeedbackCreateResponseSuccess = (modelHubExperimentsV2FeedbackCreateResponse201) & {
+export type modelHubExperimentsV2FeedbackCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubExperimentsV2FeedbackCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubExperimentsV2FeedbackCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubExperimentsV2FeedbackCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubExperimentsV2FeedbackCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubExperimentsV2FeedbackCreateResponseSuccess = (modelHubExperimentsV2FeedbackCreateResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubExperimentsV2FeedbackCreateResponseError = (modelHubExperimentsV2FeedbackCreateResponse400 | modelHubExperimentsV2FeedbackCreateResponse403 | modelHubExperimentsV2FeedbackCreateResponse404 | modelHubExperimentsV2FeedbackCreateResponse409 | modelHubExperimentsV2FeedbackCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubExperimentsV2FeedbackCreateResponse = (modelHubExperimentsV2FeedbackCreateResponseSuccess)
+export type modelHubExperimentsV2FeedbackCreateResponse = (modelHubExperimentsV2FeedbackCreateResponseSuccess | modelHubExperimentsV2FeedbackCreateResponseError)
 
 export const getModelHubExperimentsV2FeedbackCreateUrl = (experimentId: string,) => {
 
@@ -28470,30 +28498,59 @@ export const getModelHubExperimentsV2FeedbackCreateUrl = (experimentId: string,)
 /**
  * Create a feedback record scoped to an experiment.
  */
-export const modelHubExperimentsV2FeedbackCreate = async (experimentId: string, options?: RequestInit): Promise<modelHubExperimentsV2FeedbackCreateResponse> => {
+export const modelHubExperimentsV2FeedbackCreate = async (experimentId: string,
+    feedbackApi: NonReadonly<FeedbackApi>, options?: RequestInit): Promise<modelHubExperimentsV2FeedbackCreateResponse> => {
 
   return apiMutator<modelHubExperimentsV2FeedbackCreateResponse>(getModelHubExperimentsV2FeedbackCreateUrl(experimentId),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      feedbackApi,)
   }
 );}
 
 
 
 export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse200 = {
-  data: void
+  data: ModelHubJSONResponseApi
   status: 200
+}
+
+export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
 }
 
 export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponseSuccess = (modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponseError = (modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse400 | modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse403 | modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse404 | modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse409 | modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse = (modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponseSuccess)
+export type modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse = (modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponseSuccess | modelHubExperimentsV2FeedbackGetFeedbackDetailsListResponseError)
 
 export const getModelHubExperimentsV2FeedbackGetFeedbackDetailsListUrl = (experimentId: string,) => {
 
@@ -28520,16 +28577,43 @@ export const modelHubExperimentsV2FeedbackGetFeedbackDetailsList = async (experi
 
 
 export type modelHubExperimentsV2FeedbackGetTemplateListResponse200 = {
-  data: void
+  data: ModelHubJSONResponseApi
   status: 200
+}
+
+export type modelHubExperimentsV2FeedbackGetTemplateListResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubExperimentsV2FeedbackGetTemplateListResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubExperimentsV2FeedbackGetTemplateListResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubExperimentsV2FeedbackGetTemplateListResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubExperimentsV2FeedbackGetTemplateListResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
 }
 
 export type modelHubExperimentsV2FeedbackGetTemplateListResponseSuccess = (modelHubExperimentsV2FeedbackGetTemplateListResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubExperimentsV2FeedbackGetTemplateListResponseError = (modelHubExperimentsV2FeedbackGetTemplateListResponse400 | modelHubExperimentsV2FeedbackGetTemplateListResponse403 | modelHubExperimentsV2FeedbackGetTemplateListResponse404 | modelHubExperimentsV2FeedbackGetTemplateListResponse409 | modelHubExperimentsV2FeedbackGetTemplateListResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubExperimentsV2FeedbackGetTemplateListResponse = (modelHubExperimentsV2FeedbackGetTemplateListResponseSuccess)
+export type modelHubExperimentsV2FeedbackGetTemplateListResponse = (modelHubExperimentsV2FeedbackGetTemplateListResponseSuccess | modelHubExperimentsV2FeedbackGetTemplateListResponseError)
 
 export const getModelHubExperimentsV2FeedbackGetTemplateListUrl = (experimentId: string,) => {
 
@@ -28555,17 +28639,44 @@ export const modelHubExperimentsV2FeedbackGetTemplateList = async (experimentId:
 
 
 
-export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse201 = {
-  data: void
-  status: 201
+export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse200 = {
+  data: ModelHubJSONResponseApi
+  status: 200
 }
 
-export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponseSuccess = (modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse201) & {
+export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponseSuccess = (modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponseError = (modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse400 | modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse403 | modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse404 | modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse409 | modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse = (modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponseSuccess)
+export type modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse = (modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponseSuccess | modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponseError)
 
 export const getModelHubExperimentsV2FeedbackSubmitFeedbackCreateUrl = (experimentId: string,) => {
 
@@ -28578,14 +28689,16 @@ export const getModelHubExperimentsV2FeedbackSubmitFeedbackCreateUrl = (experime
 /**
  * Submit feedback action — triggers temporal eval rerun for experiments.
  */
-export const modelHubExperimentsV2FeedbackSubmitFeedbackCreate = async (experimentId: string, options?: RequestInit): Promise<modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse> => {
+export const modelHubExperimentsV2FeedbackSubmitFeedbackCreate = async (experimentId: string,
+    experimentFeedbackSubmitRequestApi: ExperimentFeedbackSubmitRequestApi, options?: RequestInit): Promise<modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse> => {
 
   return apiMutator<modelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse>(getModelHubExperimentsV2FeedbackSubmitFeedbackCreateUrl(experimentId),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      experimentFeedbackSubmitRequestApi,)
   }
 );}
 

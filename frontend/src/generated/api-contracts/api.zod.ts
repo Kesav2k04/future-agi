@@ -16050,12 +16050,71 @@ export const ModelHubExperimentsV2FeedbackCreateParams = zod.object({
   "experiment_id": zod.string()
 })
 
+export const modelHubExperimentsV2FeedbackCreateBodySourceIdMax = 255;
+
+
+export const modelHubExperimentsV2FeedbackCreateBodyRowIdMax = 255;
+
+export const modelHubExperimentsV2FeedbackCreateBodyActionTypeMax = 255;
+
+
+
+export const ModelHubExperimentsV2FeedbackCreateBody = zod.object({
+  "source_id": zod.string().min(1).max(modelHubExperimentsV2FeedbackCreateBodySourceIdMax),
+  "source": zod.enum(['dataset', 'prompt', 'sdk', 'trace', 'experiment', 'observe', 'eval_playground']),
+  "user_eval_metric": zod.string().uuid().optional(),
+  "value": zod.string().min(1),
+  "explanation": zod.string().optional(),
+  "row_id": zod.string().max(modelHubExperimentsV2FeedbackCreateBodyRowIdMax).optional(),
+  "custom_eval_config_id": zod.string().uuid().optional(),
+  "feedback_improvement": zod.string().optional(),
+  "action_type": zod.string().max(modelHubExperimentsV2FeedbackCreateBodyActionTypeMax).optional()
+})
+
+export const ModelHubExperimentsV2FeedbackCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
 
 /**
  * Get previous feedback details for a metric+row in an experiment.
  */
 export const ModelHubExperimentsV2FeedbackGetFeedbackDetailsListParams = zod.object({
   "experiment_id": zod.string()
+})
+
+export const ModelHubExperimentsV2FeedbackGetFeedbackDetailsListResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
 })
 
 
@@ -16066,12 +16125,60 @@ export const ModelHubExperimentsV2FeedbackGetTemplateListParams = zod.object({
   "experiment_id": zod.string()
 })
 
+export const ModelHubExperimentsV2FeedbackGetTemplateListResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
 
 /**
  * Submit feedback action — triggers temporal eval rerun for experiments.
  */
 export const ModelHubExperimentsV2FeedbackSubmitFeedbackCreateParams = zod.object({
   "experiment_id": zod.string()
+})
+
+export const ModelHubExperimentsV2FeedbackSubmitFeedbackCreateBody = zod.object({
+  "action_type": zod.enum(['retune', 'recalculate_row', 'recalculate_dataset', 'retune_recalculate']),
+  "feedback_id": zod.string().uuid(),
+  "user_eval_metric_id": zod.string().uuid(),
+  "value": zod.object({
+
+}).passthrough().optional(),
+  "explanation": zod.string().optional()
+})
+
+export const ModelHubExperimentsV2FeedbackSubmitFeedbackCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
 })
 
 

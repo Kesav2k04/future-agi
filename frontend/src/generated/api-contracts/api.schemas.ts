@@ -5241,6 +5241,130 @@ export interface DevelopAnnotationsUserApi {
   is_staff?: boolean;
 }
 
+export type PerformanceDetailsRequestApiDataset = { [key: string]: unknown };
+
+export type PerformanceDetailsRequestApiFiltersItem = { [key: string]: unknown };
+
+export interface PerformanceDetailsRequestApi {
+  dataset: PerformanceDetailsRequestApiDataset;
+  filters?: PerformanceDetailsRequestApiFiltersItem[];
+  page?: number;
+  start_date?: string;
+  end_date?: string;
+}
+
+export type PerformanceDetailsResponseApiResultItem = { [key: string]: unknown };
+
+export interface PerformanceDetailsResponseApi {
+  result: PerformanceDetailsResponseApiResultItem[];
+  processing_count: number;
+  count: number;
+  is_next: boolean;
+  page: number;
+}
+
+export type PerformanceExportRequestApiDataset = { [key: string]: unknown };
+
+export type PerformanceExportRequestApiMetric = { [key: string]: unknown };
+
+export interface PerformanceExportRequestApi {
+  dataset: PerformanceExportRequestApiDataset;
+  metric?: PerformanceExportRequestApiMetric;
+}
+
+export type PerformanceReportApiDatasets = { [key: string]: unknown };
+
+export type PerformanceReportApiFilters = { [key: string]: unknown };
+
+export type PerformanceReportApiBreakdown = { [key: string]: unknown };
+
+export interface PerformanceReportApi {
+  readonly id?: string;
+  readonly created_at?: string;
+  readonly updated_at?: string;
+  deleted?: boolean;
+  deleted_at?: string;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  datasets?: PerformanceReportApiDatasets;
+  filters?: PerformanceReportApiFilters;
+  breakdown?: PerformanceReportApiBreakdown;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  aggregation: string;
+  start_date: string;
+  end_date: string;
+  model: string;
+  organization: string;
+  workspace?: string;
+}
+
+export interface PerformanceReportPaginatedResponseApi {
+  count: number;
+  next?: string;
+  previous?: string;
+  results: PerformanceReportApi[];
+  total_pages?: number;
+  current_page?: number;
+}
+
+export type PerformanceReportCreateApiDatasets = { [key: string]: unknown };
+
+export type PerformanceReportCreateApiFilters = { [key: string]: unknown };
+
+export type PerformanceReportCreateApiBreakdown = { [key: string]: unknown };
+
+export interface PerformanceReportCreateApi {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  datasets?: PerformanceReportCreateApiDatasets;
+  filters?: PerformanceReportCreateApiFilters;
+  breakdown?: PerformanceReportCreateApiBreakdown;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  aggregation: string;
+  start_date: string;
+  end_date: string;
+}
+
+export type PerformanceTagDistributionRequestApiDataset = { [key: string]: unknown };
+
+export type PerformanceTagDistributionRequestApiFiltersItem = { [key: string]: unknown };
+
+export interface PerformanceTagDistributionRequestApi {
+  dataset: PerformanceTagDistributionRequestApiDataset;
+  filters?: PerformanceTagDistributionRequestApiFiltersItem[];
+  agg_by?: string;
+  start_date?: string;
+  end_date?: string;
+  graph_type?: string;
+}
+
+export type PerformanceQueryRequestApiDatasetsItem = { [key: string]: unknown };
+
+export type PerformanceQueryRequestApiFiltersItem = { [key: string]: unknown };
+
+export type PerformanceQueryRequestApiBreakdownItem = { [key: string]: unknown };
+
+export interface PerformanceQueryRequestApi {
+  datasets?: PerformanceQueryRequestApiDatasetsItem[];
+  filters?: PerformanceQueryRequestApiFiltersItem[];
+  breakdown?: PerformanceQueryRequestApiBreakdownItem[];
+  agg_by?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
 export type PromptBaseTemplateApiPromptConfigSnapshot = { [key: string]: unknown };
 
 export interface PromptBaseTemplateApi {
@@ -13539,6 +13663,8 @@ export type ModelHubOrganizationsUsersList200 = {
   previous?: string;
   results: DevelopAnnotationsUserApi[];
 };
+
+export type ModelHubPerformanceCreate200 = {[key: string]: { [key: string]: unknown }};
 
 export type ModelHubPromptBaseTemplatesListParams = {
 /**

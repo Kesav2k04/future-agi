@@ -13754,17 +13754,60 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/model-hub/performance/detail/{id}/": {
       "post": {
         "operationId": "model-hub_performance_detail_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/PerformanceDetailsRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PerformanceDetailsResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/performance/export/{id}/": {
       "post": {
         "operationId": "model-hub_performance_export_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/PerformanceExportRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "description": "CSV export payload.",
+            "type": "string"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/performance/options/{model_id}/": {
@@ -13772,7 +13815,26 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "model-hub_performance_options_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/performance/report/{model_id}/": {
@@ -13780,55 +13842,141 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "model-hub_performance_report_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PerformanceReportPaginatedResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       },
       "post": {
         "operationId": "model-hub_performance_report_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/PerformanceReportCreate"
+        },
         "queryParameters": {},
-        "responses": {}
-      },
-      "delete": {
-        "operationId": "model-hub_performance_report_delete",
-        "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/performance/report/{model_id}/{report_id}/": {
-      "get": {
-        "operationId": "model-hub_performance_report_read",
-        "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
-      },
-      "post": {
-        "operationId": "model-hub_performance_report_create",
-        "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
-      },
       "delete": {
         "operationId": "model-hub_performance_report_delete",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/performance/tag-distribution/{model_id}/": {
       "post": {
         "operationId": "model-hub_performance_tag-distribution_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/PerformanceTagDistributionRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/performance/{id}/": {
       "post": {
         "operationId": "model-hub_performance_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/PerformanceQueryRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/prompt-base-templates/": {
@@ -40683,6 +40831,208 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "PerformanceDetailsRequest": {
+      "required": [
+        "dataset"
+      ],
+      "type": "object",
+      "properties": {
+        "dataset": {
+          "title": "Dataset",
+          "type": "object"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": []
+        },
+        "page": {
+          "title": "Page",
+          "type": "integer",
+          "default": 1
+        },
+        "start_date": {
+          "title": "Start date",
+          "type": "string"
+        },
+        "end_date": {
+          "title": "End date",
+          "type": "string"
+        }
+      }
+    },
+    "PerformanceDetailsResponse": {
+      "required": [
+        "result",
+        "processing_count",
+        "count",
+        "is_next",
+        "page"
+      ],
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "processing_count": {
+          "title": "Processing count",
+          "type": "integer"
+        },
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        },
+        "is_next": {
+          "title": "Is next",
+          "type": "boolean"
+        },
+        "page": {
+          "title": "Page",
+          "type": "integer"
+        }
+      }
+    },
+    "PerformanceExportRequest": {
+      "required": [
+        "dataset"
+      ],
+      "type": "object",
+      "properties": {
+        "dataset": {
+          "title": "Dataset",
+          "type": "object"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "object"
+        }
+      }
+    },
+    "PerformanceQueryRequest": {
+      "type": "object",
+      "properties": {
+        "datasets": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": []
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": []
+        },
+        "breakdown": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": []
+        },
+        "agg_by": {
+          "title": "Agg by",
+          "type": "string"
+        },
+        "start_date": {
+          "title": "Start date",
+          "type": "string"
+        },
+        "end_date": {
+          "title": "End date",
+          "type": "string"
+        }
+      }
+    },
+    "PerformanceReportCreate": {
+      "required": [
+        "name",
+        "aggregation",
+        "start_date",
+        "end_date"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "datasets": {
+          "title": "Datasets",
+          "type": "object"
+        },
+        "filters": {
+          "title": "Filters",
+          "type": "object"
+        },
+        "breakdown": {
+          "title": "Breakdown",
+          "type": "object"
+        },
+        "aggregation": {
+          "title": "Aggregation",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "start_date": {
+          "title": "Start date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_date": {
+          "title": "End date",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "PerformanceReportPaginatedResponse": {
+      "required": [
+        "count",
+        "results"
+      ],
+      "type": "object",
+      "properties": {
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        },
+        "next": {
+          "title": "Next",
+          "type": "string",
+          "x-nullable": true
+        },
+        "previous": {
+          "title": "Previous",
+          "type": "string",
+          "x-nullable": true
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PerformanceReport"
+          }
+        },
+        "total_pages": {
+          "title": "Total pages",
+          "type": "integer"
+        },
+        "current_page": {
+          "title": "Current page",
+          "type": "integer"
+        }
+      }
+    },
     "PerformanceSummary": {
       "required": [
         "test_run_performance_metrics",
@@ -40709,6 +41059,41 @@ export const OPENAPI_CONTRACT = Object.freeze({
               "minLength": 1
             }
           }
+        }
+      }
+    },
+    "PerformanceTagDistributionRequest": {
+      "required": [
+        "dataset"
+      ],
+      "type": "object",
+      "properties": {
+        "dataset": {
+          "title": "Dataset",
+          "type": "object"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": []
+        },
+        "agg_by": {
+          "title": "Agg by",
+          "type": "string"
+        },
+        "start_date": {
+          "title": "Start date",
+          "type": "string"
+        },
+        "end_date": {
+          "title": "End date",
+          "type": "string"
+        },
+        "graph_type": {
+          "title": "Graph type",
+          "type": "string"
         }
       }
     },
@@ -52724,6 +53109,97 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "is_default": {
           "title": "Is default",
           "type": "boolean"
+        }
+      }
+    },
+    "PerformanceReport": {
+      "required": [
+        "name",
+        "aggregation",
+        "start_date",
+        "end_date",
+        "model",
+        "organization"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "deleted": {
+          "title": "Deleted",
+          "type": "boolean"
+        },
+        "deleted_at": {
+          "title": "Deleted at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "datasets": {
+          "title": "Datasets",
+          "type": "object"
+        },
+        "filters": {
+          "title": "Filters",
+          "type": "object"
+        },
+        "breakdown": {
+          "title": "Breakdown",
+          "type": "object"
+        },
+        "aggregation": {
+          "title": "Aggregation",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "start_date": {
+          "title": "Start date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_date": {
+          "title": "End date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "format": "uuid"
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid"
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
         }
       }
     },

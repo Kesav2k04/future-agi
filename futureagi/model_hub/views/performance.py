@@ -4,6 +4,8 @@ import traceback
 import structlog
 from django.db.models import Case, Prefetch, When
 from django.http import HttpResponse
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -14,6 +16,15 @@ from model_hub.models import DatasetProperties
 from model_hub.models.ai_model import AIModel
 from model_hub.models.conversations import Conversation, Message, Node
 from model_hub.models.metric import Metric
+from model_hub.serializers.contracts import (
+    MODEL_HUB_ERROR_RESPONSES,
+    ModelHubJSONResponseSerializer,
+    PerformanceDetailsRequestSerializer,
+    PerformanceDetailsResponseSerializer,
+    PerformanceExportRequestSerializer,
+    PerformanceQueryRequestSerializer,
+    PerformanceTagDistributionRequestSerializer,
+)
 from model_hub.serializers.dataset_properties import (
     DatasetPropertiesDetailsSerializer,
 )
@@ -34,6 +45,16 @@ class PerformanceView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
+    @swagger_auto_schema(
+        request_body=PerformanceQueryRequestSerializer,
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                additional_properties=openapi.Schema(type=openapi.TYPE_OBJECT),
+            ),
+            **MODEL_HUB_ERROR_RESPONSES,
+        },
+    )
     def post(self, request, id, *args, **kwargs):
         user = request.user
         user_organization = user.organization
@@ -133,6 +154,13 @@ class PerformanceDetailsView(APIView):
 
         return result
 
+    @swagger_auto_schema(
+        request_body=PerformanceDetailsRequestSerializer,
+        responses={
+            200: PerformanceDetailsResponseSerializer,
+            **MODEL_HUB_ERROR_RESPONSES,
+        },
+    )
     def post(self, request, id, *args, **kwargs):
         user = request.user
         organization = user.organization
@@ -341,6 +369,16 @@ class PerformanceDetailsView(APIView):
 class PerformanceDetailsExport(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        request_body=PerformanceExportRequestSerializer,
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="CSV export payload.",
+            ),
+            **MODEL_HUB_ERROR_RESPONSES,
+        },
+    )
     def post(self, request, id, *args, **kwargs):
         user = request.user
         organization = user.organization
@@ -422,6 +460,9 @@ class GetPerformanceOptionsView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
+    @swagger_auto_schema(
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES}
+    )
     def get(self, request, model_id, *args, **kwargs):
         user_organization = get_request_organization(self.request)
         search_query = request.query_params.get("search_query")
@@ -505,6 +546,10 @@ class GetPerformanceTagDistributionView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
+    @swagger_auto_schema(
+        request_body=PerformanceTagDistributionRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, model_id, *args, **kwargs):
         user_organization = get_request_organization(self.request)
         datasets = request.data.get("dataset")

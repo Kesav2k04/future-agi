@@ -26624,10 +26624,52 @@
             "post": {
                 "operationId": "model-hub_performance_detail_create",
                 "description": "",
-                "parameters": [],
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PerformanceDetailsRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "201": {
-                        "description": ""
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/PerformanceDetailsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -26647,10 +26689,53 @@
             "post": {
                 "operationId": "model-hub_performance_export_create",
                 "description": "",
-                "parameters": [],
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PerformanceExportRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "201": {
-                        "description": ""
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "description": "CSV export payload.",
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -26673,7 +26758,40 @@
                 "parameters": [],
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubJSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -26696,7 +26814,40 @@
                 "parameters": [],
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/PerformanceReportPaginatedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -26706,23 +26857,52 @@
             "post": {
                 "operationId": "model-hub_performance_report_create",
                 "description": "",
-                "parameters": [],
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PerformanceReportCreate"
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
-                        "description": ""
-                    }
-                },
-                "tags": [
-                    "model-hub"
-                ]
-            },
-            "delete": {
-                "operationId": "model-hub_performance_report_delete",
-                "description": "",
-                "parameters": [],
-                "responses": {
-                    "204": {
-                        "description": ""
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubJSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -26739,39 +26919,46 @@
             ]
         },
         "/model-hub/performance/report/{model_id}/{report_id}/": {
-            "get": {
-                "operationId": "model-hub_performance_report_read",
-                "description": "",
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                },
-                "tags": [
-                    "model-hub"
-                ]
-            },
-            "post": {
-                "operationId": "model-hub_performance_report_create",
-                "description": "",
-                "parameters": [],
-                "responses": {
-                    "201": {
-                        "description": ""
-                    }
-                },
-                "tags": [
-                    "model-hub"
-                ]
-            },
             "delete": {
                 "operationId": "model-hub_performance_report_delete",
                 "description": "",
                 "parameters": [],
                 "responses": {
-                    "204": {
-                        "description": ""
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubJSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -26797,10 +26984,52 @@
             "post": {
                 "operationId": "model-hub_performance_tag-distribution_create",
                 "description": "",
-                "parameters": [],
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PerformanceTagDistributionRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "201": {
-                        "description": ""
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubJSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -26820,10 +27049,55 @@
             "post": {
                 "operationId": "model-hub_performance_create",
                 "description": "",
-                "parameters": [],
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PerformanceQueryRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "201": {
-                        "description": ""
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -64493,6 +64767,334 @@
                 "is_staff": {
                     "title": "Is staff",
                     "type": "boolean"
+                }
+            }
+        },
+        "PerformanceDetailsRequest": {
+            "required": [
+                "dataset"
+            ],
+            "type": "object",
+            "properties": {
+                "dataset": {
+                    "title": "Dataset",
+                    "type": "object"
+                },
+                "filters": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "default": []
+                },
+                "page": {
+                    "title": "Page",
+                    "type": "integer",
+                    "default": 1
+                },
+                "start_date": {
+                    "title": "Start date",
+                    "type": "string"
+                },
+                "end_date": {
+                    "title": "End date",
+                    "type": "string"
+                }
+            }
+        },
+        "PerformanceDetailsResponse": {
+            "required": [
+                "result",
+                "processing_count",
+                "count",
+                "is_next",
+                "page"
+            ],
+            "type": "object",
+            "properties": {
+                "result": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "processing_count": {
+                    "title": "Processing count",
+                    "type": "integer"
+                },
+                "count": {
+                    "title": "Count",
+                    "type": "integer"
+                },
+                "is_next": {
+                    "title": "Is next",
+                    "type": "boolean"
+                },
+                "page": {
+                    "title": "Page",
+                    "type": "integer"
+                }
+            }
+        },
+        "PerformanceExportRequest": {
+            "required": [
+                "dataset"
+            ],
+            "type": "object",
+            "properties": {
+                "dataset": {
+                    "title": "Dataset",
+                    "type": "object"
+                },
+                "metric": {
+                    "title": "Metric",
+                    "type": "object"
+                }
+            }
+        },
+        "PerformanceReport": {
+            "required": [
+                "name",
+                "aggregation",
+                "start_date",
+                "end_date",
+                "model",
+                "organization"
+            ],
+            "type": "object",
+            "properties": {
+                "id": {
+                    "title": "Id",
+                    "type": "string",
+                    "format": "uuid",
+                    "readOnly": true
+                },
+                "created_at": {
+                    "title": "Created at",
+                    "type": "string",
+                    "format": "date-time",
+                    "readOnly": true
+                },
+                "updated_at": {
+                    "title": "Updated at",
+                    "type": "string",
+                    "format": "date-time",
+                    "readOnly": true
+                },
+                "deleted": {
+                    "title": "Deleted",
+                    "type": "boolean"
+                },
+                "deleted_at": {
+                    "title": "Deleted at",
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true
+                },
+                "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "datasets": {
+                    "title": "Datasets",
+                    "type": "object"
+                },
+                "filters": {
+                    "title": "Filters",
+                    "type": "object"
+                },
+                "breakdown": {
+                    "title": "Breakdown",
+                    "type": "object"
+                },
+                "aggregation": {
+                    "title": "Aggregation",
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "start_date": {
+                    "title": "Start date",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "end_date": {
+                    "title": "End date",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "model": {
+                    "title": "Model",
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "organization": {
+                    "title": "Organization",
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "workspace": {
+                    "title": "Workspace",
+                    "type": "string",
+                    "format": "uuid",
+                    "x-nullable": true
+                }
+            }
+        },
+        "PerformanceReportPaginatedResponse": {
+            "required": [
+                "count",
+                "results"
+            ],
+            "type": "object",
+            "properties": {
+                "count": {
+                    "title": "Count",
+                    "type": "integer"
+                },
+                "next": {
+                    "title": "Next",
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "previous": {
+                    "title": "Previous",
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PerformanceReport"
+                    }
+                },
+                "total_pages": {
+                    "title": "Total pages",
+                    "type": "integer"
+                },
+                "current_page": {
+                    "title": "Current page",
+                    "type": "integer"
+                }
+            }
+        },
+        "PerformanceReportCreate": {
+            "required": [
+                "name",
+                "aggregation",
+                "start_date",
+                "end_date"
+            ],
+            "type": "object",
+            "properties": {
+                "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "datasets": {
+                    "title": "Datasets",
+                    "type": "object"
+                },
+                "filters": {
+                    "title": "Filters",
+                    "type": "object"
+                },
+                "breakdown": {
+                    "title": "Breakdown",
+                    "type": "object"
+                },
+                "aggregation": {
+                    "title": "Aggregation",
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "start_date": {
+                    "title": "Start date",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "end_date": {
+                    "title": "End date",
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "PerformanceTagDistributionRequest": {
+            "required": [
+                "dataset"
+            ],
+            "type": "object",
+            "properties": {
+                "dataset": {
+                    "title": "Dataset",
+                    "type": "object"
+                },
+                "filters": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "default": []
+                },
+                "agg_by": {
+                    "title": "Agg by",
+                    "type": "string"
+                },
+                "start_date": {
+                    "title": "Start date",
+                    "type": "string"
+                },
+                "end_date": {
+                    "title": "End date",
+                    "type": "string"
+                },
+                "graph_type": {
+                    "title": "Graph type",
+                    "type": "string"
+                }
+            }
+        },
+        "PerformanceQueryRequest": {
+            "type": "object",
+            "properties": {
+                "datasets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "default": []
+                },
+                "filters": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "default": []
+                },
+                "breakdown": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "default": []
+                },
+                "agg_by": {
+                    "title": "Agg by",
+                    "type": "string"
+                },
+                "start_date": {
+                    "title": "Start date",
+                    "type": "string"
+                },
+                "end_date": {
+                    "title": "End date",
+                    "type": "string"
                 }
             }
         },

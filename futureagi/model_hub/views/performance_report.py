@@ -1,9 +1,15 @@
 from django.db.models import Q
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from model_hub.models.ai_model import AIModel
 from model_hub.models.performance_report import PerformanceReport
+from model_hub.serializers.contracts import (
+    MODEL_HUB_ERROR_RESPONSES,
+    ModelHubJSONResponseSerializer,
+    PerformanceReportPaginatedResponseSerializer,
+)
 from model_hub.serializers.performance_report import (
     PerformanceReportCreateSerializer,
     PerformanceReportSerializer,
@@ -21,6 +27,12 @@ class PerformanceReportApiView(APIView):
     create_serializer_class = PerformanceReportCreateSerializer
     _gm = GeneralMethods()
 
+    @swagger_auto_schema(
+        responses={
+            200: PerformanceReportPaginatedResponseSerializer,
+            **MODEL_HUB_ERROR_RESPONSES,
+        }
+    )
     def get(self, request, model_id):
         queryset = self.model.objects.filter(model_id=model_id).order_by("-created_at")
 
@@ -34,6 +46,10 @@ class PerformanceReportApiView(APIView):
 
         return paginator.get_paginated_response(result_page)
 
+    @swagger_auto_schema(
+        request_body=PerformanceReportCreateSerializer,
+        responses={201: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, model_id):
         try:
             model = AIModel.objects.get(id=model_id)
@@ -49,6 +65,15 @@ class PerformanceReportApiView(APIView):
 
         return self._gm.bad_request(parse_serialized_errors(serializer))
 
+
+class PerformanceReportDetailApiView(APIView):
+    permission_classes = [IsAuthenticated]
+    model = PerformanceReport
+    _gm = GeneralMethods()
+
+    @swagger_auto_schema(
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES}
+    )
     def delete(self, request, model_id, report_id):
         try:
             instance = self.model.objects.get(id=report_id, model_id=model_id)

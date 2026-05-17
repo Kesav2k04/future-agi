@@ -423,6 +423,7 @@ import type {
   ModelHubOrganizationsUsersList200,
   ModelHubOrganizationsUsersListParams,
   ModelHubPaginatedResponseApi,
+  ModelHubPerformanceCreate200,
   ModelHubPromptBaseTemplatesGetAllCategories200,
   ModelHubPromptBaseTemplatesGetAllCategoriesParams,
   ModelHubPromptBaseTemplatesList200,
@@ -495,7 +496,14 @@ import type {
   PaymentMethodCheckoutResponseApi,
   PaymentMethodConfirmResponseApi,
   PaymentMethodsResponseApi,
+  PerformanceDetailsRequestApi,
+  PerformanceDetailsResponseApi,
+  PerformanceExportRequestApi,
+  PerformanceQueryRequestApi,
+  PerformanceReportCreateApi,
+  PerformanceReportPaginatedResponseApi,
   PerformanceSummaryApi,
+  PerformanceTagDistributionRequestApi,
   PersonaApi,
   PersonaCreateApi,
   PersonaDuplicateRequestApi,
@@ -32127,17 +32135,44 @@ export const modelHubOverviewList = async ( options?: RequestInit): Promise<mode
 
 
 
-export type modelHubPerformanceDetailCreateResponse201 = {
-  data: void
-  status: 201
+export type modelHubPerformanceDetailCreateResponse200 = {
+  data: PerformanceDetailsResponseApi
+  status: 200
 }
 
-export type modelHubPerformanceDetailCreateResponseSuccess = (modelHubPerformanceDetailCreateResponse201) & {
+export type modelHubPerformanceDetailCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubPerformanceDetailCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubPerformanceDetailCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubPerformanceDetailCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubPerformanceDetailCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubPerformanceDetailCreateResponseSuccess = (modelHubPerformanceDetailCreateResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubPerformanceDetailCreateResponseError = (modelHubPerformanceDetailCreateResponse400 | modelHubPerformanceDetailCreateResponse403 | modelHubPerformanceDetailCreateResponse404 | modelHubPerformanceDetailCreateResponse409 | modelHubPerformanceDetailCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubPerformanceDetailCreateResponse = (modelHubPerformanceDetailCreateResponseSuccess)
+export type modelHubPerformanceDetailCreateResponse = (modelHubPerformanceDetailCreateResponseSuccess | modelHubPerformanceDetailCreateResponseError)
 
 export const getModelHubPerformanceDetailCreateUrl = (id: string,) => {
 
@@ -32147,30 +32182,59 @@ export const getModelHubPerformanceDetailCreateUrl = (id: string,) => {
   return `/model-hub/performance/detail/${id}/`
 }
 
-export const modelHubPerformanceDetailCreate = async (id: string, options?: RequestInit): Promise<modelHubPerformanceDetailCreateResponse> => {
+export const modelHubPerformanceDetailCreate = async (id: string,
+    performanceDetailsRequestApi: PerformanceDetailsRequestApi, options?: RequestInit): Promise<modelHubPerformanceDetailCreateResponse> => {
 
   return apiMutator<modelHubPerformanceDetailCreateResponse>(getModelHubPerformanceDetailCreateUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      performanceDetailsRequestApi,)
   }
 );}
 
 
 
-export type modelHubPerformanceExportCreateResponse201 = {
-  data: void
-  status: 201
+export type modelHubPerformanceExportCreateResponse200 = {
+  data: string
+  status: 200
 }
 
-export type modelHubPerformanceExportCreateResponseSuccess = (modelHubPerformanceExportCreateResponse201) & {
+export type modelHubPerformanceExportCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubPerformanceExportCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubPerformanceExportCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubPerformanceExportCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubPerformanceExportCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubPerformanceExportCreateResponseSuccess = (modelHubPerformanceExportCreateResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubPerformanceExportCreateResponseError = (modelHubPerformanceExportCreateResponse400 | modelHubPerformanceExportCreateResponse403 | modelHubPerformanceExportCreateResponse404 | modelHubPerformanceExportCreateResponse409 | modelHubPerformanceExportCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubPerformanceExportCreateResponse = (modelHubPerformanceExportCreateResponseSuccess)
+export type modelHubPerformanceExportCreateResponse = (modelHubPerformanceExportCreateResponseSuccess | modelHubPerformanceExportCreateResponseError)
 
 export const getModelHubPerformanceExportCreateUrl = (id: string,) => {
 
@@ -32180,30 +32244,59 @@ export const getModelHubPerformanceExportCreateUrl = (id: string,) => {
   return `/model-hub/performance/export/${id}/`
 }
 
-export const modelHubPerformanceExportCreate = async (id: string, options?: RequestInit): Promise<modelHubPerformanceExportCreateResponse> => {
+export const modelHubPerformanceExportCreate = async (id: string,
+    performanceExportRequestApi: PerformanceExportRequestApi, options?: RequestInit): Promise<modelHubPerformanceExportCreateResponse> => {
 
   return apiMutator<modelHubPerformanceExportCreateResponse>(getModelHubPerformanceExportCreateUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      performanceExportRequestApi,)
   }
 );}
 
 
 
 export type modelHubPerformanceOptionsReadResponse200 = {
-  data: void
+  data: ModelHubJSONResponseApi
   status: 200
+}
+
+export type modelHubPerformanceOptionsReadResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubPerformanceOptionsReadResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubPerformanceOptionsReadResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubPerformanceOptionsReadResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubPerformanceOptionsReadResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
 }
 
 export type modelHubPerformanceOptionsReadResponseSuccess = (modelHubPerformanceOptionsReadResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubPerformanceOptionsReadResponseError = (modelHubPerformanceOptionsReadResponse400 | modelHubPerformanceOptionsReadResponse403 | modelHubPerformanceOptionsReadResponse404 | modelHubPerformanceOptionsReadResponse409 | modelHubPerformanceOptionsReadResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubPerformanceOptionsReadResponse = (modelHubPerformanceOptionsReadResponseSuccess)
+export type modelHubPerformanceOptionsReadResponse = (modelHubPerformanceOptionsReadResponseSuccess | modelHubPerformanceOptionsReadResponseError)
 
 export const getModelHubPerformanceOptionsReadUrl = (modelId: string,) => {
 
@@ -32227,30 +32320,55 @@ export const modelHubPerformanceOptionsRead = async (modelId: string, options?: 
 
 
 export type modelHubPerformanceReportReadResponse200 = {
-  data: void
+  data: PerformanceReportPaginatedResponseApi
   status: 200
+}
+
+export type modelHubPerformanceReportReadResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubPerformanceReportReadResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubPerformanceReportReadResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubPerformanceReportReadResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubPerformanceReportReadResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
 }
 
 export type modelHubPerformanceReportReadResponseSuccess = (modelHubPerformanceReportReadResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubPerformanceReportReadResponseError = (modelHubPerformanceReportReadResponse400 | modelHubPerformanceReportReadResponse403 | modelHubPerformanceReportReadResponse404 | modelHubPerformanceReportReadResponse409 | modelHubPerformanceReportReadResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubPerformanceReportReadResponse = (modelHubPerformanceReportReadResponseSuccess)
+export type modelHubPerformanceReportReadResponse = (modelHubPerformanceReportReadResponseSuccess | modelHubPerformanceReportReadResponseError)
 
-export const getModelHubPerformanceReportReadUrl = (modelId: string,
-    reportId: string,) => {
-
+export const getModelHubPerformanceReportReadUrl = (modelId: string,) => {
 
 
 
-  return `/model-hub/performance/report/${modelId}/${reportId}/`
+
+  return `/model-hub/performance/report/${modelId}/`
 }
 
-export const modelHubPerformanceReportRead = async (modelId: string,
-    reportId: string, options?: RequestInit): Promise<modelHubPerformanceReportReadResponse> => {
+export const modelHubPerformanceReportRead = async (modelId: string, options?: RequestInit): Promise<modelHubPerformanceReportReadResponse> => {
 
-  return apiMutator<modelHubPerformanceReportReadResponse>(getModelHubPerformanceReportReadUrl(modelId,reportId),
+  return apiMutator<modelHubPerformanceReportReadResponse>(getModelHubPerformanceReportReadUrl(modelId),
   {
     ...options,
     method: 'GET'
@@ -32262,51 +32380,105 @@ export const modelHubPerformanceReportRead = async (modelId: string,
 
 
 export type modelHubPerformanceReportCreateResponse201 = {
-  data: void
+  data: ModelHubJSONResponseApi
   status: 201
+}
+
+export type modelHubPerformanceReportCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubPerformanceReportCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubPerformanceReportCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubPerformanceReportCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubPerformanceReportCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
 }
 
 export type modelHubPerformanceReportCreateResponseSuccess = (modelHubPerformanceReportCreateResponse201) & {
   headers: Headers;
 };
-;
+export type modelHubPerformanceReportCreateResponseError = (modelHubPerformanceReportCreateResponse400 | modelHubPerformanceReportCreateResponse403 | modelHubPerformanceReportCreateResponse404 | modelHubPerformanceReportCreateResponse409 | modelHubPerformanceReportCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubPerformanceReportCreateResponse = (modelHubPerformanceReportCreateResponseSuccess)
+export type modelHubPerformanceReportCreateResponse = (modelHubPerformanceReportCreateResponseSuccess | modelHubPerformanceReportCreateResponseError)
 
-export const getModelHubPerformanceReportCreateUrl = (modelId: string,
-    reportId: string,) => {
-
+export const getModelHubPerformanceReportCreateUrl = (modelId: string,) => {
 
 
 
-  return `/model-hub/performance/report/${modelId}/${reportId}/`
+
+  return `/model-hub/performance/report/${modelId}/`
 }
 
 export const modelHubPerformanceReportCreate = async (modelId: string,
-    reportId: string, options?: RequestInit): Promise<modelHubPerformanceReportCreateResponse> => {
+    performanceReportCreateApi: PerformanceReportCreateApi, options?: RequestInit): Promise<modelHubPerformanceReportCreateResponse> => {
 
-  return apiMutator<modelHubPerformanceReportCreateResponse>(getModelHubPerformanceReportCreateUrl(modelId,reportId),
+  return apiMutator<modelHubPerformanceReportCreateResponse>(getModelHubPerformanceReportCreateUrl(modelId),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      performanceReportCreateApi,)
   }
 );}
 
 
 
-export type modelHubPerformanceReportDeleteResponse204 = {
-  data: void
-  status: 204
+export type modelHubPerformanceReportDeleteResponse200 = {
+  data: ModelHubJSONResponseApi
+  status: 200
 }
 
-export type modelHubPerformanceReportDeleteResponseSuccess = (modelHubPerformanceReportDeleteResponse204) & {
+export type modelHubPerformanceReportDeleteResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubPerformanceReportDeleteResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubPerformanceReportDeleteResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubPerformanceReportDeleteResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubPerformanceReportDeleteResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubPerformanceReportDeleteResponseSuccess = (modelHubPerformanceReportDeleteResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubPerformanceReportDeleteResponseError = (modelHubPerformanceReportDeleteResponse400 | modelHubPerformanceReportDeleteResponse403 | modelHubPerformanceReportDeleteResponse404 | modelHubPerformanceReportDeleteResponse409 | modelHubPerformanceReportDeleteResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubPerformanceReportDeleteResponse = (modelHubPerformanceReportDeleteResponseSuccess)
+export type modelHubPerformanceReportDeleteResponse = (modelHubPerformanceReportDeleteResponseSuccess | modelHubPerformanceReportDeleteResponseError)
 
 export const getModelHubPerformanceReportDeleteUrl = (modelId: string,
     reportId: string,) => {
@@ -32331,17 +32503,44 @@ export const modelHubPerformanceReportDelete = async (modelId: string,
 
 
 
-export type modelHubPerformanceTagDistributionCreateResponse201 = {
-  data: void
-  status: 201
+export type modelHubPerformanceTagDistributionCreateResponse200 = {
+  data: ModelHubJSONResponseApi
+  status: 200
 }
 
-export type modelHubPerformanceTagDistributionCreateResponseSuccess = (modelHubPerformanceTagDistributionCreateResponse201) & {
+export type modelHubPerformanceTagDistributionCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubPerformanceTagDistributionCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubPerformanceTagDistributionCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubPerformanceTagDistributionCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubPerformanceTagDistributionCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubPerformanceTagDistributionCreateResponseSuccess = (modelHubPerformanceTagDistributionCreateResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubPerformanceTagDistributionCreateResponseError = (modelHubPerformanceTagDistributionCreateResponse400 | modelHubPerformanceTagDistributionCreateResponse403 | modelHubPerformanceTagDistributionCreateResponse404 | modelHubPerformanceTagDistributionCreateResponse409 | modelHubPerformanceTagDistributionCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubPerformanceTagDistributionCreateResponse = (modelHubPerformanceTagDistributionCreateResponseSuccess)
+export type modelHubPerformanceTagDistributionCreateResponse = (modelHubPerformanceTagDistributionCreateResponseSuccess | modelHubPerformanceTagDistributionCreateResponseError)
 
 export const getModelHubPerformanceTagDistributionCreateUrl = (modelId: string,) => {
 
@@ -32351,30 +32550,59 @@ export const getModelHubPerformanceTagDistributionCreateUrl = (modelId: string,)
   return `/model-hub/performance/tag-distribution/${modelId}/`
 }
 
-export const modelHubPerformanceTagDistributionCreate = async (modelId: string, options?: RequestInit): Promise<modelHubPerformanceTagDistributionCreateResponse> => {
+export const modelHubPerformanceTagDistributionCreate = async (modelId: string,
+    performanceTagDistributionRequestApi: PerformanceTagDistributionRequestApi, options?: RequestInit): Promise<modelHubPerformanceTagDistributionCreateResponse> => {
 
   return apiMutator<modelHubPerformanceTagDistributionCreateResponse>(getModelHubPerformanceTagDistributionCreateUrl(modelId),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      performanceTagDistributionRequestApi,)
   }
 );}
 
 
 
-export type modelHubPerformanceCreateResponse201 = {
-  data: void
-  status: 201
+export type modelHubPerformanceCreateResponse200 = {
+  data: ModelHubPerformanceCreate200
+  status: 200
 }
 
-export type modelHubPerformanceCreateResponseSuccess = (modelHubPerformanceCreateResponse201) & {
+export type modelHubPerformanceCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubPerformanceCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubPerformanceCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubPerformanceCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubPerformanceCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubPerformanceCreateResponseSuccess = (modelHubPerformanceCreateResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubPerformanceCreateResponseError = (modelHubPerformanceCreateResponse400 | modelHubPerformanceCreateResponse403 | modelHubPerformanceCreateResponse404 | modelHubPerformanceCreateResponse409 | modelHubPerformanceCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubPerformanceCreateResponse = (modelHubPerformanceCreateResponseSuccess)
+export type modelHubPerformanceCreateResponse = (modelHubPerformanceCreateResponseSuccess | modelHubPerformanceCreateResponseError)
 
 export const getModelHubPerformanceCreateUrl = (id: string,) => {
 
@@ -32384,14 +32612,16 @@ export const getModelHubPerformanceCreateUrl = (id: string,) => {
   return `/model-hub/performance/${id}/`
 }
 
-export const modelHubPerformanceCreate = async (id: string, options?: RequestInit): Promise<modelHubPerformanceCreateResponse> => {
+export const modelHubPerformanceCreate = async (id: string,
+    performanceQueryRequestApi: PerformanceQueryRequestApi, options?: RequestInit): Promise<modelHubPerformanceCreateResponse> => {
 
   return apiMutator<modelHubPerformanceCreateResponse>(getModelHubPerformanceCreateUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      performanceQueryRequestApi,)
   }
 );}
 

@@ -17532,26 +17532,138 @@ export const ModelHubPerformanceDetailCreateParams = zod.object({
   "id": zod.string()
 })
 
+export const modelHubPerformanceDetailCreateBodyFiltersDefault = [];
+export const modelHubPerformanceDetailCreateBodyPageDefault = 1;
+
+export const ModelHubPerformanceDetailCreateBody = zod.object({
+  "dataset": zod.object({
+
+}).passthrough(),
+  "filters": zod.array(zod.object({
+
+}).passthrough()).default(modelHubPerformanceDetailCreateBodyFiltersDefault),
+  "page": zod.number().default(modelHubPerformanceDetailCreateBodyPageDefault),
+  "start_date": zod.string().optional(),
+  "end_date": zod.string().optional()
+})
+
+export const ModelHubPerformanceDetailCreateResponse = zod.object({
+  "result": zod.array(zod.object({
+
+}).passthrough()),
+  "processing_count": zod.number(),
+  "count": zod.number(),
+  "is_next": zod.boolean(),
+  "page": zod.number()
+})
+
 
 export const ModelHubPerformanceExportCreateParams = zod.object({
   "id": zod.string()
 })
+
+export const ModelHubPerformanceExportCreateBody = zod.object({
+  "dataset": zod.object({
+
+}).passthrough(),
+  "metric": zod.object({
+
+}).passthrough().optional()
+})
+
+export const ModelHubPerformanceExportCreateResponse = zod.string().describe('CSV export payload.')
 
 
 export const ModelHubPerformanceOptionsReadParams = zod.object({
   "model_id": zod.string()
 })
 
+export const ModelHubPerformanceOptionsReadResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
 
 export const ModelHubPerformanceReportReadParams = zod.object({
-  "model_id": zod.string(),
-  "report_id": zod.string()
+  "model_id": zod.string()
+})
+
+export const modelHubPerformanceReportReadResponseResultsItemNameMax = 255;
+
+export const modelHubPerformanceReportReadResponseResultsItemAggregationMax = 255;
+
+
+
+export const ModelHubPerformanceReportReadResponse = zod.object({
+  "count": zod.number(),
+  "next": zod.string().optional(),
+  "previous": zod.string().optional(),
+  "results": zod.array(zod.object({
+  "id": zod.string().uuid().optional(),
+  "created_at": zod.string().datetime({"offset":true}).optional(),
+  "updated_at": zod.string().datetime({"offset":true}).optional(),
+  "deleted": zod.boolean().optional(),
+  "deleted_at": zod.string().datetime({"offset":true}).optional(),
+  "name": zod.string().min(1).max(modelHubPerformanceReportReadResponseResultsItemNameMax),
+  "datasets": zod.object({
+
+}).passthrough().optional(),
+  "filters": zod.object({
+
+}).passthrough().optional(),
+  "breakdown": zod.object({
+
+}).passthrough().optional(),
+  "aggregation": zod.string().min(1).max(modelHubPerformanceReportReadResponseResultsItemAggregationMax),
+  "start_date": zod.string().datetime({"offset":true}),
+  "end_date": zod.string().datetime({"offset":true}),
+  "model": zod.string().uuid(),
+  "organization": zod.string().uuid(),
+  "workspace": zod.string().uuid().optional()
+})),
+  "total_pages": zod.number().optional(),
+  "current_page": zod.number().optional()
 })
 
 
 export const ModelHubPerformanceReportCreateParams = zod.object({
-  "model_id": zod.string(),
-  "report_id": zod.string()
+  "model_id": zod.string()
+})
+
+export const modelHubPerformanceReportCreateBodyNameMax = 255;
+
+export const modelHubPerformanceReportCreateBodyAggregationMax = 255;
+
+
+
+export const ModelHubPerformanceReportCreateBody = zod.object({
+  "name": zod.string().min(1).max(modelHubPerformanceReportCreateBodyNameMax),
+  "datasets": zod.object({
+
+}).passthrough().optional(),
+  "filters": zod.object({
+
+}).passthrough().optional(),
+  "breakdown": zod.object({
+
+}).passthrough().optional(),
+  "aggregation": zod.string().min(1).max(modelHubPerformanceReportCreateBodyAggregationMax),
+  "start_date": zod.string().datetime({"offset":true}),
+  "end_date": zod.string().datetime({"offset":true})
 })
 
 
@@ -17560,15 +17672,91 @@ export const ModelHubPerformanceReportDeleteParams = zod.object({
   "report_id": zod.string()
 })
 
+export const ModelHubPerformanceReportDeleteResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
 
 export const ModelHubPerformanceTagDistributionCreateParams = zod.object({
   "model_id": zod.string()
+})
+
+export const modelHubPerformanceTagDistributionCreateBodyFiltersDefault = [];
+
+export const ModelHubPerformanceTagDistributionCreateBody = zod.object({
+  "dataset": zod.object({
+
+}).passthrough(),
+  "filters": zod.array(zod.object({
+
+}).passthrough()).default(modelHubPerformanceTagDistributionCreateBodyFiltersDefault),
+  "agg_by": zod.string().optional(),
+  "start_date": zod.string().optional(),
+  "end_date": zod.string().optional(),
+  "graph_type": zod.string().optional()
+})
+
+export const ModelHubPerformanceTagDistributionCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
 })
 
 
 export const ModelHubPerformanceCreateParams = zod.object({
   "id": zod.string()
 })
+
+export const modelHubPerformanceCreateBodyDatasetsDefault = [];
+export const modelHubPerformanceCreateBodyFiltersDefault = [];
+export const modelHubPerformanceCreateBodyBreakdownDefault = [];
+
+export const ModelHubPerformanceCreateBody = zod.object({
+  "datasets": zod.array(zod.object({
+
+}).passthrough()).default(modelHubPerformanceCreateBodyDatasetsDefault),
+  "filters": zod.array(zod.object({
+
+}).passthrough()).default(modelHubPerformanceCreateBodyFiltersDefault),
+  "breakdown": zod.array(zod.object({
+
+}).passthrough()).default(modelHubPerformanceCreateBodyBreakdownDefault),
+  "agg_by": zod.string().optional(),
+  "start_date": zod.string().optional(),
+  "end_date": zod.string().optional()
+})
+
+export const ModelHubPerformanceCreateResponse = zod.record(zod.string(), zod.object({
+
+}).passthrough())
 
 
 /**

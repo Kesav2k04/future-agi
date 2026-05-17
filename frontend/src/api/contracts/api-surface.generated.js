@@ -1841,14 +1841,11 @@ export const API_SURFACE_CONTRACT = Object.freeze({
         "get"
       ],
       "/model-hub/performance/report/{model_id}/": [
-        "delete",
         "get",
         "post"
       ],
       "/model-hub/performance/report/{model_id}/{report_id}/": [
-        "delete",
-        "get",
-        "post"
+        "delete"
       ],
       "/model-hub/performance/tag-distribution/{model_id}/": [
         "post"
@@ -5112,14 +5109,11 @@ export const API_SURFACE_PATHS = Object.freeze({
     "get"
   ],
   "/model-hub/performance/report/{model_id}/": [
-    "delete",
     "get",
     "post"
   ],
   "/model-hub/performance/report/{model_id}/{report_id}/": [
-    "delete",
-    "get",
-    "post"
+    "delete"
   ],
   "/model-hub/performance/tag-distribution/{model_id}/": [
     "post"

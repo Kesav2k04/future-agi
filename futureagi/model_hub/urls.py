@@ -159,7 +159,10 @@ from model_hub.views.performance import (
     PerformanceDetailsView,
     PerformanceView,
 )
-from model_hub.views.performance_report import PerformanceReportApiView
+from model_hub.views.performance_report import (
+    PerformanceReportApiView,
+    PerformanceReportDetailApiView,
+)
 from model_hub.views.prompt_base_template import PromptBaseTemplateViewSet
 from model_hub.views.prompt_folder import PromptFolderViewSet
 from model_hub.views.prompt_labels import PromptLabelViewSet
@@ -336,7 +339,7 @@ urlpatterns = [
     ),
     path(
         "performance/report/<uuid:model_id>/<uuid:report_id>/",
-        PerformanceReportApiView.as_view(),
+        PerformanceReportDetailApiView.as_view(),
         name="performance-report-detail",
     ),
     path(

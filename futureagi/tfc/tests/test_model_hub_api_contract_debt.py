@@ -48,6 +48,13 @@ def _response_ref(operation, status_code="200"):
     raise AssertionError(f"Unexpected response schema: {schema}")
 
 
+def _response_has_schema(operation, status_code="200"):
+    responses = operation["responses"]
+    if status_code not in responses:
+        status_code = next(code for code in sorted(responses) if code.startswith("2"))
+    return "schema" in responses[status_code]
+
+
 def test_model_hub_ai_writer_and_custom_model_apis_stay_out_of_contract_debt():
     report = _debt_report()
     protected_paths = {
@@ -84,6 +91,13 @@ def test_model_hub_ai_writer_and_custom_model_apis_stay_out_of_contract_debt():
         "/model-hub/optimize-dataset/{model_id}/{optimization_id}/",
         "/model-hub/optimisation/create/",
         "/model-hub/optimisation/update/{id}/",
+        "/model-hub/performance/detail/{id}/",
+        "/model-hub/performance/export/{id}/",
+        "/model-hub/performance/options/{model_id}/",
+        "/model-hub/performance/report/{model_id}/",
+        "/model-hub/performance/report/{model_id}/{report_id}/",
+        "/model-hub/performance/tag-distribution/{model_id}/",
+        "/model-hub/performance/{id}/",
     }
 
     body_gaps = {
@@ -165,6 +179,19 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
         ("PUT", "/model-hub/optimisation/create/"): "OptimizationDataset",
         ("POST", "/model-hub/optimisation/update/{id}/"): "OptimizationDataset",
         ("PUT", "/model-hub/optimisation/update/{id}/"): "OptimizationDataset",
+        ("POST", "/model-hub/performance/detail/{id}/"): (
+            "PerformanceDetailsRequest"
+        ),
+        ("POST", "/model-hub/performance/export/{id}/"): (
+            "PerformanceExportRequest"
+        ),
+        ("POST", "/model-hub/performance/report/{model_id}/"): (
+            "PerformanceReportCreate"
+        ),
+        ("POST", "/model-hub/performance/tag-distribution/{model_id}/"): (
+            "PerformanceTagDistributionRequest"
+        ),
+        ("POST", "/model-hub/performance/{id}/"): "PerformanceQueryRequest",
     }
 
     for (method, path), definition_name in expected.items():
@@ -265,7 +292,39 @@ def test_model_hub_ai_writer_and_custom_model_endpoints_have_response_contracts(
         ("PUT", "/model-hub/optimisation/create/"): "ModelHubJSONResponse",
         ("POST", "/model-hub/optimisation/update/{id}/"): "ModelHubJSONResponse",
         ("PUT", "/model-hub/optimisation/update/{id}/"): "ModelHubJSONResponse",
+        ("POST", "/model-hub/performance/detail/{id}/"): (
+            "PerformanceDetailsResponse"
+        ),
+        ("GET", "/model-hub/performance/options/{model_id}/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("GET", "/model-hub/performance/report/{model_id}/"): (
+            "PerformanceReportPaginatedResponse"
+        ),
+        ("POST", "/model-hub/performance/report/{model_id}/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("POST", "/model-hub/performance/tag-distribution/{model_id}/"): (
+            "ModelHubJSONResponse"
+        ),
     }
 
     for (method, path), definition_name in expected.items():
         assert _response_ref(_operation(path, method)) == definition_name
+
+
+def test_model_hub_performance_endpoints_with_dynamic_payloads_have_response_contracts():
+    expected = [
+        ("POST", "/model-hub/performance/{id}/"),
+        ("POST", "/model-hub/performance/export/{id}/"),
+    ]
+
+    for method, path in expected:
+        assert _response_has_schema(_operation(path, method))
+
+
+def test_model_hub_performance_report_detail_exposes_supported_methods_only():
+    assert set(_swagger()["paths"]["/model-hub/performance/report/{model_id}/{report_id}/"]) == {
+        "delete",
+        "parameters",
+    }

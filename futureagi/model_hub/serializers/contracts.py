@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from model_hub.serializers.performance_report import PerformanceReportSerializer
+
 
 class ModelHubEmptyRequestSerializer(serializers.Serializer):
     pass
@@ -200,3 +202,71 @@ class OptimizeDatasetOperationRequestSerializer(serializers.Serializer):
     prompt_template = serializers.CharField(required=False, allow_blank=True)
     prompt = serializers.CharField(required=False, allow_blank=True)
     variables = serializers.JSONField(required=False)
+
+
+class PerformanceQueryRequestSerializer(serializers.Serializer):
+    datasets = serializers.ListField(
+        child=serializers.JSONField(),
+        required=False,
+        default=list,
+    )
+    filters = serializers.ListField(
+        child=serializers.JSONField(),
+        required=False,
+        default=list,
+    )
+    breakdown = serializers.ListField(
+        child=serializers.JSONField(),
+        required=False,
+        default=list,
+    )
+    agg_by = serializers.CharField(required=False, allow_blank=True)
+    start_date = serializers.CharField(required=False, allow_blank=True)
+    end_date = serializers.CharField(required=False, allow_blank=True)
+
+
+class PerformanceDetailsRequestSerializer(serializers.Serializer):
+    dataset = serializers.JSONField()
+    filters = serializers.ListField(
+        child=serializers.JSONField(),
+        required=False,
+        default=list,
+    )
+    page = serializers.IntegerField(required=False, default=1)
+    start_date = serializers.CharField(required=False, allow_blank=True)
+    end_date = serializers.CharField(required=False, allow_blank=True)
+
+
+class PerformanceExportRequestSerializer(serializers.Serializer):
+    dataset = serializers.JSONField()
+    metric = serializers.JSONField(required=False)
+
+
+class PerformanceTagDistributionRequestSerializer(serializers.Serializer):
+    dataset = serializers.JSONField()
+    filters = serializers.ListField(
+        child=serializers.JSONField(),
+        required=False,
+        default=list,
+    )
+    agg_by = serializers.CharField(required=False, allow_blank=True)
+    start_date = serializers.CharField(required=False, allow_blank=True)
+    end_date = serializers.CharField(required=False, allow_blank=True)
+    graph_type = serializers.CharField(required=False, allow_blank=True)
+
+
+class PerformanceDetailsResponseSerializer(serializers.Serializer):
+    result = serializers.ListField(child=serializers.JSONField())
+    processing_count = serializers.IntegerField()
+    count = serializers.IntegerField()
+    is_next = serializers.BooleanField()
+    page = serializers.IntegerField()
+
+
+class PerformanceReportPaginatedResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    previous = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    results = PerformanceReportSerializer(many=True)
+    total_pages = serializers.IntegerField(required=False)
+    current_page = serializers.IntegerField(required=False)

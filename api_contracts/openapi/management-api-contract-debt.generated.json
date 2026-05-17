@@ -2,9 +2,9 @@
   "generated_from": "api_contracts/openapi/swagger.json",
   "summary": {
     "paths": 964,
-    "operations": 1326,
-    "mutation_endpoints_without_body_schema": 121,
-    "operations_without_response_schema": 198
+    "operations": 1323,
+    "mutation_endpoints_without_body_schema": 115,
+    "operations_without_response_schema": 189
   },
   "by_group": {
     "accounts": {
@@ -69,9 +69,9 @@
     },
     "model-hub": {
       "paths": 365,
-      "operations": 478,
-      "mutation_endpoints_without_body_schema": 121,
-      "operations_without_response_schema": 198
+      "operations": 475,
+      "mutation_endpoints_without_body_schema": 115,
+      "operations_without_response_schema": 189
     },
     "saml2_auth": {
       "paths": 12,
@@ -1079,60 +1079,6 @@
       "method": "POST",
       "path": "/model-hub/ground-truth/{ground_truth_id}/search/",
       "operation_id": "model-hub_ground-truth_search_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/detail/{id}/",
-      "operation_id": "model-hub_performance_detail_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/export/{id}/",
-      "operation_id": "model-hub_performance_export_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/report/{model_id}/",
-      "operation_id": "model-hub_performance_report_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/report/{model_id}/{report_id}/",
-      "operation_id": "model-hub_performance_report_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/tag-distribution/{model_id}/",
-      "operation_id": "model-hub_performance_tag-distribution_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/{id}/",
-      "operation_id": "model-hub_performance_create",
       "tags": [
         "model-hub"
       ]
@@ -2791,87 +2737,6 @@
       "method": "GET",
       "path": "/model-hub/overview/",
       "operation_id": "model-hub_overview_list",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/detail/{id}/",
-      "operation_id": "model-hub_performance_detail_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/export/{id}/",
-      "operation_id": "model-hub_performance_export_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "GET",
-      "path": "/model-hub/performance/options/{model_id}/",
-      "operation_id": "model-hub_performance_options_read",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "GET",
-      "path": "/model-hub/performance/report/{model_id}/",
-      "operation_id": "model-hub_performance_report_read",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/report/{model_id}/",
-      "operation_id": "model-hub_performance_report_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "GET",
-      "path": "/model-hub/performance/report/{model_id}/{report_id}/",
-      "operation_id": "model-hub_performance_report_read",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/report/{model_id}/{report_id}/",
-      "operation_id": "model-hub_performance_report_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/tag-distribution/{model_id}/",
-      "operation_id": "model-hub_performance_tag-distribution_create",
-      "tags": [
-        "model-hub"
-      ]
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/performance/{id}/",
-      "operation_id": "model-hub_performance_create",
       "tags": [
         "model-hub"
       ]

@@ -4385,6 +4385,69 @@ export interface ApiKeyApi {
   config_json?: ApiKeyApiConfigJson;
 }
 
+export interface CustomMetricListItemApi {
+  id: string;
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  evaluation_type: string;
+}
+
+export interface CustomMetricListResponseApi {
+  metrics: CustomMetricListItemApi[];
+}
+
+export type CustomMetricMutationRequestApiDatasets = { [key: string]: unknown };
+
+export interface CustomMetricMutationRequestApi {
+  id?: string;
+  model_id?: string;
+  name?: string;
+  prompt?: string;
+  metric_type?: string;
+  evaluation_type?: string;
+  datasets?: CustomMetricMutationRequestApiDatasets;
+}
+
+export type ModelHubJSONResponseApiStatus = { [key: string]: unknown };
+
+export type ModelHubJSONResponseApiResult = { [key: string]: unknown };
+
+export type ModelHubJSONResponseApiData = { [key: string]: unknown };
+
+export type ModelHubJSONResponseApiError = { [key: string]: unknown };
+
+export type ModelHubJSONResponseApiDetail = { [key: string]: unknown };
+
+export interface ModelHubJSONResponseApi {
+  status?: ModelHubJSONResponseApiStatus;
+  message?: string;
+  result?: ModelHubJSONResponseApiResult;
+  data?: ModelHubJSONResponseApiData;
+  error?: ModelHubJSONResponseApiError;
+  detail?: ModelHubJSONResponseApiDetail;
+}
+
+export interface MetricTagOptionApi {
+  /** @minLength 1 */
+  label: string;
+  /** @minLength 1 */
+  value: string;
+}
+
+export interface CustomMetricTestRequestApi {
+  /** @minLength 1 */
+  prompt: string;
+}
+
+export type CustomMetricTestResponseApiPrompts = { [key: string]: unknown };
+
+export interface CustomMetricTestResponseApi {
+  /** @minLength 1 */
+  status: string;
+  prompts?: CustomMetricTestResponseApiPrompts;
+}
+
 export type ModelHubPaginatedResponseApiResultsItem = { [key: string]: unknown };
 
 export interface ModelHubPaginatedResponseApi {
@@ -4444,25 +4507,6 @@ export interface CustomAIModelCreateResponseApi {
   /** @minLength 1 */
   message: string;
   data: CustomAIModelCreateResponseDataApi;
-}
-
-export type ModelHubJSONResponseApiStatus = { [key: string]: unknown };
-
-export type ModelHubJSONResponseApiResult = { [key: string]: unknown };
-
-export type ModelHubJSONResponseApiData = { [key: string]: unknown };
-
-export type ModelHubJSONResponseApiError = { [key: string]: unknown };
-
-export type ModelHubJSONResponseApiDetail = { [key: string]: unknown };
-
-export interface ModelHubJSONResponseApi {
-  status?: ModelHubJSONResponseApiStatus;
-  message?: string;
-  result?: ModelHubJSONResponseApiResult;
-  data?: ModelHubJSONResponseApiData;
-  error?: ModelHubJSONResponseApiError;
-  detail?: ModelHubJSONResponseApiDetail;
 }
 
 export type CustomAIModelEditRequestApiConfigJson = { [key: string]: unknown };

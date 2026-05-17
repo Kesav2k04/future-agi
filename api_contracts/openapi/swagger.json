@@ -18556,7 +18556,40 @@
                 "parameters": [],
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/CustomMetricListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -18576,10 +18609,52 @@
             "post": {
                 "operationId": "model-hub_custom-metric_create_create",
                 "description": "",
-                "parameters": [],
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CustomMetricMutationRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "201": {
-                        "description": ""
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubJSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -18595,7 +18670,43 @@
                 "parameters": [],
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/MetricTagOption"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -18615,10 +18726,52 @@
             "post": {
                 "operationId": "model-hub_custom-metric_test_create",
                 "description": "",
-                "parameters": [],
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CustomMetricTestRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "201": {
-                        "description": ""
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/CustomMetricTestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -18631,10 +18784,52 @@
             "post": {
                 "operationId": "model-hub_custom-metric_update_create",
                 "description": "",
-                "parameters": [],
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CustomMetricMutationRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "201": {
-                        "description": ""
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubJSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -18650,7 +18845,40 @@
                 "parameters": [],
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubPaginatedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ModelHubErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -61235,6 +61463,158 @@
                 }
             }
         },
+        "CustomMetricListItem": {
+            "required": [
+                "id",
+                "name",
+                "evaluation_type"
+            ],
+            "type": "object",
+            "properties": {
+                "id": {
+                    "title": "Id",
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "evaluation_type": {
+                    "title": "Evaluation type",
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "CustomMetricListResponse": {
+            "required": [
+                "metrics"
+            ],
+            "type": "object",
+            "properties": {
+                "metrics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/CustomMetricListItem"
+                    }
+                }
+            }
+        },
+        "CustomMetricMutationRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "title": "Id",
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "model_id": {
+                    "title": "Model id",
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "prompt": {
+                    "title": "Prompt",
+                    "type": "string"
+                },
+                "metric_type": {
+                    "title": "Metric type",
+                    "type": "string"
+                },
+                "evaluation_type": {
+                    "title": "Evaluation type",
+                    "type": "string"
+                },
+                "datasets": {
+                    "title": "Datasets",
+                    "type": "object"
+                }
+            }
+        },
+        "ModelHubJSONResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "object"
+                },
+                "message": {
+                    "title": "Message",
+                    "type": "string"
+                },
+                "result": {
+                    "title": "Result",
+                    "type": "object"
+                },
+                "data": {
+                    "title": "Data",
+                    "type": "object"
+                },
+                "error": {
+                    "title": "Error",
+                    "type": "object"
+                },
+                "detail": {
+                    "title": "Detail",
+                    "type": "object"
+                }
+            }
+        },
+        "MetricTagOption": {
+            "required": [
+                "label",
+                "value"
+            ],
+            "type": "object",
+            "properties": {
+                "label": {
+                    "title": "Label",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "value": {
+                    "title": "Value",
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "CustomMetricTestRequest": {
+            "required": [
+                "prompt"
+            ],
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "title": "Prompt",
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "CustomMetricTestResponse": {
+            "required": [
+                "status"
+            ],
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "prompts": {
+                    "title": "Prompts",
+                    "type": "object"
+                }
+            }
+        },
         "ModelHubPaginatedResponse": {
             "required": [
                 "count",
@@ -61418,35 +61798,6 @@
                 },
                 "data": {
                     "$ref": "#/definitions/CustomAIModelCreateResponseData"
-                }
-            }
-        },
-        "ModelHubJSONResponse": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "title": "Status",
-                    "type": "object"
-                },
-                "message": {
-                    "title": "Message",
-                    "type": "string"
-                },
-                "result": {
-                    "title": "Result",
-                    "type": "object"
-                },
-                "data": {
-                    "title": "Data",
-                    "type": "object"
-                },
-                "error": {
-                    "title": "Error",
-                    "type": "object"
-                },
-                "detail": {
-                    "title": "Detail",
-                    "type": "object"
                 }
             }
         },

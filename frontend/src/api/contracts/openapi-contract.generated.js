@@ -9941,15 +9941,55 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "model-hub_custom-metric_all_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CustomMetricListResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/custom-metric/create/": {
       "post": {
         "operationId": "model-hub_custom-metric_create_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/CustomMetricMutationRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/custom-metric/tag-options/{metric_id}/": {
@@ -9957,23 +9997,87 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "model-hub_custom-metric_tag-options_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/MetricTagOption"
+            }
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/custom-metric/test/": {
       "post": {
         "operationId": "model-hub_custom-metric_test_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/CustomMetricTestRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CustomMetricTestResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/custom-metric/update/": {
       "post": {
         "operationId": "model-hub_custom-metric_update_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/CustomMetricMutationRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/custom-metric/{model_id}/": {
@@ -9981,7 +10085,26 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "model-hub_custom-metric_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubPaginatedResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/custom-models/": {
@@ -33951,6 +34074,85 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "CustomMetricListResponse": {
+      "required": [
+        "metrics"
+      ],
+      "type": "object",
+      "properties": {
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CustomMetricListItem"
+          }
+        }
+      }
+    },
+    "CustomMetricMutationRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "model_id": {
+          "title": "Model id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        },
+        "metric_type": {
+          "title": "Metric type",
+          "type": "string"
+        },
+        "evaluation_type": {
+          "title": "Evaluation type",
+          "type": "string"
+        },
+        "datasets": {
+          "title": "Datasets",
+          "type": "object"
+        }
+      }
+    },
+    "CustomMetricTestRequest": {
+      "required": [
+        "prompt"
+      ],
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "title": "Prompt",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "CustomMetricTestResponse": {
+      "required": [
+        "status"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "minLength": 1
+        },
+        "prompts": {
+          "title": "Prompts",
+          "type": "object"
+        }
+      }
+    },
     "CustomPaymentCheckoutRequest": {
       "required": [
         "amount"
@@ -38299,6 +38501,25 @@ export const OPENAPI_CONTRACT = Object.freeze({
         },
         "result": {
           "$ref": "#/definitions/MessageFeedbackResult"
+        }
+      }
+    },
+    "MetricTagOption": {
+      "required": [
+        "label",
+        "value"
+      ],
+      "type": "object",
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "title": "Value",
+          "type": "string",
+          "minLength": 1
         }
       }
     },
@@ -49633,6 +49854,31 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Id",
           "type": "string",
           "format": "uuid"
+        }
+      }
+    },
+    "CustomMetricListItem": {
+      "required": [
+        "id",
+        "name",
+        "evaluation_type"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "evaluation_type": {
+          "title": "Evaluation type",
+          "type": "string",
+          "minLength": 1
         }
       }
     },

@@ -98,3 +98,37 @@ class CustomAIModelCreateResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
     message = serializers.CharField()
     data = CustomAIModelCreateResponseDataSerializer()
+
+
+class CustomMetricMutationRequestSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
+    model_id = serializers.UUIDField(required=False)
+    name = serializers.CharField(required=False, allow_blank=True)
+    prompt = serializers.CharField(required=False, allow_blank=True)
+    metric_type = serializers.CharField(required=False, allow_blank=True)
+    evaluation_type = serializers.CharField(required=False, allow_blank=True)
+    datasets = serializers.JSONField(required=False)
+
+
+class CustomMetricTestRequestSerializer(serializers.Serializer):
+    prompt = serializers.CharField()
+
+
+class CustomMetricTestResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    prompts = serializers.JSONField(required=False)
+
+
+class CustomMetricListItemSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    evaluation_type = serializers.CharField()
+
+
+class CustomMetricListResponseSerializer(serializers.Serializer):
+    metrics = CustomMetricListItemSerializer(many=True)
+
+
+class MetricTagOptionSerializer(serializers.Serializer):
+    label = serializers.CharField()
+    value = serializers.CharField()

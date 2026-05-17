@@ -14136,13 +14136,126 @@ export const ModelHubCustomMetricAllReadParams = zod.object({
 })
 
 
+
+
+
+export const ModelHubCustomMetricAllReadResponse = zod.object({
+  "metrics": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string().min(1),
+  "evaluation_type": zod.string().min(1)
+}))
+})
+
+
+export const ModelHubCustomMetricCreateCreateBody = zod.object({
+  "id": zod.string().uuid().optional(),
+  "model_id": zod.string().uuid().optional(),
+  "name": zod.string().optional(),
+  "prompt": zod.string().optional(),
+  "metric_type": zod.string().optional(),
+  "evaluation_type": zod.string().optional(),
+  "datasets": zod.object({
+
+}).passthrough().optional()
+})
+
+export const ModelHubCustomMetricCreateCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
+
 export const ModelHubCustomMetricTagOptionsReadParams = zod.object({
   "metric_id": zod.string()
 })
 
 
+
+
+
+export const ModelHubCustomMetricTagOptionsReadResponseItem = zod.object({
+  "label": zod.string().min(1),
+  "value": zod.string().min(1)
+})
+export const ModelHubCustomMetricTagOptionsReadResponse = zod.array(ModelHubCustomMetricTagOptionsReadResponseItem)
+
+
+
+
+
+export const ModelHubCustomMetricTestCreateBody = zod.object({
+  "prompt": zod.string().min(1)
+})
+
+
+
+
+export const ModelHubCustomMetricTestCreateResponse = zod.object({
+  "status": zod.string().min(1),
+  "prompts": zod.object({
+
+}).passthrough().optional()
+})
+
+
+export const ModelHubCustomMetricUpdateCreateBody = zod.object({
+  "id": zod.string().uuid().optional(),
+  "model_id": zod.string().uuid().optional(),
+  "name": zod.string().optional(),
+  "prompt": zod.string().optional(),
+  "metric_type": zod.string().optional(),
+  "evaluation_type": zod.string().optional(),
+  "datasets": zod.object({
+
+}).passthrough().optional()
+})
+
+export const ModelHubCustomMetricUpdateCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
+
 export const ModelHubCustomMetricReadParams = zod.object({
   "model_id": zod.string()
+})
+
+export const ModelHubCustomMetricReadResponse = zod.object({
+  "count": zod.number(),
+  "next": zod.string().optional(),
+  "previous": zod.string().optional(),
+  "results": zod.array(zod.object({
+
+}).passthrough())
 })
 
 

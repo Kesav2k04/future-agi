@@ -37,7 +37,12 @@ def _body_ref(operation):
 
 
 def _response_ref(operation, status_code="200"):
-    return operation["responses"][status_code]["schema"]["$ref"].rsplit("/", 1)[-1]
+    schema = operation["responses"][status_code]["schema"]
+    if "$ref" in schema:
+        return schema["$ref"].rsplit("/", 1)[-1]
+    if schema.get("type") == "array" and schema.get("items", {}).get("$ref"):
+        return f"{schema['items']['$ref'].rsplit('/', 1)[-1]}[]"
+    raise AssertionError(f"Unexpected response schema: {schema}")
 
 
 def test_model_hub_ai_writer_and_custom_model_apis_stay_out_of_contract_debt():
@@ -50,6 +55,12 @@ def test_model_hub_ai_writer_and_custom_model_apis_stay_out_of_contract_debt():
         "/model-hub/custom_models/create/",
         "/model-hub/custom_models/edit/",
         "/model-hub/custom_models/update-baseline/{id}/",
+        "/model-hub/custom-metric/all/{model_id}/",
+        "/model-hub/custom-metric/create/",
+        "/model-hub/custom-metric/tag-options/{metric_id}/",
+        "/model-hub/custom-metric/test/",
+        "/model-hub/custom-metric/update/",
+        "/model-hub/custom-metric/{model_id}/",
     }
 
     body_gaps = {
@@ -80,6 +91,13 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
         ("POST", "/model-hub/custom_models/update-baseline/{id}/"): (
             "CustomAIModelBaselineRequest"
         ),
+        ("POST", "/model-hub/custom-metric/create/"): (
+            "CustomMetricMutationRequest"
+        ),
+        ("POST", "/model-hub/custom-metric/test/"): "CustomMetricTestRequest",
+        ("POST", "/model-hub/custom-metric/update/"): (
+            "CustomMetricMutationRequest"
+        ),
     }
 
     for (method, path), definition_name in expected.items():
@@ -101,6 +119,16 @@ def test_model_hub_ai_writer_and_custom_model_endpoints_have_response_contracts(
         ("POST", "/model-hub/custom_models/update-baseline/{id}/"): (
             "ModelHubJSONResponse"
         ),
+        ("GET", "/model-hub/custom-metric/all/{model_id}/"): (
+            "CustomMetricListResponse"
+        ),
+        ("POST", "/model-hub/custom-metric/create/"): "ModelHubJSONResponse",
+        ("GET", "/model-hub/custom-metric/tag-options/{metric_id}/"): (
+            "MetricTagOption[]"
+        ),
+        ("POST", "/model-hub/custom-metric/test/"): "CustomMetricTestResponse",
+        ("POST", "/model-hub/custom-metric/update/"): "ModelHubJSONResponse",
+        ("GET", "/model-hub/custom-metric/{model_id}/"): "ModelHubPaginatedResponse",
     }
 
     for (method, path), definition_name in expected.items():

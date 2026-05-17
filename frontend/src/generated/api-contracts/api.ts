@@ -224,6 +224,10 @@ import type {
   CustomAIModelEditRequestApi,
   CustomAIModelUpdateRequestApi,
   CustomEvalConfigApi,
+  CustomMetricListResponseApi,
+  CustomMetricMutationRequestApi,
+  CustomMetricTestRequestApi,
+  CustomMetricTestResponseApi,
   CustomPaymentCheckoutRequestApi,
   CustomerInvoicesResponseApi,
   DashboardApi,
@@ -368,6 +372,7 @@ import type {
   MemberRoleUpdateApi,
   MessageFeedbackApi,
   MessageFeedbackResponseApi,
+  MetricTagOptionApi,
   ModelHubAnnotationQueuesAutomationRulesList200,
   ModelHubAnnotationQueuesAutomationRulesListParams,
   ModelHubAnnotationQueuesExportAnnotationsParams,
@@ -21460,16 +21465,43 @@ export const modelHubCreateCustomEvalsCreate = async ( options?: RequestInit): P
 
 
 export type modelHubCustomMetricAllReadResponse200 = {
-  data: void
+  data: CustomMetricListResponseApi
   status: 200
+}
+
+export type modelHubCustomMetricAllReadResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubCustomMetricAllReadResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubCustomMetricAllReadResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubCustomMetricAllReadResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubCustomMetricAllReadResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
 }
 
 export type modelHubCustomMetricAllReadResponseSuccess = (modelHubCustomMetricAllReadResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubCustomMetricAllReadResponseError = (modelHubCustomMetricAllReadResponse400 | modelHubCustomMetricAllReadResponse403 | modelHubCustomMetricAllReadResponse404 | modelHubCustomMetricAllReadResponse409 | modelHubCustomMetricAllReadResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubCustomMetricAllReadResponse = (modelHubCustomMetricAllReadResponseSuccess)
+export type modelHubCustomMetricAllReadResponse = (modelHubCustomMetricAllReadResponseSuccess | modelHubCustomMetricAllReadResponseError)
 
 export const getModelHubCustomMetricAllReadUrl = (modelId: string,) => {
 
@@ -21492,17 +21524,44 @@ export const modelHubCustomMetricAllRead = async (modelId: string, options?: Req
 
 
 
-export type modelHubCustomMetricCreateCreateResponse201 = {
-  data: void
-  status: 201
+export type modelHubCustomMetricCreateCreateResponse200 = {
+  data: ModelHubJSONResponseApi
+  status: 200
 }
 
-export type modelHubCustomMetricCreateCreateResponseSuccess = (modelHubCustomMetricCreateCreateResponse201) & {
+export type modelHubCustomMetricCreateCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubCustomMetricCreateCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubCustomMetricCreateCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubCustomMetricCreateCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubCustomMetricCreateCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubCustomMetricCreateCreateResponseSuccess = (modelHubCustomMetricCreateCreateResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubCustomMetricCreateCreateResponseError = (modelHubCustomMetricCreateCreateResponse400 | modelHubCustomMetricCreateCreateResponse403 | modelHubCustomMetricCreateCreateResponse404 | modelHubCustomMetricCreateCreateResponse409 | modelHubCustomMetricCreateCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubCustomMetricCreateCreateResponse = (modelHubCustomMetricCreateCreateResponseSuccess)
+export type modelHubCustomMetricCreateCreateResponse = (modelHubCustomMetricCreateCreateResponseSuccess | modelHubCustomMetricCreateCreateResponseError)
 
 export const getModelHubCustomMetricCreateCreateUrl = () => {
 
@@ -21512,30 +21571,58 @@ export const getModelHubCustomMetricCreateCreateUrl = () => {
   return `/model-hub/custom-metric/create/`
 }
 
-export const modelHubCustomMetricCreateCreate = async ( options?: RequestInit): Promise<modelHubCustomMetricCreateCreateResponse> => {
+export const modelHubCustomMetricCreateCreate = async (customMetricMutationRequestApi: CustomMetricMutationRequestApi, options?: RequestInit): Promise<modelHubCustomMetricCreateCreateResponse> => {
 
   return apiMutator<modelHubCustomMetricCreateCreateResponse>(getModelHubCustomMetricCreateCreateUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      customMetricMutationRequestApi,)
   }
 );}
 
 
 
 export type modelHubCustomMetricTagOptionsReadResponse200 = {
-  data: void
+  data: MetricTagOptionApi[]
   status: 200
+}
+
+export type modelHubCustomMetricTagOptionsReadResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubCustomMetricTagOptionsReadResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubCustomMetricTagOptionsReadResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubCustomMetricTagOptionsReadResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubCustomMetricTagOptionsReadResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
 }
 
 export type modelHubCustomMetricTagOptionsReadResponseSuccess = (modelHubCustomMetricTagOptionsReadResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubCustomMetricTagOptionsReadResponseError = (modelHubCustomMetricTagOptionsReadResponse400 | modelHubCustomMetricTagOptionsReadResponse403 | modelHubCustomMetricTagOptionsReadResponse404 | modelHubCustomMetricTagOptionsReadResponse409 | modelHubCustomMetricTagOptionsReadResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubCustomMetricTagOptionsReadResponse = (modelHubCustomMetricTagOptionsReadResponseSuccess)
+export type modelHubCustomMetricTagOptionsReadResponse = (modelHubCustomMetricTagOptionsReadResponseSuccess | modelHubCustomMetricTagOptionsReadResponseError)
 
 export const getModelHubCustomMetricTagOptionsReadUrl = (metricId: string,) => {
 
@@ -21558,17 +21645,44 @@ export const modelHubCustomMetricTagOptionsRead = async (metricId: string, optio
 
 
 
-export type modelHubCustomMetricTestCreateResponse201 = {
-  data: void
-  status: 201
+export type modelHubCustomMetricTestCreateResponse200 = {
+  data: CustomMetricTestResponseApi
+  status: 200
 }
 
-export type modelHubCustomMetricTestCreateResponseSuccess = (modelHubCustomMetricTestCreateResponse201) & {
+export type modelHubCustomMetricTestCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubCustomMetricTestCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubCustomMetricTestCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubCustomMetricTestCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubCustomMetricTestCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubCustomMetricTestCreateResponseSuccess = (modelHubCustomMetricTestCreateResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubCustomMetricTestCreateResponseError = (modelHubCustomMetricTestCreateResponse400 | modelHubCustomMetricTestCreateResponse403 | modelHubCustomMetricTestCreateResponse404 | modelHubCustomMetricTestCreateResponse409 | modelHubCustomMetricTestCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubCustomMetricTestCreateResponse = (modelHubCustomMetricTestCreateResponseSuccess)
+export type modelHubCustomMetricTestCreateResponse = (modelHubCustomMetricTestCreateResponseSuccess | modelHubCustomMetricTestCreateResponseError)
 
 export const getModelHubCustomMetricTestCreateUrl = () => {
 
@@ -21578,30 +21692,58 @@ export const getModelHubCustomMetricTestCreateUrl = () => {
   return `/model-hub/custom-metric/test/`
 }
 
-export const modelHubCustomMetricTestCreate = async ( options?: RequestInit): Promise<modelHubCustomMetricTestCreateResponse> => {
+export const modelHubCustomMetricTestCreate = async (customMetricTestRequestApi: CustomMetricTestRequestApi, options?: RequestInit): Promise<modelHubCustomMetricTestCreateResponse> => {
 
   return apiMutator<modelHubCustomMetricTestCreateResponse>(getModelHubCustomMetricTestCreateUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      customMetricTestRequestApi,)
   }
 );}
 
 
 
-export type modelHubCustomMetricUpdateCreateResponse201 = {
-  data: void
-  status: 201
+export type modelHubCustomMetricUpdateCreateResponse200 = {
+  data: ModelHubJSONResponseApi
+  status: 200
 }
 
-export type modelHubCustomMetricUpdateCreateResponseSuccess = (modelHubCustomMetricUpdateCreateResponse201) & {
+export type modelHubCustomMetricUpdateCreateResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubCustomMetricUpdateCreateResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubCustomMetricUpdateCreateResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubCustomMetricUpdateCreateResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubCustomMetricUpdateCreateResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
+}
+
+export type modelHubCustomMetricUpdateCreateResponseSuccess = (modelHubCustomMetricUpdateCreateResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubCustomMetricUpdateCreateResponseError = (modelHubCustomMetricUpdateCreateResponse400 | modelHubCustomMetricUpdateCreateResponse403 | modelHubCustomMetricUpdateCreateResponse404 | modelHubCustomMetricUpdateCreateResponse409 | modelHubCustomMetricUpdateCreateResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubCustomMetricUpdateCreateResponse = (modelHubCustomMetricUpdateCreateResponseSuccess)
+export type modelHubCustomMetricUpdateCreateResponse = (modelHubCustomMetricUpdateCreateResponseSuccess | modelHubCustomMetricUpdateCreateResponseError)
 
 export const getModelHubCustomMetricUpdateCreateUrl = () => {
 
@@ -21611,30 +21753,58 @@ export const getModelHubCustomMetricUpdateCreateUrl = () => {
   return `/model-hub/custom-metric/update/`
 }
 
-export const modelHubCustomMetricUpdateCreate = async ( options?: RequestInit): Promise<modelHubCustomMetricUpdateCreateResponse> => {
+export const modelHubCustomMetricUpdateCreate = async (customMetricMutationRequestApi: CustomMetricMutationRequestApi, options?: RequestInit): Promise<modelHubCustomMetricUpdateCreateResponse> => {
 
   return apiMutator<modelHubCustomMetricUpdateCreateResponse>(getModelHubCustomMetricUpdateCreateUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      customMetricMutationRequestApi,)
   }
 );}
 
 
 
 export type modelHubCustomMetricReadResponse200 = {
-  data: void
+  data: ModelHubPaginatedResponseApi
   status: 200
+}
+
+export type modelHubCustomMetricReadResponse400 = {
+  data: ModelHubErrorResponseApi
+  status: 400
+}
+
+export type modelHubCustomMetricReadResponse403 = {
+  data: ModelHubErrorResponseApi
+  status: 403
+}
+
+export type modelHubCustomMetricReadResponse404 = {
+  data: ModelHubErrorResponseApi
+  status: 404
+}
+
+export type modelHubCustomMetricReadResponse409 = {
+  data: ModelHubErrorResponseApi
+  status: 409
+}
+
+export type modelHubCustomMetricReadResponse500 = {
+  data: ModelHubErrorResponseApi
+  status: 500
 }
 
 export type modelHubCustomMetricReadResponseSuccess = (modelHubCustomMetricReadResponse200) & {
   headers: Headers;
 };
-;
+export type modelHubCustomMetricReadResponseError = (modelHubCustomMetricReadResponse400 | modelHubCustomMetricReadResponse403 | modelHubCustomMetricReadResponse404 | modelHubCustomMetricReadResponse409 | modelHubCustomMetricReadResponse500) & {
+  headers: Headers;
+};
 
-export type modelHubCustomMetricReadResponse = (modelHubCustomMetricReadResponseSuccess)
+export type modelHubCustomMetricReadResponse = (modelHubCustomMetricReadResponseSuccess | modelHubCustomMetricReadResponseError)
 
 export const getModelHubCustomMetricReadUrl = (modelId: string,) => {
 

@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(frontendRoot, "..");
-const swaggerPath = path.join(repoRoot, "api_contracts", "openapi", "swagger.json");
+const swaggerPath = path.join(
+  repoRoot,
+  "api_contracts",
+  "openapi",
+  "swagger.json",
+);
 const outputPath = path.join(
   frontendRoot,
   "src",
@@ -13,43 +18,6 @@ const outputPath = path.join(
   "contracts",
   "openapi-contract.generated.js",
 );
-
-const ANNOTATION_PREFIXES = [
-  "/model-hub/annotation-tasks",
-  "/model-hub/annotation-queues",
-  "/model-hub/annotations-labels",
-  "/model-hub/annotations",
-  "/model-hub/scores",
-  "/tracer/bulk-annotation",
-  "/tracer/get-annotation-labels",
-  "/tracer/trace-annotation",
-  "/tracer/observation-span/add_annotations",
-  "/tracer/observation-span/delete_annotation_label",
-  "/tracer/project-version/add_annotations",
-];
-
-const ANNOTATION_EXACT_PATHS = [
-  "/model-hub/dataset/{dataset_id}/annotation-summary/",
-];
-
-const FILTER_PREFIXES = [
-  "/model-hub/ai-filter",
-  "/api/traces",
-  "/tracer/dashboard",
-  "/tracer/observation-span",
-  "/tracer/project",
-  "/tracer/trace",
-  "/tracer/trace-session",
-  "/tracer/users",
-];
-
-const hasPrefix = (pathName, prefixes) =>
-  prefixes.some((prefix) => pathName === `${prefix}/` || pathName.startsWith(`${prefix}/`));
-
-const isProtectedPath = (pathName) =>
-  hasPrefix(pathName, ANNOTATION_PREFIXES) ||
-  hasPrefix(pathName, FILTER_PREFIXES) ||
-  ANNOTATION_EXACT_PATHS.includes(pathName);
 
 const swagger = JSON.parse(fs.readFileSync(swaggerPath, "utf8"));
 const neededDefinitionNames = new Set();
@@ -93,7 +61,6 @@ function queryParameterSchema(parameter) {
 const endpoints = {};
 
 Object.keys(swagger.paths || {})
-  .filter(isProtectedPath)
   .sort()
   .forEach((pathName) => {
     const pathSpec = swagger.paths[pathName] || {};
@@ -101,7 +68,9 @@ Object.keys(swagger.paths || {})
     Object.entries(pathSpec).forEach(([method, operation]) => {
       if (method === "parameters") return;
       const parameters = operation.parameters || [];
-      const bodyParameter = parameters.find((parameter) => parameter.in === "body");
+      const bodyParameter = parameters.find(
+        (parameter) => parameter.in === "body",
+      );
       const queryParameters = Object.fromEntries(
         parameters
           .filter((parameter) => parameter.in === "query")
@@ -120,7 +89,9 @@ Object.keys(swagger.paths || {})
       );
 
       if (bodyParameter?.schema) collectRefs(bodyParameter.schema);
-      Object.values(queryParameters).forEach((parameter) => collectRefs(parameter.schema));
+      Object.values(queryParameters).forEach((parameter) =>
+        collectRefs(parameter.schema),
+      );
       Object.values(responses).forEach(collectRefs);
 
       methods[method] = {
@@ -146,7 +117,9 @@ while (pending.length) {
   collectRefs(definition);
   if (neededDefinitionNames.size !== before) {
     [...neededDefinitionNames]
-      .filter((nextName) => !definitions[nextName] && !pending.includes(nextName))
+      .filter(
+        (nextName) => !definitions[nextName] && !pending.includes(nextName),
+      )
       .sort()
       .forEach((nextName) => pending.push(nextName));
   }

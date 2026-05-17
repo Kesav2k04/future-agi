@@ -26599,29 +26599,6 @@
                 }
             ]
         },
-        "/simulate/run-tests/{run_test_id}/execute/": {
-            "post": {
-                "operationId": "simulate_run-tests_execute_create",
-                "description": "Execute a test run",
-                "parameters": [],
-                "responses": {
-                    "201": {
-                        "description": ""
-                    }
-                },
-                "tags": [
-                    "simulate"
-                ]
-            },
-            "parameters": [
-                {
-                    "name": "run_test_id",
-                    "in": "path",
-                    "required": true,
-                    "type": "string"
-                }
-            ]
-        },
         "/simulate/run-tests/{run_test_id}/executions/": {
             "get": {
                 "operationId": "simulate_run-tests_executions_list",
@@ -36020,6 +35997,85 @@
                 ]
             },
             "parameters": []
+        },
+        "/usage/ee/licenses/": {
+            "get": {
+                "operationId": "usage_ee_licenses_list",
+                "description": "List or create EE licenses.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/EELicenseListResponse"
+                        }
+                    }
+                },
+                "tags": [
+                    "usage"
+                ]
+            },
+            "post": {
+                "operationId": "usage_ee_licenses_create",
+                "description": "List or create EE licenses.",
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/EELicenseCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/EELicenseCreateResponse"
+                        }
+                    }
+                },
+                "tags": [
+                    "usage"
+                ]
+            },
+            "parameters": []
+        },
+        "/usage/ee/licenses/{grant_id}/revoke/": {
+            "post": {
+                "operationId": "usage_ee_licenses_revoke_create",
+                "description": "Revoke an EE license.",
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/EELicenseRevokeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/EELicenseRevokeResponse"
+                        }
+                    }
+                },
+                "tags": [
+                    "usage"
+                ]
+            },
+            "parameters": [
+                {
+                    "name": "grant_id",
+                    "in": "path",
+                    "required": true,
+                    "type": "string"
+                }
+            ]
         },
         "/usage/get-auto-reload-settings/": {
             "get": {
@@ -51177,7 +51233,7 @@
                     "properties": {
                         "project_id": {
                             "type": "string",
-                            "nullable": true,
+                            "x-nullable": true,
                             "description": "Project scope for the evaluation task."
                         },
                         "date_range": {
@@ -51198,17 +51254,10 @@
                             "description": "Trace session id to constrain the task."
                         },
                         "observation_type": {
-                            "oneOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                }
-                            ],
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
                             "description": "Observation span type(s), for example llm, tool, or chain."
                         },
                         "span_attributes_filters": {
@@ -53092,6 +53141,242 @@
                     "title": "Result",
                     "type": "string",
                     "minLength": 1
+                }
+            }
+        },
+        "EELicenseGrant": {
+            "required": [
+                "id",
+                "customer_name",
+                "band",
+                "billing_interval",
+                "features",
+                "issued_at",
+                "expires_at",
+                "status"
+            ],
+            "type": "object",
+            "properties": {
+                "id": {
+                    "title": "Id",
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "customer_name": {
+                    "title": "Customer name",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "band": {
+                    "title": "Band",
+                    "type": "string",
+                    "enum": [
+                        "team",
+                        "business",
+                        "enterprise",
+                        "enterprise_plus"
+                    ]
+                },
+                "billing_interval": {
+                    "title": "Billing interval",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "max_traces_monthly": {
+                    "title": "Max traces monthly",
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "max_gateway_monthly": {
+                    "title": "Max gateway monthly",
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "issued_at": {
+                    "title": "Issued at",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "expires_at": {
+                    "title": "Expires at",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "status": {
+                    "title": "Status",
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "EELicenseListResult": {
+            "required": [
+                "licenses"
+            ],
+            "type": "object",
+            "properties": {
+                "licenses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/EELicenseGrant"
+                    }
+                }
+            }
+        },
+        "EELicenseListResponse": {
+            "required": [
+                "status",
+                "result"
+            ],
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "boolean"
+                },
+                "result": {
+                    "$ref": "#/definitions/EELicenseListResult"
+                }
+            }
+        },
+        "EELicenseCreateRequest": {
+            "required": [
+                "band"
+            ],
+            "type": "object",
+            "properties": {
+                "band": {
+                    "title": "Band",
+                    "type": "string",
+                    "enum": [
+                        "team",
+                        "business",
+                        "enterprise",
+                        "enterprise_plus"
+                    ]
+                },
+                "customer_name": {
+                    "title": "Customer name",
+                    "type": "string"
+                },
+                "billing_interval": {
+                    "title": "Billing interval",
+                    "type": "string",
+                    "enum": [
+                        "monthly",
+                        "yearly"
+                    ]
+                }
+            }
+        },
+        "EELicenseCreateResult": {
+            "required": [
+                "grant_id",
+                "jwt_key",
+                "key_hash",
+                "band",
+                "expires_at",
+                "features"
+            ],
+            "type": "object",
+            "properties": {
+                "grant_id": {
+                    "title": "Grant id",
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "jwt_key": {
+                    "title": "Jwt key",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "key_hash": {
+                    "title": "Key hash",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "band": {
+                    "title": "Band",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "expires_at": {
+                    "title": "Expires at",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                }
+            }
+        },
+        "EELicenseCreateResponse": {
+            "required": [
+                "status",
+                "result"
+            ],
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "boolean"
+                },
+                "result": {
+                    "$ref": "#/definitions/EELicenseCreateResult"
+                }
+            }
+        },
+        "EELicenseRevokeRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "title": "Reason",
+                    "type": "string"
+                }
+            }
+        },
+        "EELicenseRevokeResult": {
+            "required": [
+                "revoked",
+                "grant_id"
+            ],
+            "type": "object",
+            "properties": {
+                "revoked": {
+                    "title": "Revoked",
+                    "type": "boolean"
+                },
+                "grant_id": {
+                    "title": "Grant id",
+                    "type": "string",
+                    "format": "uuid"
+                }
+            }
+        },
+        "EELicenseRevokeResponse": {
+            "required": [
+                "status",
+                "result"
+            ],
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "boolean"
+                },
+                "result": {
+                    "$ref": "#/definitions/EELicenseRevokeResult"
                 }
             }
         }

@@ -198,14 +198,15 @@ axiosInstance.interceptors.request.use((config) => {
 
 axiosInstance.interceptors.response.use(
   (res) => {
+    const validatedResponse = assertContractedResponse(res);
     try {
-      if (res?.data) {
-        addCamelAliases(res.data, new WeakSet());
+      if (validatedResponse?.data) {
+        addCamelAliases(validatedResponse.data, new WeakSet());
       }
     } catch {
       // Never break a successful response because of compatibility aliases.
     }
-    return assertContractedResponse(res);
+    return validatedResponse;
   },
   async (error) => {
     const currentPath = window.location.href;

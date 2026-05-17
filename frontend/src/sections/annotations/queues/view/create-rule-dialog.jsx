@@ -41,6 +41,7 @@ import {
 import FilterChips from "src/sections/projects/LLMTracing/FilterChips";
 import TraceFilterPanel from "src/sections/projects/LLMTracing/TraceFilterPanel";
 import { useGetProjectDetails } from "src/api/project/project-detail";
+import { apiPath } from "src/api/contracts/api-surface";
 import { PROJECT_SOURCE } from "src/utils/constants";
 import { getRandomId } from "src/utils/utils";
 import {
@@ -474,7 +475,8 @@ export function RuleScopePicker({
 
   const { data: datasets = [], isLoading: datasetsLoading } = useQuery({
     queryKey: ["datasets-list-simple"],
-    queryFn: () => axios.get("/model-hub/develops/get-datasets-names/"),
+    queryFn: () =>
+      axios.get(apiPath("/model-hub/develops/get-datasets-names/")),
     select: (d) => d.data?.result?.datasets || [],
     enabled: needsDataset,
     staleTime: 1000 * 60 * 5,

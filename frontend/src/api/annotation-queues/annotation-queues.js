@@ -1334,7 +1334,12 @@ export const useItemAnnotations = (queueId, itemId, options = {}) => {
 export const useOrgMembers = (orgId, options = {}) => {
   return useQuery({
     queryKey: ["org-members", orgId],
-    queryFn: () => axios.get(`/model-hub/organizations/${orgId}/users/`),
+    queryFn: () =>
+      axios.get(
+        apiPath("/model-hub/organizations/{organization_id}/users/", {
+          organization_id: orgId,
+        }),
+      ),
     select: (d) => extractData(d, []),
     enabled: !!orgId,
     staleTime: 0,
@@ -1347,9 +1352,14 @@ export const useOrgMembersInfinite = (orgId, search = "", options = {}) => {
   return useInfiniteQuery({
     queryKey: ["org-members-infinite", orgId, search],
     queryFn: ({ pageParam }) =>
-      axios.get(`/model-hub/organizations/${orgId}/users/`, {
-        params: { page: pageParam, limit: 30, ...(search && { search }) },
-      }),
+      axios.get(
+        apiPath("/model-hub/organizations/{organization_id}/users/", {
+          organization_id: orgId,
+        }),
+        {
+          params: { page: pageParam, limit: 30, ...(search && { search }) },
+        },
+      ),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
       const data = lastPage?.data;

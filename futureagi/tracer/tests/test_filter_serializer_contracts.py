@@ -96,3 +96,14 @@ class TestFilterSerializerContracts:
 
         assert not serializer.is_valid()
         assert "filters" in serializer.errors
+
+    def test_eval_task_filters_reject_scalar_observation_type(self):
+        serializer = EditEvalTaskSerializer(
+            data={
+                "edit_type": "edit_rerun",
+                "filters": {"observation_type": "llm"},
+            }
+        )
+
+        assert not serializer.is_valid()
+        assert "filters" in serializer.errors

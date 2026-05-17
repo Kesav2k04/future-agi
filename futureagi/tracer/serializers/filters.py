@@ -64,7 +64,7 @@ EVAL_TASK_FILTERS_SCHEMA = {
     "properties": {
         "project_id": {
             "type": "string",
-            "nullable": True,
+            "x-nullable": True,
             "description": "Project scope for the evaluation task.",
         },
         "date_range": {
@@ -83,10 +83,8 @@ EVAL_TASK_FILTERS_SCHEMA = {
             "description": "Trace session id to constrain the task.",
         },
         "observation_type": {
-            "oneOf": [
-                {"type": "string"},
-                {"type": "array", "items": {"type": "string"}},
-            ],
+            "type": "array",
+            "items": {"type": "string"},
             "description": "Observation span type(s), for example llm, tool, or chain.",
         },
         "span_attributes_filters": FILTER_LIST_SCHEMA,
@@ -257,21 +255,11 @@ class EvalTaskFiltersField(serializers.JSONField):
 
         if "observation_type" in value:
             observation_type = value["observation_type"]
-            if isinstance(observation_type, str):
-                if not observation_type:
-                    raise serializers.ValidationError(
-                        "observation_type cannot be empty."
-                    )
-            elif isinstance(observation_type, list):
-                if not observation_type or not all(
-                    isinstance(item, str) and item for item in observation_type
-                ):
-                    raise serializers.ValidationError(
-                        "observation_type must be a non-empty string or string list."
-                    )
-            else:
+            if not isinstance(observation_type, list) or not all(
+                isinstance(item, str) and item for item in observation_type
+            ):
                 raise serializers.ValidationError(
-                    "observation_type must be a string or string list."
+                    "observation_type must be a list of non-empty strings."
                 )
 
         if "span_attributes_filters" in value:

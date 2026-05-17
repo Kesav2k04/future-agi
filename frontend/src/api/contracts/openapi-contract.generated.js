@@ -5,8 +5,4215 @@
 export const OPENAPI_CONTRACT = Object.freeze({
   "generatedFrom": "api_contracts/openapi/swagger.json",
   "swaggerVersion": "2.0",
-  "endpointCount": 136,
+  "endpointCount": 964,
   "endpoints": {
+    "/accounts/2fa/recovery-codes/": {
+      "get": {
+        "operationId": "accounts_2fa_recovery-codes_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/2fa/recovery-codes/regenerate/": {
+      "post": {
+        "operationId": "accounts_2fa_recovery-codes_regenerate_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/2fa/status/": {
+      "get": {
+        "operationId": "accounts_2fa_status_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/2fa/totp/": {
+      "delete": {
+        "operationId": "accounts_2fa_totp_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/2fa/totp/confirm/": {
+      "post": {
+        "operationId": "accounts_2fa_totp_confirm_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/2fa/totp/setup/": {
+      "post": {
+        "operationId": "accounts_2fa_totp_setup_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/2fa/verify/passkey/": {
+      "post": {
+        "operationId": "accounts_2fa_verify_passkey_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/2fa/verify/passkey/options/": {
+      "post": {
+        "operationId": "accounts_2fa_verify_passkey_options_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/2fa/verify/recovery/": {
+      "post": {
+        "operationId": "accounts_2fa_verify_recovery_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/2fa/verify/totp/": {
+      "post": {
+        "operationId": "accounts_2fa_verify_totp_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/accept-invitation/{uidb64}/{token}/": {
+      "get": {
+        "operationId": "accounts_accept-invitation_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_accept-invitation_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/appsmith/users/": {
+      "get": {
+        "operationId": "accounts_appsmith_users_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_appsmith_users_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "accounts_appsmith_users_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/appsmith/users/login": {
+      "post": {
+        "operationId": "accounts_appsmith_users_login_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/appsmith/users/{user_id}/": {
+      "get": {
+        "operationId": "accounts_appsmith_users_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_appsmith_users_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "accounts_appsmith_users_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/aws-marketplace/launch-software/": {
+      "post": {
+        "operationId": "accounts_aws-marketplace_launch-software_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/aws-marketplace/signup/": {
+      "post": {
+        "operationId": "accounts_aws-marketplace_signup_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/aws-marketplace/verify-token/": {
+      "post": {
+        "operationId": "accounts_aws-marketplace_verify-token_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/config/": {
+      "get": {
+        "operationId": "accounts_config_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/delete-users/": {
+      "delete": {
+        "operationId": "accounts_delete-users_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/first-checks/": {
+      "get": {
+        "operationId": "accounts_first-checks_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/get-user-profile-details/": {
+      "get": {
+        "operationId": "accounts_get-user-profile-details_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/key/delete_secret_key/": {
+      "delete": {
+        "operationId": "accounts_key_delete_secret_key",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/key/disable_key/": {
+      "post": {
+        "operationId": "accounts_key_disable_key",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/key/enable_key/": {
+      "post": {
+        "operationId": "accounts_key_enable_key",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/key/generate_secret_key/": {
+      "post": {
+        "operationId": "accounts_key_generate_secret_key",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/key/get_secret_keys/": {
+      "get": {
+        "operationId": "accounts_key_get_secret_keys",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/keys/": {
+      "get": {
+        "operationId": "accounts_keys_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/logout/": {
+      "post": {
+        "operationId": "accounts_logout_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/me/timezone/": {
+      "post": {
+        "operationId": "accounts_me_timezone_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/notifications/snooze/": {
+      "get": {
+        "operationId": "accounts_notifications_snooze_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/notifications/unsubscribe/": {
+      "get": {
+        "operationId": "accounts_notifications_unsubscribe_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/onboarding/": {
+      "get": {
+        "operationId": "accounts_onboarding_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_onboarding_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organization/2fa-policy/": {
+      "get": {
+        "operationId": "accounts_organization_2fa-policy_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "accounts_organization_2fa-policy_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organization/invite/": {
+      "post": {
+        "operationId": "accounts_organization_invite_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organization/invite/cancel/": {
+      "delete": {
+        "operationId": "accounts_organization_invite_cancel_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organization/invite/resend/": {
+      "post": {
+        "operationId": "accounts_organization_invite_resend_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organization/members/": {
+      "get": {
+        "operationId": "accounts_organization_members_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organization/members/reactivate/": {
+      "post": {
+        "operationId": "accounts_organization_members_reactivate_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organization/members/remove/": {
+      "delete": {
+        "operationId": "accounts_organization_members_remove_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organization/members/role/": {
+      "post": {
+        "operationId": "accounts_organization_members_role_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organizations/": {
+      "get": {
+        "operationId": "accounts_organizations_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_organizations_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organizations/create/": {
+      "post": {
+        "operationId": "accounts_organizations_create_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organizations/current/": {
+      "get": {
+        "operationId": "accounts_organizations_current_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organizations/new/": {
+      "post": {
+        "operationId": "accounts_organizations_new_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organizations/switch/": {
+      "post": {
+        "operationId": "accounts_organizations_switch_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/organizations/update/": {
+      "patch": {
+        "operationId": "accounts_organizations_update_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/passkey/authenticate/options/": {
+      "post": {
+        "operationId": "accounts_passkey_authenticate_options_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/passkey/authenticate/verify/": {
+      "post": {
+        "operationId": "accounts_passkey_authenticate_verify_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/passkey/register/options/": {
+      "post": {
+        "operationId": "accounts_passkey_register_options_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/passkey/register/verify/": {
+      "post": {
+        "operationId": "accounts_passkey_register_verify_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/passkeys/": {
+      "get": {
+        "operationId": "accounts_passkeys_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/passkeys/{id}/": {
+      "patch": {
+        "operationId": "accounts_passkeys_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "accounts_passkeys_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/password-reset-confirm/{uidb64}/{token}/": {
+      "post": {
+        "operationId": "accounts_password-reset-confirm_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/password-reset-initiate/": {
+      "post": {
+        "operationId": "accounts_password-reset-initiate_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/redis-key/": {
+      "post": {
+        "operationId": "accounts_redis-key_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "accounts_redis-key_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/resend-invitation-emails/": {
+      "post": {
+        "operationId": "accounts_resend-invitation-emails_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/signup/": {
+      "post": {
+        "operationId": "accounts_signup_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/team/users/": {
+      "get": {
+        "operationId": "accounts_team_users_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_team_users_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "accounts_team_users_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/team/users/{member_id}/": {
+      "get": {
+        "operationId": "accounts_team_users_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_team_users_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "accounts_team_users_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/token/": {
+      "post": {
+        "operationId": "accounts_token_create",
+        "requestBody": {
+          "$ref": "#/definitions/TokenObtainPair"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/TokenObtainPair"
+          }
+        }
+      }
+    },
+    "/accounts/token/refresh/": {
+      "post": {
+        "operationId": "accounts_token_refresh_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/update-user-full-name/": {
+      "post": {
+        "operationId": "accounts_update-user-full-name_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/update-user/": {
+      "post": {
+        "operationId": "accounts_update-user_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/user-info/": {
+      "get": {
+        "operationId": "accounts_user-info_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/user/deactivate/": {
+      "post": {
+        "operationId": "accounts_user_deactivate_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/user/delete/": {
+      "post": {
+        "operationId": "accounts_user_delete_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/user/list/": {
+      "get": {
+        "operationId": "accounts_user_list_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/user/resend-invite/": {
+      "post": {
+        "operationId": "accounts_user_resend-invite_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/user/role/update/": {
+      "post": {
+        "operationId": "accounts_user_role_update_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspace/invite/": {
+      "post": {
+        "operationId": "accounts_workspace_invite_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspace/list/": {
+      "get": {
+        "operationId": "accounts_workspace_list_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspace/switch/": {
+      "post": {
+        "operationId": "accounts_workspace_switch_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspace/{workspace_id}/members/": {
+      "get": {
+        "operationId": "accounts_workspace_members_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspace/{workspace_id}/members/remove/": {
+      "delete": {
+        "operationId": "accounts_workspace_members_remove_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspace/{workspace_id}/members/role/": {
+      "post": {
+        "operationId": "accounts_workspace_members_role_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspaces/": {
+      "get": {
+        "operationId": "accounts_workspaces_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_workspaces_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "accounts_workspaces_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "accounts_workspaces_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspaces/{workspace_id}/": {
+      "get": {
+        "operationId": "accounts_workspaces_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_workspaces_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "accounts_workspaces_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "accounts_workspaces_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspaces/{workspace_id}/members/": {
+      "get": {
+        "operationId": "accounts_workspaces_members_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_workspaces_members_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "accounts_workspaces_members_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/accounts/workspaces/{workspace_id}/members/{member_id}/": {
+      "get": {
+        "operationId": "accounts_workspaces_members_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "accounts_workspaces_members_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "accounts_workspaces_members_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agent-playground/executions/{execution_id}/nodes/{node_execution_id}/": {
+      "get": {
+        "operationId": "agent-playground_executions_node_detail",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agent-playground/graphs/": {
+      "get": {
+        "operationId": "agent-playground_graphs_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/GraphList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agent-playground_graphs_create",
+        "requestBody": {
+          "$ref": "#/definitions/GraphCreate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/GraphCreate"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/delete/": {
+      "post": {
+        "operationId": "agent-playground_graphs_bulk_delete",
+        "requestBody": {
+          "$ref": "#/definitions/GraphList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/GraphList"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/from-trace/": {
+      "post": {
+        "operationId": "agent-playground_graphs_from-trace_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agent-playground/graphs/{graph_id}/dataset/": {
+      "get": {
+        "operationId": "agent-playground_graphs_dataset_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CellUpdate"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{graph_id}/dataset/cells/{cell_id}/": {
+      "put": {
+        "operationId": "agent-playground_graphs_dataset_update_cell",
+        "requestBody": {
+          "$ref": "#/definitions/CellUpdate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CellUpdate"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{graph_id}/dataset/execute/": {
+      "post": {
+        "operationId": "agent-playground_graphs_dataset_execute",
+        "requestBody": {
+          "$ref": "#/definitions/ExecuteRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ExecuteRequest"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{graph_id}/dataset/rows/": {
+      "post": {
+        "operationId": "agent-playground_graphs_dataset_create_row",
+        "requestBody": {
+          "$ref": "#/definitions/CellUpdate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/CellUpdate"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{graph_id}/dataset/rows/delete/": {
+      "delete": {
+        "operationId": "agent-playground_graphs_dataset_rows_delete_rows",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agent-playground/graphs/{graph_id}/executions/": {
+      "get": {
+        "operationId": "agent-playground_graphs_executions_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {}
+      }
+    },
+    "/agent-playground/graphs/{graph_id}/executions/{execution_id}/": {
+      "get": {
+        "operationId": "agent-playground_graphs_executions_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agent-playground/graphs/{id}/": {
+      "get": {
+        "operationId": "agent-playground_graphs_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/GraphDetail"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agent-playground_graphs_update",
+        "requestBody": {
+          "$ref": "#/definitions/GraphUpdate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/GraphUpdate"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agent-playground_graphs_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/GraphUpdate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/GraphUpdate"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agent-playground_graphs_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agent-playground/graphs/{id}/referenceable-graphs/": {
+      "get": {
+        "operationId": "agent-playground_graphs_referenceable_graphs",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/GraphList"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{id}/versions/": {
+      "get": {
+        "operationId": "agent-playground_graphs_versions_read",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/GraphList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agent-playground_graphs_versions_create",
+        "requestBody": {
+          "$ref": "#/definitions/GraphList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/GraphList"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{id}/versions/{version_id}/": {
+      "get": {
+        "operationId": "agent-playground_graphs_versions_read",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/GraphList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "agent-playground_graphs_versions_update",
+        "requestBody": {
+          "$ref": "#/definitions/GraphList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/GraphList"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agent-playground_graphs_versions_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/GraphList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/GraphList"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agent-playground_graphs_versions_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agent-playground/graphs/{id}/versions/{version_id}/activate/": {
+      "post": {
+        "operationId": "agent-playground_graphs_versions_activate_version",
+        "requestBody": {
+          "$ref": "#/definitions/GraphList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/GraphList"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{id}/versions/{version_id}/node-connections/": {
+      "post": {
+        "operationId": "agent-playground_graphs_versions_node-connections_create",
+        "requestBody": {
+          "$ref": "#/definitions/CreateNodeConnection"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/CreateNodeConnection"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{id}/versions/{version_id}/node-connections/{nc_id}/": {
+      "delete": {
+        "operationId": "agent-playground_graphs_versions_node-connections_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agent-playground/graphs/{id}/versions/{version_id}/nodes/": {
+      "post": {
+        "operationId": "agent-playground_graphs_versions_nodes_create",
+        "requestBody": {
+          "$ref": "#/definitions/CreateNode"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/CreateNode"
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{id}/versions/{version_id}/nodes/{node_id}/": {
+      "get": {
+        "operationId": "agent-playground_graphs_versions_nodes_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/NodeRead"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agent-playground_graphs_versions_nodes_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/UpdateNode"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UpdateNode"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agent-playground_graphs_versions_nodes_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agent-playground/graphs/{id}/versions/{version_id}/nodes/{node_id}/possible-edge-mappings/": {
+      "get": {
+        "operationId": "agent-playground_graphs_versions_nodes_possible_edge_mappings",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/NodeRead"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent-playground/graphs/{id}/versions/{version_id}/ports/{port_id}/": {
+      "patch": {
+        "operationId": "agent-playground_graphs_versions_ports_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/UpdatePort"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UpdatePort"
+          }
+        }
+      }
+    },
+    "/agent-playground/node-templates/": {
+      "get": {
+        "operationId": "agent-playground_node-templates_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/NodeTemplateList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent-playground/node-templates/{id}/": {
+      "get": {
+        "operationId": "agent-playground_node-templates_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/NodeTemplateDetail"
+          }
+        }
+      }
+    },
+    "/agentcc/analytics/cost-breakdown/": {
+      "get": {
+        "operationId": "agentcc_analytics_cost_breakdown",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/analytics/error-breakdown/": {
+      "get": {
+        "operationId": "agentcc_analytics_error_breakdown",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/analytics/guardrail-overview/": {
+      "get": {
+        "operationId": "agentcc_analytics_guardrail_overview",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/analytics/guardrail-rules/": {
+      "get": {
+        "operationId": "agentcc_analytics_guardrail_rules",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/analytics/guardrail-trends/": {
+      "get": {
+        "operationId": "agentcc_analytics_guardrail_trends",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/analytics/latency-stats/": {
+      "get": {
+        "operationId": "agentcc_analytics_latency_stats",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/analytics/model-comparison/": {
+      "get": {
+        "operationId": "agentcc_analytics_model_comparison",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/analytics/overview/": {
+      "get": {
+        "operationId": "agentcc_analytics_overview",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/analytics/usage-timeseries/": {
+      "get": {
+        "operationId": "agentcc_analytics_usage_timeseries",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/api-keys/": {
+      "get": {
+        "operationId": "agentcc_api-keys_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccAPIKey"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_api-keys_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccAPIKey"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccAPIKey"
+          }
+        }
+      }
+    },
+    "/agentcc/api-keys/bulk/": {
+      "get": {
+        "operationId": "agentcc_api-keys_bulk_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/api-keys/sync/": {
+      "post": {
+        "operationId": "agentcc_api-keys_sync",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccAPIKey"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccAPIKey"
+          }
+        }
+      }
+    },
+    "/agentcc/api-keys/{id}/": {
+      "get": {
+        "operationId": "agentcc_api-keys_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccAPIKey"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_api-keys_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccAPIKey"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccAPIKey"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_api-keys_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccAPIKey"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccAPIKey"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_api-keys_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/api-keys/{id}/revoke/": {
+      "post": {
+        "operationId": "agentcc_api-keys_revoke",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccAPIKey"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccAPIKey"
+          }
+        }
+      }
+    },
+    "/agentcc/blocklists/": {
+      "get": {
+        "operationId": "agentcc_blocklists_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccBlocklist"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_blocklists_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccBlocklist"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccBlocklist"
+          }
+        }
+      }
+    },
+    "/agentcc/blocklists/{id}/": {
+      "get": {
+        "operationId": "agentcc_blocklists_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccBlocklist"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_blocklists_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccBlocklist"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccBlocklist"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_blocklists_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccBlocklist"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccBlocklist"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_blocklists_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/blocklists/{id}/add-words/": {
+      "post": {
+        "operationId": "agentcc_blocklists_add_words",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccBlocklist"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccBlocklist"
+          }
+        }
+      }
+    },
+    "/agentcc/blocklists/{id}/remove-words/": {
+      "post": {
+        "operationId": "agentcc_blocklists_remove_words",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccBlocklist"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccBlocklist"
+          }
+        }
+      }
+    },
+    "/agentcc/custom-properties/": {
+      "get": {
+        "operationId": "agentcc_custom-properties_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccCustomPropertySchema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_custom-properties_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccCustomPropertySchema"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccCustomPropertySchema"
+          }
+        }
+      }
+    },
+    "/agentcc/custom-properties/validate/": {
+      "post": {
+        "operationId": "agentcc_custom-properties_validate",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccCustomPropertySchema"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccCustomPropertySchema"
+          }
+        }
+      }
+    },
+    "/agentcc/custom-properties/{id}/": {
+      "get": {
+        "operationId": "agentcc_custom-properties_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccCustomPropertySchema"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_custom-properties_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccCustomPropertySchema"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccCustomPropertySchema"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_custom-properties_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccCustomPropertySchema"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccCustomPropertySchema"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_custom-properties_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/email-alerts/": {
+      "get": {
+        "operationId": "agentcc_email-alerts_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccEmailAlert"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_email-alerts_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccEmailAlert"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccEmailAlert"
+          }
+        }
+      }
+    },
+    "/agentcc/email-alerts/{id}/": {
+      "get": {
+        "operationId": "agentcc_email-alerts_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccEmailAlert"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_email-alerts_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccEmailAlert"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccEmailAlert"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_email-alerts_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccEmailAlert"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccEmailAlert"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_email-alerts_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/email-alerts/{id}/test/": {
+      "post": {
+        "operationId": "agentcc_email-alerts_test",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccEmailAlert"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccEmailAlert"
+          }
+        }
+      }
+    },
+    "/agentcc/gateways/": {
+      "get": {
+        "operationId": "agentcc_gateways_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/protect-templates/": {
+      "get": {
+        "operationId": "agentcc_gateways_protect_templates",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/": {
+      "get": {
+        "operationId": "agentcc_gateways_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/cancel-batch/": {
+      "post": {
+        "operationId": "agentcc_gateways_cancel_batch",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/config/": {
+      "get": {
+        "operationId": "agentcc_gateways_config",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/get-batch/": {
+      "get": {
+        "operationId": "agentcc_gateways_get_batch",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/health_check/": {
+      "post": {
+        "operationId": "agentcc_gateways_health_check",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/mcp-prompts/": {
+      "get": {
+        "operationId": "agentcc_gateways_mcp_prompts",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/mcp-resources/": {
+      "get": {
+        "operationId": "agentcc_gateways_mcp_resources",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/mcp-status/": {
+      "get": {
+        "operationId": "agentcc_gateways_mcp_status",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/mcp-tools/": {
+      "get": {
+        "operationId": "agentcc_gateways_mcp_tools",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/providers/": {
+      "get": {
+        "operationId": "agentcc_gateways_providers",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/reload/": {
+      "post": {
+        "operationId": "agentcc_gateways_reload",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/remove-budget/": {
+      "post": {
+        "operationId": "agentcc_gateways_remove_budget",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/remove-mcp-server/": {
+      "post": {
+        "operationId": "agentcc_gateways_remove_mcp_server",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/remove-provider/": {
+      "post": {
+        "operationId": "agentcc_gateways_remove_provider",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/set-budget/": {
+      "post": {
+        "operationId": "agentcc_gateways_set_budget",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/submit-batch/": {
+      "post": {
+        "operationId": "agentcc_gateways_submit_batch",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/test-mcp-tool/": {
+      "post": {
+        "operationId": "agentcc_gateways_test_mcp_tool",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/test-playground/": {
+      "post": {
+        "operationId": "agentcc_gateways_test_playground",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/toggle-guardrail/": {
+      "post": {
+        "operationId": "agentcc_gateways_toggle_guardrail",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/update-config/": {
+      "post": {
+        "operationId": "agentcc_gateways_update_config",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/update-guardrail/": {
+      "post": {
+        "operationId": "agentcc_gateways_update_guardrail",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/update-mcp-guardrails/": {
+      "post": {
+        "operationId": "agentcc_gateways_update_mcp_guardrails",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/update-mcp-server/": {
+      "post": {
+        "operationId": "agentcc_gateways_update_mcp_server",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/gateways/{id}/update-provider/": {
+      "post": {
+        "operationId": "agentcc_gateways_update_provider",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/guardrail-configs/pii-entities/": {
+      "get": {
+        "operationId": "agentcc_guardrail-configs_pii_entities",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {}
+      }
+    },
+    "/agentcc/guardrail-configs/topics/": {
+      "get": {
+        "operationId": "agentcc_guardrail-configs_topics",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {}
+      }
+    },
+    "/agentcc/guardrail-configs/validate-cel/": {
+      "post": {
+        "operationId": "agentcc_guardrail-configs_validate_cel",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/guardrail-feedback/": {
+      "get": {
+        "operationId": "agentcc_guardrail-feedback_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccGuardrailFeedback"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_guardrail-feedback_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccGuardrailFeedback"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccGuardrailFeedback"
+          }
+        }
+      }
+    },
+    "/agentcc/guardrail-feedback/summary/": {
+      "get": {
+        "operationId": "agentcc_guardrail-feedback_summary",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccGuardrailFeedback"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/guardrail-feedback/{id}/": {
+      "get": {
+        "operationId": "agentcc_guardrail-feedback_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccGuardrailFeedback"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_guardrail-feedback_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccGuardrailFeedback"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccGuardrailFeedback"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_guardrail-feedback_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccGuardrailFeedback"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccGuardrailFeedback"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_guardrail-feedback_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/guardrail-policies/": {
+      "get": {
+        "operationId": "agentcc_guardrail-policies_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccGuardrailPolicy"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_guardrail-policies_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccGuardrailPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccGuardrailPolicy"
+          }
+        }
+      }
+    },
+    "/agentcc/guardrail-policies/sync/": {
+      "post": {
+        "operationId": "agentcc_guardrail-policies_sync",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccGuardrailPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccGuardrailPolicy"
+          }
+        }
+      }
+    },
+    "/agentcc/guardrail-policies/{id}/": {
+      "get": {
+        "operationId": "agentcc_guardrail-policies_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccGuardrailPolicy"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_guardrail-policies_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccGuardrailPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccGuardrailPolicy"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_guardrail-policies_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccGuardrailPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccGuardrailPolicy"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_guardrail-policies_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/guardrail-policies/{id}/apply/": {
+      "post": {
+        "operationId": "agentcc_guardrail-policies_apply",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccGuardrailPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccGuardrailPolicy"
+          }
+        }
+      }
+    },
+    "/agentcc/org-configs/": {
+      "get": {
+        "operationId": "agentcc_org-configs_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccOrgConfig"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_org-configs_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccOrgConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccOrgConfig"
+          }
+        }
+      }
+    },
+    "/agentcc/org-configs/active/": {
+      "get": {
+        "operationId": "agentcc_org-configs_active",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccOrgConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/org-configs/bulk/": {
+      "get": {
+        "operationId": "agentcc_org-configs_bulk_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/org-configs/{id}/": {
+      "get": {
+        "operationId": "agentcc_org-configs_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccOrgConfig"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_org-configs_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccOrgConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccOrgConfig"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_org-configs_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccOrgConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccOrgConfig"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_org-configs_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/org-configs/{id}/activate/": {
+      "post": {
+        "operationId": "agentcc_org-configs_activate",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccOrgConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccOrgConfig"
+          }
+        }
+      }
+    },
+    "/agentcc/org-configs/{id}/diff/": {
+      "get": {
+        "operationId": "agentcc_org-configs_diff",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccOrgConfig"
+          }
+        }
+      }
+    },
+    "/agentcc/provider-credentials/": {
+      "get": {
+        "operationId": "agentcc_provider-credentials_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccProviderCredential"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_provider-credentials_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccProviderCredential"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccProviderCredential"
+          }
+        }
+      }
+    },
+    "/agentcc/provider-credentials/fetch_models/": {
+      "post": {
+        "operationId": "agentcc_provider-credentials_fetch_models",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccProviderCredential"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccProviderCredential"
+          }
+        }
+      }
+    },
+    "/agentcc/provider-credentials/{id}/": {
+      "get": {
+        "operationId": "agentcc_provider-credentials_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccProviderCredential"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_provider-credentials_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccProviderCredential"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccProviderCredential"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_provider-credentials_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccProviderCredential"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccProviderCredential"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_provider-credentials_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/provider-credentials/{id}/rotate/": {
+      "post": {
+        "operationId": "agentcc_provider-credentials_rotate",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccProviderCredential"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccProviderCredential"
+          }
+        }
+      }
+    },
+    "/agentcc/request-logs/": {
+      "get": {
+        "operationId": "agentcc_request-logs_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/request-logs/export/": {
+      "get": {
+        "operationId": "agentcc_request-logs_export",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/request-logs/search/": {
+      "get": {
+        "operationId": "agentcc_request-logs_search",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/request-logs/sessions/": {
+      "get": {
+        "operationId": "agentcc_request-logs_sessions",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/request-logs/sessions/{session_id}/": {
+      "get": {
+        "operationId": "agentcc_request-logs_session_detail",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRequestLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/request-logs/{id}/": {
+      "get": {
+        "operationId": "agentcc_request-logs_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccRequestLogDetail"
+          }
+        }
+      }
+    },
+    "/agentcc/routing-policies/": {
+      "get": {
+        "operationId": "agentcc_routing-policies_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccRoutingPolicy"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_routing-policies_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccRoutingPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccRoutingPolicy"
+          }
+        }
+      }
+    },
+    "/agentcc/routing-policies/sync/": {
+      "post": {
+        "operationId": "agentcc_routing-policies_sync",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccRoutingPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccRoutingPolicy"
+          }
+        }
+      }
+    },
+    "/agentcc/routing-policies/{id}/": {
+      "get": {
+        "operationId": "agentcc_routing-policies_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccRoutingPolicy"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_routing-policies_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccRoutingPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccRoutingPolicy"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_routing-policies_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccRoutingPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccRoutingPolicy"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_routing-policies_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/routing-policies/{id}/activate/": {
+      "post": {
+        "operationId": "agentcc_routing-policies_activate",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccRoutingPolicy"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccRoutingPolicy"
+          }
+        }
+      }
+    },
+    "/agentcc/sessions/": {
+      "get": {
+        "operationId": "agentcc_sessions_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccSession"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_sessions_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccSession"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccSession"
+          }
+        }
+      }
+    },
+    "/agentcc/sessions/{id}/": {
+      "get": {
+        "operationId": "agentcc_sessions_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccSession"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_sessions_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccSession"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccSession"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_sessions_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccSession"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccSession"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_sessions_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/sessions/{id}/close/": {
+      "post": {
+        "operationId": "agentcc_sessions_close",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccSession"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccSession"
+          }
+        }
+      }
+    },
+    "/agentcc/sessions/{id}/requests/": {
+      "get": {
+        "operationId": "agentcc_sessions_requests",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccSession"
+          }
+        }
+      }
+    },
+    "/agentcc/shadow-experiments/": {
+      "get": {
+        "operationId": "agentcc_shadow-experiments_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccShadowExperiment"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_shadow-experiments_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccShadowExperiment"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccShadowExperiment"
+          }
+        }
+      }
+    },
+    "/agentcc/shadow-experiments/{id}/": {
+      "get": {
+        "operationId": "agentcc_shadow-experiments_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccShadowExperiment"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_shadow-experiments_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccShadowExperiment"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccShadowExperiment"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_shadow-experiments_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccShadowExperiment"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccShadowExperiment"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_shadow-experiments_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/shadow-experiments/{id}/complete/": {
+      "patch": {
+        "operationId": "agentcc_shadow-experiments_complete",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccShadowExperiment"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccShadowExperiment"
+          }
+        }
+      }
+    },
+    "/agentcc/shadow-experiments/{id}/pause/": {
+      "patch": {
+        "operationId": "agentcc_shadow-experiments_pause",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccShadowExperiment"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccShadowExperiment"
+          }
+        }
+      }
+    },
+    "/agentcc/shadow-experiments/{id}/resume/": {
+      "patch": {
+        "operationId": "agentcc_shadow-experiments_resume",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccShadowExperiment"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccShadowExperiment"
+          }
+        }
+      }
+    },
+    "/agentcc/shadow-experiments/{id}/stats/": {
+      "get": {
+        "operationId": "agentcc_shadow-experiments_stats",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccShadowExperiment"
+          }
+        }
+      }
+    },
+    "/agentcc/shadow-results/": {
+      "get": {
+        "operationId": "agentcc_shadow-results_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccShadowResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/shadow-results/{id}/": {
+      "get": {
+        "operationId": "agentcc_shadow-results_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccShadowResult"
+          }
+        }
+      }
+    },
+    "/agentcc/spend-summary/": {
+      "get": {
+        "operationId": "agentcc_spend-summary_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/webhook-events/": {
+      "get": {
+        "operationId": "agentcc_webhook-events_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccWebhookEvent"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agentcc/webhook-events/{id}/": {
+      "get": {
+        "operationId": "agentcc_webhook-events_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccWebhookEvent"
+          }
+        }
+      }
+    },
+    "/agentcc/webhook-events/{id}/retry/": {
+      "post": {
+        "operationId": "agentcc_webhook-events_retry",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccWebhookEvent"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccWebhookEvent"
+          }
+        }
+      }
+    },
+    "/agentcc/webhook/logs/": {
+      "post": {
+        "operationId": "agentcc_webhook_logs_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/webhook/shadow-results/": {
+      "post": {
+        "operationId": "agentcc_webhook_shadow-results_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/webhooks/": {
+      "get": {
+        "operationId": "agentcc_webhooks_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentccWebhook"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "agentcc_webhooks_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccWebhook"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccWebhook"
+          }
+        }
+      }
+    },
+    "/agentcc/webhooks/{id}/": {
+      "get": {
+        "operationId": "agentcc_webhooks_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccWebhook"
+          }
+        }
+      },
+      "put": {
+        "operationId": "agentcc_webhooks_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccWebhook"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccWebhook"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "agentcc_webhooks_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccWebhook"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentccWebhook"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "agentcc_webhooks_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/agentcc/webhooks/{id}/test/": {
+      "post": {
+        "operationId": "agentcc_webhooks_test",
+        "requestBody": {
+          "$ref": "#/definitions/AgentccWebhook"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentccWebhook"
+          }
+        }
+      }
+    },
+    "/ai-tools/tools/": {
+      "get": {
+        "operationId": "ai-tools_tools_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/api/deployment-info/": {
+      "get": {
+        "operationId": "api_deployment-info_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/api/health/clickhouse/": {
+      "get": {
+        "operationId": "api_health_clickhouse_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/api/public/health": {
+      "get": {
+        "operationId": "api_public_health_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/api/public/ingestion": {
+      "post": {
+        "operationId": "api_public_ingestion_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/api/public/otel/v1/traces": {
+      "post": {
+        "operationId": "api_public_otel_v1_traces_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/api/public/traces": {
+      "get": {
+        "operationId": "api_public_traces_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
     "/api/traces/span-attribute-detail/": {
       "get": {
         "operationId": "api_traces_span-attribute-detail_list",
@@ -129,6 +4336,580 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "$ref": "#/definitions/ApiErrorResponse"
           }
         }
+      }
+    },
+    "/call-websocket/": {
+      "post": {
+        "operationId": "call-websocket_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/conversations/": {
+      "get": {
+        "operationId": "falcon-ai_conversations_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "falcon-ai_conversations_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/conversations/{conversation_id}/": {
+      "get": {
+        "operationId": "falcon-ai_conversations_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "falcon-ai_conversations_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "falcon-ai_conversations_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/conversations/{conversation_id}/stream-status/": {
+      "get": {
+        "operationId": "falcon-ai_conversations_stream-status_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/files/upload/": {
+      "post": {
+        "operationId": "falcon-ai_files_upload_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/mcp-connectors/": {
+      "get": {
+        "operationId": "falcon-ai_mcp-connectors_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "falcon-ai_mcp-connectors_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/mcp-connectors/{connector_id}/": {
+      "get": {
+        "operationId": "falcon-ai_mcp-connectors_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "falcon-ai_mcp-connectors_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "falcon-ai_mcp-connectors_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/mcp-connectors/{connector_id}/authenticate/": {
+      "post": {
+        "operationId": "falcon-ai_mcp-connectors_authenticate_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/mcp-connectors/{connector_id}/discover/": {
+      "post": {
+        "operationId": "falcon-ai_mcp-connectors_discover_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/mcp-connectors/{connector_id}/oauth/callback/": {
+      "get": {
+        "operationId": "falcon-ai_mcp-connectors_oauth_callback_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/mcp-connectors/{connector_id}/test/": {
+      "post": {
+        "operationId": "falcon-ai_mcp-connectors_test_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/mcp-connectors/{connector_id}/tools/": {
+      "patch": {
+        "operationId": "falcon-ai_mcp-connectors_tools_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/memory/": {
+      "get": {
+        "operationId": "falcon-ai_memory_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "falcon-ai_memory_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/memory/{memory_id}/": {
+      "delete": {
+        "operationId": "falcon-ai_memory_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/messages/{message_id}/feedback/": {
+      "post": {
+        "operationId": "falcon-ai_messages_feedback_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/quick-analysis/": {
+      "post": {
+        "operationId": "falcon-ai_quick-analysis_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/skills/": {
+      "get": {
+        "operationId": "falcon-ai_skills_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "falcon-ai_skills_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/falcon-ai/skills/{skill_id}/": {
+      "get": {
+        "operationId": "falcon-ai_skills_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "falcon-ai_skills_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "falcon-ai_skills_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/health/": {
+      "get": {
+        "operationId": "health_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/integrations/connections/": {
+      "get": {
+        "operationId": "integrations_connections_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/IntegrationConnectionList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "integrations_connections_create",
+        "requestBody": {
+          "$ref": "#/definitions/IntegrationConnectionList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/IntegrationConnectionList"
+          }
+        }
+      }
+    },
+    "/integrations/connections/validate/": {
+      "post": {
+        "operationId": "integrations_connections_validate_credentials",
+        "requestBody": {
+          "$ref": "#/definitions/IntegrationConnectionList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/IntegrationConnectionList"
+          }
+        }
+      }
+    },
+    "/integrations/connections/{id}/": {
+      "get": {
+        "operationId": "integrations_connections_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/IntegrationConnectionDetail"
+          }
+        }
+      },
+      "put": {
+        "operationId": "integrations_connections_update",
+        "requestBody": {
+          "$ref": "#/definitions/IntegrationConnectionList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/IntegrationConnectionList"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "integrations_connections_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/IntegrationConnectionList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/IntegrationConnectionList"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "integrations_connections_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/integrations/connections/{id}/pause/": {
+      "post": {
+        "operationId": "integrations_connections_pause",
+        "requestBody": {
+          "$ref": "#/definitions/IntegrationConnectionList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/IntegrationConnectionList"
+          }
+        }
+      }
+    },
+    "/integrations/connections/{id}/resume/": {
+      "post": {
+        "operationId": "integrations_connections_resume",
+        "requestBody": {
+          "$ref": "#/definitions/IntegrationConnectionList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/IntegrationConnectionList"
+          }
+        }
+      }
+    },
+    "/integrations/connections/{id}/sync_now/": {
+      "post": {
+        "operationId": "integrations_connections_sync_now",
+        "requestBody": {
+          "$ref": "#/definitions/IntegrationConnectionList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/IntegrationConnectionList"
+          }
+        }
+      }
+    },
+    "/integrations/sync-logs/": {
+      "get": {
+        "operationId": "integrations_sync-logs_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/SyncLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/integrations/sync-logs/{id}/": {
+      "get": {
+        "operationId": "integrations_sync-logs_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/SyncLog"
+          }
+        }
+      }
+    },
+    "/mcp/analytics/summary/": {
+      "get": {
+        "operationId": "mcp_analytics_summary_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/analytics/timeline/": {
+      "get": {
+        "operationId": "mcp_analytics_timeline_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/analytics/tools/": {
+      "get": {
+        "operationId": "mcp_analytics_tools_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/config/": {
+      "get": {
+        "operationId": "mcp_config_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "mcp_config_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/config/tool-groups/": {
+      "get": {
+        "operationId": "mcp_config_tool-groups_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "mcp_config_tool-groups_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/health/": {
+      "get": {
+        "operationId": "mcp_health_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/internal/tool-call/": {
+      "post": {
+        "operationId": "mcp_internal_tool-call_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/internal/tools/": {
+      "get": {
+        "operationId": "mcp_internal_tools_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/oauth/approve-info/": {
+      "get": {
+        "operationId": "mcp_oauth_approve-info_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/oauth/approve/": {
+      "post": {
+        "operationId": "mcp_oauth_approve_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/oauth/authorize/": {
+      "get": {
+        "operationId": "mcp_oauth_authorize_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/oauth/consent/": {
+      "post": {
+        "operationId": "mcp_oauth_consent_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/oauth/token/": {
+      "post": {
+        "operationId": "mcp_oauth_token_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/sessions/": {
+      "get": {
+        "operationId": "mcp_sessions_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/mcp/sessions/{session_id}/": {
+      "delete": {
+        "operationId": "mcp_sessions_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/ai-eval-writer/": {
+      "post": {
+        "operationId": "model-hub_ai-eval-writer_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
       }
     },
     "/model-hub/ai-filter/": {
@@ -1913,6 +6694,494 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "/model-hub/api-keys/": {
+      "get": {
+        "operationId": "model-hub_api-keys_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ApiKey"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_api-keys_create",
+        "requestBody": {
+          "$ref": "#/definitions/ApiKey"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ApiKey"
+          }
+        }
+      }
+    },
+    "/model-hub/api-keys/{id}/": {
+      "get": {
+        "operationId": "model-hub_api-keys_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ApiKey"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_api-keys_update",
+        "requestBody": {
+          "$ref": "#/definitions/ApiKey"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ApiKey"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_api-keys_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/ApiKey"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ApiKey"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_api-keys_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/api/model_parameters/": {
+      "get": {
+        "operationId": "model-hub_api_model_parameters_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/api/model_voices/": {
+      "get": {
+        "operationId": "model-hub_api_model_voices_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/api/models_list/": {
+      "get": {
+        "operationId": "model-hub_api_models_list_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/cells/{cell_id}/run-error-localizer/": {
+      "get": {
+        "operationId": "model-hub_cells_run-error-localizer_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_cells_run-error-localizer_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/column-config/{column_id}/": {
+      "get": {
+        "operationId": "model-hub_column-config_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/columns/{column_id}/operation-config/": {
+      "get": {
+        "operationId": "model-hub_columns_operation-config_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/columns/{column_id}/rerun-operation/": {
+      "post": {
+        "operationId": "model-hub_columns_rerun-operation_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/create_custom_evals/": {
+      "post": {
+        "operationId": "model-hub_create_custom_evals_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom-metric/all/{model_id}/": {
+      "get": {
+        "operationId": "model-hub_custom-metric_all_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom-metric/create/": {
+      "post": {
+        "operationId": "model-hub_custom-metric_create_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom-metric/tag-options/{metric_id}/": {
+      "get": {
+        "operationId": "model-hub_custom-metric_tag-options_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom-metric/test/": {
+      "post": {
+        "operationId": "model-hub_custom-metric_test_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom-metric/update/": {
+      "post": {
+        "operationId": "model-hub_custom-metric_update_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom-metric/{model_id}/": {
+      "get": {
+        "operationId": "model-hub_custom-metric_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom-models/": {
+      "get": {
+        "operationId": "model-hub_custom-models_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom-models/list/": {
+      "get": {
+        "operationId": "model-hub_custom-models_list_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom-models/{id}/": {
+      "get": {
+        "operationId": "model-hub_custom-models_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_custom-models_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom_models/create/": {
+      "post": {
+        "operationId": "model-hub_custom_models_create_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom_models/delete/": {
+      "delete": {
+        "operationId": "model-hub_custom_models_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom_models/edit/": {
+      "get": {
+        "operationId": "model-hub_custom_models_edit_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "model-hub_custom_models_edit_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/custom_models/update-baseline/{id}/": {
+      "post": {
+        "operationId": "model-hub_custom_models_update-baseline_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/dataset-optimization/": {
+      "get": {
+        "operationId": "model-hub_dataset-optimization_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/DatasetOptimizationList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_dataset-optimization_create",
+        "requestBody": {
+          "$ref": "#/definitions/DatasetOptimizationCreate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/DatasetOptimizationCreate"
+          }
+        }
+      }
+    },
+    "/model-hub/dataset-optimization/{id}/": {
+      "get": {
+        "operationId": "model-hub_dataset-optimization_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DatasetOptimizationDetail"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_dataset-optimization_update",
+        "requestBody": {
+          "$ref": "#/definitions/DatasetOptimization"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DatasetOptimization"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_dataset-optimization_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/DatasetOptimization"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DatasetOptimization"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_dataset-optimization_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/dataset-optimization/{id}/graph/": {
+      "get": {
+        "operationId": "model-hub_dataset-optimization_graph",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DatasetOptimization"
+          }
+        }
+      }
+    },
+    "/model-hub/dataset-optimization/{id}/steps/": {
+      "get": {
+        "operationId": "model-hub_dataset-optimization_steps",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DatasetOptimization"
+          }
+        }
+      }
+    },
+    "/model-hub/dataset-optimization/{id}/stop/": {
+      "post": {
+        "operationId": "model-hub_dataset-optimization_stop",
+        "requestBody": {
+          "$ref": "#/definitions/DatasetOptimization"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/DatasetOptimization"
+          }
+        }
+      }
+    },
+    "/model-hub/dataset-optimization/{id}/trial/{trial_id}/": {
+      "get": {
+        "operationId": "model-hub_dataset-optimization_trial_detail",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DatasetOptimization"
+          }
+        }
+      }
+    },
+    "/model-hub/dataset-optimization/{id}/trial/{trial_id}/evaluations/": {
+      "get": {
+        "operationId": "model-hub_dataset-optimization_trial_trial_evaluations",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DatasetOptimization"
+          }
+        }
+      }
+    },
+    "/model-hub/dataset-optimization/{id}/trial/{trial_id}/prompt/": {
+      "get": {
+        "operationId": "model-hub_dataset-optimization_trial_trial_prompt",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DatasetOptimization"
+          }
+        }
+      }
+    },
+    "/model-hub/dataset-optimization/{id}/trial/{trial_id}/scenarios/": {
+      "get": {
+        "operationId": "model-hub_dataset-optimization_trial_trial_scenarios",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DatasetOptimization"
+          }
+        }
+      }
+    },
+    "/model-hub/dataset/columns/{dataset_id}/": {
+      "get": {
+        "operationId": "model-hub_dataset_columns_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
     "/model-hub/dataset/{dataset_id}/annotation-summary/": {
       "get": {
         "operationId": "model-hub_dataset_annotation-summary_list",
@@ -1932,6 +7201,4155 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "$ref": "#/definitions/ApiErrorResponse"
           }
         }
+      }
+    },
+    "/model-hub/dataset/{dataset_id}/eval-stats/": {
+      "get": {
+        "operationId": "model-hub_dataset_eval-stats_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/dataset/{dataset_id}/json-schema/": {
+      "get": {
+        "operationId": "model-hub_dataset_json-schema_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/dataset/{dataset_id}/run-prompt-stats/": {
+      "get": {
+        "operationId": "model-hub_dataset_run-prompt-stats_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/compare/get-evals-list/": {
+      "post": {
+        "operationId": "model-hub_datasets_compare_get-evals-list_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/compare/preview-run-eval/": {
+      "post": {
+        "operationId": "model-hub_datasets_compare_preview-run-eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/delete-compare/{compare_id}/": {
+      "get": {
+        "operationId": "model-hub_datasets_delete-compare_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "model-hub_datasets_delete-compare_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/explanation-summary/{dataset_id}/": {
+      "get": {
+        "operationId": "model-hub_datasets_explanation-summary_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/explanation-summary/{dataset_id}/refresh/": {
+      "post": {
+        "operationId": "model-hub_datasets_explanation-summary_refresh_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/get-base-columns/": {
+      "get": {
+        "operationId": "model-hub_datasets_get-base-columns_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/get-compare-row/{compare_id}/{row_id}/": {
+      "get": {
+        "operationId": "model-hub_datasets_get-compare-row_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "model-hub_datasets_get-compare-row_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/huggingface/detail/": {
+      "post": {
+        "operationId": "model-hub_datasets_huggingface_detail_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/huggingface/list/": {
+      "post": {
+        "operationId": "model-hub_datasets_huggingface_list_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/add-api-column/": {
+      "post": {
+        "operationId": "model-hub_datasets_add-api-column_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/add_vector_db_column/": {
+      "post": {
+        "operationId": "model-hub_datasets_add_vector_db_column_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/classify-column/": {
+      "post": {
+        "operationId": "model-hub_datasets_classify-column_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/compare-datasets/": {
+      "post": {
+        "operationId": "model-hub_datasets_compare-datasets_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/compare-datasets/add-eval/": {
+      "post": {
+        "operationId": "model-hub_datasets_compare-datasets_add-eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/compare-datasets/download/": {
+      "post": {
+        "operationId": "model-hub_datasets_compare-datasets_download_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/compare-datasets/start-eval/": {
+      "post": {
+        "operationId": "model-hub_datasets_compare-datasets_start-eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/compare-stats/": {
+      "post": {
+        "operationId": "model-hub_datasets_compare-stats_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/conditional-column/": {
+      "post": {
+        "operationId": "model-hub_datasets_conditional-column_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/derived-variables/": {
+      "get": {
+        "operationId": "model-hub_datasets_derived-variables_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/duplicate-rows/": {
+      "post": {
+        "operationId": "model-hub_datasets_duplicate-rows_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/duplicate/": {
+      "post": {
+        "operationId": "model-hub_datasets_duplicate_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/extract-entities/": {
+      "post": {
+        "operationId": "model-hub_datasets_extract-entities_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/merge/": {
+      "post": {
+        "operationId": "model-hub_datasets_merge_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/datasets/{dataset_id}/preview/{operation_type}/": {
+      "post": {
+        "operationId": "model-hub_datasets_preview_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/delete-eval-template/": {
+      "post": {
+        "operationId": "model-hub_delete-eval-template_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/add-as-new/": {
+      "post": {
+        "operationId": "model-hub_develops_add-as-new_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/add_rows_from_file/": {
+      "post": {
+        "operationId": "model-hub_develops_add_rows_from_file_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/add_rows_sdk/": {
+      "post": {
+        "operationId": "model-hub_develops_add_rows_sdk_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/add_run_prompt_column/": {
+      "post": {
+        "operationId": "model-hub_develops_add_run_prompt_column_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/clone-dataset/{dataset_id}/": {
+      "post": {
+        "operationId": "model-hub_develops_clone-dataset_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/create-dataset-from-huggingface/": {
+      "post": {
+        "operationId": "model-hub_develops_create-dataset-from-huggingface_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/create-dataset-from-local-file/": {
+      "post": {
+        "operationId": "model-hub_develops_create-dataset-from-local-file_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/create-dataset-manually/": {
+      "post": {
+        "operationId": "model-hub_develops_create-dataset-manually_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/create-empty-dataset/": {
+      "post": {
+        "operationId": "model-hub_develops_create-empty-dataset_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/create-synthetic-dataset/": {
+      "post": {
+        "operationId": "model-hub_develops_create-synthetic-dataset_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/dataset-creation-progress/{dataset_id}/": {
+      "get": {
+        "operationId": "model-hub_develops_dataset-creation-progress_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/delete_dataset/": {
+      "delete": {
+        "operationId": "model-hub_develops_delete_dataset_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/edit_run_prompt_column/": {
+      "post": {
+        "operationId": "model-hub_develops_edit_run_prompt_column_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/get-cell-data/": {
+      "post": {
+        "operationId": "model-hub_develops_get-cell-data_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/get-datasets-names/": {
+      "get": {
+        "operationId": "model-hub_develops_get-datasets-names_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/get-datasets/": {
+      "get": {
+        "operationId": "model-hub_develops_get-datasets_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/get-derived-datasets/{dataset_id}/": {
+      "get": {
+        "operationId": "model-hub_develops_get-derived-datasets_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/get-huggingface-dataset-config/": {
+      "post": {
+        "operationId": "model-hub_develops_get-huggingface-dataset-config_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/get-row-diff/": {
+      "post": {
+        "operationId": "model-hub_develops_get-row-diff_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/get_function_list/": {
+      "get": {
+        "operationId": "model-hub_develops_get_function_list_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/preview_run_prompt_column/": {
+      "post": {
+        "operationId": "model-hub_develops_preview_run_prompt_column_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/provider-status/": {
+      "get": {
+        "operationId": "model-hub_develops_provider-status_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/retrieve_run_prompt_column_config/": {
+      "get": {
+        "operationId": "model-hub_develops_retrieve_run_prompt_column_config_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/retrieve_run_prompt_options/": {
+      "get": {
+        "operationId": "model-hub_develops_retrieve_run_prompt_options_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_columns/": {
+      "post": {
+        "operationId": "model-hub_develops_add_columns_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_empty_columns/": {
+      "post": {
+        "operationId": "model-hub_develops_add_empty_columns_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_empty_rows/": {
+      "post": {
+        "operationId": "model-hub_develops_add_empty_rows_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_multiple_static_columns/": {
+      "post": {
+        "operationId": "model-hub_develops_add_multiple_static_columns_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_rows/": {
+      "post": {
+        "operationId": "model-hub_develops_add_rows_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_rows_from_existing_dataset/": {
+      "post": {
+        "operationId": "model-hub_develops_add_rows_from_existing_dataset_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_rows_from_huggingface/": {
+      "post": {
+        "operationId": "model-hub_develops_add_rows_from_huggingface_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_static_column/": {
+      "post": {
+        "operationId": "model-hub_develops_add_static_column_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_synthetic_data/": {
+      "post": {
+        "operationId": "model-hub_develops_add_synthetic_data_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/add_user_eval/": {
+      "post": {
+        "operationId": "model-hub_develops_add_user_eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/delete_column/{column_id}/": {
+      "delete": {
+        "operationId": "model-hub_develops_delete_column_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/delete_row/": {
+      "delete": {
+        "operationId": "model-hub_develops_delete_row_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/delete_template_eval/{eval_id}/": {
+      "delete": {
+        "operationId": "model-hub_develops_delete_template_eval_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/delete_user_eval/{eval_id}/": {
+      "delete": {
+        "operationId": "model-hub_develops_delete_user_eval_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/download_dataset/": {
+      "get": {
+        "operationId": "model-hub_develops_download_dataset_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/edit_and_run_user_eval/{eval_id}/": {
+      "post": {
+        "operationId": "model-hub_develops_edit_and_run_user_eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/edit_dataset_behavior/": {
+      "put": {
+        "operationId": "model-hub_develops_edit_dataset_behavior_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/extract-json-column/": {
+      "post": {
+        "operationId": "model-hub_develops_extract-json-column_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/get-dataset-table/": {
+      "get": {
+        "operationId": "model-hub_develops_get-dataset-table_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/get-row-data/": {
+      "post": {
+        "operationId": "model-hub_develops_get-row-data_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/get_eval_structure/{eval_id}/": {
+      "get": {
+        "operationId": "model-hub_develops_get_eval_structure_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/get_evals_list/": {
+      "get": {
+        "operationId": "model-hub_develops_get_evals_list_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/preview_run_eval/": {
+      "post": {
+        "operationId": "model-hub_develops_preview_run_eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/start_evals_process/": {
+      "post": {
+        "operationId": "model-hub_develops_start_evals_process_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/stop_user_eval/{eval_id}/": {
+      "post": {
+        "operationId": "model-hub_develops_stop_user_eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/synthetic-config/": {
+      "get": {
+        "operationId": "model-hub_develops_synthetic-config_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/update-synthetic-config/": {
+      "put": {
+        "operationId": "model-hub_develops_update-synthetic-config_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/update_cell_value/": {
+      "post": {
+        "operationId": "model-hub_develops_update_cell_value_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/update_column_name/{column_id}/": {
+      "put": {
+        "operationId": "model-hub_develops_update_column_name_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{dataset_id}/update_column_type/{column_id}/": {
+      "put": {
+        "operationId": "model-hub_develops_update_column_type_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{exp_dataset_id}/create-dataset/": {
+      "post": {
+        "operationId": "model-hub_develops_create-dataset_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/develops/{experiment_dataset_id}/get-experiment-dataset-table/": {
+      "get": {
+        "operationId": "model-hub_develops_get-experiment-dataset-table_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/duplicate-eval-template/": {
+      "post": {
+        "operationId": "model-hub_duplicate-eval-template_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/embeddings/": {
+      "get": {
+        "operationId": "model-hub_embeddings_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/embeddings/{type}/": {
+      "get": {
+        "operationId": "model-hub_embeddings_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-groups/": {
+      "get": {
+        "operationId": "model-hub_eval-groups_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/EvalGroup"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_eval-groups_create",
+        "requestBody": {
+          "$ref": "#/definitions/EvalGroup"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/EvalGroup"
+          }
+        }
+      }
+    },
+    "/model-hub/eval-groups/apply-eval-group/": {
+      "post": {
+        "operationId": "model-hub_eval-groups_apply_eval_group",
+        "requestBody": {
+          "$ref": "#/definitions/EvalGroup"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/EvalGroup"
+          }
+        }
+      }
+    },
+    "/model-hub/eval-groups/edit-eval-list/": {
+      "post": {
+        "operationId": "model-hub_eval-groups_edit_eval_list",
+        "requestBody": {
+          "$ref": "#/definitions/EvalGroup"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/EvalGroup"
+          }
+        }
+      }
+    },
+    "/model-hub/eval-groups/{id}/": {
+      "get": {
+        "operationId": "model-hub_eval-groups_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalGroup"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_eval-groups_update",
+        "requestBody": {
+          "$ref": "#/definitions/EvalGroup"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalGroup"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_eval-groups_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/EvalGroup"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalGroup"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_eval-groups_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-playground/": {
+      "post": {
+        "operationId": "model-hub_eval-playground_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-playground/feedback/": {
+      "post": {
+        "operationId": "model-hub_eval-playground_feedback_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-sdk-code/": {
+      "get": {
+        "operationId": "model-hub_eval-sdk-code_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-summary-templates/": {
+      "get": {
+        "operationId": "model-hub_eval-summary-templates_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_eval-summary-templates_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-summary-templates/{template_id}/": {
+      "put": {
+        "operationId": "model-hub_eval-summary-templates_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "model-hub_eval-summary-templates_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-template/create/": {
+      "post": {
+        "operationId": "model-hub_eval-template_create_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/bulk-delete/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_bulk-delete_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/composite/execute-adhoc/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_composite_execute-adhoc_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/create-composite/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_create-composite_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/create-v2/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_create-v2_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/list-charts/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_list-charts_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/list/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_list_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/composite/": {
+      "get": {
+        "operationId": "model-hub_eval-templates_composite_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "model-hub_eval-templates_composite_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/composite/execute/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_composite_execute_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/detail/": {
+      "get": {
+        "operationId": "model-hub_eval-templates_detail_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/feedback-list/": {
+      "get": {
+        "operationId": "model-hub_eval-templates_feedback-list_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/ground-truth-config/": {
+      "get": {
+        "operationId": "model-hub_eval-templates_ground-truth-config_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "model-hub_eval-templates_ground-truth-config_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/ground-truth/": {
+      "get": {
+        "operationId": "model-hub_eval-templates_ground-truth_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/ground-truth/upload/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_ground-truth_upload_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/update/": {
+      "put": {
+        "operationId": "model-hub_eval-templates_update_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/usage/": {
+      "get": {
+        "operationId": "model-hub_eval-templates_usage_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/versions/": {
+      "get": {
+        "operationId": "model-hub_eval-templates_versions_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/versions/create/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_versions_create_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/versions/{version_id}/restore/": {
+      "post": {
+        "operationId": "model-hub_eval-templates_versions_restore_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-templates/{template_id}/versions/{version_id}/set-default/": {
+      "put": {
+        "operationId": "model-hub_eval-templates_versions_set-default_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/eval-user-template/create/": {
+      "post": {
+        "operationId": "model-hub_eval-user-template_create_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/evaluate-rows/": {
+      "post": {
+        "operationId": "model-hub_evaluate-rows_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiment-detail/": {
+      "get": {
+        "operationId": "model-hub_experiment-detail_list",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ExperimentsTableGet"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/experiments/": {
+      "get": {
+        "operationId": "model-hub_experiments_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_experiments_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "model-hub_experiments_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/data/": {
+      "get": {
+        "operationId": "model-hub_experiments_data_list",
+        "requestBody": null,
+        "queryParameters": {
+          "created_at": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "dataset_id": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "ordering": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ExperimentList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/experiments/delete/": {
+      "delete": {
+        "operationId": "model-hub_experiments_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/re-run/": {
+      "post": {
+        "operationId": "model-hub_experiments_re-run_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_experiments_v2_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "model-hub_experiments_v2_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/delete/": {
+      "delete": {
+        "operationId": "model-hub_experiments_v2_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/list/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_list_list",
+        "requestBody": null,
+        "queryParameters": {
+          "created_at": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "dataset_id": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "ordering": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ExperimentListV2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/experiments/v2/re-run/": {
+      "post": {
+        "operationId": "model-hub_experiments_v2_re-run_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/row-diff/": {
+      "post": {
+        "operationId": "model-hub_experiments_v2_row-diff_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/suggest-name/{dataset_id}/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_suggest-name_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/validate-name/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_validate-name_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_experiments_v2_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "model-hub_experiments_v2_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/compare-experiments/": {
+      "post": {
+        "operationId": "model-hub_experiments_v2_compare-experiments_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/comparisons/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_comparisons_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/derived-variables/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_derived-variables_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/download/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_download_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/evaluations/{evaluation_id}/stats/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_evaluations_stats_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/feedback/": {
+      "post": {
+        "operationId": "model-hub_experiments_v2_feedback_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/feedback/get-feedback-details/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_feedback_get-feedback-details_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/feedback/get-template/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_feedback_get-template_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/feedback/submit-feedback/": {
+      "post": {
+        "operationId": "model-hub_experiments_v2_feedback_submit-feedback_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/json-schema/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_json-schema_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/rerun-cells/": {
+      "post": {
+        "operationId": "model-hub_experiments_v2_rerun-cells_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/rows/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_rows_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/rows/{row_id}/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_rows_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/stats/": {
+      "get": {
+        "operationId": "model-hub_experiments_v2_stats_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/v2/{experiment_id}/stop/": {
+      "post": {
+        "operationId": "model-hub_experiments_v2_stop_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/{experiment_id}/": {
+      "get": {
+        "operationId": "model-hub_experiments_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/{experiment_id}/add-eval/": {
+      "post": {
+        "operationId": "model-hub_experiments_add-eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/{experiment_id}/compare-experiments/": {
+      "post": {
+        "operationId": "model-hub_experiments_compare-experiments_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/{experiment_id}/comparisons/": {
+      "get": {
+        "operationId": "model-hub_experiments_comparisons_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/{experiment_id}/download/": {
+      "get": {
+        "operationId": "model-hub_experiments_download_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/{experiment_id}/evaluations/{evaluation_id}/stats/": {
+      "get": {
+        "operationId": "model-hub_experiments_evaluations_stats_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/{experiment_id}/run-evaluations/": {
+      "post": {
+        "operationId": "model-hub_experiments_run-evaluations_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/{experiment_id}/stats/": {
+      "get": {
+        "operationId": "model-hub_experiments_stats_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/experiments/{experiment_id}/{row_id}/": {
+      "get": {
+        "operationId": "model-hub_experiments_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/feedback/": {
+      "get": {
+        "operationId": "model-hub_feedback_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Feedback"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_feedback_create",
+        "requestBody": {
+          "$ref": "#/definitions/Feedback"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/Feedback"
+          }
+        }
+      }
+    },
+    "/model-hub/feedback/get-feedback-details/": {
+      "get": {
+        "operationId": "model-hub_feedback_get_feedback_details",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Feedback"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/feedback/get-feedback-summary/": {
+      "get": {
+        "operationId": "model-hub_feedback_get_feedback_summary",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Feedback"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/feedback/get_template/": {
+      "get": {
+        "operationId": "model-hub_feedback_get_template",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Feedback"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/feedback/submit-feedback/": {
+      "post": {
+        "operationId": "model-hub_feedback_submit_feedback_action",
+        "requestBody": {
+          "$ref": "#/definitions/Feedback"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/Feedback"
+          }
+        }
+      }
+    },
+    "/model-hub/feedback/{id}/": {
+      "get": {
+        "operationId": "model-hub_feedback_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Feedback"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_feedback_update",
+        "requestBody": {
+          "$ref": "#/definitions/Feedback"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Feedback"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_feedback_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/Feedback"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Feedback"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_feedback_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/get-column-values/": {
+      "post": {
+        "operationId": "model-hub_get-column-values_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/get-eval-config": {
+      "get": {
+        "operationId": "model-hub_get-eval-config_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/get-eval-logs": {
+      "get": {
+        "operationId": "model-hub_get-eval-logs_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "model-hub_get-eval-logs_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "model-hub_get-eval-logs_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/get-eval-logs-details": {
+      "get": {
+        "operationId": "model-hub_get-eval-logs-details_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/get-eval-metrics": {
+      "get": {
+        "operationId": "model-hub_get-eval-metrics_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_get-eval-metrics_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/get-eval-template-names": {
+      "post": {
+        "operationId": "model-hub_get-eval-template-names_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/get-eval-templates": {
+      "post": {
+        "operationId": "model-hub_get-eval-templates_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/ground-truth/{ground_truth_id}/": {
+      "delete": {
+        "operationId": "model-hub_ground-truth_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/ground-truth/{ground_truth_id}/data/": {
+      "get": {
+        "operationId": "model-hub_ground-truth_data_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/ground-truth/{ground_truth_id}/embed/": {
+      "post": {
+        "operationId": "model-hub_ground-truth_embed_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/ground-truth/{ground_truth_id}/mapping/": {
+      "put": {
+        "operationId": "model-hub_ground-truth_mapping_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/ground-truth/{ground_truth_id}/role-mapping/": {
+      "put": {
+        "operationId": "model-hub_ground-truth_role-mapping_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/ground-truth/{ground_truth_id}/search/": {
+      "post": {
+        "operationId": "model-hub_ground-truth_search_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/ground-truth/{ground_truth_id}/status/": {
+      "get": {
+        "operationId": "model-hub_ground-truth_status_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/kb/": {
+      "get": {
+        "operationId": "model-hub_kb_list",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_kb_create",
+        "requestBody": {
+          "$ref": "#/definitions/KnowledgeBaseCreate"
+        },
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/kb/supported-embedding-models": {
+      "get": {
+        "operationId": "model-hub_kb_supported_embedding_models",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {}
+      }
+    },
+    "/model-hub/kb/supported_embedding_models/": {
+      "get": {
+        "operationId": "model-hub_kb_supported_embedding_models",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {}
+      }
+    },
+    "/model-hub/kb/{id}/": {
+      "get": {
+        "operationId": "model-hub_kb_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "model-hub_kb_update",
+        "requestBody": {
+          "$ref": "#/definitions/KnowledgeBase"
+        },
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "model-hub_kb_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/KnowledgeBase"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/KnowledgeBase"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_kb_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/knowledge-base/": {
+      "get": {
+        "operationId": "model-hub_knowledge-base_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_knowledge-base_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "model-hub_knowledge-base_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "model-hub_knowledge-base_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/knowledge-base/files/": {
+      "post": {
+        "operationId": "model-hub_knowledge-base_files_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "model-hub_knowledge-base_files_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/knowledge-base/get/": {
+      "get": {
+        "operationId": "model-hub_knowledge-base_get_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/knowledge-base/list/": {
+      "get": {
+        "operationId": "model-hub_knowledge-base_list_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/metrics/by-column/": {
+      "get": {
+        "operationId": "model-hub_metrics_by-column_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimisation/": {
+      "get": {
+        "operationId": "model-hub_optimisation_list",
+        "requestBody": null,
+        "queryParameters": {
+          "optimize_type": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "ordering": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/OptimizationDataset"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/optimisation/create/": {
+      "post": {
+        "operationId": "model-hub_optimisation_create_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "model-hub_optimisation_create_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimisation/update/{id}/": {
+      "post": {
+        "operationId": "model-hub_optimisation_update_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "model-hub_optimisation_update_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimisation/{id}/": {
+      "get": {
+        "operationId": "model-hub_optimisation_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OptimizationDatasetGet"
+          }
+        }
+      }
+    },
+    "/model-hub/optimisation/{id}/details/": {
+      "get": {
+        "operationId": "model-hub_optimisation_details_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OptimizationDetail"
+          }
+        }
+      }
+    },
+    "/model-hub/optimize-dataset/": {
+      "get": {
+        "operationId": "model-hub_optimize-dataset_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/OptimizeDatasetKb"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/optimize-dataset/kb/{optim_id}/": {
+      "get": {
+        "operationId": "model-hub_optimize-dataset_kb_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimize-dataset/knowledge-base/": {
+      "post": {
+        "operationId": "model-hub_optimize-dataset_knowledge-base_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimize-dataset/{model_id}/": {
+      "get": {
+        "operationId": "model-hub_optimize-dataset_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_optimize-dataset_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimize-dataset/{model_id}/column-config/": {
+      "get": {
+        "operationId": "model-hub_optimize-dataset_column-config_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_optimize-dataset_column-config_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimize-dataset/{model_id}/column-config/prompt-template-explore/{optimization_id}/": {
+      "get": {
+        "operationId": "model-hub_optimize-dataset_column-config_prompt-template-explore_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_optimize-dataset_column-config_prompt-template-explore_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimize-dataset/{model_id}/column-config/right-answers/{optimization_id}/": {
+      "get": {
+        "operationId": "model-hub_optimize-dataset_column-config_right-answers_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_optimize-dataset_column-config_right-answers_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimize-dataset/{model_id}/prompt-template-explore/{optimization_id}/": {
+      "post": {
+        "operationId": "model-hub_optimize-dataset_prompt-template-explore_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimize-dataset/{model_id}/prompt-template-result/{optimization_id}/": {
+      "post": {
+        "operationId": "model-hub_optimize-dataset_prompt-template-result_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimize-dataset/{model_id}/right-answers/{optimization_id}/": {
+      "post": {
+        "operationId": "model-hub_optimize-dataset_right-answers_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/optimize-dataset/{model_id}/{optimization_id}/": {
+      "get": {
+        "operationId": "model-hub_optimize-dataset_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/organizations/{organization_id}/users/": {
+      "get": {
+        "operationId": "model-hub_organizations_users_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/DevelopAnnotationsUser"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_organizations_users_create",
+        "requestBody": {
+          "$ref": "#/definitions/DevelopAnnotationsUser"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/DevelopAnnotationsUser"
+          }
+        }
+      }
+    },
+    "/model-hub/organizations/{organization_id}/users/{id}/": {
+      "get": {
+        "operationId": "model-hub_organizations_users_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DevelopAnnotationsUser"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_organizations_users_update",
+        "requestBody": {
+          "$ref": "#/definitions/DevelopAnnotationsUser"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DevelopAnnotationsUser"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_organizations_users_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/DevelopAnnotationsUser"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DevelopAnnotationsUser"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_organizations_users_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/overview/": {
+      "get": {
+        "operationId": "model-hub_overview_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/performance/detail/{id}/": {
+      "post": {
+        "operationId": "model-hub_performance_detail_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/performance/export/{id}/": {
+      "post": {
+        "operationId": "model-hub_performance_export_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/performance/options/{model_id}/": {
+      "get": {
+        "operationId": "model-hub_performance_options_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/performance/report/{model_id}/": {
+      "get": {
+        "operationId": "model-hub_performance_report_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_performance_report_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "model-hub_performance_report_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/performance/report/{model_id}/{report_id}/": {
+      "get": {
+        "operationId": "model-hub_performance_report_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "model-hub_performance_report_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "model-hub_performance_report_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/performance/tag-distribution/{model_id}/": {
+      "post": {
+        "operationId": "model-hub_performance_tag-distribution_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/performance/{id}/": {
+      "post": {
+        "operationId": "model-hub_performance_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt-base-templates/": {
+      "get": {
+        "operationId": "model-hub_prompt-base-templates_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptBaseTemplate"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_prompt-base-templates_create",
+        "requestBody": {
+          "$ref": "#/definitions/PromptBaseTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptBaseTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-base-templates/get-all-categories/": {
+      "get": {
+        "operationId": "model-hub_prompt-base-templates_get_all_categories",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptBaseTemplate"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-base-templates/{id}/": {
+      "get": {
+        "operationId": "model-hub_prompt-base-templates_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptBaseTemplate"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_prompt-base-templates_update",
+        "requestBody": {
+          "$ref": "#/definitions/PromptBaseTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptBaseTemplate"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_prompt-base-templates_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/PromptBaseTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptBaseTemplate"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_prompt-base-templates_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt-executions/": {
+      "get": {
+        "operationId": "model-hub_prompt-executions_list",
+        "requestBody": null,
+        "queryParameters": {
+          "name": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "ordering": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptExecution"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-executions/{id}/": {
+      "get": {
+        "operationId": "model-hub_prompt-executions_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptExecution"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-folders/": {
+      "get": {
+        "operationId": "model-hub_prompt-folders_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptFolder"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_prompt-folders_create",
+        "requestBody": {
+          "$ref": "#/definitions/PromptFolder"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptFolder"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-folders/{id}/": {
+      "get": {
+        "operationId": "model-hub_prompt-folders_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptFolder"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_prompt-folders_update",
+        "requestBody": {
+          "$ref": "#/definitions/PromptFolder"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptFolder"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_prompt-folders_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/PromptFolder"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptFolder"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_prompt-folders_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt-history-executions/": {
+      "get": {
+        "operationId": "model-hub_prompt-history-executions_list",
+        "requestBody": null,
+        "queryParameters": {
+          "template_name": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "template_version": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "ordering": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptHistoryExecution"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-history-executions/execution-details/{execution_id}/": {
+      "get": {
+        "operationId": "model-hub_prompt-history-executions_get_execution_details",
+        "requestBody": null,
+        "queryParameters": {
+          "template_name": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "template_version": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "ordering": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptHistoryExecution"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-history-executions/{id}/": {
+      "get": {
+        "operationId": "model-hub_prompt-history-executions_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptHistoryExecution"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-labels/": {
+      "get": {
+        "operationId": "model-hub_prompt-labels_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptLabel"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_prompt-labels_create",
+        "requestBody": {
+          "$ref": "#/definitions/PromptLabel"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptLabel"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-labels/assign-multiple-labels/": {
+      "post": {
+        "operationId": "model-hub_prompt-labels_assign_multiple_labels",
+        "requestBody": {
+          "$ref": "#/definitions/PromptLabel"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptLabel"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-labels/create-system-labels/": {
+      "post": {
+        "operationId": "model-hub_prompt-labels_create_system_labels",
+        "requestBody": {
+          "$ref": "#/definitions/PromptLabel"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptLabel"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-labels/get-by-name/": {
+      "get": {
+        "operationId": "model-hub_prompt-labels_get_by_name",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptLabel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-labels/remove/": {
+      "post": {
+        "operationId": "model-hub_prompt-labels_remove_label_from_version",
+        "requestBody": {
+          "$ref": "#/definitions/PromptLabel"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptLabel"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-labels/set-default/": {
+      "post": {
+        "operationId": "model-hub_prompt-labels_set_default",
+        "requestBody": {
+          "$ref": "#/definitions/PromptLabel"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptLabel"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-labels/template-labels/": {
+      "get": {
+        "operationId": "model-hub_prompt-labels_template_labels",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptLabel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-labels/{id}/": {
+      "get": {
+        "operationId": "model-hub_prompt-labels_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptLabel"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_prompt-labels_update",
+        "requestBody": {
+          "$ref": "#/definitions/PromptLabel"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptLabel"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_prompt-labels_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/PromptLabel"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptLabel"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_prompt-labels_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt-labels/{template_id}/{label_id}/assign-label-by-id/": {
+      "post": {
+        "operationId": "model-hub_prompt-labels_assign_label_by_id",
+        "requestBody": {
+          "$ref": "#/definitions/PromptLabel"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptLabel"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_list",
+        "requestBody": null,
+        "queryParameters": {
+          "name": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "version": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "ordering": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptTemplate"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_prompt-templates_create",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/analyze-prompt/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_analyze_prompt",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/bulk-delete/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_bulk_delete",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/create-draft/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_create_draft",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/derived-variables/preview/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_derived-variables_preview_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt-templates/generate-prompt/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_generate_prompt",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/generate-variables/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_generate_variables",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/get-template-by-name/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_get_template_by_name",
+        "requestBody": null,
+        "queryParameters": {
+          "name": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "version": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "ordering": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PromptTemplate"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/improve-prompt/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_improve_prompt",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_prompt-templates_update",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_prompt-templates_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_prompt-templates_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt-templates/{id}/add-new-draft/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_add_new_draft",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/all-variables/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_get_all_variables",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/commit/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_commit",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/compare-versions/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_compare_versions",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/delete-evaluation-config/": {
+      "delete": {
+        "operationId": "model-hub_prompt-templates_delete_evaluation_config",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt-templates/{id}/evaluation-configs/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_get_evaluation_configs",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/evaluations/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_retrieve_evaluations",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/get-next-version/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_get_next_version",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/get-run-status/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_get_run_status",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/get-sdk-code/{language}/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_get_sdk_code",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/run-evals-on-multiple-versions/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_run_evals_on_multiple_versions",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/run_template/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_run_template",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/save-name/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_save_name",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/save-prompt-folder/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_save_prompt_folder",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/set_default/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_set_default",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/stop-streaming/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_stop_streaming",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/update-evaluation-configs/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_update_evaluation_configs",
+        "requestBody": {
+          "$ref": "#/definitions/PromptTemplate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{id}/versions/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_versions",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PromptTemplate"
+          }
+        }
+      }
+    },
+    "/model-hub/prompt-templates/{prompt_id}/derived-variables/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_derived-variables_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt-templates/{prompt_id}/derived-variables/extract/": {
+      "post": {
+        "operationId": "model-hub_prompt-templates_derived-variables_extract_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt-templates/{prompt_id}/derived-variables/{column_name}/schema/": {
+      "get": {
+        "operationId": "model-hub_prompt-templates_derived-variables_schema_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt/metrics/": {
+      "get": {
+        "operationId": "model-hub_prompt_metrics_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt/metrics/empty-screen": {
+      "get": {
+        "operationId": "model-hub_prompt_metrics_empty-screen_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/prompt/span-metrics/": {
+      "get": {
+        "operationId": "model-hub_prompt_span-metrics_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/response_schema/": {
+      "get": {
+        "operationId": "model-hub_response_schema_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/UserResponseSchema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_response_schema_create",
+        "requestBody": {
+          "$ref": "#/definitions/UserResponseSchema"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/UserResponseSchema"
+          }
+        }
+      }
+    },
+    "/model-hub/response_schema/{id}/": {
+      "get": {
+        "operationId": "model-hub_response_schema_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserResponseSchema"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_response_schema_update",
+        "requestBody": {
+          "$ref": "#/definitions/UserResponseSchema"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserResponseSchema"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_response_schema_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/UserResponseSchema"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserResponseSchema"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_response_schema_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/run-prompt-for-rows/": {
+      "post": {
+        "operationId": "model-hub_run-prompt-for-rows_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/run-prompt/": {
+      "post": {
+        "operationId": "model-hub_run-prompt_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
       }
     },
     "/model-hub/scores/": {
@@ -2196,6 +11614,2645 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "/model-hub/secrets/": {
+      "get": {
+        "operationId": "model-hub_secrets_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Secret"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_secrets_create",
+        "requestBody": {
+          "$ref": "#/definitions/Secret"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/Secret"
+          }
+        }
+      }
+    },
+    "/model-hub/secrets/{id}/": {
+      "get": {
+        "operationId": "model-hub_secrets_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Secret"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_secrets_update",
+        "requestBody": {
+          "$ref": "#/definitions/Secret"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Secret"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_secrets_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/Secret"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Secret"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_secrets_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/test-evaluation/": {
+      "post": {
+        "operationId": "model-hub_test-evaluation_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/tools/": {
+      "get": {
+        "operationId": "model-hub_tools_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Tools"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_tools_create",
+        "requestBody": {
+          "$ref": "#/definitions/Tools"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/Tools"
+          }
+        }
+      }
+    },
+    "/model-hub/tools/{id}/": {
+      "get": {
+        "operationId": "model-hub_tools_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Tools"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_tools_update",
+        "requestBody": {
+          "$ref": "#/definitions/Tools"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Tools"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_tools_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/Tools"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Tools"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_tools_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/tts-voices/": {
+      "get": {
+        "operationId": "model-hub_tts-voices_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/TTSVoice"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "model-hub_tts-voices_create",
+        "requestBody": {
+          "$ref": "#/definitions/TTSVoice"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/TTSVoice"
+          }
+        }
+      }
+    },
+    "/model-hub/tts-voices/{id}/": {
+      "get": {
+        "operationId": "model-hub_tts-voices_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/TTSVoice"
+          }
+        }
+      },
+      "put": {
+        "operationId": "model-hub_tts-voices_update",
+        "requestBody": {
+          "$ref": "#/definitions/TTSVoice"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/TTSVoice"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "model-hub_tts-voices_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/TTSVoice"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/TTSVoice"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "model-hub_tts-voices_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/update-eval-template/": {
+      "post": {
+        "operationId": "model-hub_update-eval-template_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/model-hub/upload-file/": {
+      "post": {
+        "operationId": "model-hub_upload-file_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/acs/": {
+      "post": {
+        "operationId": "saml2_auth_acs_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/auth/callback/": {
+      "get": {
+        "operationId": "saml2_auth_auth_callback_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/auth/callback{format}": {
+      "get": {
+        "operationId": "saml2_auth_auth_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/github/callback/": {
+      "get": {
+        "operationId": "saml2_auth_github_callback_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/github/callback{format}": {
+      "get": {
+        "operationId": "saml2_auth_github_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/idp-login/": {
+      "get": {
+        "operationId": "saml2_auth_idp-login_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/idp-uploads/": {
+      "get": {
+        "operationId": "saml2_auth_idp-uploads_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/SAML"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "saml2_auth_idp-uploads_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/idp-uploads/{id}/": {
+      "get": {
+        "operationId": "saml2_auth_idp-uploads_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/SAML"
+          }
+        }
+      },
+      "put": {
+        "operationId": "saml2_auth_idp-uploads_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "saml2_auth_idp-uploads_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/login/": {
+      "get": {
+        "operationId": "saml2_auth_login_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/login{format}": {
+      "get": {
+        "operationId": "saml2_auth_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/microsoft/callback/": {
+      "get": {
+        "operationId": "saml2_auth_microsoft_callback_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/saml2_auth/microsoft/callback{format}": {
+      "get": {
+        "operationId": "saml2_auth_microsoft_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/sdk/api/v1/configure-evaluations/": {
+      "post": {
+        "operationId": "sdk_api_v1_configure-evaluations_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/sdk/api/v1/eval/": {
+      "post": {
+        "operationId": "sdk_api_v1_eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/sdk/api/v1/eval/{eval_id}/": {
+      "get": {
+        "operationId": "sdk_api_v1_eval_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/sdk/api/v1/evaluate-pipeline/": {
+      "get": {
+        "operationId": "sdk_api_v1_evaluate-pipeline_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "sdk_api_v1_evaluate-pipeline_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/sdk/api/v1/get-evals/": {
+      "get": {
+        "operationId": "sdk_api_v1_get-evals_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/sdk/api/v1/new-eval/": {
+      "get": {
+        "operationId": "sdk_api_v1_new-eval_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "sdk_api_v1_new-eval_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/sdk/api/v1/simulation/analytics/": {
+      "get": {
+        "operationId": "sdk_api_v1_simulation_analytics_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/sdk/api/v1/simulation/metrics/": {
+      "get": {
+        "operationId": "sdk_api_v1_simulation_metrics_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/sdk/api/v1/simulation/runs/": {
+      "get": {
+        "operationId": "sdk_api_v1_simulation_runs_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/agent-definitions/": {
+      "get": {
+        "operationId": "simulate_agent-definitions_list",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          "agent_type": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "voice",
+                "text"
+              ]
+            }
+          },
+          "agent_definition_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/AgentDefinitionListResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "simulate_agent-definitions_delete",
+        "requestBody": {
+          "$ref": "#/definitions/AgentDefinitionBulkDeleteRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentDefinitionBulkDeleteResponse"
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/create/": {
+      "post": {
+        "operationId": "simulate_agent-definitions_create_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentDefinitionCreateRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentDefinitionCreateResponse"
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/": {
+      "get": {
+        "operationId": "simulate_agent-definitions_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentDefinitionResponse"
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/delete/": {
+      "delete": {
+        "operationId": "simulate_agent-definitions_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentDefinitionDeleteResponse"
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/edit/": {
+      "put": {
+        "operationId": "simulate_agent-definitions_edit_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentDefinitionEditRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentDefinitionEditResponse"
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/versions/": {
+      "get": {
+        "operationId": "simulate_agent-definitions_versions_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/AgentVersionListResponse"
+            }
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/versions/create/": {
+      "post": {
+        "operationId": "simulate_agent-definitions_versions_create_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentVersionCreateRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentVersionCreateResponse"
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/versions/{version_id}/": {
+      "get": {
+        "operationId": "simulate_agent-definitions_versions_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentVersionResponse"
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/versions/{version_id}/activate/": {
+      "post": {
+        "operationId": "simulate_agent-definitions_versions_activate_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentVersionActivateResponse"
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/versions/{version_id}/call-executions/": {
+      "get": {
+        "operationId": "simulate_agent-definitions_versions_call-executions_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/CallExecution"
+            }
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/versions/{version_id}/delete/": {
+      "delete": {
+        "operationId": "simulate_agent-definitions_versions_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentVersionDeleteResponse"
+          }
+        }
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/versions/{version_id}/eval-summary/": {
+      "get": {
+        "operationId": "simulate_agent-definitions_versions_eval-summary_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/agent-definitions/{agent_id}/versions/{version_id}/restore/": {
+      "post": {
+        "operationId": "simulate_agent-definitions_versions_restore_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentVersionRestoreResponse"
+          }
+        }
+      }
+    },
+    "/simulate/api/agent-definition-operations/": {
+      "get": {
+        "operationId": "simulate_api_agent-definition-operations_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentDefinitionResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "simulate_api_agent-definition-operations_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentDefinitionResponse"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentDefinitionResponse"
+          }
+        }
+      }
+    },
+    "/simulate/api/agent-definition-operations/fetch_assistant_from_provider/": {
+      "post": {
+        "operationId": "simulate_api_agent-definition-operations_fetch_assistant_from_provider",
+        "requestBody": {
+          "$ref": "#/definitions/FetchAssistantRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FetchAssistantResponse"
+          }
+        }
+      }
+    },
+    "/simulate/api/agent-definition-operations/{id}/": {
+      "get": {
+        "operationId": "simulate_api_agent-definition-operations_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentDefinitionResponse"
+          }
+        }
+      },
+      "put": {
+        "operationId": "simulate_api_agent-definition-operations_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentDefinitionResponse"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentDefinitionResponse"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "simulate_api_agent-definition-operations_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentDefinitionResponse"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentDefinitionResponse"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "simulate_api_agent-definition-operations_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/agent-prompt-optimiser/": {
+      "get": {
+        "operationId": "simulate_api_agent-prompt-optimiser_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentPromptOptimiserRunList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "simulate_api_agent-prompt-optimiser_create",
+        "requestBody": {
+          "$ref": "#/definitions/AgentPromptOptimiserRunCreate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AgentPromptOptimiserRunCreate"
+          }
+        }
+      }
+    },
+    "/simulate/api/agent-prompt-optimiser/{id}/": {
+      "get": {
+        "operationId": "simulate_api_agent-prompt-optimiser_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentPromptOptimiserRun"
+          }
+        }
+      },
+      "put": {
+        "operationId": "simulate_api_agent-prompt-optimiser_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentPromptOptimiserRun"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentPromptOptimiserRun"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "simulate_api_agent-prompt-optimiser_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/AgentPromptOptimiserRun"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentPromptOptimiserRun"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "simulate_api_agent-prompt-optimiser_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/agent-prompt-optimiser/{id}/graph/": {
+      "get": {
+        "operationId": "simulate_api_agent-prompt-optimiser_graph",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentPromptOptimiserRun"
+          }
+        }
+      }
+    },
+    "/simulate/api/agent-prompt-optimiser/{id}/steps/": {
+      "get": {
+        "operationId": "simulate_api_agent-prompt-optimiser_steps",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentPromptOptimiserRun"
+          }
+        }
+      }
+    },
+    "/simulate/api/agent-prompt-optimiser/{id}/trial/{trial_id}/evaluations/": {
+      "get": {
+        "operationId": "simulate_api_agent-prompt-optimiser_trial_trial_evaluations",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentPromptOptimiserRun"
+          }
+        }
+      }
+    },
+    "/simulate/api/agent-prompt-optimiser/{id}/trial/{trial_id}/prompt/": {
+      "get": {
+        "operationId": "simulate_api_agent-prompt-optimiser_trial_trial_prompt",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentPromptOptimiserRun"
+          }
+        }
+      }
+    },
+    "/simulate/api/agent-prompt-optimiser/{id}/trial/{trial_id}/scenarios/": {
+      "get": {
+        "operationId": "simulate_api_agent-prompt-optimiser_trial_trial_scenarios",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentPromptOptimiserRun"
+          }
+        }
+      }
+    },
+    "/simulate/api/call-executions/": {
+      "get": {
+        "operationId": "simulate_api_call-executions_list",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          "status": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          "test_execution_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/CallExecution"
+            }
+          },
+          "404": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/api/livekit/call-config/{call_id}/": {
+      "get": {
+        "operationId": "simulate_api_livekit_call-config_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/livekit/call-execution/{call_id}/": {
+      "patch": {
+        "operationId": "simulate_api_livekit_call-execution_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/livekit/listener-token/{call_id}/": {
+      "get": {
+        "operationId": "simulate_api_livekit_listener-token_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/livekit/phone-resolution/{phone_number}/": {
+      "get": {
+        "operationId": "simulate_api_livekit_phone-resolution_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/livekit/temporal-signal/": {
+      "post": {
+        "operationId": "simulate_api_livekit_temporal-signal_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/livekit/transcripts/{call_id}/": {
+      "post": {
+        "operationId": "simulate_api_livekit_transcripts_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/livekit/validate-credentials/": {
+      "post": {
+        "operationId": "simulate_api_livekit_validate-credentials_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/livekit/webhook/": {
+      "post": {
+        "operationId": "simulate_api_livekit_webhook_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/personas/": {
+      "get": {
+        "operationId": "simulate_api_personas_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PersonaList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "simulate_api_personas_create",
+        "requestBody": {
+          "$ref": "#/definitions/PersonaCreate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/PersonaCreate"
+          }
+        }
+      }
+    },
+    "/simulate/api/personas/duplicate/{persona_id}/": {
+      "post": {
+        "operationId": "simulate_api_personas_duplicate_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/personas/field-options/": {
+      "get": {
+        "operationId": "simulate_api_personas_field_options",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PersonaFieldOptions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulate/api/personas/system/": {
+      "get": {
+        "operationId": "simulate_api_personas_system_personas",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Persona"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulate/api/personas/workspace/": {
+      "get": {
+        "operationId": "simulate_api_personas_workspace_personas",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Persona"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulate/api/personas/{id}/": {
+      "get": {
+        "operationId": "simulate_api_personas_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Persona"
+          }
+        }
+      },
+      "put": {
+        "operationId": "simulate_api_personas_update",
+        "requestBody": {
+          "$ref": "#/definitions/Persona"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Persona"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "simulate_api_personas_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/Persona"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Persona"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "simulate_api_personas_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/api/personas/{id}/duplicate/": {
+      "post": {
+        "operationId": "simulate_api_personas_duplicate",
+        "requestBody": {
+          "$ref": "#/definitions/Persona"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/Persona"
+          }
+        }
+      }
+    },
+    "/simulate/api/run-tests/": {
+      "get": {
+        "operationId": "simulate_api_run-tests_list",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          "simulation_type": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "agent_definition",
+                "prompt"
+              ],
+              "default": ""
+            }
+          },
+          "prompt_template_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/RunTestResponse"
+            }
+          },
+          "404": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/api/test-executions/": {
+      "get": {
+        "operationId": "simulate_api_test-executions_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/TestExecution"
+            }
+          },
+          "404": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/call-executions/{call_execution_id}/": {
+      "get": {
+        "operationId": "simulate_call-executions_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CallExecutionDetail"
+          },
+          "404": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "simulate_call-executions_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/CallExecutionStatusUpdate"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CallExecution"
+          },
+          "400": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/call-executions/{call_execution_id}/branch-analysis/": {
+      "get": {
+        "operationId": "simulate_call-executions_branch-analysis_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "simulate_call-executions_branch-analysis_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/call-executions/{call_execution_id}/chat/send-message/": {
+      "post": {
+        "operationId": "simulate_call-executions_chat_send-message_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/call-executions/{call_execution_id}/delete/": {
+      "delete": {
+        "operationId": "simulate_call-executions_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "204": {
+            "$ref": "#/definitions/CallExecutionDeleteResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/call-executions/{call_execution_id}/error-localizer-tasks/": {
+      "get": {
+        "operationId": "simulate_call-executions_error-localizer-tasks_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/call-executions/{call_execution_id}/logs/": {
+      "get": {
+        "operationId": "simulate_call-executions_logs_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CallExecutionLogsResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/CallExecutionErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/call-executions/{call_execution_id}/session-comparison/": {
+      "get": {
+        "operationId": "simulate_call-executions_session-comparison_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/call-executions/{call_execution_id}/transcripts/": {
+      "get": {
+        "operationId": "simulate_call-executions_transcripts_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/export/{item_id}/": {
+      "get": {
+        "operationId": "simulate_export_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/prompt-simulations/scenarios/": {
+      "get": {
+        "operationId": "simulate_prompt-simulations_scenarios_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/prompt-templates/{prompt_template_id}/simulations/": {
+      "get": {
+        "operationId": "simulate_prompt-templates_simulations_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "simulate_prompt-templates_simulations_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/prompt-templates/{prompt_template_id}/simulations/{run_test_id}/": {
+      "get": {
+        "operationId": "simulate_prompt-templates_simulations_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "simulate_prompt-templates_simulations_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "simulate_prompt-templates_simulations_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/prompt-templates/{prompt_template_id}/simulations/{run_test_id}/execute/": {
+      "post": {
+        "operationId": "simulate_prompt-templates_simulations_execute_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/": {
+      "get": {
+        "operationId": "simulate_run-tests_list",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          "simulation_type": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "agent_definition",
+                "prompt"
+              ],
+              "default": ""
+            }
+          },
+          "prompt_template_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/RunTestResponse"
+            }
+          },
+          "500": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/active/": {
+      "get": {
+        "operationId": "simulate_run-tests_active_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/create/": {
+      "post": {
+        "operationId": "simulate_run-tests_create_create",
+        "requestBody": {
+          "$ref": "#/definitions/CreateRunTest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/RunTestResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/get-id-by-name/{run_test_name}/": {
+      "get": {
+        "operationId": "simulate_run-tests_get-id-by-name_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/": {
+      "get": {
+        "operationId": "simulate_run-tests_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/RunTestResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "simulate_run-tests_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/UpdateRunTest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/RunTestResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "simulate_run-tests_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/RunTestMessageResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/analytics/": {
+      "get": {
+        "operationId": "simulate_run-tests_analytics_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/call-executions/": {
+      "get": {
+        "operationId": "simulate_run-tests_call-executions_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/chat-execute/": {
+      "post": {
+        "operationId": "simulate_run-tests_chat-execute_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/components/": {
+      "patch": {
+        "operationId": "simulate_run-tests_components_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/delete-test-executions/": {
+      "post": {
+        "operationId": "simulate_run-tests_delete-test-executions_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/delete/": {
+      "delete": {
+        "operationId": "simulate_run-tests_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/eval-configs/": {
+      "post": {
+        "operationId": "simulate_run-tests_eval-configs_create",
+        "requestBody": {
+          "$ref": "#/definitions/AddEvalConfigsRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/AddEvalConfigsResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/eval-configs/{eval_config_id}/": {
+      "delete": {
+        "operationId": "simulate_run-tests_eval-configs_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DeleteEvalConfigResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/eval-configs/{eval_config_id}/get-structure/": {
+      "get": {
+        "operationId": "simulate_run-tests_eval-configs_get-structure_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/eval-configs/{eval_config_id}/update/": {
+      "post": {
+        "operationId": "simulate_run-tests_eval-configs_update_create",
+        "requestBody": {
+          "$ref": "#/definitions/EvalConfigUpdateRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalConfigUpdateResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/eval-summary-comparison/": {
+      "get": {
+        "operationId": "simulate_run-tests_eval-summary-comparison_list",
+        "requestBody": null,
+        "queryParameters": {
+          "execution_ids": {
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalSummaryComparisonResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/eval-summary/": {
+      "get": {
+        "operationId": "simulate_run-tests_eval-summary_list",
+        "requestBody": null,
+        "queryParameters": {
+          "execution_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalSummaryResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/executions/": {
+      "get": {
+        "operationId": "simulate_run-tests_executions_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/TestExecutionItemResponse"
+            }
+          },
+          "404": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/rerun-test-executions/": {
+      "post": {
+        "operationId": "simulate_run-tests_rerun-test-executions_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/run-new-evals/": {
+      "post": {
+        "operationId": "simulate_run-tests_run-new-evals_create",
+        "requestBody": {
+          "$ref": "#/definitions/RunNewEvalsOnTestExecution"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/RunNewEvalsResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/EvalErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/scenarios/": {
+      "get": {
+        "operationId": "simulate_run-tests_scenarios_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/RunTestScenarioItemResponse"
+            }
+          },
+          "404": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/RunTestErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/sdk-code/": {
+      "get": {
+        "operationId": "simulate_run-tests_sdk-code_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/run-tests/{run_test_id}/status/": {
+      "get": {
+        "operationId": "simulate_run-tests_status_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/scenarios/": {
+      "get": {
+        "operationId": "simulate_scenarios_list",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          "agent_definition_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "agent_type": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ScenarioListResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/scenarios/create/": {
+      "post": {
+        "operationId": "simulate_scenarios_create_create",
+        "requestBody": {
+          "$ref": "#/definitions/ScenarioCreateRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "202": {
+            "$ref": "#/definitions/ScenarioCreateResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/scenarios/get-columns/": {
+      "get": {
+        "operationId": "simulate_scenarios_get-columns_list",
+        "requestBody": null,
+        "queryParameters": {
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          "agent_definition_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "agent_type": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ScenarioListResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/scenarios/{scenario_id}/": {
+      "get": {
+        "operationId": "simulate_scenarios_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ScenarioDetailResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/scenarios/{scenario_id}/add-columns/": {
+      "post": {
+        "operationId": "simulate_scenarios_add-columns_create",
+        "requestBody": {
+          "$ref": "#/definitions/ScenarioAddColumnsRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "202": {
+            "$ref": "#/definitions/ScenarioAddColumnsResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/scenarios/{scenario_id}/add-rows/": {
+      "post": {
+        "operationId": "simulate_scenarios_add-rows_create",
+        "requestBody": {
+          "$ref": "#/definitions/ScenarioAddRowsRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "202": {
+            "$ref": "#/definitions/ScenarioAddRowsResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/scenarios/{scenario_id}/delete/": {
+      "delete": {
+        "operationId": "simulate_scenarios_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ScenarioDeleteResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/scenarios/{scenario_id}/edit/": {
+      "put": {
+        "operationId": "simulate_scenarios_edit_update",
+        "requestBody": {
+          "$ref": "#/definitions/ScenarioEditRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ScenarioEditResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/scenarios/{scenario_id}/prompts/": {
+      "put": {
+        "operationId": "simulate_scenarios_prompts_update",
+        "requestBody": {
+          "$ref": "#/definitions/ScenarioEditPromptsRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ScenarioPromptsUpdateResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ScenarioErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/simulator-agents/": {
+      "get": {
+        "operationId": "simulate_simulator-agents_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/simulator-agents/create/": {
+      "post": {
+        "operationId": "simulate_simulator-agents_create_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/simulator-agents/{agent_id}/": {
+      "get": {
+        "operationId": "simulate_simulator-agents_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/simulator-agents/{agent_id}/delete/": {
+      "delete": {
+        "operationId": "simulate_simulator-agents_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/simulator-agents/{agent_id}/edit/": {
+      "put": {
+        "operationId": "simulate_simulator-agents_edit_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/": {
+      "get": {
+        "operationId": "simulate_test-executions_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "object"
+          },
+          "404": {
+            "$ref": "#/definitions/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/analytics/": {
+      "get": {
+        "operationId": "simulate_test-executions_analytics_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/cancel/": {
+      "post": {
+        "operationId": "simulate_test-executions_cancel_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CancelTestExecutionResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/chat/call-executions/batch/": {
+      "post": {
+        "operationId": "simulate_test-executions_chat_call-executions_batch_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/column-order/": {
+      "put": {
+        "operationId": "simulate_test-executions_column-order_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/delete/": {
+      "delete": {
+        "operationId": "simulate_test-executions_delete_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/eval-explanation-summary/": {
+      "get": {
+        "operationId": "simulate_test-executions_eval-explanation-summary_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "object"
+          },
+          "404": {
+            "$ref": "#/definitions/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/eval-explanation-summary/refresh/": {
+      "post": {
+        "operationId": "simulate_test-executions_eval-explanation-summary_refresh_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/kpis/": {
+      "get": {
+        "operationId": "simulate_test-executions_kpis_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "object"
+          },
+          "404": {
+            "$ref": "#/definitions/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/optimiser-analysis/": {
+      "get": {
+        "operationId": "simulate_test-executions_optimiser-analysis_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/optimiser-analysis/refresh/": {
+      "post": {
+        "operationId": "simulate_test-executions_optimiser-analysis_refresh_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/performance-summary/": {
+      "get": {
+        "operationId": "simulate_test-executions_performance-summary_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/PerformanceSummary"
+          },
+          "404": {
+            "$ref": "#/definitions/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/rerun-calls/": {
+      "post": {
+        "operationId": "simulate_test-executions_rerun-calls_create",
+        "requestBody": {
+          "$ref": "#/definitions/CallExecutionRerun"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/RerunCallsResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/simulate/test-executions/{test_execution_id}/transcripts/": {
+      "get": {
+        "operationId": "simulate_test-executions_transcripts_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
     "/tracer/bulk-annotation/": {
       "post": {
         "operationId": "tracer_bulk-annotation_create",
@@ -2214,6 +14271,356 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "$ref": "#/definitions/ApiErrorResponse"
           }
         }
+      }
+    },
+    "/tracer/charts/": {
+      "get": {
+        "operationId": "tracer_charts_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/FetchGraph"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_charts_create",
+        "requestBody": {
+          "$ref": "#/definitions/FetchGraph"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/FetchGraph"
+          }
+        }
+      }
+    },
+    "/tracer/charts/fetch_graph/": {
+      "get": {
+        "operationId": "tracer_charts_fetch_graph",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/FetchGraph"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/charts/{id}/": {
+      "get": {
+        "operationId": "tracer_charts_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FetchGraph"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_charts_update",
+        "requestBody": {
+          "$ref": "#/definitions/FetchGraph"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FetchGraph"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_charts_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/FetchGraph"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FetchGraph"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_charts_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/custom-eval-config/": {
+      "get": {
+        "operationId": "tracer_custom-eval-config_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/CustomEvalConfig"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_custom-eval-config_create",
+        "requestBody": {
+          "$ref": "#/definitions/CustomEvalConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/CustomEvalConfig"
+          }
+        }
+      }
+    },
+    "/tracer/custom-eval-config/check_exists/": {
+      "post": {
+        "operationId": "tracer_custom-eval-config_check_exists",
+        "requestBody": {
+          "$ref": "#/definitions/CustomEvalConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/CustomEvalConfig"
+          }
+        }
+      }
+    },
+    "/tracer/custom-eval-config/get_custom_eval_by_name/": {
+      "post": {
+        "operationId": "tracer_custom-eval-config_get_custom_eval_by_name",
+        "requestBody": {
+          "$ref": "#/definitions/CustomEvalConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/CustomEvalConfig"
+          }
+        }
+      }
+    },
+    "/tracer/custom-eval-config/list_custom_eval_configs/": {
+      "get": {
+        "operationId": "tracer_custom-eval-config_list_custom_eval_configs",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/CustomEvalConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/custom-eval-config/run_evaluation/": {
+      "post": {
+        "operationId": "tracer_custom-eval-config_run_evaluation",
+        "requestBody": {
+          "$ref": "#/definitions/CustomEvalConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/CustomEvalConfig"
+          }
+        }
+      }
+    },
+    "/tracer/custom-eval-config/{id}/": {
+      "get": {
+        "operationId": "tracer_custom-eval-config_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CustomEvalConfig"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_custom-eval-config_update",
+        "requestBody": {
+          "$ref": "#/definitions/CustomEvalConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CustomEvalConfig"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_custom-eval-config_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/CustomEvalConfig"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CustomEvalConfig"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_custom-eval-config_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
       }
     },
     "/tracer/dashboard/": {
@@ -2644,6 +15051,642 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "responses": {}
       }
     },
+    "/tracer/dataset/": {
+      "get": {
+        "operationId": "tracer_dataset_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Dataset"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_dataset_create",
+        "requestBody": {
+          "$ref": "#/definitions/Dataset"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/Dataset"
+          }
+        }
+      }
+    },
+    "/tracer/dataset/add_to_existing_dataset/": {
+      "post": {
+        "operationId": "tracer_dataset_add_to_existing_dataset",
+        "requestBody": {
+          "$ref": "#/definitions/Dataset"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/Dataset"
+          }
+        }
+      }
+    },
+    "/tracer/dataset/add_to_new_dataset/": {
+      "post": {
+        "operationId": "tracer_dataset_add_to_new_dataset",
+        "requestBody": {
+          "$ref": "#/definitions/Dataset"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/Dataset"
+          }
+        }
+      }
+    },
+    "/tracer/dataset/{id}/": {
+      "get": {
+        "operationId": "tracer_dataset_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Dataset"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_dataset_update",
+        "requestBody": {
+          "$ref": "#/definitions/Dataset"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Dataset"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_dataset_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/Dataset"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/Dataset"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_dataset_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/eval-task/": {
+      "get": {
+        "operationId": "tracer_eval-task_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/EvalTask"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_eval-task_create",
+        "requestBody": {
+          "$ref": "#/definitions/EvalTask"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/EvalTask"
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/get_eval_details/": {
+      "get": {
+        "operationId": "tracer_eval-task_get_eval_details",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/EvalTask"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/get_eval_task_logs/": {
+      "get": {
+        "operationId": "tracer_eval-task_get_eval_task_logs",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/EvalTask"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/get_usage/": {
+      "get": {
+        "operationId": "tracer_eval-task_get_usage",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/EvalTask"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/list_eval_tasks/": {
+      "get": {
+        "operationId": "tracer_eval-task_list_eval_tasks",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/EvalTask"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/list_eval_tasks_with_project_name/": {
+      "get": {
+        "operationId": "tracer_eval-task_list_eval_tasks_with_project_name",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/EvalTask"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/mark_eval_tasks_deleted/": {
+      "post": {
+        "operationId": "tracer_eval-task_mark_eval_tasks_deleted",
+        "requestBody": {
+          "$ref": "#/definitions/EvalTask"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/EvalTask"
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/pause_eval_task/": {
+      "post": {
+        "operationId": "tracer_eval-task_pause_eval_task",
+        "requestBody": {
+          "$ref": "#/definitions/EvalTask"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/EvalTask"
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/unpause_eval_task/": {
+      "post": {
+        "operationId": "tracer_eval-task_unpause_eval_task",
+        "requestBody": {
+          "$ref": "#/definitions/EvalTask"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/EvalTask"
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/update_eval_task/": {
+      "patch": {
+        "operationId": "tracer_eval-task_update_eval_task",
+        "requestBody": {
+          "$ref": "#/definitions/EvalTask"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalTask"
+          }
+        }
+      }
+    },
+    "/tracer/eval-task/{id}/": {
+      "get": {
+        "operationId": "tracer_eval-task_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalTask"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_eval-task_update",
+        "requestBody": {
+          "$ref": "#/definitions/EvalTask"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalTask"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_eval-task_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/EvalTask"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EvalTask"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_eval-task_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/integrations/linear/teams/": {
+      "get": {
+        "operationId": "tracer_feed_integrations_linear_teams_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/": {
+      "get": {
+        "operationId": "tracer_feed_issues_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/stats/": {
+      "get": {
+        "operationId": "tracer_feed_issues_stats_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/{cluster_id}/": {
+      "get": {
+        "operationId": "tracer_feed_issues_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "tracer_feed_issues_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/{cluster_id}/create-linear-issue/": {
+      "post": {
+        "operationId": "tracer_feed_issues_create-linear-issue_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/{cluster_id}/deep-analysis/": {
+      "post": {
+        "operationId": "tracer_feed_issues_deep-analysis_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/{cluster_id}/overview/": {
+      "get": {
+        "operationId": "tracer_feed_issues_overview_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/{cluster_id}/root-cause/": {
+      "get": {
+        "operationId": "tracer_feed_issues_root-cause_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/{cluster_id}/sidebar/": {
+      "get": {
+        "operationId": "tracer_feed_issues_sidebar_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/{cluster_id}/traces/": {
+      "get": {
+        "operationId": "tracer_feed_issues_traces_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/feed/issues/{cluster_id}/trends/": {
+      "get": {
+        "operationId": "tracer_feed_issues_trends_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
     "/tracer/get-annotation-labels/": {
       "get": {
         "operationId": "tracer_get-annotation-labels_list",
@@ -2660,6 +15703,152 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "$ref": "#/definitions/ApiErrorResponse"
           }
         }
+      }
+    },
+    "/tracer/imagine-analysis/": {
+      "get": {
+        "operationId": "tracer_imagine-analysis_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "tracer_imagine-analysis_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/observability-provider/": {
+      "get": {
+        "operationId": "tracer_observability-provider_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ObservabilityProvider"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_observability-provider_create",
+        "requestBody": {
+          "$ref": "#/definitions/ObservabilityProvider"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ObservabilityProvider"
+          }
+        }
+      }
+    },
+    "/tracer/observability-provider/verify_api_key/": {
+      "post": {
+        "operationId": "tracer_observability-provider_verify_api_key",
+        "requestBody": {
+          "$ref": "#/definitions/ObservabilityProvider"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ObservabilityProvider"
+          }
+        }
+      }
+    },
+    "/tracer/observability-provider/verify_assistant_id/": {
+      "post": {
+        "operationId": "tracer_observability-provider_verify_assistant_id",
+        "requestBody": {
+          "$ref": "#/definitions/ObservabilityProvider"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ObservabilityProvider"
+          }
+        }
+      }
+    },
+    "/tracer/observability-provider/{id}/": {
+      "get": {
+        "operationId": "tracer_observability-provider_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ObservabilityProvider"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_observability-provider_update",
+        "requestBody": {
+          "$ref": "#/definitions/ObservabilityProvider"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ObservabilityProvider"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_observability-provider_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/ObservabilityProvider"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ObservabilityProvider"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_observability-provider_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
       }
     },
     "/tracer/observation-span/": {
@@ -3422,6 +16611,76 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "responses": {}
       }
     },
+    "/tracer/otlp/v1/traces": {
+      "post": {
+        "operationId": "tracer_otlp_v1_traces_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/project-version/": {
+      "get": {
+        "operationId": "tracer_project-version_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ProjectVersion"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_project-version_create",
+        "requestBody": {
+          "$ref": "#/definitions/ProjectVersion"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ProjectVersion"
+          }
+        }
+      }
+    },
     "/tracer/project-version/add_annotations/": {
       "post": {
         "operationId": "tracer_project-version_add_annotations",
@@ -3434,6 +16693,254 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "$ref": "#/definitions/ProjectVersion"
           }
         }
+      }
+    },
+    "/tracer/project-version/delete_runs/": {
+      "post": {
+        "operationId": "tracer_project-version_delete_runs",
+        "requestBody": {
+          "$ref": "#/definitions/ProjectVersion"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ProjectVersion"
+          }
+        }
+      }
+    },
+    "/tracer/project-version/get_export_data/": {
+      "post": {
+        "operationId": "tracer_project-version_get_export_data",
+        "requestBody": {
+          "$ref": "#/definitions/ProjectVersion"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ProjectVersion"
+          }
+        }
+      }
+    },
+    "/tracer/project-version/get_project_version_ids/": {
+      "get": {
+        "operationId": "tracer_project-version_get_project_version_ids",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ProjectVersion"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/project-version/get_run_insights/": {
+      "get": {
+        "operationId": "tracer_project-version_get_run_insights",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ProjectVersion"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/project-version/list_runs/": {
+      "get": {
+        "operationId": "tracer_project-version_list_runs",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ProjectVersion"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/project-version/project_version_winner/": {
+      "post": {
+        "operationId": "tracer_project-version_project_version_winner",
+        "requestBody": {
+          "$ref": "#/definitions/ProjectVersion"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ProjectVersion"
+          }
+        }
+      }
+    },
+    "/tracer/project-version/update_project_version_config/": {
+      "post": {
+        "operationId": "tracer_project-version_update_project_version_config",
+        "requestBody": {
+          "$ref": "#/definitions/ProjectVersion"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/ProjectVersion"
+          }
+        }
+      }
+    },
+    "/tracer/project-version/{id}/": {
+      "get": {
+        "operationId": "tracer_project-version_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ProjectVersion"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_project-version_update",
+        "requestBody": {
+          "$ref": "#/definitions/ProjectVersion"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ProjectVersion"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_project-version_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/ProjectVersion"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ProjectVersion"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_project-version_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
       }
     },
     "/tracer/project/": {
@@ -3888,6 +17395,340 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "/tracer/replay-session/": {
+      "get": {
+        "operationId": "tracer_replay-session_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ReplaySessionList"
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_replay-session_create",
+        "requestBody": {
+          "$ref": "#/definitions/CreateReplaySession"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/CreateReplaySession"
+          }
+        }
+      }
+    },
+    "/tracer/replay-session/eval-configs/": {
+      "get": {
+        "operationId": "tracer_replay-session_get_eval_configs",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ReplaySession"
+            }
+          }
+        }
+      }
+    },
+    "/tracer/replay-session/{id}/": {
+      "get": {
+        "operationId": "tracer_replay-session_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ReplaySession"
+          }
+        }
+      }
+    },
+    "/tracer/replay-session/{id}/generate-scenario/": {
+      "post": {
+        "operationId": "tracer_replay-session_generate_scenario",
+        "requestBody": {
+          "$ref": "#/definitions/GenerateScenario"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/GenerateScenario"
+          }
+        }
+      }
+    },
+    "/tracer/saved-views/": {
+      "get": {
+        "operationId": "tracer_saved-views_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/SavedViewList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_saved-views_create",
+        "requestBody": {
+          "$ref": "#/definitions/SavedViewList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/SavedViewList"
+          }
+        }
+      }
+    },
+    "/tracer/saved-views/reorder/": {
+      "post": {
+        "operationId": "tracer_saved-views_reorder",
+        "requestBody": {
+          "$ref": "#/definitions/SavedViewList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/SavedViewList"
+          }
+        }
+      }
+    },
+    "/tracer/saved-views/{id}/": {
+      "get": {
+        "operationId": "tracer_saved-views_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/SavedViewDetail"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_saved-views_update",
+        "requestBody": {
+          "$ref": "#/definitions/SavedViewList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/SavedViewList"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_saved-views_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/SavedViewList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/SavedViewList"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_saved-views_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/saved-views/{id}/duplicate/": {
+      "post": {
+        "operationId": "tracer_saved-views_duplicate",
+        "requestBody": {
+          "$ref": "#/definitions/SavedViewList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/SavedViewList"
+          }
+        }
+      }
+    },
+    "/tracer/shared-links/": {
+      "get": {
+        "operationId": "tracer_shared-links_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/SharedLinkList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_shared-links_create",
+        "requestBody": {
+          "$ref": "#/definitions/SharedLinkList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/SharedLinkList"
+          }
+        }
+      }
+    },
+    "/tracer/shared-links/{id}/": {
+      "get": {
+        "operationId": "tracer_shared-links_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/SharedLinkDetail"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_shared-links_update",
+        "requestBody": {
+          "$ref": "#/definitions/SharedLinkList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/SharedLinkList"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_shared-links_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/SharedLinkList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/SharedLinkList"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_shared-links_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/shared-links/{id}/access/": {
+      "post": {
+        "operationId": "tracer_shared-links_add_access",
+        "requestBody": {
+          "$ref": "#/definitions/SharedLinkList"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/SharedLinkList"
+          }
+        }
+      }
+    },
+    "/tracer/shared-links/{id}/access/{access_id}/": {
+      "delete": {
+        "operationId": "tracer_shared-links_remove_access",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/shared/{token}/": {
+      "get": {
+        "operationId": "tracer_shared_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
     "/tracer/trace-annotation/": {
       "get": {
         "operationId": "tracer_trace-annotation_list",
@@ -4037,6 +17878,28 @@ export const OPENAPI_CONTRACT = Object.freeze({
       },
       "delete": {
         "operationId": "tracer_trace-annotation_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/trace-error-analysis/{trace_id}/": {
+      "get": {
+        "operationId": "tracer_trace-error-analysis_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/trace-error-task/{project_id}/": {
+      "get": {
+        "operationId": "tracer_trace-error-task_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "tracer_trace-error-task_create",
         "requestBody": null,
         "queryParameters": {},
         "responses": {}
@@ -4982,6 +18845,392 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "/tracer/user-alert-logs/": {
+      "get": {
+        "operationId": "tracer_user-alert-logs_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/UserAlertMonitorLog"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_user-alert-logs_create",
+        "requestBody": {
+          "$ref": "#/definitions/UserAlertMonitorLog"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/UserAlertMonitorLog"
+          }
+        }
+      }
+    },
+    "/tracer/user-alert-logs/all/": {
+      "get": {
+        "operationId": "tracer_user-alert-logs_list_all",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/UserAlertMonitorLog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/user-alert-logs/resolve/": {
+      "post": {
+        "operationId": "tracer_user-alert-logs_mark_as_resolved",
+        "requestBody": {
+          "$ref": "#/definitions/UserAlertMonitorLog"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/UserAlertMonitorLog"
+          }
+        }
+      }
+    },
+    "/tracer/user-alert-logs/{id}/": {
+      "get": {
+        "operationId": "tracer_user-alert-logs_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserAlertMonitorLog"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_user-alert-logs_update",
+        "requestBody": {
+          "$ref": "#/definitions/UserAlertMonitorLog"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserAlertMonitorLog"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_user-alert-logs_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/UserAlertMonitorLog"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserAlertMonitorLog"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_user-alert-logs_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/user-alert-logs/{id}/list/": {
+      "get": {
+        "operationId": "tracer_user-alert-logs_list_for_alert",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserAlertMonitorLog"
+          }
+        }
+      }
+    },
+    "/tracer/user-alerts/": {
+      "get": {
+        "operationId": "tracer_user-alerts_list",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/UserAlertMonitor"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "tracer_user-alerts_create",
+        "requestBody": {
+          "$ref": "#/definitions/UserAlertMonitor"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/UserAlertMonitor"
+          }
+        }
+      }
+    },
+    "/tracer/user-alerts/bulk-mute/": {
+      "post": {
+        "operationId": "tracer_user-alerts_bulk_mute",
+        "requestBody": {
+          "$ref": "#/definitions/UserAlertMonitor"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/UserAlertMonitor"
+          }
+        }
+      }
+    },
+    "/tracer/user-alerts/list_monitors/": {
+      "get": {
+        "operationId": "tracer_user-alerts_list_monitors",
+        "requestBody": null,
+        "queryParameters": {
+          "page": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "required": [
+              "count",
+              "results"
+            ],
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "next": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "previous": {
+                "type": "string",
+                "format": "uri",
+                "x-nullable": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/UserAlertMonitor"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracer/user-alerts/preview-graph/": {
+      "post": {
+        "operationId": "tracer_user-alerts_preview_graph",
+        "requestBody": {
+          "$ref": "#/definitions/UserAlertMonitor"
+        },
+        "queryParameters": {},
+        "responses": {
+          "201": {
+            "$ref": "#/definitions/UserAlertMonitor"
+          }
+        }
+      }
+    },
+    "/tracer/user-alerts/{id}/": {
+      "get": {
+        "operationId": "tracer_user-alerts_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserAlertMonitor"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tracer_user-alerts_update",
+        "requestBody": {
+          "$ref": "#/definitions/UserAlertMonitor"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserAlertMonitor"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tracer_user-alerts_partial_update",
+        "requestBody": {
+          "$ref": "#/definitions/UserAlertMonitor"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserAlertMonitor"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tracer_user-alerts_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/user-alerts/{id}/details/": {
+      "get": {
+        "operationId": "tracer_user-alerts_monitor_details",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserAlertMonitor"
+          }
+        }
+      }
+    },
+    "/tracer/user-alerts/{id}/graph/": {
+      "get": {
+        "operationId": "tracer_user-alerts_graph_data",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/UserAlertMonitor"
+          }
+        }
+      }
+    },
     "/tracer/users/": {
       "get": {
         "operationId": "tracer_users_list",
@@ -5060,6 +19309,842 @@ export const OPENAPI_CONTRACT = Object.freeze({
           }
         }
       }
+    },
+    "/tracer/v1/health": {
+      "get": {
+        "operationId": "tracer_v1_health_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/v1/traces": {
+      "post": {
+        "operationId": "tracer_v1_traces_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/v1/traces/": {
+      "post": {
+        "operationId": "tracer_v1_traces_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/tracer/webhook/": {
+      "post": {
+        "operationId": "tracer_webhook_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/admin/custom-plan/": {
+      "get": {
+        "operationId": "usage_admin_custom-plan_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_admin_custom-plan_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "usage_admin_custom-plan_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/admin/entitlements/": {
+      "get": {
+        "operationId": "usage_admin_entitlements_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_admin_entitlements_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_admin_entitlements_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/admin/invoice/generate/": {
+      "post": {
+        "operationId": "usage_admin_invoice_generate_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/admin/invoice/preview/": {
+      "post": {
+        "operationId": "usage_admin_invoice_preview_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/admin/pricing/": {
+      "get": {
+        "operationId": "usage_admin_pricing_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_admin_pricing_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_admin_pricing_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/api-call-count/": {
+      "get": {
+        "operationId": "usage_api-call-count_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/api-call-type/": {
+      "get": {
+        "operationId": "usage_api-call-type_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/cancel-subscription/": {
+      "post": {
+        "operationId": "usage_cancel-subscription_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/create-auto-recharge-session/": {
+      "post": {
+        "operationId": "usage_create-auto-recharge-session_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/create-billing-portal-session/": {
+      "post": {
+        "operationId": "usage_create-billing-portal-session_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/create-checkout-session/": {
+      "post": {
+        "operationId": "usage_create-checkout-session_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/create-custom-payment-checkout-session/": {
+      "post": {
+        "operationId": "usage_create-custom-payment-checkout-session_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/download-invoice/": {
+      "post": {
+        "operationId": "usage_download-invoice_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/ee/licenses/": {
+      "get": {
+        "operationId": "usage_ee_licenses_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EELicenseListResponse"
+          }
+        }
+      },
+      "post": {
+        "operationId": "usage_ee_licenses_create",
+        "requestBody": {
+          "$ref": "#/definitions/EELicenseCreateRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EELicenseCreateResponse"
+          }
+        }
+      }
+    },
+    "/usage/ee/licenses/{grant_id}/revoke/": {
+      "post": {
+        "operationId": "usage_ee_licenses_revoke_create",
+        "requestBody": {
+          "$ref": "#/definitions/EELicenseRevokeRequest"
+        },
+        "queryParameters": {},
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EELicenseRevokeResponse"
+          }
+        }
+      }
+    },
+    "/usage/get-auto-reload-settings/": {
+      "get": {
+        "operationId": "usage_get-auto-reload-settings_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/get-billing-details/": {
+      "get": {
+        "operationId": "usage_get-billing-details_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/get-customer-invoices/": {
+      "get": {
+        "operationId": "usage_get-customer-invoices_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/get-last-four-digits/": {
+      "get": {
+        "operationId": "usage_get-last-four-digits_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/get-wallet-balance/": {
+      "get": {
+        "operationId": "usage_get-wallet-balance_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/get_latest_prices/": {
+      "get": {
+        "operationId": "usage_get_latest_prices_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/organization-billing/": {
+      "get": {
+        "operationId": "usage_organization-billing_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_organization-billing_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/organization-billing/{billing_id}/": {
+      "get": {
+        "operationId": "usage_organization-billing_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_organization-billing_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/organization-filter/": {
+      "get": {
+        "operationId": "usage_organization-filter_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/organization-subscription/": {
+      "get": {
+        "operationId": "usage_organization-subscription_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_organization-subscription_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_organization-subscription_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_organization-subscription_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/organization-subscription/{organization_subscription_id}/": {
+      "get": {
+        "operationId": "usage_organization-subscription_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_organization-subscription_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_organization-subscription_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_organization-subscription_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/organizations/": {
+      "get": {
+        "operationId": "usage_organizations_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/pricing-card-details/": {
+      "post": {
+        "operationId": "usage_pricing-card-details_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/pricing/": {
+      "get": {
+        "operationId": "usage_pricing_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_pricing_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_pricing_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_pricing_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/pricing/{pricing_id}/": {
+      "get": {
+        "operationId": "usage_pricing_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_pricing_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_pricing_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_pricing_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/rate-limits/": {
+      "get": {
+        "operationId": "usage_rate-limits_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_rate-limits_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_rate-limits_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_rate-limits_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/rate-limits/{rate_limit_id}/": {
+      "get": {
+        "operationId": "usage_rate-limits_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_rate-limits_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_rate-limits_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_rate-limits_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/resource-limits/": {
+      "get": {
+        "operationId": "usage_resource-limits_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_resource-limits_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_resource-limits_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_resource-limits_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/resource-limits/{resource_limit_id}/": {
+      "get": {
+        "operationId": "usage_resource-limits_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_resource-limits_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_resource-limits_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_resource-limits_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/resource-type/": {
+      "get": {
+        "operationId": "usage_resource-type_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/subscription-plans/": {
+      "get": {
+        "operationId": "usage_subscription-plans_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/subscription-status/": {
+      "get": {
+        "operationId": "usage_subscription-status_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/subscription-tier/": {
+      "get": {
+        "operationId": "usage_subscription-tier_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_subscription-tier_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_subscription-tier_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_subscription-tier_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/subscription-tier/{subscription_id}/": {
+      "get": {
+        "operationId": "usage_subscription-tier_read",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_subscription-tier_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "usage_subscription-tier_partial_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_subscription-tier_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/update-auto-reload-settings/": {
+      "post": {
+        "operationId": "usage_update-auto-reload-settings_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/update-billing-details/": {
+      "post": {
+        "operationId": "usage_update-billing-details_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/usage-summary/": {
+      "get": {
+        "operationId": "usage_usage-summary_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/add-addon/": {
+      "post": {
+        "operationId": "usage_v2_add-addon_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "usage_v2_add-addon_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_v2_add-addon_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/addon/": {
+      "post": {
+        "operationId": "usage_v2_addon_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "usage_v2_addon_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_v2_addon_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/downgrade-to-free/": {
+      "post": {
+        "operationId": "usage_v2_downgrade-to-free_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/payment-methods/": {
+      "get": {
+        "operationId": "usage_v2_payment-methods_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_v2_payment-methods_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "usage_v2_payment-methods_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/payment-methods/setup-intent/": {
+      "get": {
+        "operationId": "usage_v2_payment-methods_setup-intent_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "post": {
+        "operationId": "usage_v2_payment-methods_setup-intent_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "usage_v2_payment-methods_setup-intent_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/payment-methods/{pm_id}/": {
+      "post": {
+        "operationId": "usage_v2_payment-methods_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_v2_payment-methods_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/payment-methods/{pm_id}/default/": {
+      "post": {
+        "operationId": "usage_v2_payment-methods_default_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_v2_payment-methods_default_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/reinstate-addon/": {
+      "post": {
+        "operationId": "usage_v2_reinstate-addon_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "usage_v2_reinstate-addon_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_v2_reinstate-addon_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/remove-addon/": {
+      "post": {
+        "operationId": "usage_v2_remove-addon_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "usage_v2_remove-addon_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "usage_v2_remove-addon_delete",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/stripe-webhook/": {
+      "post": {
+        "operationId": "usage_v2_stripe-webhook_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/v2/upgrade-to-payg/": {
+      "post": {
+        "operationId": "usage_v2_upgrade-to-payg_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      },
+      "put": {
+        "operationId": "usage_v2_upgrade-to-payg_update",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/webhook/": {
+      "post": {
+        "operationId": "usage_webhook_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/workspace-eval-summary/": {
+      "get": {
+        "operationId": "usage_workspace-eval-summary_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/usage/workspace-usage-summary/": {
+      "get": {
+        "operationId": "usage_workspace-usage-summary_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "operationId": "v1_health_list",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
+    },
+    "/v1/traces/": {
+      "post": {
+        "operationId": "v1_traces_create",
+        "requestBody": null,
+        "queryParameters": {},
+        "responses": {}
+      }
     }
   },
   "definitions": {
@@ -5130,6 +20215,56 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "AddEvalConfigsRequest": {
+      "required": [
+        "evaluations_config"
+      ],
+      "type": "object",
+      "properties": {
+        "evaluations_config": {
+          "description": "Array of evaluation configuration objects to add. At least one required.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EvalConfigDefinition"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "AddEvalConfigsResponse": {
+      "required": [
+        "message",
+        "created_eval_configs",
+        "run_test_id"
+      ],
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "created_eval_configs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EvalConfigResponse"
+          }
+        },
+        "run_test_id": {
+          "title": "Run test id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "warnings": {
+          "description": "Non-fatal issues encountered while processing individual configs.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "AddItems": {
       "type": "object",
       "properties": {
@@ -5173,6 +20308,2934 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "notes": {
           "title": "Notes",
           "type": "string"
+        }
+      }
+    },
+    "AgentDefinitionBulkDeleteRequest": {
+      "required": [
+        "agent_ids"
+      ],
+      "type": "object",
+      "properties": {
+        "agent_ids": {
+          "description": "List of agent definition UUIDs to delete.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "AgentDefinitionBulkDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agents_updated": {
+          "title": "Agents updated",
+          "type": "integer",
+          "readOnly": true
+        },
+        "versions_updated": {
+          "title": "Versions updated",
+          "type": "integer",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentDefinitionCreateRequest": {
+      "required": [
+        "agent_name",
+        "agent_type",
+        "commit_message"
+      ],
+      "type": "object",
+      "properties": {
+        "agent_name": {
+          "title": "Agent name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "description": "The type of agent. One of: voice, text.",
+          "type": "string",
+          "enum": [
+            "voice",
+            "text"
+          ]
+        },
+        "commit_message": {
+          "title": "Commit message",
+          "type": "string",
+          "minLength": 1
+        },
+        "inbound": {
+          "title": "Inbound",
+          "type": "boolean",
+          "default": true
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "default": ""
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "x-nullable": true
+        },
+        "api_key": {
+          "title": "Api key",
+          "type": "string",
+          "x-nullable": true
+        },
+        "assistant_id": {
+          "title": "Assistant id",
+          "type": "string",
+          "x-nullable": true
+        },
+        "authentication_method": {
+          "title": "Authentication method",
+          "type": "string",
+          "enum": [
+            "api_key"
+          ],
+          "x-nullable": true
+        },
+        "language": {
+          "title": "Language",
+          "type": "string",
+          "x-nullable": true
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "x-nullable": true
+        },
+        "contact_number": {
+          "title": "Contact number",
+          "type": "string",
+          "x-nullable": true
+        },
+        "knowledge_base": {
+          "title": "Knowledge base",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "observability_enabled": {
+          "title": "Observability enabled",
+          "type": "boolean",
+          "default": false
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "x-nullable": true
+        },
+        "model_details": {
+          "title": "Model details",
+          "type": "object",
+          "x-nullable": true
+        },
+        "websocket_url": {
+          "title": "Websocket url",
+          "type": "string",
+          "format": "uri",
+          "x-nullable": true
+        },
+        "websocket_headers": {
+          "title": "Websocket headers",
+          "type": "object",
+          "x-nullable": true
+        },
+        "replay_session_id": {
+          "title": "Replay session id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "livekit_url": {
+          "title": "Livekit url",
+          "type": "string",
+          "maxLength": 500,
+          "x-nullable": true
+        },
+        "livekit_api_key": {
+          "title": "Livekit api key",
+          "type": "string",
+          "x-nullable": true
+        },
+        "livekit_api_secret": {
+          "title": "Livekit api secret",
+          "type": "string",
+          "x-nullable": true
+        },
+        "livekit_agent_name": {
+          "title": "Livekit agent name",
+          "type": "string",
+          "x-nullable": true
+        },
+        "livekit_config_json": {
+          "title": "Livekit config json",
+          "type": "object",
+          "x-nullable": true
+        },
+        "livekit_max_concurrency": {
+          "title": "Livekit max concurrency",
+          "type": "integer",
+          "minimum": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "AgentDefinitionCreateResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agent": {
+          "$ref": "#/definitions/AgentDefinitionResponse"
+        }
+      }
+    },
+    "AgentDefinitionDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        }
+      }
+    },
+    "AgentDefinitionEditRequest": {
+      "type": "object",
+      "properties": {
+        "agent_name": {
+          "title": "Agent name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "type": "string",
+          "enum": [
+            "voice",
+            "text"
+          ]
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "x-nullable": true
+        },
+        "api_key": {
+          "title": "Api key",
+          "type": "string",
+          "x-nullable": true
+        },
+        "assistant_id": {
+          "title": "Assistant id",
+          "type": "string",
+          "x-nullable": true
+        },
+        "authentication_method": {
+          "title": "Authentication method",
+          "type": "string",
+          "enum": [
+            "api_key"
+          ],
+          "x-nullable": true
+        },
+        "language": {
+          "title": "Language",
+          "type": "string",
+          "x-nullable": true
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "x-nullable": true
+        },
+        "contact_number": {
+          "title": "Contact number",
+          "type": "string",
+          "x-nullable": true
+        },
+        "inbound": {
+          "title": "Inbound",
+          "type": "boolean"
+        },
+        "knowledge_base": {
+          "title": "Knowledge base",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "x-nullable": true
+        },
+        "model_details": {
+          "title": "Model details",
+          "type": "object",
+          "x-nullable": true
+        },
+        "websocket_url": {
+          "title": "Websocket url",
+          "type": "string",
+          "format": "uri",
+          "x-nullable": true
+        },
+        "websocket_headers": {
+          "title": "Websocket headers",
+          "type": "object",
+          "x-nullable": true
+        },
+        "livekit_url": {
+          "title": "Livekit url",
+          "type": "string",
+          "maxLength": 500,
+          "x-nullable": true
+        },
+        "livekit_api_key": {
+          "title": "Livekit api key",
+          "type": "string",
+          "x-nullable": true
+        },
+        "livekit_api_secret": {
+          "title": "Livekit api secret",
+          "type": "string",
+          "x-nullable": true
+        },
+        "livekit_agent_name": {
+          "title": "Livekit agent name",
+          "type": "string",
+          "x-nullable": true
+        },
+        "livekit_config_json": {
+          "title": "Livekit config json",
+          "type": "object",
+          "x-nullable": true
+        },
+        "livekit_max_concurrency": {
+          "title": "Livekit max concurrency",
+          "type": "integer",
+          "minimum": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "AgentDefinitionEditResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agent": {
+          "$ref": "#/definitions/AgentDefinitionResponse"
+        }
+      }
+    },
+    "AgentDefinitionListResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "agent_name": {
+          "title": "Agent name",
+          "description": "Name of the AI agent",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "type": "string",
+          "enum": [
+            "voice",
+            "text"
+          ],
+          "readOnly": true
+        },
+        "contact_number": {
+          "title": "Contact number",
+          "description": "Phone number associated with the AI agent",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "inbound": {
+          "title": "Inbound",
+          "description": "Whether the agent handles inbound calls",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Detailed description of the AI agent's purpose and capabilities",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "assistant_id": {
+          "title": "Assistant id",
+          "description": "External identifier for the assistant",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "provider": {
+          "title": "Provider",
+          "description": "Provider of the AI agent",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "language": {
+          "title": "Language",
+          "description": "Language of the agent",
+          "type": "string",
+          "enum": [
+            "ar",
+            "bg",
+            "zh",
+            "cs",
+            "da",
+            "nl",
+            "en",
+            "fi",
+            "fr",
+            "de",
+            "el",
+            "hi",
+            "hu",
+            "id",
+            "it",
+            "ja",
+            "ko",
+            "ms",
+            "no",
+            "pl",
+            "pt",
+            "ro",
+            "ru",
+            "sk",
+            "es",
+            "sv",
+            "tr",
+            "uk",
+            "vi"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "title": "Languages",
+            "description": "Language of the agent",
+            "type": "string",
+            "enum": [
+              "ar",
+              "bg",
+              "zh",
+              "cs",
+              "da",
+              "nl",
+              "en",
+              "fi",
+              "fr",
+              "de",
+              "el",
+              "hi",
+              "hu",
+              "id",
+              "it",
+              "ja",
+              "ko",
+              "ms",
+              "no",
+              "pl",
+              "pt",
+              "ro",
+              "ru",
+              "sk",
+              "es",
+              "sv",
+              "tr",
+              "uk",
+              "vi"
+            ]
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "websocket_url": {
+          "title": "Websocket url",
+          "description": "WebSocket URL for real-time communication with the agent",
+          "type": "string",
+          "format": "uri",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "websocket_headers": {
+          "title": "Websocket headers",
+          "description": "Headers to be sent to the websocket server",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "knowledge_base": {
+          "title": "Knowledge base",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "organization": {
+          "title": "Organization",
+          "description": "Organization this agent definition belongs to",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "latest_version": {
+          "title": "Latest version",
+          "type": "string",
+          "readOnly": true
+        },
+        "latest_version_id": {
+          "title": "Latest version id",
+          "type": "string",
+          "readOnly": true
+        },
+        "model_details": {
+          "title": "Model details",
+          "description": "Details of the model",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "model": {
+          "title": "Model",
+          "description": "Model of the agent",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "AgentDefinitionResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "agent_name": {
+          "title": "Agent name",
+          "description": "Name of the AI agent",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "type": "string",
+          "enum": [
+            "voice",
+            "text"
+          ],
+          "readOnly": true
+        },
+        "contact_number": {
+          "title": "Contact number",
+          "description": "Phone number associated with the AI agent",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "inbound": {
+          "title": "Inbound",
+          "description": "Whether the agent handles inbound calls",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Detailed description of the AI agent's purpose and capabilities",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "assistant_id": {
+          "title": "Assistant id",
+          "description": "External identifier for the assistant",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "provider": {
+          "title": "Provider",
+          "description": "Provider of the AI agent",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "language": {
+          "title": "Language",
+          "description": "Language of the agent",
+          "type": "string",
+          "enum": [
+            "ar",
+            "bg",
+            "zh",
+            "cs",
+            "da",
+            "nl",
+            "en",
+            "fi",
+            "fr",
+            "de",
+            "el",
+            "hi",
+            "hu",
+            "id",
+            "it",
+            "ja",
+            "ko",
+            "ms",
+            "no",
+            "pl",
+            "pt",
+            "ro",
+            "ru",
+            "sk",
+            "es",
+            "sv",
+            "tr",
+            "uk",
+            "vi"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "title": "Languages",
+            "description": "Language of the agent",
+            "type": "string",
+            "enum": [
+              "ar",
+              "bg",
+              "zh",
+              "cs",
+              "da",
+              "nl",
+              "en",
+              "fi",
+              "fr",
+              "de",
+              "el",
+              "hi",
+              "hu",
+              "id",
+              "it",
+              "ja",
+              "ko",
+              "ms",
+              "no",
+              "pl",
+              "pt",
+              "ro",
+              "ru",
+              "sk",
+              "es",
+              "sv",
+              "tr",
+              "uk",
+              "vi"
+            ]
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "authentication_method": {
+          "title": "Authentication method",
+          "type": "string",
+          "enum": [
+            "api_key"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "websocket_url": {
+          "title": "Websocket url",
+          "description": "WebSocket URL for real-time communication with the agent",
+          "type": "string",
+          "format": "uri",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "websocket_headers": {
+          "title": "Websocket headers",
+          "description": "Headers to be sent to the websocket server",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "knowledge_base": {
+          "title": "Knowledge base",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "organization": {
+          "title": "Organization",
+          "description": "Organization this agent definition belongs to",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "api_key": {
+          "title": "Api key",
+          "description": "API key for the agent",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "observability_provider": {
+          "title": "Observability provider",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "model": {
+          "title": "Model",
+          "description": "Model of the agent",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "model_details": {
+          "title": "Model details",
+          "description": "Details of the model",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "livekit_url": {
+          "title": "Livekit url",
+          "type": "string",
+          "readOnly": true
+        },
+        "livekit_api_key": {
+          "title": "Livekit api key",
+          "type": "string",
+          "readOnly": true
+        },
+        "livekit_agent_name": {
+          "title": "Livekit agent name",
+          "type": "string",
+          "readOnly": true
+        },
+        "livekit_config_json": {
+          "title": "Livekit config json",
+          "type": "string",
+          "readOnly": true
+        },
+        "livekit_max_concurrency": {
+          "title": "Livekit max concurrency",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentPromptOptimiserRun": {
+      "required": [
+        "agent_optimiser",
+        "agent_optimiser_run",
+        "test_execution",
+        "optimiser_type",
+        "model"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "agent_optimiser": {
+          "title": "Agent optimiser",
+          "type": "string",
+          "format": "uuid"
+        },
+        "agent_optimiser_run": {
+          "title": "Agent optimiser run",
+          "type": "string",
+          "format": "uuid"
+        },
+        "test_execution": {
+          "title": "Test execution",
+          "type": "string",
+          "format": "uuid"
+        },
+        "optimiser_type": {
+          "title": "Optimiser type",
+          "type": "string",
+          "enum": [
+            "random_search",
+            "gepa",
+            "protegi",
+            "bayesian",
+            "metaprompt",
+            "promptwizard"
+          ]
+        },
+        "model": {
+          "title": "Model",
+          "description": "LLM model used for the optimiser run",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "result": {
+          "title": "Result",
+          "type": "object",
+          "x-nullable": true
+        },
+        "configuration": {
+          "title": "Configuration",
+          "type": "object",
+          "x-nullable": true
+        }
+      }
+    },
+    "AgentPromptOptimiserRunCreate": {
+      "required": [
+        "name",
+        "test_execution_id",
+        "optimiser_type",
+        "model"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "test_execution_id": {
+          "title": "Test execution id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "optimiser_type": {
+          "title": "Optimiser type",
+          "type": "string",
+          "enum": [
+            "random_search",
+            "gepa",
+            "protegi",
+            "bayesian",
+            "metaprompt",
+            "promptwizard"
+          ]
+        },
+        "model": {
+          "title": "Model",
+          "description": "LLM model used for the optimiser run",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "configuration": {
+          "title": "Configuration",
+          "type": "object",
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentPromptOptimiserRunList": {
+      "required": [
+        "optimisation_name",
+        "started_at",
+        "optimiser_type",
+        "model"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "optimisation_name": {
+          "title": "Optimisation name",
+          "type": "string",
+          "minLength": 1
+        },
+        "started_at": {
+          "title": "Started at",
+          "type": "string",
+          "format": "date-time"
+        },
+        "no_of_trials": {
+          "title": "No of trials",
+          "type": "string",
+          "readOnly": true
+        },
+        "optimiser_type": {
+          "title": "Optimiser type",
+          "type": "string",
+          "enum": [
+            "random_search",
+            "gepa",
+            "protegi",
+            "bayesian",
+            "metaprompt",
+            "promptwizard"
+          ]
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "error_message": {
+          "title": "Error message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "configuration": {
+          "title": "Configuration",
+          "type": "object",
+          "x-nullable": true
+        },
+        "model": {
+          "title": "Model",
+          "description": "LLM model used for the optimiser run",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        }
+      }
+    },
+    "AgentVersionActivateResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "version": {
+          "$ref": "#/definitions/AgentVersionResponse"
+        }
+      }
+    },
+    "AgentVersionCreateRequest": {
+      "type": "object",
+      "properties": {
+        "agent_name": {
+          "title": "Agent name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "type": "string",
+          "enum": [
+            "voice",
+            "text"
+          ]
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "x-nullable": true
+        },
+        "api_key": {
+          "title": "Api key",
+          "type": "string",
+          "x-nullable": true
+        },
+        "assistant_id": {
+          "title": "Assistant id",
+          "type": "string",
+          "x-nullable": true
+        },
+        "authentication_method": {
+          "title": "Authentication method",
+          "type": "string",
+          "enum": [
+            "api_key"
+          ],
+          "x-nullable": true
+        },
+        "language": {
+          "title": "Language",
+          "type": "string",
+          "x-nullable": true
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "x-nullable": true
+        },
+        "contact_number": {
+          "title": "Contact number",
+          "type": "string",
+          "x-nullable": true
+        },
+        "inbound": {
+          "title": "Inbound",
+          "type": "boolean"
+        },
+        "knowledge_base": {
+          "title": "Knowledge base",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "x-nullable": true
+        },
+        "model_details": {
+          "title": "Model details",
+          "type": "object",
+          "x-nullable": true
+        },
+        "livekit_url": {
+          "title": "Livekit url",
+          "type": "string",
+          "maxLength": 500
+        },
+        "livekit_api_key": {
+          "title": "Livekit api key",
+          "type": "string",
+          "maxLength": 255
+        },
+        "livekit_api_secret": {
+          "title": "Livekit api secret",
+          "type": "string",
+          "maxLength": 500
+        },
+        "livekit_agent_name": {
+          "title": "Livekit agent name",
+          "type": "string",
+          "maxLength": 255
+        },
+        "livekit_config_json": {
+          "title": "Livekit config json",
+          "type": "object",
+          "x-nullable": true
+        },
+        "livekit_max_concurrency": {
+          "title": "Livekit max concurrency",
+          "type": "integer",
+          "minimum": 1
+        },
+        "commit_message": {
+          "title": "Commit message",
+          "type": "string",
+          "default": ""
+        },
+        "observability_enabled": {
+          "title": "Observability enabled",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "AgentVersionCreateResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "version": {
+          "$ref": "#/definitions/AgentVersionResponse"
+        }
+      }
+    },
+    "AgentVersionDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        }
+      }
+    },
+    "AgentVersionListResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "version_number": {
+          "title": "Version number",
+          "description": "Version number of the agent",
+          "type": "integer",
+          "readOnly": true
+        },
+        "version_name": {
+          "title": "Version name",
+          "description": "Human-readable version name (e.g., 'v1.2.3')",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "version_name_display": {
+          "title": "Version name display",
+          "type": "string",
+          "readOnly": true
+        },
+        "status": {
+          "title": "Status",
+          "description": "Current status of this version",
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "archived",
+            "deprecated"
+          ],
+          "readOnly": true
+        },
+        "status_display": {
+          "title": "Status display",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "score": {
+          "title": "Score",
+          "description": "Performance score (0.0 to 10.0)",
+          "type": "string",
+          "format": "decimal",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "test_count": {
+          "title": "Test count",
+          "description": "Number of tests run for this version",
+          "type": "integer",
+          "readOnly": true
+        },
+        "pass_rate": {
+          "title": "Pass rate",
+          "description": "Test pass rate percentage",
+          "type": "string",
+          "format": "decimal",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Description of changes in this version",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "commit_message": {
+          "title": "Commit message",
+          "description": "Commit message for the agent version",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "string",
+          "readOnly": true
+        },
+        "is_latest": {
+          "title": "Is latest",
+          "type": "string",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentVersionResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "version_number": {
+          "title": "Version number",
+          "description": "Version number of the agent",
+          "type": "integer",
+          "readOnly": true
+        },
+        "version_name": {
+          "title": "Version name",
+          "description": "Human-readable version name (e.g., 'v1.2.3')",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "version_name_display": {
+          "title": "Version name display",
+          "type": "string",
+          "readOnly": true
+        },
+        "status": {
+          "title": "Status",
+          "description": "Current status of this version",
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "archived",
+            "deprecated"
+          ],
+          "readOnly": true
+        },
+        "status_display": {
+          "title": "Status display",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "score": {
+          "title": "Score",
+          "description": "Performance score (0.0 to 10.0)",
+          "type": "string",
+          "format": "decimal",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "test_count": {
+          "title": "Test count",
+          "description": "Number of tests run for this version",
+          "type": "integer",
+          "readOnly": true
+        },
+        "pass_rate": {
+          "title": "Pass rate",
+          "description": "Test pass rate percentage",
+          "type": "string",
+          "format": "decimal",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Description of changes in this version",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "commit_message": {
+          "title": "Commit message",
+          "description": "Commit message for the agent version",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "release_notes": {
+          "title": "Release notes",
+          "description": "Detailed release notes for this version",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "agent_definition": {
+          "title": "Agent definition",
+          "description": "Parent agent definition",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "description": "Organization this version belongs to",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "configuration_snapshot": {
+          "title": "Configuration snapshot",
+          "description": "Snapshot of agent configuration at this version",
+          "type": "object",
+          "readOnly": true
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "string",
+          "readOnly": true
+        },
+        "is_latest": {
+          "title": "Is latest",
+          "type": "string",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentVersionRestoreResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agent": {
+          "title": "Agent",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true
+        },
+        "version": {
+          "$ref": "#/definitions/AgentVersionResponse"
+        }
+      }
+    },
+    "AgentccAPIKey": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "user": {
+          "title": "User",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "gateway_key_id": {
+          "title": "Gateway key id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "key_prefix": {
+          "title": "Key prefix",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string",
+          "maxLength": 255
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "active",
+            "revoked",
+            "expired"
+          ],
+          "readOnly": true
+        },
+        "allowed_models": {
+          "title": "Allowed models",
+          "type": "object"
+        },
+        "allowed_providers": {
+          "title": "Allowed providers",
+          "type": "object"
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object"
+        },
+        "last_used_at": {
+          "title": "Last used at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "expires_at": {
+          "title": "Expires at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccBlocklist": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "words": {
+          "title": "Words",
+          "type": "object"
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccCustomPropertySchema": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "property_type": {
+          "title": "Property type",
+          "type": "string",
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "enum"
+          ]
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "allowed_values": {
+          "title": "Allowed values",
+          "type": "object"
+        },
+        "default_value": {
+          "title": "Default value",
+          "type": "object",
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccEmailAlert": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "recipients": {
+          "title": "Recipients",
+          "type": "object"
+        },
+        "events": {
+          "title": "Events",
+          "type": "object"
+        },
+        "thresholds": {
+          "title": "Thresholds",
+          "type": "object"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "enum": [
+            "sendgrid",
+            "resend",
+            "smtp"
+          ]
+        },
+        "provider_config": {
+          "title": "Provider config",
+          "type": "string",
+          "readOnly": true
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean"
+        },
+        "cooldown_minutes": {
+          "title": "Cooldown minutes",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "last_triggered_at": {
+          "title": "Last triggered at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccGuardrailFeedback": {
+      "required": [
+        "request_log",
+        "check_name",
+        "feedback"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "request_log": {
+          "title": "Request log",
+          "type": "string",
+          "format": "uuid"
+        },
+        "check_name": {
+          "title": "Check name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "feedback": {
+          "title": "Feedback",
+          "type": "string",
+          "enum": [
+            "correct",
+            "false_positive",
+            "false_negative",
+            "unsure"
+          ]
+        },
+        "comment": {
+          "title": "Comment",
+          "type": "string"
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccGuardrailPolicy": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "scope": {
+          "title": "Scope",
+          "type": "string",
+          "enum": [
+            "global",
+            "project",
+            "key"
+          ]
+        },
+        "checks": {
+          "title": "Checks",
+          "type": "object"
+        },
+        "mode": {
+          "title": "Mode",
+          "type": "string",
+          "enum": [
+            "enforce",
+            "monitor"
+          ]
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "applied_keys": {
+          "title": "Applied keys",
+          "type": "object"
+        },
+        "applied_projects": {
+          "title": "Applied projects",
+          "type": "object"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccOrgConfig": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer",
+          "readOnly": true
+        },
+        "guardrails": {
+          "title": "Guardrails",
+          "type": "object"
+        },
+        "routing": {
+          "title": "Routing",
+          "type": "object"
+        },
+        "cache": {
+          "title": "Cache",
+          "type": "object"
+        },
+        "rate_limiting": {
+          "title": "Rate limiting",
+          "type": "object"
+        },
+        "budgets": {
+          "title": "Budgets",
+          "type": "object"
+        },
+        "cost_tracking": {
+          "title": "Cost tracking",
+          "type": "object"
+        },
+        "ip_acl": {
+          "title": "Ip acl",
+          "type": "object"
+        },
+        "alerting": {
+          "title": "Alerting",
+          "type": "object"
+        },
+        "privacy": {
+          "title": "Privacy",
+          "type": "object"
+        },
+        "tool_policy": {
+          "title": "Tool policy",
+          "type": "object"
+        },
+        "mcp": {
+          "title": "Mcp",
+          "type": "object"
+        },
+        "a2a": {
+          "title": "A2a",
+          "type": "object"
+        },
+        "audit": {
+          "title": "Audit",
+          "type": "object"
+        },
+        "model_database": {
+          "title": "Model database",
+          "type": "object"
+        },
+        "model_map": {
+          "title": "Model map",
+          "type": "object"
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "change_description": {
+          "title": "Change description",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccProviderCredential": {
+      "required": [
+        "provider_name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "provider_name": {
+          "title": "Provider name",
+          "type": "string",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "display_name": {
+          "title": "Display name",
+          "type": "string",
+          "maxLength": 255
+        },
+        "credentials": {
+          "title": "Credentials",
+          "type": "string",
+          "readOnly": true
+        },
+        "base_url": {
+          "title": "Base url",
+          "type": "string",
+          "format": "uri",
+          "maxLength": 500
+        },
+        "api_format": {
+          "title": "Api format",
+          "type": "string",
+          "maxLength": 50,
+          "minLength": 1
+        },
+        "models_list": {
+          "title": "Models list",
+          "type": "object"
+        },
+        "default_timeout_seconds": {
+          "title": "Default timeout seconds",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "max_concurrent": {
+          "title": "Max concurrent",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "conn_pool_size": {
+          "title": "Conn pool size",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "extra_config": {
+          "title": "Extra config",
+          "type": "object"
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean"
+        },
+        "last_rotated_at": {
+          "title": "Last rotated at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccRequestLog": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "request_id": {
+          "title": "Request id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "resolved_model": {
+          "title": "Resolved model",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "latency_ms": {
+          "title": "Latency ms",
+          "type": "integer",
+          "readOnly": true
+        },
+        "started_at": {
+          "title": "Started at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "input_tokens": {
+          "title": "Input tokens",
+          "type": "integer",
+          "readOnly": true
+        },
+        "output_tokens": {
+          "title": "Output tokens",
+          "type": "integer",
+          "readOnly": true
+        },
+        "total_tokens": {
+          "title": "Total tokens",
+          "type": "integer",
+          "readOnly": true
+        },
+        "cost": {
+          "title": "Cost",
+          "type": "string",
+          "format": "decimal",
+          "readOnly": true
+        },
+        "status_code": {
+          "title": "Status code",
+          "type": "integer",
+          "readOnly": true
+        },
+        "is_stream": {
+          "title": "Is stream",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "is_error": {
+          "title": "Is error",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "error_message": {
+          "title": "Error message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "cache_hit": {
+          "title": "Cache hit",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "fallback_used": {
+          "title": "Fallback used",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "guardrail_triggered": {
+          "title": "Guardrail triggered",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "api_key_id": {
+          "title": "Api key id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "user_id": {
+          "title": "User id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "session_id": {
+          "title": "Session id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "routing_strategy": {
+          "title": "Routing strategy",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccRequestLogDetail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "request_id": {
+          "title": "Request id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "resolved_model": {
+          "title": "Resolved model",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "latency_ms": {
+          "title": "Latency ms",
+          "type": "integer",
+          "readOnly": true
+        },
+        "started_at": {
+          "title": "Started at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "input_tokens": {
+          "title": "Input tokens",
+          "type": "integer",
+          "readOnly": true
+        },
+        "output_tokens": {
+          "title": "Output tokens",
+          "type": "integer",
+          "readOnly": true
+        },
+        "total_tokens": {
+          "title": "Total tokens",
+          "type": "integer",
+          "readOnly": true
+        },
+        "cost": {
+          "title": "Cost",
+          "type": "string",
+          "format": "decimal",
+          "readOnly": true
+        },
+        "status_code": {
+          "title": "Status code",
+          "type": "integer",
+          "readOnly": true
+        },
+        "is_stream": {
+          "title": "Is stream",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "is_error": {
+          "title": "Is error",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "error_message": {
+          "title": "Error message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "cache_hit": {
+          "title": "Cache hit",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "fallback_used": {
+          "title": "Fallback used",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "guardrail_triggered": {
+          "title": "Guardrail triggered",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "api_key_id": {
+          "title": "Api key id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "user_id": {
+          "title": "User id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "session_id": {
+          "title": "Session id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "routing_strategy": {
+          "title": "Routing strategy",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object",
+          "readOnly": true
+        },
+        "request_body": {
+          "title": "Request body",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "response_body": {
+          "title": "Response body",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "request_headers": {
+          "title": "Request headers",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "response_headers": {
+          "title": "Response headers",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "guardrail_results": {
+          "title": "Guardrail results",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccRoutingPolicy": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer",
+          "readOnly": true
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean"
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccSession": {
+      "required": [
+        "session_id"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "session_id": {
+          "title": "Session id",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "active",
+            "closed"
+          ]
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccShadowExperiment": {
+      "required": [
+        "name",
+        "source_model",
+        "shadow_model",
+        "shadow_provider"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "source_model": {
+          "title": "Source model",
+          "description": "Production model being tested against",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "shadow_model": {
+          "title": "Shadow model",
+          "description": "Shadow model receiving mirrored traffic",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "shadow_provider": {
+          "title": "Shadow provider",
+          "description": "Provider for the shadow model",
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "sample_rate": {
+          "title": "Sample rate",
+          "description": "Fraction of traffic to mirror (0.0–1.0)",
+          "type": "number"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "active",
+            "paused",
+            "completed"
+          ]
+        },
+        "total_comparisons": {
+          "title": "Total comparisons",
+          "type": "integer",
+          "readOnly": true
+        },
+        "config": {
+          "title": "Config",
+          "description": "Extra configuration",
+          "type": "object",
+          "x-nullable": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccShadowResult": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "experiment": {
+          "title": "Experiment",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "request_id": {
+          "title": "Request id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "source_model": {
+          "title": "Source model",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "shadow_model": {
+          "title": "Shadow model",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "source_response": {
+          "title": "Source response",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "shadow_response": {
+          "title": "Shadow response",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "source_latency_ms": {
+          "title": "Source latency ms",
+          "type": "integer",
+          "readOnly": true
+        },
+        "shadow_latency_ms": {
+          "title": "Shadow latency ms",
+          "type": "integer",
+          "readOnly": true
+        },
+        "source_tokens": {
+          "title": "Source tokens",
+          "type": "integer",
+          "readOnly": true
+        },
+        "shadow_tokens": {
+          "title": "Shadow tokens",
+          "type": "integer",
+          "readOnly": true
+        },
+        "source_status_code": {
+          "title": "Source status code",
+          "type": "integer",
+          "readOnly": true
+        },
+        "shadow_status_code": {
+          "title": "Shadow status code",
+          "type": "integer",
+          "readOnly": true
+        },
+        "shadow_error": {
+          "title": "Shadow error",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "prompt_hash": {
+          "title": "Prompt hash",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccWebhook": {
+      "required": [
+        "name",
+        "url"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "url": {
+          "title": "Url",
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048,
+          "minLength": 1
+        },
+        "secret": {
+          "title": "Secret",
+          "type": "string",
+          "maxLength": 255
+        },
+        "events": {
+          "title": "Events",
+          "type": "object"
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean"
+        },
+        "headers": {
+          "title": "Headers",
+          "type": "object"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "AgentccWebhookEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "webhook": {
+          "title": "Webhook",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "webhook_name": {
+          "title": "Webhook name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "event_type": {
+          "title": "Event type",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "payload": {
+          "title": "Payload",
+          "type": "object",
+          "readOnly": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "pending",
+            "delivered",
+            "failed",
+            "dead_letter"
+          ],
+          "readOnly": true
+        },
+        "attempts": {
+          "title": "Attempts",
+          "type": "integer",
+          "readOnly": true
+        },
+        "max_attempts": {
+          "title": "Max attempts",
+          "type": "integer",
+          "readOnly": true
+        },
+        "last_attempt_at": {
+          "title": "Last attempt at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "last_response_code": {
+          "title": "Last response code",
+          "type": "integer",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "last_error": {
+          "title": "Last error",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "next_retry_at": {
+          "title": "Next retry at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
         }
       }
     },
@@ -5601,6 +23664,49 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "ApiKey": {
+      "required": [
+        "provider"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "maxLength": 50,
+          "minLength": 1
+        },
+        "key": {
+          "title": "Key",
+          "type": "string",
+          "maxLength": 2500,
+          "x-nullable": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "masked_actual_key": {
+          "title": "Masked actual key",
+          "type": "string",
+          "readOnly": true
+        },
+        "config_json": {
+          "title": "Config json",
+          "type": "object",
+          "x-nullable": true
+        }
+      }
+    },
     "ApiSelectionTooLargeError": {
       "type": "object",
       "properties": {
@@ -5911,6 +24017,1022 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "CallExecution": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "phone_number": {
+          "title": "Phone number",
+          "description": "Phone number called (null for TEXT/chat simulations)",
+          "type": "string",
+          "maxLength": 20,
+          "x-nullable": true
+        },
+        "service_provider_call_id": {
+          "title": "Service provider call id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "description": "Current status of the call",
+          "type": "string",
+          "enum": [
+            "pending",
+            "queued",
+            "ongoing",
+            "completed",
+            "failed",
+            "analyzing",
+            "cancelled"
+          ]
+        },
+        "started_at": {
+          "title": "Started at",
+          "description": "When the call started",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "completed_at": {
+          "title": "Completed at",
+          "description": "When the call completed",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "duration_seconds": {
+          "title": "Duration seconds",
+          "description": "Duration of the call in seconds",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "recording_url": {
+          "title": "Recording url",
+          "description": "URL to the call recording",
+          "type": "string",
+          "format": "uri",
+          "maxLength": 500,
+          "x-nullable": true
+        },
+        "cost_cents": {
+          "title": "Cost cents",
+          "description": "Cost of the call in cents",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "call_metadata": {
+          "title": "Call metadata",
+          "description": "Additional metadata about the call",
+          "type": "object"
+        },
+        "error_message": {
+          "title": "Error message",
+          "description": "Error message if the call failed",
+          "type": "string",
+          "x-nullable": true
+        },
+        "scenario_name": {
+          "title": "Scenario name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "transcripts": {
+          "title": "Transcripts",
+          "type": "string",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "provider_call_data": {
+          "title": "Provider call data",
+          "description": "Complete call data from the provider. Format: dict[provider_name, data] where provider_name must be from SupportedProviders",
+          "type": "object",
+          "x-nullable": true
+        },
+        "stereo_recording_url": {
+          "title": "Stereo recording url",
+          "description": "Stereo recording URL from Vapi",
+          "type": "string",
+          "format": "uri",
+          "maxLength": 500,
+          "x-nullable": true
+        },
+        "ended_reason": {
+          "title": "Ended reason",
+          "description": "Reason why the call ended",
+          "type": "string",
+          "maxLength": 10000,
+          "x-nullable": true
+        },
+        "stt_cost_cents": {
+          "title": "Stt cost cents",
+          "description": "STT cost in cents",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "llm_cost_cents": {
+          "title": "Llm cost cents",
+          "description": "LLM cost in cents",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "tts_cost_cents": {
+          "title": "Tts cost cents",
+          "description": "TTS cost in cents",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "overall_score": {
+          "title": "Overall score",
+          "description": "Overall call performance score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "response_time_ms": {
+          "title": "Response time ms",
+          "description": "Average response time in milliseconds",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "response_time_seconds": {
+          "title": "Response time seconds",
+          "type": "string",
+          "readOnly": true
+        },
+        "assistant_id": {
+          "title": "Assistant id",
+          "description": "Assistant ID used for the call (system side)",
+          "type": "string",
+          "maxLength": 255,
+          "x-nullable": true
+        },
+        "customer_number": {
+          "title": "Customer number",
+          "description": "Customer phone number (E.164 format)",
+          "type": "string",
+          "maxLength": 20,
+          "x-nullable": true
+        },
+        "call_type": {
+          "title": "Call type",
+          "description": "Type of call (e.g., outboundPhoneCall)",
+          "type": "string",
+          "maxLength": 50,
+          "x-nullable": true
+        },
+        "ended_at": {
+          "title": "Ended at",
+          "description": "When the call ended",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "analysis_data": {
+          "title": "Analysis data",
+          "description": "Call analysis data from the service provider",
+          "type": "object",
+          "x-nullable": true
+        },
+        "evaluation_data": {
+          "title": "Evaluation data",
+          "description": "Call evaluation data from the service provider",
+          "type": "object",
+          "x-nullable": true
+        },
+        "message_count": {
+          "title": "Message count",
+          "description": "Number of messages in the call",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "transcript_available": {
+          "title": "Transcript available",
+          "description": "Whether transcript is available",
+          "type": "boolean"
+        },
+        "recording_available": {
+          "title": "Recording available",
+          "description": "Whether recording is available",
+          "type": "boolean"
+        },
+        "eval_outputs": {
+          "title": "Eval outputs",
+          "description": "Evaluation output",
+          "type": "object",
+          "x-nullable": true
+        },
+        "error_localizer_tasks": {
+          "title": "Error localizer tasks",
+          "type": "string",
+          "readOnly": true
+        },
+        "call_summary": {
+          "title": "Call summary",
+          "description": "Call summary from the service",
+          "type": "string",
+          "x-nullable": true
+        },
+        "agent_version": {
+          "title": "Agent version",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "customer_cost_cents": {
+          "title": "Customer cost cents",
+          "description": "Total customer-reported cost in cents",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "system_metrics": {
+          "title": "System metrics",
+          "type": "string",
+          "readOnly": true
+        },
+        "cost_breakdown": {
+          "title": "Cost breakdown",
+          "type": "string",
+          "readOnly": true
+        },
+        "customer_call_id": {
+          "title": "Customer call id",
+          "description": "Customer call ID if available",
+          "type": "string",
+          "maxLength": 255,
+          "x-nullable": true
+        },
+        "simulation_call_type": {
+          "title": "Simulation call type",
+          "description": "Type of simulation call",
+          "type": "string",
+          "enum": [
+            "voice",
+            "text"
+          ]
+        },
+        "processing_skipped": {
+          "title": "Processing skipped",
+          "type": "string",
+          "readOnly": true
+        },
+        "processing_skip_reason": {
+          "title": "Processing skip reason",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "CallExecutionDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        }
+      }
+    },
+    "CallExecutionDetail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "service_provider_call_id": {
+          "title": "Service provider call id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "session_id": {
+          "title": "Session id",
+          "type": "string",
+          "readOnly": true
+        },
+        "timestamp": {
+          "title": "Timestamp",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "call_type": {
+          "title": "Call type",
+          "type": "string",
+          "readOnly": true
+        },
+        "status": {
+          "title": "Status",
+          "description": "Current status of the call",
+          "type": "string",
+          "enum": [
+            "pending",
+            "queued",
+            "ongoing",
+            "completed",
+            "failed",
+            "analyzing",
+            "cancelled"
+          ]
+        },
+        "duration": {
+          "title": "Duration",
+          "type": "string",
+          "readOnly": true
+        },
+        "duration_seconds": {
+          "title": "Duration seconds",
+          "description": "Duration of the call in seconds",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "start_time": {
+          "title": "Start time",
+          "type": "string",
+          "readOnly": true
+        },
+        "transcript": {
+          "title": "Transcript",
+          "type": "string",
+          "readOnly": true
+        },
+        "scenario": {
+          "title": "Scenario",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "overall_score": {
+          "title": "Overall score",
+          "type": "string",
+          "readOnly": true
+        },
+        "response_time": {
+          "title": "Response time",
+          "type": "string",
+          "readOnly": true
+        },
+        "response_time_ms": {
+          "title": "Response time ms",
+          "description": "Average response time in milliseconds",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "audio_url": {
+          "title": "Audio url",
+          "type": "string",
+          "format": "uri",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "customer_name": {
+          "title": "Customer name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "eval_outputs": {
+          "title": "Eval outputs",
+          "type": "string",
+          "readOnly": true
+        },
+        "eval_metrics": {
+          "title": "Eval metrics",
+          "type": "string",
+          "readOnly": true
+        },
+        "scenario_columns": {
+          "title": "Scenario columns",
+          "type": "string",
+          "readOnly": true
+        },
+        "ended_reason": {
+          "title": "Ended reason",
+          "description": "Reason why the call ended",
+          "type": "string",
+          "maxLength": 10000,
+          "x-nullable": true
+        },
+        "simulator_agent_name": {
+          "title": "Simulator agent name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "simulator_agent_id": {
+          "title": "Simulator agent id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "agent_definition_used_name": {
+          "title": "Agent definition used name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agent_definition_used_id": {
+          "title": "Agent definition used id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "call_summary": {
+          "title": "Call summary",
+          "description": "Call summary from the service",
+          "type": "string",
+          "x-nullable": true
+        },
+        "recordings": {
+          "title": "Recordings",
+          "type": "string",
+          "readOnly": true
+        },
+        "scenario_id": {
+          "title": "Scenario id",
+          "type": "string",
+          "readOnly": true
+        },
+        "avg_agent_latency": {
+          "title": "Avg agent latency",
+          "type": "integer",
+          "readOnly": true
+        },
+        "avg_agent_latency_ms": {
+          "title": "Avg agent latency ms",
+          "description": "Average agent latency in milliseconds (time taken by agent to respond after user's pause)",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "user_interruption_count": {
+          "title": "User interruption count",
+          "description": "Number of times user interrupted the AI",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "user_interruption_rate": {
+          "title": "User interruption rate",
+          "description": "Rate of user interruptions (interruptions per minute)",
+          "type": "number",
+          "x-nullable": true
+        },
+        "user_wpm": {
+          "title": "User wpm",
+          "description": "User's words per minute",
+          "type": "number",
+          "x-nullable": true
+        },
+        "bot_wpm": {
+          "title": "Bot wpm",
+          "description": "Bot's words per minute",
+          "type": "number",
+          "x-nullable": true
+        },
+        "talk_ratio": {
+          "title": "Talk ratio",
+          "description": "Ratio of bot speaking time to user speaking time",
+          "type": "number",
+          "x-nullable": true
+        },
+        "ai_interruption_count": {
+          "title": "Ai interruption count",
+          "description": "Number of times AI interrupted the user",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "ai_interruption_rate": {
+          "title": "Ai interruption rate",
+          "description": "Rate of AI interruptions (interruptions per minute)",
+          "type": "number",
+          "x-nullable": true
+        },
+        "avg_stop_time_after_interruption": {
+          "title": "Avg stop time after interruption",
+          "type": "integer",
+          "readOnly": true
+        },
+        "total_tokens": {
+          "title": "Total tokens",
+          "type": "string",
+          "readOnly": true
+        },
+        "input_tokens": {
+          "title": "Input tokens",
+          "type": "string",
+          "readOnly": true
+        },
+        "output_tokens": {
+          "title": "Output tokens",
+          "type": "string",
+          "readOnly": true
+        },
+        "avg_latency_ms": {
+          "title": "Avg latency ms",
+          "type": "string",
+          "readOnly": true
+        },
+        "turn_count": {
+          "title": "Turn count",
+          "type": "string",
+          "readOnly": true
+        },
+        "agent_talk_percentage": {
+          "title": "Agent talk percentage",
+          "type": "string",
+          "readOnly": true
+        },
+        "csat_score": {
+          "title": "Csat score",
+          "type": "string",
+          "readOnly": true
+        },
+        "processing_skipped": {
+          "title": "Processing skipped",
+          "type": "string",
+          "readOnly": true
+        },
+        "processing_skip_reason": {
+          "title": "Processing skip reason",
+          "type": "string",
+          "readOnly": true
+        },
+        "rerun_snapshots": {
+          "title": "Rerun snapshots",
+          "type": "string",
+          "readOnly": true
+        },
+        "is_snapshot": {
+          "title": "Is snapshot",
+          "type": "string",
+          "readOnly": true
+        },
+        "snapshot_timestamp": {
+          "title": "Snapshot timestamp",
+          "type": "string",
+          "readOnly": true
+        },
+        "rerun_type": {
+          "title": "Rerun type",
+          "type": "string",
+          "readOnly": true
+        },
+        "original_call_execution_id": {
+          "title": "Original call execution id",
+          "type": "string",
+          "readOnly": true
+        },
+        "tool_outputs": {
+          "title": "Tool outputs",
+          "description": "Tool evaluation output - separate from standard evaluations",
+          "type": "object",
+          "x-nullable": true
+        },
+        "cost_cents": {
+          "title": "Cost cents",
+          "description": "Cost of the call in cents",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "customer_cost_cents": {
+          "title": "Customer cost cents",
+          "description": "Total customer-reported cost in cents",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "x-nullable": true
+        },
+        "customer_cost_breakdown": {
+          "title": "Customer cost breakdown",
+          "description": "Detailed cost breakdown from customer call data",
+          "type": "object",
+          "x-nullable": true
+        },
+        "customer_latency_metrics": {
+          "title": "Customer latency metrics",
+          "description": "Latency metrics from customer call data",
+          "type": "object",
+          "x-nullable": true
+        },
+        "customer_call_id": {
+          "title": "Customer call id",
+          "description": "Customer call ID if available",
+          "type": "string",
+          "maxLength": 255,
+          "x-nullable": true
+        },
+        "simulation_call_type": {
+          "title": "Simulation call type",
+          "description": "Type of simulation call",
+          "type": "string",
+          "enum": [
+            "voice",
+            "text"
+          ]
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "readOnly": true
+        },
+        "phone_number": {
+          "title": "Phone number",
+          "description": "Phone number called (null for TEXT/chat simulations)",
+          "type": "string",
+          "maxLength": 20,
+          "x-nullable": true
+        }
+      }
+    },
+    "CallExecutionErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "title": "Error",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "details": {
+          "title": "Details",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "CallExecutionLogsResponse": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CallLogEntryResponse"
+          },
+          "readOnly": true
+        },
+        "source": {
+          "title": "Source",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "ingestion_pending": {
+          "title": "Ingestion pending",
+          "type": "boolean",
+          "readOnly": true
+        }
+      }
+    },
+    "CallExecutionRerun": {
+      "required": [
+        "rerun_type"
+      ],
+      "type": "object",
+      "properties": {
+        "rerun_type": {
+          "title": "Rerun type",
+          "description": "Type of rerun: evaluation only or call plus evaluation",
+          "type": "string",
+          "enum": [
+            "eval_only",
+            "call_and_eval"
+          ]
+        },
+        "call_execution_ids": {
+          "description": "List of specific call execution IDs to rerun",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "select_all": {
+          "title": "Select all",
+          "description": "Whether to rerun all call executions in the test execution",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "CallExecutionStatusUpdate": {
+      "required": [
+        "status"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "pending",
+            "queued",
+            "ongoing",
+            "completed",
+            "failed",
+            "analyzing",
+            "cancelled"
+          ]
+        },
+        "ended_reason": {
+          "title": "Ended reason",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "CancelTestExecutionResponse": {
+      "required": [
+        "success",
+        "message",
+        "test_execution_id"
+      ],
+      "type": "object",
+      "properties": {
+        "success": {
+          "title": "Success",
+          "type": "boolean"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "test_execution_id": {
+          "title": "Test execution id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        }
+      }
+    },
+    "CellUpdate": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "string",
+          "default": "",
+          "x-nullable": true
+        }
+      }
+    },
+    "CreateNode": {
+      "required": [
+        "id",
+        "type",
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "description": "FE-generated UUID for the node",
+          "type": "string",
+          "format": "uuid"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "subgraph",
+            "atomic"
+          ]
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "node_template_id": {
+          "title": "Node template id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "ref_graph_version_id": {
+          "title": "Ref graph version id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "position": {
+          "title": "Position",
+          "type": "object",
+          "default": {}
+        },
+        "source_node_id": {
+          "title": "Source node id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "prompt_template": {
+          "$ref": "#/definitions/PromptTemplateData"
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortCreate"
+          },
+          "default": []
+        },
+        "input_mappings": {
+          "description": "List of input mappings from port display_name to source reference",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/InputMapping"
+          },
+          "default": []
+        }
+      }
+    },
+    "CreateNodeConnection": {
+      "required": [
+        "id",
+        "source_node_id",
+        "target_node_id"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "description": "FE-generated UUID",
+          "type": "string",
+          "format": "uuid"
+        },
+        "source_node_id": {
+          "title": "Source node id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "target_node_id": {
+          "title": "Target node id",
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "CreateReplaySession": {
+      "required": [
+        "project_id"
+      ],
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "title": "Project id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "replay_type": {
+          "title": "Replay type",
+          "type": "string",
+          "enum": [
+            "session",
+            "trace"
+          ],
+          "default": "session"
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "default": []
+        },
+        "select_all": {
+          "title": "Select all",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "CreateRunTest": {
+      "required": [
+        "name",
+        "agent_definition_id",
+        "scenario_ids"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "agent_definition_id": {
+          "title": "Agent definition id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "scenario_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "dataset_row_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          }
+        },
+        "eval_config_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "default": []
+        },
+        "evaluations_config": {
+          "description": "Evaluation configurations to create",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          },
+          "default": []
+        },
+        "enable_tool_evaluation": {
+          "title": "Enable tool evaluation",
+          "description": "Enable automatic tool evaluation for this test run",
+          "type": "boolean",
+          "default": false
+        },
+        "replay_session_id": {
+          "title": "Replay session id",
+          "description": "Optional replay session ID to mark as completed after run test creation",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        }
+      }
+    },
     "CreateScore": {
       "required": [
         "source_type",
@@ -5967,6 +25089,79 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "type": "string",
           "format": "uuid",
           "x-nullable": true
+        }
+      }
+    },
+    "CustomEvalConfig": {
+      "required": [
+        "eval_template",
+        "project"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "eval_template": {
+          "title": "Eval template",
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "x-nullable": true
+        },
+        "config": {
+          "title": "Config",
+          "type": "object",
+          "x-nullable": true
+        },
+        "mapping": {
+          "title": "Mapping",
+          "type": "object",
+          "x-nullable": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid"
+        },
+        "filters": {
+          "title": "Filters",
+          "type": "object",
+          "x-nullable": true
+        },
+        "error_localizer": {
+          "title": "Error localizer",
+          "type": "boolean"
+        },
+        "kb_id": {
+          "title": "Kb id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "enum": [
+            "turing_large",
+            "turing_small",
+            "protect",
+            "protect_flash",
+            "turing_flash"
+          ],
+          "x-nullable": true
+        },
+        "eval_group": {
+          "title": "Eval group",
+          "type": "string",
+          "readOnly": true
         }
       }
     },
@@ -6160,6 +25355,493 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "Dataset": {
+      "required": [
+        "name",
+        "organization"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid"
+        },
+        "model_type": {
+          "title": "Model type",
+          "type": "string",
+          "enum": [
+            "Numeric",
+            "ScoreCategorical",
+            "Ranking",
+            "BinaryClassification",
+            "Regression",
+            "ObjectDetection",
+            "Segmentation",
+            "GenerativeLLM",
+            "GenerativeImage",
+            "GenerativeVideo",
+            "TTS",
+            "STT",
+            "MultiModal"
+          ]
+        },
+        "source": {
+          "title": "Source",
+          "type": "string",
+          "enum": [
+            "demo",
+            "build",
+            "sdk",
+            "observe",
+            "knowledge_base",
+            "scenario",
+            "experiment_snapshot",
+            "graph"
+          ]
+        },
+        "user": {
+          "title": "User",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        }
+      }
+    },
+    "DatasetOptimization": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "column": {
+          "title": "Column",
+          "description": "Column being optimized",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "optimizer_algorithm": {
+          "title": "Optimizer algorithm",
+          "type": "string",
+          "enum": [
+            "random_search",
+            "bayesian",
+            "metaprompt",
+            "protegi",
+            "promptwizard",
+            "gepa"
+          ],
+          "x-nullable": true
+        },
+        "optimizer_model": {
+          "title": "Optimizer model",
+          "description": "Model used for optimization (separate from eval model)",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "optimizer_config": {
+          "title": "Optimizer config",
+          "description": "Optimizer-specific configuration (num_trials, etc.)",
+          "type": "object",
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "not_started",
+            "pending",
+            "running",
+            "completed",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "error_message": {
+          "title": "Error message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "best_score": {
+          "title": "Best score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "baseline_score": {
+          "title": "Baseline score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "optimized_k_prompts": {
+          "type": "array",
+          "items": {
+            "title": "Optimized k prompts",
+            "type": "string",
+            "minLength": 1
+          },
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "DatasetOptimizationCreate": {
+      "required": [
+        "name",
+        "column_id",
+        "optimizer_algorithm"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "column_id": {
+          "title": "Column id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "optimizer_algorithm": {
+          "title": "Optimizer algorithm",
+          "type": "string",
+          "enum": [
+            "random_search",
+            "bayesian",
+            "metaprompt",
+            "protegi",
+            "promptwizard",
+            "gepa"
+          ]
+        },
+        "optimizer_model_id": {
+          "title": "Optimizer model id",
+          "type": "string"
+        },
+        "optimizer_config": {
+          "title": "Optimizer config",
+          "description": "Optimizer-specific configuration (num_trials, etc.)",
+          "type": "object",
+          "x-nullable": true
+        },
+        "user_eval_template_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "default": []
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "DatasetOptimizationDetail": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "column": {
+          "title": "Column",
+          "description": "Column being optimized",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "optimizer_algorithm": {
+          "title": "Optimizer algorithm",
+          "type": "string",
+          "enum": [
+            "random_search",
+            "bayesian",
+            "metaprompt",
+            "protegi",
+            "promptwizard",
+            "gepa"
+          ],
+          "x-nullable": true
+        },
+        "optimizer_model": {
+          "title": "Optimizer model",
+          "description": "Model used for optimization (separate from eval model)",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "optimizer_config": {
+          "title": "Optimizer config",
+          "description": "Optimizer-specific configuration (num_trials, etc.)",
+          "type": "object",
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "not_started",
+            "pending",
+            "running",
+            "completed",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "error_message": {
+          "title": "Error message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "best_score": {
+          "title": "Best score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "baseline_score": {
+          "title": "Baseline score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "optimized_k_prompts": {
+          "type": "array",
+          "items": {
+            "title": "Optimized k prompts",
+            "type": "string",
+            "minLength": 1
+          },
+          "x-nullable": true
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DatasetOptimizationStep"
+          },
+          "readOnly": true
+        },
+        "trials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DatasetOptimizationTrialList"
+          },
+          "readOnly": true
+        },
+        "trial_count": {
+          "title": "Trial count",
+          "type": "string",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "DatasetOptimizationList": {
+      "required": [
+        "optimization_name",
+        "started_at"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "optimization_name": {
+          "title": "Optimization name",
+          "type": "string",
+          "minLength": 1
+        },
+        "started_at": {
+          "title": "Started at",
+          "type": "string",
+          "format": "date-time"
+        },
+        "trial_count": {
+          "title": "Trial count",
+          "type": "string",
+          "readOnly": true
+        },
+        "optimizer_algorithm": {
+          "title": "Optimizer algorithm",
+          "type": "string",
+          "enum": [
+            "random_search",
+            "bayesian",
+            "metaprompt",
+            "protegi",
+            "promptwizard",
+            "gepa"
+          ],
+          "x-nullable": true
+        },
+        "optimizer_model_id": {
+          "title": "Optimizer model id",
+          "type": "string",
+          "readOnly": true
+        },
+        "column_id": {
+          "title": "Column id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "not_started",
+            "pending",
+            "running",
+            "completed",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "error_message": {
+          "title": "Error message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "optimizer_config": {
+          "title": "Optimizer config",
+          "description": "Optimizer-specific configuration (num_trials, etc.)",
+          "type": "object",
+          "x-nullable": true
+        },
+        "best_score": {
+          "title": "Best score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "baseline_score": {
+          "title": "Baseline score",
+          "type": "number",
+          "x-nullable": true
+        }
+      }
+    },
+    "DeleteEvalConfigResponse": {
+      "required": [
+        "message"
+      ],
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "DevelopAnnotationsUser": {
+      "required": [
+        "email",
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "maxLength": 254,
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "organization_role": {
+          "title": "Organization role",
+          "type": "string",
+          "enum": [
+            "Owner",
+            "Admin",
+            "Member",
+            "Viewer",
+            "workspace_admin",
+            "workspace_member",
+            "workspace_viewer"
+          ],
+          "x-nullable": true
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean"
+        },
+        "is_staff": {
+          "title": "Is staff",
+          "type": "boolean"
+        }
+      }
+    },
     "DiscussionCommentRequest": {
       "type": "object",
       "properties": {
@@ -6236,6 +25918,1007 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "EELicenseCreateRequest": {
+      "required": [
+        "band"
+      ],
+      "type": "object",
+      "properties": {
+        "band": {
+          "title": "Band",
+          "type": "string",
+          "enum": [
+            "team",
+            "business",
+            "enterprise",
+            "enterprise_plus"
+          ]
+        },
+        "customer_name": {
+          "title": "Customer name",
+          "type": "string"
+        },
+        "billing_interval": {
+          "title": "Billing interval",
+          "type": "string",
+          "enum": [
+            "monthly",
+            "yearly"
+          ]
+        }
+      }
+    },
+    "EELicenseCreateResponse": {
+      "required": [
+        "status",
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean"
+        },
+        "result": {
+          "$ref": "#/definitions/EELicenseCreateResult"
+        }
+      }
+    },
+    "EELicenseListResponse": {
+      "required": [
+        "status",
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean"
+        },
+        "result": {
+          "$ref": "#/definitions/EELicenseListResult"
+        }
+      }
+    },
+    "EELicenseRevokeRequest": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      }
+    },
+    "EELicenseRevokeResponse": {
+      "required": [
+        "status",
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean"
+        },
+        "result": {
+          "$ref": "#/definitions/EELicenseRevokeResult"
+        }
+      }
+    },
+    "ErrorResponse": {
+      "required": [
+        "error"
+      ],
+      "type": "object",
+      "properties": {
+        "error": {
+          "title": "Error",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "EvalConfigUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "config": {
+          "title": "Config",
+          "description": "Updated evaluation configuration parameters.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "x-nullable": true
+        },
+        "mapping": {
+          "title": "Mapping",
+          "description": "Updated field mapping between test data and evaluation inputs.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "x-nullable": true
+        },
+        "model": {
+          "title": "Model",
+          "description": "Model to use for evaluations.",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "error_localizer": {
+          "title": "Error localizer",
+          "description": "Enable granular error localization in evaluation results.",
+          "type": "boolean"
+        },
+        "kb_id": {
+          "title": "Kb id",
+          "description": "UUID of a knowledge base to use for grounding. Pass null to clear.",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "name": {
+          "title": "Name",
+          "description": "Updated name for the evaluation configuration.",
+          "type": "string",
+          "minLength": 1
+        },
+        "run": {
+          "title": "Run",
+          "description": "When true, triggers an immediate rerun after updating. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "test_execution_id": {
+          "title": "Test execution id",
+          "description": "UUID of the test execution to rerun against. Required when run is true.",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        }
+      }
+    },
+    "EvalConfigUpdateResponse": {
+      "required": [
+        "message",
+        "eval_config_id",
+        "run_test_id"
+      ],
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "eval_config_id": {
+          "title": "Eval config id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "run_test_id": {
+          "title": "Run test id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "test_execution_id": {
+          "title": "Test execution id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "call_execution_count": {
+          "title": "Call execution count",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "note": {
+          "title": "Note",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "EvalErrorResponse": {
+      "required": [
+        "error"
+      ],
+      "type": "object",
+      "properties": {
+        "error": {
+          "title": "Error",
+          "type": "string",
+          "minLength": 1
+        },
+        "details": {
+          "title": "Details",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          }
+        }
+      }
+    },
+    "EvalGroup": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "readOnly": true
+        },
+        "is_sample": {
+          "title": "Is sample",
+          "type": "boolean"
+        }
+      }
+    },
+    "EvalSummaryComparisonResponse": {
+      "type": "object",
+      "properties": {}
+    },
+    "EvalSummaryResponse": {
+      "required": [
+        "evaluations"
+      ],
+      "type": "object",
+      "properties": {
+        "evaluations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EvalTemplateSummary"
+          }
+        }
+      }
+    },
+    "EvalTask": {
+      "required": [
+        "project",
+        "name",
+        "sampling_rate",
+        "run_type",
+        "evals"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "filters": {
+          "title": "Filters",
+          "type": "object",
+          "default": {},
+          "x-nullable": true,
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "x-nullable": true,
+              "description": "Project scope for the evaluation task."
+            },
+            "date_range": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 2,
+              "description": "Inclusive start/end ISO timestamps."
+            },
+            "created_at": {
+              "type": "string",
+              "description": "Lower-bound ISO timestamp for legacy task filters."
+            },
+            "session_id": {
+              "type": "string",
+              "description": "Trace session id to constrain the task."
+            },
+            "observation_type": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Observation span type(s), for example llm, tool, or chain."
+            },
+            "span_attributes_filters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "column_id": {
+                    "type": "string",
+                    "description": "Column or attribute id to filter on."
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "Optional UI label for chips and saved views."
+                  },
+                  "filter_config": {
+                    "type": "object",
+                    "properties": {
+                      "filter_type": {
+                        "type": "string",
+                        "description": "Canonical field type, for example text, number, boolean, datetime, categorical, thumbs, annotator, or array."
+                      },
+                      "filter_op": {
+                        "type": "string",
+                        "description": "Canonical operator from api_contracts/filter_contract.json, for example equals, not_equals, in, not_in, between, not_between, is_null, or is_not_null."
+                      },
+                      "filter_value": {
+                        "description": "Scalar, list, range tuple, boolean, or null depending on filter_op and filter_type."
+                      },
+                      "col_type": {
+                        "type": "string",
+                        "description": "Column family such as SYSTEM_METRIC, SPAN_ATTRIBUTE, EVAL_METRIC, ANNOTATION, or NORMAL."
+                      }
+                    },
+                    "required": [
+                      "filter_type",
+                      "filter_op"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "column_id",
+                  "filter_config"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "sampling_rate": {
+          "title": "Sampling rate",
+          "type": "number",
+          "maximum": 100,
+          "minimum": 1
+        },
+        "last_run": {
+          "title": "Last run",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "spans_limit": {
+          "title": "Spans limit",
+          "type": "integer",
+          "maximum": 1000000,
+          "minimum": 1,
+          "x-nullable": true
+        },
+        "run_type": {
+          "title": "Run type",
+          "type": "string",
+          "enum": [
+            "continuous",
+            "historical"
+          ]
+        },
+        "row_type": {
+          "title": "Row type",
+          "type": "string",
+          "enum": [
+            "spans",
+            "traces",
+            "sessions",
+            "voiceCalls"
+          ],
+          "default": "spans"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "completed",
+            "failed",
+            "paused",
+            "deleted"
+          ],
+          "x-nullable": true
+        },
+        "start_time": {
+          "title": "Start time",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "end_time": {
+          "title": "End time",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "evals_details": {
+          "title": "Evals details",
+          "type": "object",
+          "x-nullable": true
+        },
+        "evals": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uniqueItems": true
+        },
+        "failed_spans": {
+          "title": "Failed spans",
+          "type": "object",
+          "x-nullable": true
+        },
+        "progress": {
+          "title": "Progress",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "ExecuteRequest": {
+      "type": "object",
+      "properties": {
+        "row_ids": {
+          "description": "Optional list of row IDs to execute. If omitted, all rows are executed.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "task_queue": {
+          "title": "Task queue",
+          "type": "string",
+          "default": "tasks_l",
+          "minLength": 1
+        }
+      }
+    },
+    "ExperimentList": {
+      "required": [
+        "name",
+        "dataset"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "NotStarted",
+            "Queued",
+            "Running",
+            "Completed",
+            "Editing",
+            "Inactive",
+            "Failed",
+            "PartialRun",
+            "ExperimentEvaluation",
+            "Uploading",
+            "PartialExtracted",
+            "Processing",
+            "Deleting",
+            "PartialCompleted",
+            "OptimizationEvaluation",
+            "Error",
+            "Cancelled"
+          ]
+        },
+        "eval_templates_count": {
+          "title": "Eval templates count",
+          "type": "string",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "models_count": {
+          "title": "Models count",
+          "type": "string",
+          "readOnly": true
+        },
+        "dataset": {
+          "title": "Dataset",
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "ExperimentListV2": {
+      "required": [
+        "name",
+        "dataset"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "NotStarted",
+            "Queued",
+            "Running",
+            "Completed",
+            "Editing",
+            "Inactive",
+            "Failed",
+            "PartialRun",
+            "ExperimentEvaluation",
+            "Uploading",
+            "PartialExtracted",
+            "Processing",
+            "Deleting",
+            "PartialCompleted",
+            "OptimizationEvaluation",
+            "Error",
+            "Cancelled"
+          ]
+        },
+        "experiment_type": {
+          "title": "Experiment type",
+          "description": "Determines how the experiment executes: llm, tts, stt, or image.",
+          "type": "string",
+          "enum": [
+            "llm",
+            "tts",
+            "stt",
+            "image"
+          ]
+        },
+        "eval_templates_count": {
+          "title": "Eval templates count",
+          "type": "string",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "models_count": {
+          "title": "Models count",
+          "type": "string",
+          "readOnly": true
+        },
+        "agents_count": {
+          "title": "Agents count",
+          "type": "string",
+          "readOnly": true
+        },
+        "dataset": {
+          "title": "Dataset",
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "ExperimentsTableGet": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        }
+      }
+    },
+    "Feedback": {
+      "required": [
+        "source_id",
+        "source",
+        "value"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "source_id": {
+          "title": "Source id",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "source": {
+          "title": "Source",
+          "type": "string",
+          "enum": [
+            "dataset",
+            "prompt",
+            "sdk",
+            "trace",
+            "experiment",
+            "observe",
+            "eval_playground"
+          ]
+        },
+        "user_eval_metric": {
+          "title": "User eval metric",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "value": {
+          "title": "Value",
+          "type": "string",
+          "minLength": 1
+        },
+        "explanation": {
+          "title": "Explanation",
+          "type": "string",
+          "x-nullable": true
+        },
+        "row_id": {
+          "title": "Row id",
+          "type": "string",
+          "maxLength": 255,
+          "x-nullable": true
+        },
+        "custom_eval_config_id": {
+          "title": "Custom eval config id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "feedback_improvement": {
+          "title": "Feedback improvement",
+          "type": "string",
+          "x-nullable": true
+        },
+        "action_type": {
+          "title": "Action type",
+          "type": "string",
+          "maxLength": 255,
+          "x-nullable": true
+        }
+      }
+    },
+    "FetchAssistantRequest": {
+      "required": [
+        "assistant_id",
+        "api_key"
+      ],
+      "type": "object",
+      "properties": {
+        "assistant_id": {
+          "title": "Assistant id",
+          "type": "string",
+          "minLength": 1
+        },
+        "api_key": {
+          "title": "Api key",
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "title": "Provider",
+          "description": "Voice provider. One of: vapi, retell, eleven_labs, others.",
+          "type": "string",
+          "enum": [
+            "vapi",
+            "retell",
+            "eleven_labs",
+            "others"
+          ],
+          "default": "vapi"
+        }
+      }
+    },
+    "FetchAssistantResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "assistant_id": {
+          "title": "Assistant id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "api_key": {
+          "title": "Api key",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "commit_message": {
+          "title": "Commit message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "FetchGraph": {
+      "required": [
+        "interval",
+        "filters",
+        "property",
+        "req_data_config",
+        "project_id"
+      ],
+      "type": "object",
+      "properties": {
+        "interval": {
+          "title": "Interval",
+          "type": "string",
+          "minLength": 1
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "column_id": {
+                "type": "string",
+                "description": "Column or attribute id to filter on."
+              },
+              "display_name": {
+                "type": "string",
+                "description": "Optional UI label for chips and saved views."
+              },
+              "filter_config": {
+                "type": "object",
+                "properties": {
+                  "filter_type": {
+                    "type": "string",
+                    "description": "Canonical field type, for example text, number, boolean, datetime, categorical, thumbs, annotator, or array."
+                  },
+                  "filter_op": {
+                    "type": "string",
+                    "description": "Canonical operator from api_contracts/filter_contract.json, for example equals, not_equals, in, not_in, between, not_between, is_null, or is_not_null."
+                  },
+                  "filter_value": {
+                    "description": "Scalar, list, range tuple, boolean, or null depending on filter_op and filter_type."
+                  },
+                  "col_type": {
+                    "type": "string",
+                    "description": "Column family such as SYSTEM_METRIC, SPAN_ATTRIBUTE, EVAL_METRIC, ANNOTATION, or NORMAL."
+                  }
+                },
+                "required": [
+                  "filter_type",
+                  "filter_op"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "column_id",
+              "filter_config"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "property": {
+          "title": "Property",
+          "type": "string",
+          "minLength": 1
+        },
+        "req_data_config": {
+          "title": "Req data config",
+          "type": "object"
+        },
+        "project_id": {
+          "title": "Project id",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "GenerateScenario": {
+      "required": [
+        "agent_name",
+        "scenario_name"
+      ],
+      "type": "object",
+      "properties": {
+        "agent_name": {
+          "title": "Agent name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "agent_description": {
+          "title": "Agent description",
+          "type": "string",
+          "default": ""
+        },
+        "scenario_name": {
+          "title": "Scenario name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "type": "string",
+          "enum": [
+            "text",
+            "voice"
+          ],
+          "default": "text"
+        },
+        "no_of_rows": {
+          "title": "No of rows",
+          "type": "integer",
+          "default": 20,
+          "maximum": 1000,
+          "minimum": 1
+        },
+        "personas": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "default": []
+        },
+        "custom_columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          },
+          "default": []
+        },
+        "graph": {
+          "title": "Graph",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "x-nullable": true
+        },
+        "generate_graph": {
+          "title": "Generate graph",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
     "GetAnnotationLabelsResponse": {
       "required": [
         "result"
@@ -6289,6 +26972,156 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "GraphCreate": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "GraphDetail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "description": "Display name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "is_template": {
+          "title": "Is template",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "active_version": {
+          "title": "Active version",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "GraphList": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "description": "Display name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "is_template": {
+          "title": "Is template",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "created_by": {
+          "$ref": "#/definitions/UserBrief"
+        },
+        "collaborators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/UserBrief"
+          },
+          "readOnly": true
+        },
+        "active_version_id": {
+          "title": "Active version id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "active_version_number": {
+          "title": "Active version number",
+          "type": "integer",
+          "readOnly": true
+        },
+        "node_count": {
+          "title": "Node count",
+          "type": "integer",
+          "readOnly": true
+        }
+      }
+    },
+    "GraphUpdate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
     "ImportAnnotations": {
       "required": [
         "annotations"
@@ -6305,6 +27138,659 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Annotator id",
           "type": "string",
           "format": "uuid"
+        }
+      }
+    },
+    "IntegrationConnectionDetail": {
+      "required": [
+        "platform",
+        "display_name",
+        "host_url",
+        "external_project_name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "platform": {
+          "title": "Platform",
+          "type": "string",
+          "enum": [
+            "langfuse",
+            "datadog",
+            "posthog",
+            "pagerduty",
+            "mixpanel",
+            "cloud_storage",
+            "message_queue",
+            "linear"
+          ]
+        },
+        "display_name": {
+          "title": "Display name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "host_url": {
+          "title": "Host url",
+          "type": "string",
+          "format": "uri",
+          "maxLength": 500,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "active",
+            "paused",
+            "error",
+            "syncing",
+            "backfilling"
+          ]
+        },
+        "status_message": {
+          "title": "Status message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "external_project_name": {
+          "title": "External project name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "project_name": {
+          "title": "Project name",
+          "type": "string",
+          "readOnly": true
+        },
+        "public_key_display": {
+          "title": "Public key display",
+          "type": "string",
+          "readOnly": true
+        },
+        "secret_key_display": {
+          "title": "Secret key display",
+          "type": "string",
+          "readOnly": true
+        },
+        "last_synced_at": {
+          "title": "Last synced at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "sync_cursor": {
+          "title": "Sync cursor",
+          "type": "object"
+        },
+        "sync_interval_seconds": {
+          "title": "Sync interval seconds",
+          "type": "integer",
+          "maximum": 1800,
+          "minimum": 60
+        },
+        "last_error_notified_at": {
+          "title": "Last error notified at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "backfill_from": {
+          "title": "Backfill from",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "backfill_completed": {
+          "title": "Backfill completed",
+          "type": "boolean"
+        },
+        "backfill_progress": {
+          "title": "Backfill progress",
+          "type": "object"
+        },
+        "total_traces_synced": {
+          "title": "Total traces synced",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "total_spans_synced": {
+          "title": "Total spans synced",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "total_scores_synced": {
+          "title": "Total scores synced",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        }
+      }
+    },
+    "IntegrationConnectionList": {
+      "required": [
+        "platform",
+        "display_name",
+        "host_url",
+        "external_project_name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "platform": {
+          "title": "Platform",
+          "type": "string",
+          "enum": [
+            "langfuse",
+            "datadog",
+            "posthog",
+            "pagerduty",
+            "mixpanel",
+            "cloud_storage",
+            "message_queue",
+            "linear"
+          ]
+        },
+        "display_name": {
+          "title": "Display name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "host_url": {
+          "title": "Host url",
+          "type": "string",
+          "format": "uri",
+          "maxLength": 500,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "active",
+            "paused",
+            "error",
+            "syncing",
+            "backfilling"
+          ]
+        },
+        "status_message": {
+          "title": "Status message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "external_project_name": {
+          "title": "External project name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "last_synced_at": {
+          "title": "Last synced at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "total_traces_synced": {
+          "title": "Total traces synced",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "total_spans_synced": {
+          "title": "Total spans synced",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "total_scores_synced": {
+          "title": "Total scores synced",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "backfill_completed": {
+          "title": "Backfill completed",
+          "type": "boolean"
+        },
+        "backfill_progress": {
+          "title": "Backfill progress",
+          "type": "object"
+        },
+        "sync_interval_seconds": {
+          "title": "Sync interval seconds",
+          "type": "integer",
+          "maximum": 1800,
+          "minimum": 60
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "KnowledgeBase": {
+      "required": [
+        "name",
+        "chunk_size"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "embedding_model": {
+          "title": "Embedding model",
+          "type": "string",
+          "enum": [
+            "BAAI/bge-small-en-v1.5"
+          ]
+        },
+        "chunk_size": {
+          "title": "Chunk size",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "KnowledgeBaseCreate": {
+      "required": [
+        "name",
+        "chunk_size"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "embedding_model": {
+          "title": "Embedding model",
+          "type": "string",
+          "enum": [
+            "BAAI/bge-small-en-v1.5"
+          ]
+        },
+        "chunk_size": {
+          "title": "Chunk size",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "NodeRead": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "type": {
+          "title": "Type",
+          "description": "'subgraph' for subgraph nodes, 'atomic' for nodes using a NodeTemplate",
+          "type": "string",
+          "enum": [
+            "subgraph",
+            "atomic"
+          ],
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "description": "Display name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "config": {
+          "title": "Config",
+          "description": "Node-specific configuration (validated against node_template.config_schema for atomic nodes)",
+          "type": "object",
+          "readOnly": true
+        },
+        "position": {
+          "title": "Position",
+          "description": "UI coordinates {\"x\": 0, \"y\": 0}",
+          "type": "object",
+          "readOnly": true
+        },
+        "node_template_id": {
+          "title": "Node template id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "ref_graph_version_id": {
+          "title": "Ref graph version id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "ref_graph_name": {
+          "title": "Ref graph name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "ref_graph_id": {
+          "title": "Ref graph id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "prompt_template": {
+          "title": "Prompt template",
+          "type": "string",
+          "readOnly": true
+        },
+        "node_connection": {
+          "title": "Node connection",
+          "type": "string",
+          "readOnly": true
+        },
+        "input_mappings": {
+          "title": "Input mappings",
+          "type": "string",
+          "readOnly": true
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortRead"
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "NodeTemplateDetail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "display_name": {
+          "title": "Display name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "icon": {
+          "title": "Icon",
+          "type": "string",
+          "format": "uri",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "categories": {
+          "title": "Categories",
+          "type": "object",
+          "readOnly": true
+        },
+        "input_definition": {
+          "title": "Input definition",
+          "type": "object",
+          "readOnly": true
+        },
+        "output_definition": {
+          "title": "Output definition",
+          "type": "object",
+          "readOnly": true
+        },
+        "input_mode": {
+          "title": "Input mode",
+          "type": "string",
+          "enum": [
+            "strict",
+            "extensible",
+            "dynamic"
+          ],
+          "readOnly": true
+        },
+        "output_mode": {
+          "title": "Output mode",
+          "type": "string",
+          "enum": [
+            "strict",
+            "extensible",
+            "dynamic"
+          ],
+          "readOnly": true
+        },
+        "config_schema": {
+          "title": "Config schema",
+          "description": "JSON Schema for Node.config validation",
+          "type": "object",
+          "readOnly": true
+        }
+      }
+    },
+    "NodeTemplateList": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "display_name": {
+          "title": "Display name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "icon": {
+          "title": "Icon",
+          "type": "string",
+          "format": "uri",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "categories": {
+          "title": "Categories",
+          "type": "object",
+          "readOnly": true
+        }
+      }
+    },
+    "ObservabilityProvider": {
+      "required": [
+        "provider"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "project_name": {
+          "title": "Project name",
+          "description": "Name of the project. If it doesn't exist, it will be created.",
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "enum": [
+            "vapi",
+            "eleven_labs",
+            "retell",
+            "livekit",
+            "others"
+          ]
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object",
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
         }
       }
     },
@@ -6540,6 +28026,1174 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "OptimizationDataset": {
+      "required": [
+        "name",
+        "dataset_id",
+        "model_config",
+        "optimize_type"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "dataset_id": {
+          "title": "Dataset id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "column_id": {
+          "title": "Column id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "messages": {
+          "description": "List of messages with format [{'role': 'user/assistant', 'content': 'text'}]",
+          "type": "array",
+          "items": {
+            "title": "Messages",
+            "type": "object"
+          },
+          "x-nullable": true
+        },
+        "user_eval_template_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uniqueItems": true
+        },
+        "model_config": {
+          "title": "Model config",
+          "type": "object"
+        },
+        "optimize_type": {
+          "title": "Optimize type",
+          "type": "string",
+          "enum": [
+            "PROMPT_TEMPLATE",
+            "RIGHT_ANSWER",
+            "RAG_PROMPT_TEMPLATE"
+          ]
+        },
+        "user_eval_template_mapping": {
+          "title": "User eval template mapping",
+          "type": "object",
+          "x-nullable": true
+        },
+        "prompt_name": {
+          "title": "Prompt name",
+          "type": "string",
+          "maxLength": 2000,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "NotStarted",
+            "Queued",
+            "Running",
+            "Completed",
+            "Editing",
+            "Inactive",
+            "Failed",
+            "PartialRun",
+            "ExperimentEvaluation",
+            "Uploading",
+            "PartialExtracted",
+            "Processing",
+            "Deleting",
+            "PartialCompleted",
+            "OptimizationEvaluation",
+            "Error",
+            "Cancelled"
+          ]
+        }
+      }
+    },
+    "OptimizationDatasetGet": {
+      "required": [
+        "name",
+        "dataset",
+        "optimize_type"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "dataset": {
+          "title": "Dataset",
+          "type": "string",
+          "format": "uuid"
+        },
+        "column": {
+          "title": "Column",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "messages": {
+          "description": "List of messages with format [{'role': 'user/assistant', 'content': 'text'}]",
+          "type": "array",
+          "items": {
+            "title": "Messages",
+            "type": "object"
+          },
+          "x-nullable": true
+        },
+        "user_eval_template_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uniqueItems": true
+        },
+        "model_config": {
+          "title": "Model config",
+          "type": "object",
+          "x-nullable": true
+        },
+        "optimize_type": {
+          "title": "Optimize type",
+          "type": "string",
+          "enum": [
+            "PROMPT_TEMPLATE",
+            "RIGHT_ANSWER",
+            "RAG_PROMPT_TEMPLATE"
+          ]
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "NotStarted",
+            "Queued",
+            "Running",
+            "Completed",
+            "Editing",
+            "Inactive",
+            "Failed",
+            "PartialRun",
+            "ExperimentEvaluation",
+            "Uploading",
+            "PartialExtracted",
+            "Processing",
+            "Deleting",
+            "PartialCompleted",
+            "OptimizationEvaluation",
+            "Error",
+            "Cancelled"
+          ],
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "optimized_k_prompts": {
+          "type": "array",
+          "items": {
+            "title": "Optimized k prompts",
+            "type": "string",
+            "minLength": 1
+          },
+          "x-nullable": true
+        },
+        "user_eval_template_mapping": {
+          "title": "User eval template mapping",
+          "type": "object",
+          "x-nullable": true
+        },
+        "prompt_name": {
+          "title": "Prompt name",
+          "type": "string",
+          "maxLength": 2000,
+          "x-nullable": true
+        }
+      }
+    },
+    "OptimizationDetail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "optimized_k_prompts": {
+          "title": "Optimized k prompts",
+          "type": "string",
+          "readOnly": true
+        },
+        "user_eval_template_mapping": {
+          "title": "User eval template mapping",
+          "type": "object",
+          "x-nullable": true
+        },
+        "optimized_columns": {
+          "title": "Optimized columns",
+          "type": "string",
+          "readOnly": true
+        },
+        "evaluation_columns": {
+          "title": "Evaluation columns",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "OptimizeDatasetKb": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "knowledge_base_metrics": {
+          "title": "Knowledge base metrics",
+          "type": "object",
+          "x-nullable": true
+        },
+        "knowledge_base_filters": {
+          "title": "Knowledge base filters",
+          "type": "object",
+          "x-nullable": true
+        },
+        "optimized_k_prompts": {
+          "type": "array",
+          "items": {
+            "title": "Optimized k prompts",
+            "type": "string",
+            "minLength": 1
+          },
+          "x-nullable": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string",
+          "maxLength": 2000,
+          "x-nullable": true
+        },
+        "variables": {
+          "title": "Variables",
+          "type": "object",
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "not_started",
+            "pending",
+            "running",
+            "completed",
+            "failed",
+            "cancelled"
+          ]
+        }
+      }
+    },
+    "PerformanceSummary": {
+      "required": [
+        "test_run_performance_metrics",
+        "top_performing_scenarios"
+      ],
+      "type": "object",
+      "properties": {
+        "test_run_performance_metrics": {
+          "title": "Test run performance metrics",
+          "description": "Performance metrics including pass rate, total test runs, and latest fail rate",
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "top_performing_scenarios": {
+          "description": "List of top performing scenarios",
+          "type": "array",
+          "items": {
+            "description": "List of top performing scenarios with their performance scores",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "Persona": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "persona_type": {
+          "title": "Persona type",
+          "description": "Type of persona (system or workspace-level)",
+          "type": "string",
+          "enum": [
+            "system",
+            "workspace"
+          ],
+          "readOnly": true
+        },
+        "persona_type_display": {
+          "title": "Persona type display",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "description": "Name of the persona",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "description": "Description of the persona",
+          "type": "string",
+          "x-nullable": true
+        },
+        "gender": {
+          "title": "Gender",
+          "description": "List of genders for the persona (e.g., ['male'], ['female'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "age_group": {
+          "title": "Age group",
+          "description": "List of age groups for the persona (e.g., ['18-25'], ['25-32'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "occupation": {
+          "title": "Occupation",
+          "description": "List of occupations/professions for the persona (e.g., ['Engineer'], ['Teacher'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "location": {
+          "title": "Location",
+          "description": "List of locations for the persona (e.g., ['United States'], ['Canada'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "personality": {
+          "title": "Personality",
+          "description": "List of personality types for the persona (e.g., ['Friendly and cooperative'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "communication_style": {
+          "title": "Communication style",
+          "description": "List of communication styles for the persona (e.g., ['Direct and concise'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "multilingual": {
+          "title": "Multilingual",
+          "description": "Whether the persona supports multiple languages",
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "languages": {
+          "title": "Languages",
+          "description": "List of languages the persona speaks (e.g., ['English', 'Hindi'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "accent": {
+          "title": "Accent",
+          "description": "List of accents for the persona (e.g., ['American'], ['Australian'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "conversation_speed": {
+          "title": "Conversation speed",
+          "description": "List of conversation speeds (e.g., ['1.0'], ['1.25'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "background_sound": {
+          "title": "Background sound",
+          "description": "Whether background sound is enabled (null=not specified, True/False for enabled/disabled)",
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "finished_speaking_sensitivity": {
+          "title": "Finished speaking sensitivity",
+          "description": "List of sensitivities for detecting when persona finished speaking (e.g., ['5'], ['6'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "interrupt_sensitivity": {
+          "title": "Interrupt sensitivity",
+          "description": "List of sensitivities for allowing interruptions (e.g., ['5'], ['6'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "keywords": {
+          "title": "Keywords",
+          "description": "List of keywords/tags describing the persona (e.g., ['Knowledgeable', 'Patient', 'Helpful'])",
+          "type": "object",
+          "x-nullable": true
+        },
+        "metadata": {
+          "title": "Metadata",
+          "description": "Additional metadata for the persona (speech clarity, base emotion, etc.)",
+          "type": "object",
+          "x-nullable": true
+        },
+        "additional_instruction": {
+          "title": "Additional instruction",
+          "description": "Additional instructions for how this persona should behave",
+          "type": "string",
+          "x-nullable": true
+        },
+        "is_default": {
+          "title": "Is default",
+          "description": "Whether this is a default/recommended persona",
+          "type": "boolean",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "profession": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "x-nullable": true
+        },
+        "language": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "x-nullable": true
+        },
+        "custom_properties": {
+          "title": "Custom properties",
+          "type": "object",
+          "x-nullable": true
+        },
+        "simulation_type": {
+          "title": "Simulation type",
+          "description": "Type of simulation for the persona",
+          "type": "string",
+          "enum": [
+            "voice",
+            "text"
+          ],
+          "readOnly": true
+        },
+        "punctuation": {
+          "title": "Punctuation",
+          "description": "Punctuation style for the persona",
+          "type": "string",
+          "enum": [
+            "clean",
+            "minimal",
+            "expressive",
+            "erratic"
+          ],
+          "x-nullable": true
+        },
+        "slang_usage": {
+          "title": "Slang usage",
+          "description": "Slang usage for the persona",
+          "type": "string",
+          "enum": [
+            "none",
+            "moderate",
+            "heavy",
+            "light"
+          ],
+          "x-nullable": true
+        },
+        "typos_frequency": {
+          "title": "Typos frequency",
+          "description": "Typos frequency for the persona",
+          "type": "string",
+          "enum": [
+            "none",
+            "rare",
+            "occasional",
+            "frequent"
+          ],
+          "x-nullable": true
+        },
+        "regional_mix": {
+          "title": "Regional mix",
+          "description": "Regional mix for the persona",
+          "type": "string",
+          "enum": [
+            "none",
+            "moderate",
+            "heavy",
+            "light"
+          ],
+          "x-nullable": true
+        },
+        "emoji_usage": {
+          "title": "Emoji usage",
+          "description": "Emoji usage for the persona",
+          "type": "string",
+          "enum": [
+            "never",
+            "light",
+            "regular",
+            "heavy"
+          ],
+          "x-nullable": true
+        },
+        "tone": {
+          "title": "Tone",
+          "description": "Tone for the persona",
+          "type": "string",
+          "enum": [
+            "formal",
+            "casual",
+            "neutral"
+          ],
+          "x-nullable": true
+        },
+        "verbosity": {
+          "title": "Verbosity",
+          "description": "Verbosity for the persona",
+          "type": "string",
+          "enum": [
+            "brief",
+            "balanced",
+            "detailed"
+          ],
+          "x-nullable": true
+        }
+      }
+    },
+    "PersonaCreate": {
+      "required": [
+        "name",
+        "description"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "minLength": 1
+        },
+        "gender": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "age_group": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "location": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "profession": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "personality": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "communication_style": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "accent": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "multilingual": {
+          "title": "Multilingual",
+          "type": "boolean",
+          "default": false
+        },
+        "language": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "conversation_speed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "background_sound": {
+          "title": "Background sound",
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "finished_speaking_sensitivity": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "interrupt_sensitivity": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "x-nullable": true
+        },
+        "custom_properties": {
+          "title": "Custom properties",
+          "type": "object",
+          "default": {},
+          "x-nullable": true
+        },
+        "additional_instruction": {
+          "title": "Additional instruction",
+          "type": "string",
+          "default": "",
+          "x-nullable": true
+        },
+        "simulation_type": {
+          "title": "Simulation type",
+          "type": "string",
+          "default": "voice",
+          "x-nullable": true
+        },
+        "tone": {
+          "title": "Tone",
+          "type": "string",
+          "default": "casual",
+          "x-nullable": true
+        },
+        "punctuation": {
+          "title": "Punctuation",
+          "type": "string",
+          "default": "clean",
+          "x-nullable": true
+        },
+        "slang_usage": {
+          "title": "Slang usage",
+          "type": "string",
+          "default": "light",
+          "x-nullable": true
+        },
+        "typos_frequency": {
+          "title": "Typos frequency",
+          "type": "string",
+          "default": "rare",
+          "x-nullable": true
+        },
+        "regional_mix": {
+          "title": "Regional mix",
+          "type": "string",
+          "default": "light",
+          "x-nullable": true
+        },
+        "emoji_usage": {
+          "title": "Emoji usage",
+          "type": "string",
+          "default": "light",
+          "x-nullable": true
+        },
+        "verbosity": {
+          "title": "Verbosity",
+          "type": "string",
+          "default": "balanced",
+          "x-nullable": true
+        }
+      }
+    },
+    "PersonaFieldOptions": {
+      "type": "object",
+      "properties": {
+        "gender_choices": {
+          "title": "Gender choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "age_group_choices": {
+          "title": "Age group choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "location_choices": {
+          "title": "Location choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "profession_choices": {
+          "title": "Profession choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "personality_choices": {
+          "title": "Personality choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "communication_style_choices": {
+          "title": "Communication style choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "accent_choices": {
+          "title": "Accent choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "language_choices": {
+          "title": "Language choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "conversation_speed_choices": {
+          "title": "Conversation speed choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "tone_choices": {
+          "title": "Tone choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "verbosity_choices": {
+          "title": "Verbosity choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "punctuation_choices": {
+          "title": "Punctuation choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "emoji_usage_choices": {
+          "title": "Emoji usage choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "slang_usage_choices": {
+          "title": "Slang usage choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "typos_frequency_choices": {
+          "title": "Typos frequency choices",
+          "type": "string",
+          "readOnly": true
+        },
+        "regional_mix_choices": {
+          "title": "Regional mix choices",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "PersonaList": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "persona_type": {
+          "title": "Persona type",
+          "description": "Type of persona (system or workspace-level)",
+          "type": "string",
+          "enum": [
+            "system",
+            "workspace"
+          ],
+          "readOnly": true
+        },
+        "persona_type_display": {
+          "title": "Persona type display",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "description": "Name of the persona",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "description": "Description of the persona",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "gender": {
+          "title": "Gender",
+          "description": "List of genders for the persona (e.g., ['male'], ['female'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "age_group": {
+          "title": "Age group",
+          "description": "List of age groups for the persona (e.g., ['18-25'], ['25-32'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "occupation": {
+          "title": "Occupation",
+          "description": "List of occupations/professions for the persona (e.g., ['Engineer'], ['Teacher'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "location": {
+          "title": "Location",
+          "description": "List of locations for the persona (e.g., ['United States'], ['Canada'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "personality": {
+          "title": "Personality",
+          "description": "List of personality types for the persona (e.g., ['Friendly and cooperative'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "communication_style": {
+          "title": "Communication style",
+          "description": "List of communication styles for the persona (e.g., ['Direct and concise'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "multilingual": {
+          "title": "Multilingual",
+          "description": "Whether the persona supports multiple languages",
+          "type": "boolean",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "languages": {
+          "title": "Languages",
+          "description": "List of languages the persona speaks (e.g., ['English', 'Hindi'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "accent": {
+          "title": "Accent",
+          "description": "List of accents for the persona (e.g., ['American'], ['Australian'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "conversation_speed": {
+          "title": "Conversation speed",
+          "description": "List of conversation speeds (e.g., ['1.0'], ['1.25'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "background_sound": {
+          "title": "Background sound",
+          "description": "Whether background sound is enabled (null=not specified, True/False for enabled/disabled)",
+          "type": "boolean",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "finished_speaking_sensitivity": {
+          "title": "Finished speaking sensitivity",
+          "description": "List of sensitivities for detecting when persona finished speaking (e.g., ['5'], ['6'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "interrupt_sensitivity": {
+          "title": "Interrupt sensitivity",
+          "description": "List of sensitivities for allowing interruptions (e.g., ['5'], ['6'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "keywords": {
+          "title": "Keywords",
+          "description": "List of keywords/tags describing the persona (e.g., ['Knowledgeable', 'Patient', 'Helpful'])",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "metadata": {
+          "title": "Metadata",
+          "description": "Additional metadata for the persona (speech clarity, base emotion, etc.)",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "additional_instruction": {
+          "title": "Additional instruction",
+          "description": "Additional instructions for how this persona should behave",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "is_default": {
+          "title": "Is default",
+          "description": "Whether this is a default/recommended persona",
+          "type": "boolean",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "simulation_type": {
+          "title": "Simulation type",
+          "type": "string",
+          "readOnly": true
+        },
+        "punctuation": {
+          "title": "Punctuation",
+          "description": "Punctuation style for the persona",
+          "type": "string",
+          "enum": [
+            "clean",
+            "minimal",
+            "expressive",
+            "erratic"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "slang_usage": {
+          "title": "Slang usage",
+          "description": "Slang usage for the persona",
+          "type": "string",
+          "enum": [
+            "none",
+            "moderate",
+            "heavy",
+            "light"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "typos_frequency": {
+          "title": "Typos frequency",
+          "description": "Typos frequency for the persona",
+          "type": "string",
+          "enum": [
+            "none",
+            "rare",
+            "occasional",
+            "frequent"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "regional_mix": {
+          "title": "Regional mix",
+          "description": "Regional mix for the persona",
+          "type": "string",
+          "enum": [
+            "none",
+            "moderate",
+            "heavy",
+            "light"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "emoji_usage": {
+          "title": "Emoji usage",
+          "description": "Emoji usage for the persona",
+          "type": "string",
+          "enum": [
+            "never",
+            "light",
+            "regular",
+            "heavy"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "tone": {
+          "title": "Tone",
+          "description": "Tone for the persona",
+          "type": "string",
+          "enum": [
+            "formal",
+            "casual",
+            "neutral"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "verbosity": {
+          "title": "Verbosity",
+          "description": "Verbosity for the persona",
+          "type": "string",
+          "enum": [
+            "brief",
+            "balanced",
+            "detailed"
+          ],
+          "readOnly": true,
+          "x-nullable": true
+        }
+      }
+    },
     "Project": {
       "required": [
         "model_type",
@@ -6706,6 +29360,408 @@ export const OPENAPI_CONTRACT = Object.freeze({
         },
         "annotations": {
           "title": "Annotations",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        }
+      }
+    },
+    "PromptBaseTemplate": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "is_sample": {
+          "title": "Is sample",
+          "type": "boolean"
+        },
+        "prompt_version": {
+          "title": "Prompt version",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "category": {
+          "title": "Category",
+          "type": "string",
+          "maxLength": 255,
+          "x-nullable": true
+        },
+        "prompt_config_snapshot": {
+          "title": "Prompt config snapshot",
+          "type": "object",
+          "x-nullable": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "PromptExecution": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "readOnly": true
+        },
+        "collaborators": {
+          "title": "Collaborators",
+          "type": "string",
+          "readOnly": true
+        },
+        "model_detail": {
+          "title": "Model detail",
+          "type": "string",
+          "readOnly": true
+        },
+        "prompt_folder": {
+          "title": "Prompt folder",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "is_sample": {
+          "title": "Is sample",
+          "type": "boolean"
+        },
+        "prompt_folder_name": {
+          "title": "Prompt folder name",
+          "type": "string",
+          "readOnly": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "PromptFolder": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "is_sample": {
+          "title": "Is sample",
+          "type": "boolean"
+        },
+        "parent_folder": {
+          "title": "Parent folder",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "PromptHistoryExecution": {
+      "required": [
+        "template_version"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "template_version": {
+          "title": "Template version",
+          "type": "string",
+          "maxLength": 50,
+          "minLength": 1
+        },
+        "output": {
+          "title": "Output",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "prompt_config_snapshot": {
+          "title": "Prompt config snapshot",
+          "type": "string",
+          "readOnly": true
+        },
+        "template_name": {
+          "title": "Template name",
+          "type": "string",
+          "readOnly": true
+        },
+        "original_template": {
+          "title": "Original template",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object",
+          "x-nullable": true
+        },
+        "variable_names": {
+          "title": "Variable names",
+          "type": "string",
+          "readOnly": true
+        },
+        "evaluation_results": {
+          "title": "Evaluation results",
+          "type": "object",
+          "x-nullable": true
+        },
+        "evaluation_configs": {
+          "title": "Evaluation configs",
+          "type": "object",
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "is_default": {
+          "title": "Is default",
+          "type": "boolean"
+        },
+        "commit_message": {
+          "title": "Commit message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "is_draft": {
+          "title": "Is draft",
+          "type": "boolean"
+        },
+        "labels": {
+          "title": "Labels",
+          "type": "string",
+          "readOnly": true
+        },
+        "placeholders": {
+          "title": "Placeholders",
+          "type": "object",
+          "x-nullable": true
+        },
+        "prompt_base_template": {
+          "title": "Prompt base template",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        }
+      }
+    },
+    "PromptLabel": {
+      "required": [
+        "name",
+        "type"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "system",
+            "custom"
+          ]
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object",
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "PromptTemplate": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        },
+        "variable_names": {
+          "title": "Variable names",
+          "type": "object",
+          "x-nullable": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "prompt_folder": {
+          "title": "Prompt folder",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "placeholders": {
+          "title": "Placeholders",
+          "type": "object",
+          "x-nullable": true
+        },
+        "created_by": {
+          "title": "Created by",
           "type": "string",
           "format": "uuid",
           "x-nullable": true
@@ -7351,6 +30407,166 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "ReplaySession": {
+      "required": [
+        "project",
+        "replay_type"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid"
+        },
+        "replay_type": {
+          "title": "Replay type",
+          "type": "string",
+          "enum": [
+            "session",
+            "trace"
+          ]
+        },
+        "ids": {
+          "title": "Ids",
+          "type": "object",
+          "x-nullable": true
+        },
+        "select_all": {
+          "title": "Select all",
+          "type": "boolean"
+        },
+        "current_step": {
+          "title": "Current step",
+          "type": "string",
+          "enum": [
+            "init",
+            "generating",
+            "completed"
+          ],
+          "readOnly": true
+        },
+        "agent_definition": {
+          "$ref": "#/definitions/AgentDefinitionNested"
+        },
+        "scenario": {
+          "$ref": "#/definitions/ScenarioNested"
+        },
+        "run_test": {
+          "$ref": "#/definitions/RunTestNested"
+        }
+      }
+    },
+    "ReplaySessionList": {
+      "required": [
+        "project",
+        "replay_type"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid"
+        },
+        "project_name": {
+          "title": "Project name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "replay_type": {
+          "title": "Replay type",
+          "type": "string",
+          "enum": [
+            "session",
+            "trace"
+          ]
+        },
+        "current_step": {
+          "title": "Current step",
+          "type": "string",
+          "enum": [
+            "init",
+            "generating",
+            "completed"
+          ]
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "RerunCallsResponse": {
+      "required": [
+        "message",
+        "test_execution_id",
+        "rerun_type",
+        "total_processed",
+        "successful_reruns",
+        "failed_reruns",
+        "success_count",
+        "failure_count"
+      ],
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "test_execution_id": {
+          "title": "Test execution id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "rerun_type": {
+          "title": "Rerun type",
+          "type": "string",
+          "minLength": 1
+        },
+        "total_processed": {
+          "title": "Total processed",
+          "type": "integer"
+        },
+        "successful_reruns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "failed_reruns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FailedRerunItem"
+          }
+        },
+        "success_count": {
+          "title": "Success count",
+          "type": "integer"
+        },
+        "failure_count": {
+          "title": "Failure count",
+          "type": "integer"
+        }
+      }
+    },
     "ReviewItemRequest": {
       "required": [
         "action"
@@ -7377,6 +30593,1086 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "$ref": "#/definitions/ReviewLabelCommentRequest"
           },
           "default": []
+        }
+      }
+    },
+    "RunNewEvalsOnTestExecution": {
+      "required": [
+        "eval_config_ids"
+      ],
+      "type": "object",
+      "properties": {
+        "test_execution_ids": {
+          "description": "List of specific test execution IDs to run evaluations on",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "select_all": {
+          "title": "Select all",
+          "description": "Whether to run evaluations on all test executions in the run test",
+          "type": "boolean",
+          "default": false
+        },
+        "eval_config_ids": {
+          "description": "List of SimulateEvalConfig IDs to run on the test executions",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "enable_tool_evaluation": {
+          "title": "Enable tool evaluation",
+          "description": "Whether to enable tool evaluation for this run (if not provided, uses the run test's current setting)",
+          "type": "boolean"
+        }
+      }
+    },
+    "RunNewEvalsResponse": {
+      "required": [
+        "message",
+        "run_test_id",
+        "call_execution_count"
+      ],
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "run_test_id": {
+          "title": "Run test id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "call_execution_count": {
+          "title": "Call execution count",
+          "type": "integer"
+        }
+      }
+    },
+    "RunTestErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "title": "Error",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "details": {
+          "title": "Details",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "RunTestMessageResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        }
+      }
+    },
+    "RunTestResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "description": "Name of the test run",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "description": "Description of the test run",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "agent_definition": {
+          "title": "Agent definition",
+          "description": "Agent definition for this test run",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "agent_version": {
+          "title": "Agent version",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "agent_definition_detail": {
+          "title": "Agent definition detail",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "source_type": {
+          "title": "Source type",
+          "description": "Source type for the test run: agent_definition or prompt",
+          "type": "string",
+          "enum": [
+            "agent_definition",
+            "prompt"
+          ],
+          "readOnly": true
+        },
+        "source_type_display": {
+          "title": "Source type display",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "prompt_template": {
+          "title": "Prompt template",
+          "description": "Prompt template for this test run (only for prompt source type)",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "prompt_template_detail": {
+          "title": "Prompt template detail",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "prompt_version": {
+          "title": "Prompt version",
+          "description": "Prompt version for this test run (only for prompt source type)",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "prompt_version_detail": {
+          "title": "Prompt version detail",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "scenarios": {
+          "description": "Scenarios to run in this test",
+          "type": "array",
+          "items": {
+            "description": "Scenarios to run in this test",
+            "type": "string",
+            "format": "uuid"
+          },
+          "readOnly": true,
+          "uniqueItems": true
+        },
+        "scenarios_detail": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          },
+          "readOnly": true
+        },
+        "dataset_row_ids": {
+          "description": "IDs of dataset rows to run evaluations on",
+          "type": "array",
+          "items": {
+            "title": "Dataset row ids",
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "readOnly": true
+        },
+        "simulator_agent": {
+          "title": "Simulator agent",
+          "description": "Simulator agent for this test run (derived from scenarios)",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "simulator_agent_detail": {
+          "title": "Simulator agent detail",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "simulate_eval_configs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "readOnly": true,
+          "uniqueItems": true
+        },
+        "simulate_eval_configs_detail": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SimulateEvalConfigResponse"
+          },
+          "readOnly": true
+        },
+        "evals_detail": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SimulateEvalConfigResponse"
+          },
+          "readOnly": true
+        },
+        "organization": {
+          "title": "Organization",
+          "description": "Organization this test run belongs to",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "enable_tool_evaluation": {
+          "title": "Enable tool evaluation",
+          "description": "Enable automatic tool evaluation for this test run",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "last_run_at": {
+          "title": "Last run at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "deleted": {
+          "title": "Deleted",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "deleted_at": {
+          "title": "Deleted at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        }
+      }
+    },
+    "RunTestScenarioItemResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "row_count": {
+          "title": "Row count",
+          "type": "integer",
+          "readOnly": true
+        }
+      }
+    },
+    "SAML": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 250,
+          "x-nullable": true
+        },
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "identity_type": {
+          "title": "Identity type",
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3
+          ],
+          "readOnly": true
+        },
+        "is_enabled": {
+          "title": "Is enabled",
+          "type": "boolean"
+        }
+      }
+    },
+    "SavedViewDetail": {
+      "required": [
+        "name",
+        "tab_type"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "tab_type": {
+          "title": "Tab type",
+          "type": "string",
+          "enum": [
+            "traces",
+            "spans",
+            "voice",
+            "imagine",
+            "users",
+            "user_detail",
+            "sessions"
+          ]
+        },
+        "visibility": {
+          "title": "Visibility",
+          "type": "string",
+          "enum": [
+            "personal",
+            "project"
+          ]
+        },
+        "position": {
+          "title": "Position",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "icon": {
+          "title": "Icon",
+          "type": "string",
+          "maxLength": 50,
+          "x-nullable": true
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_by": {
+          "$ref": "#/definitions/SavedViewCreator"
+        },
+        "updated_by": {
+          "$ref": "#/definitions/SavedViewCreator"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "SavedViewList": {
+      "required": [
+        "name",
+        "tab_type"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "tab_type": {
+          "title": "Tab type",
+          "type": "string",
+          "enum": [
+            "traces",
+            "spans",
+            "voice",
+            "imagine",
+            "users",
+            "user_detail",
+            "sessions"
+          ]
+        },
+        "visibility": {
+          "title": "Visibility",
+          "type": "string",
+          "enum": [
+            "personal",
+            "project"
+          ]
+        },
+        "position": {
+          "title": "Position",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "icon": {
+          "title": "Icon",
+          "type": "string",
+          "maxLength": 50,
+          "x-nullable": true
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
+        },
+        "created_by": {
+          "$ref": "#/definitions/SavedViewCreator"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "ScenarioAddColumnsRequest": {
+      "required": [
+        "columns"
+      ],
+      "type": "object",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ColumnDefinition"
+          }
+        }
+      }
+    },
+    "ScenarioAddColumnsResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "scenario_id": {
+          "title": "Scenario id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "dataset_id": {
+          "title": "Dataset id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "ScenarioAddRowsRequest": {
+      "required": [
+        "num_rows"
+      ],
+      "type": "object",
+      "properties": {
+        "num_rows": {
+          "title": "Num rows",
+          "type": "integer",
+          "maximum": 20000,
+          "minimum": 10
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      }
+    },
+    "ScenarioAddRowsResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "scenario_id": {
+          "title": "Scenario id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "dataset_id": {
+          "title": "Dataset id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "num_rows": {
+          "title": "Num rows",
+          "type": "integer",
+          "readOnly": true
+        }
+      }
+    },
+    "ScenarioCreateRequest": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "dataset_id": {
+          "title": "Dataset id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string",
+          "enum": [
+            "graph",
+            "script",
+            "dataset"
+          ],
+          "default": "dataset"
+        },
+        "script_url": {
+          "title": "Script url",
+          "type": "string",
+          "format": "uri",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "agent_definition_id": {
+          "title": "Agent definition id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "agent_definition_version_id": {
+          "title": "Agent definition version id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "custom_instruction": {
+          "title": "Custom instruction",
+          "type": "string"
+        },
+        "no_of_rows": {
+          "title": "No of rows",
+          "type": "integer",
+          "default": 20,
+          "maximum": 20000,
+          "minimum": 10
+        },
+        "generate_graph": {
+          "title": "Generate graph",
+          "type": "boolean",
+          "default": false
+        },
+        "graph": {
+          "title": "Graph",
+          "type": "object",
+          "x-nullable": true
+        },
+        "source_type": {
+          "title": "Source type",
+          "type": "string",
+          "enum": [
+            "agent_definition",
+            "prompt"
+          ],
+          "default": "agent_definition"
+        },
+        "prompt_template_id": {
+          "title": "Prompt template id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "prompt_version_id": {
+          "title": "Prompt version id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "add_persona_automatically": {
+          "title": "Add persona automatically",
+          "type": "boolean",
+          "default": false
+        },
+        "personas": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "custom_columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ColumnDefinition"
+          },
+          "maxItems": 10
+        },
+        "agent_name": {
+          "title": "Agent name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "agent_prompt": {
+          "title": "Agent prompt",
+          "type": "string"
+        },
+        "voice_provider": {
+          "title": "Voice provider",
+          "type": "string",
+          "default": "elevenlabs",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "voice_name": {
+          "title": "Voice name",
+          "type": "string",
+          "default": "marissa",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "default": "gpt-4",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "llm_temperature": {
+          "title": "Llm temperature",
+          "type": "number",
+          "default": 0.7
+        },
+        "initial_message": {
+          "title": "Initial message",
+          "type": "string"
+        },
+        "max_call_duration_in_minutes": {
+          "title": "Max call duration in minutes",
+          "type": "integer",
+          "default": 30
+        },
+        "interrupt_sensitivity": {
+          "title": "Interrupt sensitivity",
+          "type": "number",
+          "default": 0.5
+        },
+        "conversation_speed": {
+          "title": "Conversation speed",
+          "type": "number",
+          "default": 1
+        },
+        "finished_speaking_sensitivity": {
+          "title": "Finished speaking sensitivity",
+          "type": "number",
+          "default": 0.5
+        },
+        "initial_message_delay": {
+          "title": "Initial message delay",
+          "type": "integer",
+          "default": 0
+        }
+      }
+    },
+    "ScenarioCreateResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "scenario": {
+          "$ref": "#/definitions/ScenarioResponse"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "processing"
+          ],
+          "readOnly": true
+        }
+      }
+    },
+    "ScenarioDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        }
+      }
+    },
+    "ScenarioDetailResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "source": {
+          "title": "Source",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "scenario_type": {
+          "title": "Scenario type",
+          "type": "string",
+          "enum": [
+            "graph",
+            "script",
+            "dataset"
+          ],
+          "readOnly": true
+        },
+        "dataset_id": {
+          "title": "Dataset id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "dataset": {
+          "title": "Dataset",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "deleted": {
+          "title": "Deleted",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "deleted_at": {
+          "title": "Deleted at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "NotStarted",
+            "Queued",
+            "Running",
+            "Completed",
+            "Editing",
+            "Inactive",
+            "Failed",
+            "PartialRun",
+            "ExperimentEvaluation",
+            "Uploading",
+            "PartialExtracted",
+            "Processing",
+            "Deleting",
+            "PartialCompleted",
+            "OptimizationEvaluation",
+            "Error",
+            "Cancelled"
+          ],
+          "readOnly": true
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "graph": {
+          "title": "Graph",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true
+        },
+        "prompts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ScenarioPromptItem"
+          },
+          "readOnly": true
+        },
+        "dataset_rows": {
+          "title": "Dataset rows",
+          "type": "integer",
+          "readOnly": true
+        }
+      }
+    },
+    "ScenarioEditPromptsRequest": {
+      "required": [
+        "prompts"
+      ],
+      "type": "object",
+      "properties": {
+        "prompts": {
+          "title": "Prompts",
+          "type": "string",
+          "maxLength": 10000,
+          "minLength": 1
+        }
+      }
+    },
+    "ScenarioEditRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "graph": {
+          "title": "Graph",
+          "type": "object",
+          "x-nullable": true
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        }
+      }
+    },
+    "ScenarioEditResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "scenario": {
+          "$ref": "#/definitions/ScenarioResponse"
+        }
+      }
+    },
+    "ScenarioErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "title": "Error",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "details": {
+          "title": "Details",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "ScenarioListResponse": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "title": "Count",
+          "type": "integer",
+          "readOnly": true
+        },
+        "next": {
+          "title": "Next",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "previous": {
+          "title": "Previous",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ScenarioResponse"
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "ScenarioPromptsUpdateResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "prompts": {
+          "title": "Prompts",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
         }
       }
     },
@@ -7563,6 +31859,223 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "Secret": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        },
+        "secret_type": {
+          "title": "Secret type",
+          "type": "string",
+          "enum": [
+            "API_KEY",
+            "PASSWORD",
+            "TOKEN",
+            "OTHER"
+          ]
+        },
+        "secret_type_display": {
+          "title": "Secret type display",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "key": {
+          "title": "Key",
+          "type": "string",
+          "maxLength": 2500,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "SharedLinkDetail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "resource_type": {
+          "title": "Resource type",
+          "type": "string",
+          "enum": [
+            "trace",
+            "dashboard",
+            "eval_run",
+            "dataset",
+            "project"
+          ],
+          "readOnly": true
+        },
+        "resource_id": {
+          "title": "Resource id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "token": {
+          "title": "Token",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "access_type": {
+          "title": "Access type",
+          "type": "string",
+          "enum": [
+            "public",
+            "restricted"
+          ],
+          "readOnly": true
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "expires_at": {
+          "title": "Expires at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "access_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SharedLinkAccess"
+          },
+          "readOnly": true
+        },
+        "share_url": {
+          "title": "Share url",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "SharedLinkList": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "resource_type": {
+          "title": "Resource type",
+          "type": "string",
+          "enum": [
+            "trace",
+            "dashboard",
+            "eval_run",
+            "dataset",
+            "project"
+          ],
+          "readOnly": true
+        },
+        "resource_id": {
+          "title": "Resource id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "token": {
+          "title": "Token",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "access_type": {
+          "title": "Access type",
+          "type": "string",
+          "enum": [
+            "public",
+            "restricted"
+          ],
+          "readOnly": true
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "expires_at": {
+          "title": "Expires at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "access_count": {
+          "title": "Access count",
+          "type": "string",
+          "readOnly": true
+        },
+        "share_url": {
+          "title": "Share url",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
     "SpanAttributeDetailResponse": {
       "required": [
         "key",
@@ -7683,6 +32196,497 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "SyncLog": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "connection": {
+          "title": "Connection",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "success",
+            "partial",
+            "failed",
+            "rate_limited",
+            "no_new_data"
+          ],
+          "readOnly": true
+        },
+        "started_at": {
+          "title": "Started at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "completed_at": {
+          "title": "Completed at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "traces_fetched": {
+          "title": "Traces fetched",
+          "type": "integer",
+          "readOnly": true
+        },
+        "traces_created": {
+          "title": "Traces created",
+          "type": "integer",
+          "readOnly": true
+        },
+        "traces_updated": {
+          "title": "Traces updated",
+          "type": "integer",
+          "readOnly": true
+        },
+        "spans_synced": {
+          "title": "Spans synced",
+          "type": "integer",
+          "readOnly": true
+        },
+        "scores_synced": {
+          "title": "Scores synced",
+          "type": "integer",
+          "readOnly": true
+        },
+        "error_message": {
+          "title": "Error message",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "error_details": {
+          "title": "Error details",
+          "type": "object",
+          "readOnly": true
+        },
+        "sync_from": {
+          "title": "Sync from",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "sync_to": {
+          "title": "Sync to",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        }
+      }
+    },
+    "TTSVoice": {
+      "required": [
+        "name",
+        "voice_id",
+        "provider",
+        "model"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "maxLength": 255
+        },
+        "voice_id": {
+          "title": "Voice id",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "voice_type": {
+          "title": "Voice type",
+          "type": "string",
+          "enum": [
+            "system",
+            "custom"
+          ],
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "TestExecution": {
+      "required": [
+        "run_test"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "run_test": {
+          "title": "Run test",
+          "description": "The run test being executed",
+          "type": "string",
+          "format": "uuid"
+        },
+        "run_test_name": {
+          "title": "Run test name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agent_definition_name": {
+          "title": "Agent definition name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "description": "Current status of the test execution",
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "completed",
+            "failed",
+            "cancelled",
+            "cancelling",
+            "evaluating"
+          ]
+        },
+        "error_reason": {
+          "title": "Error reason",
+          "type": "string",
+          "x-nullable": true
+        },
+        "started_at": {
+          "title": "Started at",
+          "description": "When the test execution started",
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "title": "Completed at",
+          "description": "When the test execution completed",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "total_scenarios": {
+          "title": "Total scenarios",
+          "description": "Total number of scenarios in this execution",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "total_calls": {
+          "title": "Total calls",
+          "description": "Total number of calls to be made",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "completed_calls": {
+          "title": "Completed calls",
+          "description": "Number of successfully completed calls",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "failed_calls": {
+          "title": "Failed calls",
+          "description": "Number of failed calls",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "execution_metadata": {
+          "title": "Execution metadata",
+          "description": "Additional metadata about the execution",
+          "type": "object"
+        },
+        "duration_seconds": {
+          "title": "Duration seconds",
+          "type": "string",
+          "readOnly": true
+        },
+        "success_rate": {
+          "title": "Success rate",
+          "type": "string",
+          "readOnly": true
+        },
+        "calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CallExecution"
+          },
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "scenario_ids": {
+          "title": "Scenario ids",
+          "description": "List of scenario IDs that were executed in this run",
+          "type": "object"
+        },
+        "simulator_agent_name": {
+          "title": "Simulator agent name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "simulator_agent_id": {
+          "title": "Simulator agent id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "agent_definition_used_name": {
+          "title": "Agent definition used name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agent_definition_used_id": {
+          "title": "Agent definition used id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "calls_attempted": {
+          "title": "Calls attempted",
+          "type": "string",
+          "readOnly": true
+        },
+        "calls_connected_percentage": {
+          "title": "Calls connected percentage",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "TestExecutionItemResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "scenarios": {
+          "title": "Scenarios",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "start_time": {
+          "title": "Start time",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "duration": {
+          "title": "Duration",
+          "type": "integer",
+          "readOnly": true
+        },
+        "error_reason": {
+          "title": "Error reason",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "success_rate": {
+          "title": "Success rate",
+          "type": "number",
+          "readOnly": true
+        },
+        "avg_response_time": {
+          "title": "Avg response time",
+          "type": "number",
+          "readOnly": true
+        },
+        "calls": {
+          "title": "Calls",
+          "type": "integer",
+          "readOnly": true
+        },
+        "calls_attempted": {
+          "title": "Calls attempted",
+          "type": "integer",
+          "readOnly": true
+        },
+        "connected_calls": {
+          "title": "Connected calls",
+          "type": "integer",
+          "readOnly": true
+        },
+        "agent_version": {
+          "title": "Agent version",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "agent_definition": {
+          "title": "Agent definition",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "calls_connected_percentage": {
+          "title": "Calls connected percentage",
+          "type": "number",
+          "readOnly": true
+        },
+        "total_chats": {
+          "title": "Total chats",
+          "type": "integer",
+          "readOnly": true
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "total_number_of_fagi_agent_turns": {
+          "title": "Total number of fagi agent turns",
+          "type": "integer",
+          "readOnly": true
+        },
+        "source_type": {
+          "title": "Source type",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        }
+      }
+    },
+    "TokenObtainPair": {
+      "required": [
+        "email",
+        "password"
+      ],
+      "type": "object",
+      "properties": {
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "minLength": 1
+        },
+        "password": {
+          "title": "Password",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Tools": {
+      "required": [
+        "name",
+        "description",
+        "config"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
+        },
+        "config_type": {
+          "title": "Config type",
+          "type": "string",
+          "enum": [
+            "json",
+            "yaml"
+          ]
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        }
+      }
+    },
     "Trace": {
       "required": [
         "project"
@@ -7798,6 +32802,358 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "UpdateNode": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "position": {
+          "title": "Position",
+          "type": "object"
+        },
+        "prompt_template": {
+          "$ref": "#/definitions/PromptTemplateData"
+        },
+        "ref_graph_version_id": {
+          "title": "Ref graph version id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "input_mappings": {
+          "description": "List of input mappings from port display_name to source reference",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/InputMapping"
+          }
+        },
+        "ports": {
+          "description": "Replace all OUTPUT ports with this new set (input ports preserved)",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortCreate"
+          }
+        }
+      }
+    },
+    "UpdatePort": {
+      "required": [
+        "display_name"
+      ],
+      "type": "object",
+      "properties": {
+        "display_name": {
+          "title": "Display name",
+          "type": "string",
+          "maxLength": 100,
+          "minLength": 1
+        }
+      }
+    },
+    "UpdateRunTest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "agent_definition_id": {
+          "title": "Agent definition id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "scenario_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "dataset_row_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          }
+        },
+        "eval_config_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "UserAlertMonitor": {
+      "required": [
+        "project",
+        "name",
+        "metric_type",
+        "threshold_operator",
+        "organization"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "metric_name": {
+          "title": "Metric name",
+          "type": "string",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "deleted": {
+          "title": "Deleted",
+          "type": "boolean"
+        },
+        "deleted_at": {
+          "title": "Deleted at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "metric_type": {
+          "title": "Metric type",
+          "type": "string",
+          "enum": [
+            "count_of_errors",
+            "error_rates_for_function_calling",
+            "error_free_session_rates",
+            "service_provider_error_rates",
+            "llm_api_failure_rates",
+            "span_response_time",
+            "llm_response_time",
+            "token_usage",
+            "daily_tokens_spent",
+            "monthly_tokens_spent",
+            "evaluation_metrics"
+          ]
+        },
+        "metric": {
+          "title": "Metric",
+          "description": "Id of the evaluation template.",
+          "type": "string",
+          "maxLength": 2556,
+          "x-nullable": true
+        },
+        "threshold_operator": {
+          "title": "Threshold operator",
+          "type": "string",
+          "enum": [
+            "greater_than",
+            "less_than"
+          ]
+        },
+        "threshold_type": {
+          "title": "Threshold type",
+          "description": "Method to set the threshold for the monitor (Static or Percentage change).",
+          "type": "string",
+          "enum": [
+            "static",
+            "percentage_change"
+          ]
+        },
+        "threshold_metric_value": {
+          "title": "Threshold metric value",
+          "description": "For choice and pass/fail evals, the specific metric value to monitor.",
+          "type": "string",
+          "maxLength": 255,
+          "x-nullable": true
+        },
+        "critical_threshold_value": {
+          "title": "Critical threshold value",
+          "type": "number",
+          "minimum": 0,
+          "x-nullable": true
+        },
+        "warning_threshold_value": {
+          "title": "Warning threshold value",
+          "type": "number",
+          "minimum": 0,
+          "x-nullable": true
+        },
+        "alert_frequency": {
+          "title": "Alert frequency",
+          "description": "Frequency of alert checks in minutes.",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 5
+        },
+        "auto_threshold_time_window": {
+          "title": "Auto threshold time window",
+          "description": "For auto-thresholding. The time window in minutes to calculate the historical mean",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "last_checked_at": {
+          "title": "Last checked at",
+          "description": "The last time the monitor was checked for alerts.",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "notification_emails": {
+          "type": "array",
+          "items": {
+            "title": "Notification emails",
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 1
+          }
+        },
+        "slack_webhook_url": {
+          "title": "Slack webhook url",
+          "type": "string",
+          "format": "uri",
+          "maxLength": 200,
+          "x-nullable": true
+        },
+        "slack_notes": {
+          "title": "Slack notes",
+          "type": "string",
+          "x-nullable": true
+        },
+        "is_mute": {
+          "title": "Is mute",
+          "type": "boolean"
+        },
+        "filters": {
+          "title": "Filters",
+          "type": "object",
+          "x-nullable": true
+        },
+        "logs": {
+          "type": "array",
+          "items": {
+            "title": "Logs",
+            "type": "object"
+          },
+          "x-nullable": true
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid"
+        },
+        "workspace": {
+          "title": "Workspace",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "created_by": {
+          "title": "Created by",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        }
+      }
+    },
+    "UserAlertMonitorLog": {
+      "required": [
+        "type",
+        "message"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "resolved_by": {
+          "$ref": "#/definitions/User"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "critical",
+            "warning"
+          ]
+        },
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "resolved": {
+          "title": "Resolved",
+          "type": "boolean"
+        },
+        "resolved_at": {
+          "title": "Resolved at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "uri",
+          "maxLength": 200,
+          "x-nullable": true
+        },
+        "time_window_start": {
+          "title": "Time window start",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "time_window_end": {
+          "title": "Time window end",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        }
+      }
+    },
     "UserCodeExampleResponse": {
       "required": [
         "result"
@@ -7813,6 +33169,51 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Result",
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "UserResponseSchema": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        },
+        "schema": {
+          "title": "Schema",
+          "type": "object"
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "schema_type": {
+          "title": "Schema type",
+          "type": "string",
+          "enum": [
+            "json",
+            "yaml"
+          ],
+          "x-nullable": true
         }
       }
     },
@@ -7896,6 +33297,150 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "type": "string",
             "minLength": 1
           }
+        }
+      }
+    },
+    "EvalConfigDefinition": {
+      "required": [
+        "template_id"
+      ],
+      "type": "object",
+      "properties": {
+        "template_id": {
+          "title": "Template id",
+          "description": "UUID of the evaluation template to use.",
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "title": "Name",
+          "description": "Name for this evaluation configuration. Defaults to 'Eval-<template_id>' if omitted.",
+          "type": "string"
+        },
+        "config": {
+          "title": "Config",
+          "description": "Template-specific configuration parameters.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "default": {}
+        },
+        "mapping": {
+          "title": "Mapping",
+          "description": "Maps test execution data fields to the evaluation template's expected inputs.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "default": {}
+        },
+        "filters": {
+          "title": "Filters",
+          "description": "Filter criteria to restrict which test results are evaluated.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "default": {}
+        },
+        "error_localizer": {
+          "title": "Error localizer",
+          "description": "Enables granular error localization on evaluation failures.",
+          "type": "boolean",
+          "default": false
+        },
+        "model": {
+          "title": "Model",
+          "description": "Model to use for running this evaluation.",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "EvalConfigResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "x-nullable": true
+        },
+        "config": {
+          "title": "Config",
+          "type": "object",
+          "x-nullable": true
+        },
+        "mapping": {
+          "title": "Mapping",
+          "type": "object",
+          "x-nullable": true
+        },
+        "filters": {
+          "title": "Filters",
+          "type": "object",
+          "x-nullable": true
+        },
+        "error_localizer": {
+          "title": "Error localizer",
+          "type": "boolean"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "enum": [
+            "turing_large",
+            "turing_small",
+            "protect",
+            "protect_flash",
+            "turing_flash"
+          ],
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "NotStarted",
+            "Queued",
+            "Running",
+            "Completed",
+            "Editing",
+            "Inactive",
+            "Failed",
+            "PartialRun",
+            "ExperimentEvaluation",
+            "Uploading",
+            "PartialExtracted",
+            "Processing",
+            "Deleting",
+            "PartialCompleted",
+            "OptimizationEvaluation",
+            "Error",
+            "Cancelled"
+          ]
+        },
+        "eval_group": {
+          "title": "Eval group",
+          "type": "string",
+          "readOnly": true
+        },
+        "template_id": {
+          "title": "Template id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
         }
       }
     },
@@ -8368,6 +33913,481 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "CallLogEntryResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "logged_at": {
+          "title": "Logged at",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "level": {
+          "title": "Level",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "severity_text": {
+          "title": "Severity text",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "category": {
+          "title": "Category",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "body": {
+          "title": "Body",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "attributes": {
+          "title": "Attributes",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "payload": {
+          "title": "Payload",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        }
+      }
+    },
+    "InputMapping": {
+      "description": "List of input mappings from port display_name to source reference",
+      "required": [
+        "key"
+      ],
+      "type": "object",
+      "properties": {
+        "key": {
+          "title": "Key",
+          "description": "Input port display_name",
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "title": "Value",
+          "description": "Source reference in format \"NodeName.port_display_name\" or null",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "PortCreate": {
+      "required": [
+        "id",
+        "key",
+        "display_name",
+        "direction"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "description": "FE-generated UUID",
+          "type": "string",
+          "format": "uuid"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "display_name": {
+          "title": "Display name",
+          "type": "string",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "direction": {
+          "title": "Direction",
+          "type": "string",
+          "enum": [
+            "input",
+            "output"
+          ]
+        },
+        "data_schema": {
+          "title": "Data schema",
+          "type": "object",
+          "default": {}
+        },
+        "ref_port_id": {
+          "title": "Ref port id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        }
+      }
+    },
+    "PromptTemplateData": {
+      "required": [
+        "messages"
+      ],
+      "type": "object",
+      "properties": {
+        "prompt_template_id": {
+          "title": "Prompt template id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "prompt_version_id": {
+          "title": "Prompt version id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "messages": {
+          "description": "Array of message objects with id, role, and content array",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Message"
+          }
+        },
+        "response_format": {
+          "title": "Response format",
+          "description": "LLM output format: 'text' (plain text), 'json' (free-form JSON), 'json_schema' (structured with schema), UUID string (saved schema reference), or object with 'id' field (prompt playground format). See class docstring for details.",
+          "type": "object",
+          "default": "text"
+        },
+        "response_schema": {
+          "title": "Response schema",
+          "description": "JSON Schema (Draft 7) for structured outputs. Required when response_format='json_schema'. Example: {'type': 'object', 'properties': {...}, 'required': [...]}",
+          "type": "object",
+          "x-nullable": true
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "x-nullable": true
+        },
+        "temperature": {
+          "title": "Temperature",
+          "type": "number",
+          "x-nullable": true
+        },
+        "max_tokens": {
+          "title": "Max tokens",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "top_p": {
+          "title": "Top p",
+          "type": "number",
+          "x-nullable": true
+        },
+        "frequency_penalty": {
+          "title": "Frequency penalty",
+          "type": "number",
+          "x-nullable": true
+        },
+        "presence_penalty": {
+          "title": "Presence penalty",
+          "type": "number",
+          "x-nullable": true
+        },
+        "output_format": {
+          "title": "Output format",
+          "type": "string",
+          "x-nullable": true
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          },
+          "x-nullable": true
+        },
+        "tool_choice": {
+          "title": "Tool choice",
+          "type": "object",
+          "x-nullable": true
+        },
+        "model_detail": {
+          "title": "Model detail",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "x-nullable": true
+        },
+        "variable_names": {
+          "title": "Variable names",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "x-nullable": true
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "x-nullable": true
+        },
+        "commit_message": {
+          "title": "Commit message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "template_format": {
+          "title": "Template format",
+          "description": "Template format: 'mustache' or 'jinja'",
+          "type": "string",
+          "x-nullable": true
+        },
+        "save_prompt_version": {
+          "title": "Save prompt version",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "x-nullable": true
+    },
+    "DatasetOptimizationStep": {
+      "required": [
+        "name",
+        "step_number"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object",
+          "x-nullable": true
+        },
+        "step_number": {
+          "title": "Step number",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "DatasetOptimizationTrialList": {
+      "required": [
+        "trial_number",
+        "average_score"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "trial_number": {
+          "title": "Trial number",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": -2147483648
+        },
+        "is_baseline": {
+          "title": "Is baseline",
+          "type": "boolean"
+        },
+        "average_score": {
+          "title": "Average score",
+          "type": "number"
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "EELicenseCreateResult": {
+      "required": [
+        "grant_id",
+        "jwt_key",
+        "key_hash",
+        "band",
+        "expires_at",
+        "features"
+      ],
+      "type": "object",
+      "properties": {
+        "grant_id": {
+          "title": "Grant id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "jwt_key": {
+          "title": "Jwt key",
+          "type": "string",
+          "minLength": 1
+        },
+        "key_hash": {
+          "title": "Key hash",
+          "type": "string",
+          "minLength": 1
+        },
+        "band": {
+          "title": "Band",
+          "type": "string",
+          "minLength": 1
+        },
+        "expires_at": {
+          "title": "Expires at",
+          "type": "string",
+          "format": "date-time"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "EELicenseListResult": {
+      "required": [
+        "licenses"
+      ],
+      "type": "object",
+      "properties": {
+        "licenses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EELicenseGrant"
+          }
+        }
+      }
+    },
+    "EELicenseRevokeResult": {
+      "required": [
+        "revoked",
+        "grant_id"
+      ],
+      "type": "object",
+      "properties": {
+        "revoked": {
+          "title": "Revoked",
+          "type": "boolean"
+        },
+        "grant_id": {
+          "title": "Grant id",
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "EvalTemplateSummary": {
+      "required": [
+        "name",
+        "average_score",
+        "total_runs",
+        "passed",
+        "failed"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "average_score": {
+          "title": "Average score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "total_runs": {
+          "title": "Total runs",
+          "type": "integer"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "integer"
+        },
+        "failed": {
+          "title": "Failed",
+          "type": "integer"
+        }
+      }
+    },
     "AnnotationLabelResponse": {
       "required": [
         "id",
@@ -8403,6 +34423,30 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "UserBrief": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "readOnly": true,
+          "minLength": 1
+        }
+      }
+    },
     "ImportAnnotationEntry": {
       "required": [
         "label_id",
@@ -8426,6 +34470,68 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "score_source": {
           "title": "Score source",
           "type": "string"
+        }
+      }
+    },
+    "PortRead": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "key": {
+          "title": "Key",
+          "description": "Identifier (e.g., 'prompt', 'result')",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "display_name": {
+          "title": "Display name",
+          "description": "User-facing name for the port",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "direction": {
+          "title": "Direction",
+          "type": "string",
+          "enum": [
+            "input",
+            "output"
+          ],
+          "readOnly": true
+        },
+        "data_schema": {
+          "title": "Data schema",
+          "description": "JSON Schema for validation",
+          "type": "object",
+          "readOnly": true
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "default_value": {
+          "title": "Default value",
+          "type": "object",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object",
+          "readOnly": true
+        },
+        "ref_port_id": {
+          "title": "Ref port id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
         }
       }
     },
@@ -8735,6 +34841,144 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "AgentDefinitionNested": {
+      "required": [
+        "agent_name",
+        "description"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "agent_name": {
+          "title": "Agent name",
+          "description": "Name of the AI agent",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "type": "string",
+          "enum": [
+            "voice",
+            "text"
+          ]
+        },
+        "description": {
+          "title": "Description",
+          "description": "Detailed description of the AI agent's purpose and capabilities",
+          "type": "string",
+          "minLength": 1
+        },
+        "version_name": {
+          "title": "Version name",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "RunTestNested": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "description": "Name of the test run",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "description": "Description of the test run",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "ScenarioNested": {
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "description": "Name of the scenario",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "description": "Status of the scenario",
+          "type": "string",
+          "enum": [
+            "NotStarted",
+            "Queued",
+            "Running",
+            "Completed",
+            "Editing",
+            "Inactive",
+            "Failed",
+            "PartialRun",
+            "ExperimentEvaluation",
+            "Uploading",
+            "PartialExtracted",
+            "Processing",
+            "Deleting",
+            "PartialCompleted",
+            "OptimizationEvaluation",
+            "Error",
+            "Cancelled"
+          ]
+        },
+        "description": {
+          "title": "Description",
+          "description": "Optional description of the scenario",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "FailedRerunItem": {
+      "required": [
+        "call_execution_id",
+        "error"
+      ],
+      "type": "object",
+      "properties": {
+        "call_execution_id": {
+          "title": "Call execution id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "error": {
+          "title": "Error",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "ReviewLabelCommentRequest": {
       "type": "object",
       "properties": {
@@ -8768,6 +35012,390 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       },
       "default": {}
+    },
+    "SimulateEvalConfigResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "config": {
+          "title": "Config",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "mapping": {
+          "title": "Mapping",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "filters": {
+          "title": "Filters",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "error_localizer": {
+          "title": "Error localizer",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "eval_group": {
+          "title": "Eval group",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "template_id": {
+          "title": "Template id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        }
+      }
+    },
+    "SavedViewCreator": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "readOnly": true,
+          "minLength": 1
+        }
+      }
+    },
+    "ColumnDefinition": {
+      "required": [
+        "name",
+        "data_type",
+        "description"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 50,
+          "minLength": 1
+        },
+        "data_type": {
+          "title": "Data type",
+          "type": "string",
+          "enum": [
+            "text",
+            "boolean",
+            "integer",
+            "float",
+            "json",
+            "array",
+            "image",
+            "images",
+            "datetime",
+            "audio",
+            "document",
+            "others",
+            "persona"
+          ]
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        }
+      }
+    },
+    "ScenarioResponse": {
+      "required": [
+        "name",
+        "source"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "description": "Name of the scenario",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "description": "Optional description of the scenario",
+          "type": "string",
+          "x-nullable": true
+        },
+        "source": {
+          "title": "Source",
+          "description": "Source content or reference for the scenario",
+          "type": "string",
+          "minLength": 1
+        },
+        "scenario_type": {
+          "title": "Scenario type",
+          "description": "Type of scenario (graph, script, or dataset)",
+          "type": "string",
+          "enum": [
+            "graph",
+            "script",
+            "dataset"
+          ]
+        },
+        "scenario_type_display": {
+          "title": "Scenario type display",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "source_type": {
+          "title": "Source type",
+          "description": "Source type for the scenario: agent_definition or prompt",
+          "type": "string",
+          "enum": [
+            "agent_definition",
+            "prompt"
+          ]
+        },
+        "source_type_display": {
+          "title": "Source type display",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        },
+        "organization": {
+          "title": "Organization",
+          "description": "Organization this scenario belongs to",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Dataset associated with this scenario (only for dataset type scenarios)",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "dataset_rows": {
+          "title": "Dataset rows",
+          "type": "string",
+          "readOnly": true
+        },
+        "dataset_column_config": {
+          "title": "Dataset column config",
+          "type": "string",
+          "readOnly": true
+        },
+        "graph": {
+          "title": "Graph",
+          "type": "string",
+          "readOnly": true
+        },
+        "agent": {
+          "title": "Agent",
+          "type": "string",
+          "readOnly": true
+        },
+        "prompt_template": {
+          "title": "Prompt template",
+          "description": "Prompt template associated with this scenario (only for prompt source type)",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "prompt_template_detail": {
+          "title": "Prompt template detail",
+          "type": "string",
+          "readOnly": true
+        },
+        "prompt_version": {
+          "title": "Prompt version",
+          "description": "Prompt version associated with this scenario (only for prompt source type)",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
+        "prompt_version_detail": {
+          "title": "Prompt version detail",
+          "type": "string",
+          "readOnly": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "deleted": {
+          "title": "Deleted",
+          "type": "boolean",
+          "readOnly": true
+        },
+        "status": {
+          "title": "Status",
+          "description": "Status of the scenario",
+          "type": "string",
+          "enum": [
+            "NotStarted",
+            "Queued",
+            "Running",
+            "Completed",
+            "Editing",
+            "Inactive",
+            "Failed",
+            "PartialRun",
+            "ExperimentEvaluation",
+            "Uploading",
+            "PartialExtracted",
+            "Processing",
+            "Deleting",
+            "PartialCompleted",
+            "OptimizationEvaluation",
+            "Error",
+            "Cancelled"
+          ]
+        },
+        "deleted_at": {
+          "title": "Deleted at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "agent_type": {
+          "title": "Agent type",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "ScenarioPromptItem": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "title": "Role",
+          "type": "string",
+          "enum": [
+            "system",
+            "user",
+            "assistant"
+          ],
+          "readOnly": true
+        },
+        "content": {
+          "title": "Content",
+          "type": "string",
+          "readOnly": true,
+          "minLength": 1
+        }
+      }
+    },
+    "SharedLinkAccess": {
+      "required": [
+        "email"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "maxLength": 254,
+          "minLength": 1
+        },
+        "user": {
+          "title": "User",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "granted_by": {
+          "title": "Granted by",
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
     },
     "SpanAttributeTopValue": {
       "required": [
@@ -9090,6 +35718,108 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "Message": {
+      "description": "Array of message objects with id, role, and content array",
+      "required": [
+        "id",
+        "role",
+        "content"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "description": "Unique identifier for the message (frontend-provided)",
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "title": "Role",
+          "description": "Message role (e.g., 'system', 'user', 'assistant')",
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "description": "Array of content items",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MessageContentItem"
+          }
+        }
+      }
+    },
+    "EELicenseGrant": {
+      "required": [
+        "id",
+        "customer_name",
+        "band",
+        "billing_interval",
+        "features",
+        "issued_at",
+        "expires_at",
+        "status"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "customer_name": {
+          "title": "Customer name",
+          "type": "string",
+          "minLength": 1
+        },
+        "band": {
+          "title": "Band",
+          "type": "string",
+          "enum": [
+            "team",
+            "business",
+            "enterprise",
+            "enterprise_plus"
+          ]
+        },
+        "billing_interval": {
+          "title": "Billing interval",
+          "type": "string",
+          "minLength": 1
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "max_traces_monthly": {
+          "title": "Max traces monthly",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "max_gateway_monthly": {
+          "title": "Max gateway monthly",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "issued_at": {
+          "title": "Issued at",
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "title": "Expires at",
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "QueueLabelResult": {
       "required": [
         "id",
@@ -9309,6 +36039,52 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "progress_pct": {
           "title": "Progress pct",
           "type": "number"
+        }
+      }
+    },
+    "MessageContentItem": {
+      "description": "Array of content items",
+      "required": [
+        "type"
+      ],
+      "type": "object",
+      "properties": {
+        "type": {
+          "title": "Type",
+          "description": "Type of content item",
+          "type": "string",
+          "enum": [
+            "text",
+            "image_url",
+            "audio_url",
+            "pdf_url"
+          ]
+        },
+        "text": {
+          "title": "Text",
+          "description": "Text content (required when type=text)",
+          "type": "string"
+        },
+        "image_url": {
+          "title": "Image url",
+          "description": "Image URL (required when type=image_url)",
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "audio_url": {
+          "title": "Audio url",
+          "description": "Audio URL (required when type=audio_url)",
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "pdf_url": {
+          "title": "Pdf url",
+          "description": "PDF URL (required when type=pdf_url)",
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
         }
       }
     }

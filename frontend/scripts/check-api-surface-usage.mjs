@@ -5,7 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "@babel/parser";
 import traverseModule from "@babel/traverse";
-import { API_SURFACE_PATHS } from "../src/api/contracts/api-surface.generated.js";
+import {
+  API_SURFACE_CONTRACT,
+  API_SURFACE_PATHS,
+} from "../src/api/contracts/api-surface.generated.js";
 
 const traverse = traverseModule.default;
 
@@ -14,15 +17,32 @@ const frontendRoot = path.resolve(__dirname, "..");
 const srcRoot = path.join(frontendRoot, "src");
 const scriptsRoot = path.join(frontendRoot, "scripts");
 
-const API_PATH_RE =
-  /^\/(?:model-hub\/(?:annotation-tasks|annotation-queues|annotations-labels|annotations|scores|ai-filter|dataset\/.*annotation-summary)|tracer\/(?:bulk-annotation|get-annotation-labels|trace-annotation|project-version\/add_annotations|observation-span|project|trace-session|trace|dashboard|users)(?:\/|$)|api\/traces)/;
+const MANAGEMENT_API_GROUPS = Object.keys(API_SURFACE_CONTRACT.groups)
+  .filter((groupName) => groupName !== "root")
+  .sort();
+const API_PATH_RE = new RegExp(
+  `^/(?:${MANAGEMENT_API_GROUPS.map((groupName) =>
+    groupName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  ).join("|")})(?:/|$)`,
+);
 
 const ALLOWED_RAW_PATH_FILES = new Set([
   path.join("src", "api", "contracts", "api-surface.generated.js"),
   path.join("src", "api", "contracts", "openapi-contract.generated.js"),
+  path.join("src", "utils", "axios.js"),
   path.join("scripts", "generate-api-surface-contract.mjs"),
   path.join("scripts", "generate-openapi-client.mjs"),
   path.join("scripts", "generate-openapi-contract.mjs"),
+]);
+const HTTP_CLIENT_METHODS = new Set([
+  "delete",
+  "get",
+  "head",
+  "options",
+  "patch",
+  "post",
+  "put",
+  "request",
 ]);
 
 const extensions = new Set([".js", ".jsx", ".ts", ".tsx"]);
@@ -102,10 +122,28 @@ function checkApiPathCall(nodePath, rel) {
   }
 }
 
+function isLikelyHttpClientCall(nodePath) {
+  const parent = nodePath.parentPath;
+  if (!parent?.isCallExpression()) return false;
+  if (!parent.node.arguments.includes(nodePath.node)) return false;
+
+  const callee = parent.node.callee;
+  if (callee?.type === "MemberExpression") {
+    const property = callee.property;
+    const propertyName = property?.name || property?.value;
+    return HTTP_CLIENT_METHODS.has(propertyName);
+  }
+  if (callee?.type === "Identifier") {
+    return ["fetch", "fetcher", "fetchWithPost"].includes(callee.name);
+  }
+  return false;
+}
+
 function checkLiteral(nodePath, rel) {
   const value = protectedLiteralValue(nodePath.node);
   if (!API_PATH_RE.test(value)) return;
   if (isApiPathArgument(nodePath)) return;
+  if (!isLikelyHttpClientCall(nodePath)) return;
 
   const loc = nodePath.node.loc?.start;
   const line = loc?.line || 1;
@@ -150,7 +188,7 @@ walk(scriptsRoot);
 if (violations.length) {
   console.error(
     [
-      "Annotation/filter API paths must go through apiPath() so they are checked against the generated Swagger surface.",
+      "Management API paths must go through apiPath() so they are checked against the generated Swagger surface.",
       ...violations,
     ].join("\n"),
   );

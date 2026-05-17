@@ -55,12 +55,17 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const endpointMatchers = Object.keys(OPENAPI_CONTRACT.endpoints)
+const endpointMatchersByGroup = Object.keys(OPENAPI_CONTRACT.endpoints)
   .sort((a, b) => b.length - a.length)
-  .map((template) => ({
-    template,
-    regex: pathTemplateToRegex(template),
-  }));
+  .reduce((groups, template) => {
+    const groupName = template.split("/").filter(Boolean)[0] || "root";
+    groups[groupName] ||= [];
+    groups[groupName].push({
+      template,
+      regex: pathTemplateToRegex(template),
+    });
+    return groups;
+  }, {});
 
 function normalizeRequestPath(url) {
   if (!url) return "";
@@ -89,6 +94,8 @@ function lowerMethod(method) {
 export function findOpenApiEndpoint(url, method = "get") {
   const pathname = normalizeRequestPath(url);
   const httpMethod = lowerMethod(method);
+  const groupName = pathname.split("/").filter(Boolean)[0] || "root";
+  const endpointMatchers = endpointMatchersByGroup[groupName] || [];
   const match = endpointMatchers.find((endpoint) =>
     endpoint.regex.test(pathname),
   );
@@ -204,6 +211,9 @@ function objectSchemaToZod(schema, options) {
     if (additionalProperties && typeof additionalProperties === "object") {
       return z.record(schemaToZod(additionalProperties, options));
     }
+    if (additionalProperties === false) {
+      return z.object({}).strict();
+    }
     return z.record(z.any());
   }
 
@@ -218,6 +228,8 @@ function objectSchemaToZod(schema, options) {
   let compiled = z.object(shape);
   if (additionalProperties && typeof additionalProperties === "object") {
     compiled = compiled.catchall(schemaToZod(additionalProperties, options));
+  } else if (additionalProperties === false) {
+    compiled = compiled.strict();
   } else {
     compiled = compiled.passthrough();
   }
@@ -229,6 +241,27 @@ function nullableIfNeeded(compiled, schema) {
 }
 
 function parseMaybeJsonBody(data, headers = {}) {
+  if (typeof FormData !== "undefined" && data instanceof FormData) {
+    const body = {};
+    data.forEach((value, key) => {
+      if (Object.prototype.hasOwnProperty.call(body, key)) {
+        body[key] = Array.isArray(body[key])
+          ? [...body[key], value]
+          : [body[key], value];
+      } else {
+        body[key] = value;
+      }
+    });
+    return body;
+  }
+
+  if (
+    typeof URLSearchParams !== "undefined" &&
+    data instanceof URLSearchParams
+  ) {
+    return Object.fromEntries(data.entries());
+  }
+
   if (typeof data !== "string") return data;
   const contentType =
     headers["Content-Type"] ||
@@ -248,6 +281,13 @@ function parseMaybeJsonBody(data, headers = {}) {
   } catch {
     return data;
   }
+}
+
+function isFormLikeBody(data) {
+  return (
+    (typeof FormData !== "undefined" && data instanceof FormData) ||
+    (typeof URLSearchParams !== "undefined" && data instanceof URLSearchParams)
+  );
 }
 
 function issueSummary(issues = []) {
@@ -284,7 +324,9 @@ export function validateContractedRequestConfig(config) {
 
   const { requestBody, queryParameters } = endpoint.contract;
   if (requestBody) {
-    const schema = schemaToZod(requestBody);
+    const schema = schemaToZod(requestBody, {
+      coercePrimitives: isFormLikeBody(config.data),
+    });
     const parsed = schema.safeParse(
       parseMaybeJsonBody(config.data, config.headers),
     );
@@ -326,26 +368,27 @@ export function validateContractedRequestConfig(config) {
 
 function responseSchemaFor(endpoint, status) {
   const responses = endpoint.contract.responses || {};
+  const numericStatus = Number(status);
+  const exact = responses[String(status)];
+  if (exact) return exact;
+
+  const statusClass = Number.isFinite(numericStatus)
+    ? responses[String(Math.floor(numericStatus / 100) * 100)]
+    : null;
+  if (statusClass) return statusClass;
+
+  if (
+    Number.isFinite(numericStatus) &&
+    (numericStatus < 200 || numericStatus >= 300)
+  ) {
+    return responses.default || null;
+  }
+
   return (
-    responses[String(status)] ||
-    responses[String(Math.floor(Number(status) / 100) * 100)] ||
     Object.entries(responses).find(([code]) => code.startsWith("2"))?.[1] ||
     responses.default ||
     null
   );
-}
-
-function responseCandidates(data) {
-  const candidates = [data];
-  if (data && typeof data === "object") {
-    if (Object.prototype.hasOwnProperty.call(data, "result"))
-      candidates.push(data.result);
-    if (Object.prototype.hasOwnProperty.call(data, "results"))
-      candidates.push(data.results);
-    if (Object.prototype.hasOwnProperty.call(data, "data"))
-      candidates.push(data.data);
-  }
-  return candidates;
 }
 
 export function validateContractedResponse(response) {
@@ -359,18 +402,14 @@ export function validateContractedResponse(response) {
   if (!schema) return { ok: true, skipped: true, endpoint };
 
   const zodSchema = schemaToZod(schema);
-  let firstFailure = null;
-  for (const candidate of responseCandidates(response.data)) {
-    const parsed = zodSchema.safeParse(candidate);
-    if (parsed.success) return { ok: true, endpoint };
-    if (!firstFailure) firstFailure = parsed;
-  }
+  const parsed = zodSchema.safeParse(response.data);
+  if (parsed.success) return { ok: true, endpoint };
 
   return validationFailure({
     kind: "response",
     endpoint,
     schemaName: refSchemaName(schema),
-    parsed: firstFailure,
+    parsed,
   });
 }
 

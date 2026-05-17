@@ -27,35 +27,6 @@ const mutatorPath = path.join(
   "openapi-mutator.js",
 );
 
-const ANNOTATION_PREFIXES = [
-  "/model-hub/annotation-tasks",
-  "/model-hub/annotation-queues",
-  "/model-hub/annotations-labels",
-  "/model-hub/annotations",
-  "/model-hub/scores",
-  "/tracer/bulk-annotation",
-  "/tracer/get-annotation-labels",
-  "/tracer/trace-annotation",
-  "/tracer/observation-span/add_annotations",
-  "/tracer/observation-span/delete_annotation_label",
-  "/tracer/project-version/add_annotations",
-];
-
-const ANNOTATION_EXACT_PATHS = [
-  "/model-hub/dataset/{dataset_id}/annotation-summary/",
-];
-
-const FILTER_PREFIXES = [
-  "/model-hub/ai-filter",
-  "/api/traces",
-  "/tracer/dashboard",
-  "/tracer/observation-span",
-  "/tracer/project",
-  "/tracer/trace",
-  "/tracer/trace-session",
-  "/tracer/users",
-];
-
 const HTTP_METHODS = new Set([
   "get",
   "put",
@@ -66,16 +37,6 @@ const HTTP_METHODS = new Set([
   "patch",
   "trace",
 ]);
-
-const hasPrefix = (pathName, prefixes) =>
-  prefixes.some(
-    (prefix) => pathName === `${prefix}/` || pathName.startsWith(`${prefix}/`),
-  );
-
-const isProtectedPath = (pathName) =>
-  hasPrefix(pathName, ANNOTATION_PREFIXES) ||
-  hasPrefix(pathName, FILTER_PREFIXES) ||
-  ANNOTATION_EXACT_PATHS.includes(pathName);
 
 function collectDefinitionRefs(obj, refs = new Set()) {
   if (!obj || typeof obj !== "object") return refs;
@@ -111,12 +72,11 @@ function resolveTransitiveDefinitions(allDefinitions, refs) {
   return allRefs;
 }
 
-function filterSwagger(swagger) {
+function buildManagementApiSwagger(swagger) {
   const paths = {};
   const refs = new Set();
 
   Object.entries(swagger.paths || {}).forEach(([pathName, pathSpec]) => {
-    if (!isProtectedPath(pathName)) return;
     const filteredSpec = {};
     Object.entries(pathSpec || {}).forEach(([method, operation]) => {
       if (method === "parameters" || HTTP_METHODS.has(method)) {
@@ -139,7 +99,7 @@ function filterSwagger(swagger) {
     ...swagger,
     info: {
       ...(swagger.info || {}),
-      title: `${swagger.info?.title || "Future AGI API"} - annotation/filter contracts`,
+      title: `${swagger.info?.title || "Future AGI API"} - management contracts`,
     },
     paths,
     definitions,
@@ -238,10 +198,10 @@ async function runGeneration(schemaPath) {
 }
 
 const swagger = JSON.parse(fs.readFileSync(swaggerPath, "utf8"));
-const filtered = filterSwagger(swagger);
+const managementApiSwagger = buildManagementApiSwagger(swagger);
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "futureagi-openapi-"));
-const tempSchemaPath = path.join(tempDir, "annotation-filter-openapi.json");
-fs.writeFileSync(tempSchemaPath, JSON.stringify(filtered, null, 2));
+const tempSchemaPath = path.join(tempDir, "management-openapi.json");
+fs.writeFileSync(tempSchemaPath, JSON.stringify(managementApiSwagger, null, 2));
 
 const before = snapshotGeneratedFiles();
 

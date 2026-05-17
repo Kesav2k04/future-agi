@@ -11,52 +11,52 @@ import {
 } from "../api-surface";
 
 describe("api surface contract", () => {
-  it("generates annotation endpoint coverage from Swagger", () => {
+  it("generates annotation and model-hub endpoint coverage from Swagger", () => {
     expect(API_SURFACE_CONTRACT.swaggerVersion).toBe("2.0");
-    expect(API_SURFACE_CONTRACT.groups.annotation).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups["model-hub"]).toHaveProperty(
       "/model-hub/annotation-tasks/",
     );
-    expect(API_SURFACE_CONTRACT.groups.annotation).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups["model-hub"]).toHaveProperty(
       "/model-hub/annotation-queues/{queue_id}/items/{id}/annotations/submit/",
     );
-    expect(API_SURFACE_CONTRACT.groups.annotation).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups["model-hub"]).toHaveProperty(
       "/model-hub/annotation-queues/{queue_id}/items/{id}/discussion/{thread_id}/resolve/",
     );
-    expect(API_SURFACE_CONTRACT.groups.annotation).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups["model-hub"]).toHaveProperty(
       "/model-hub/scores/bulk/",
     );
-    expect(API_SURFACE_CONTRACT.groups.annotation).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups["model-hub"]).toHaveProperty(
       "/model-hub/dataset/{dataset_id}/annotation-summary/",
     );
-    expect(API_SURFACE_CONTRACT.groups.annotation).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty(
       "/tracer/project-version/add_annotations/",
     );
   });
 
-  it("generates filter and observe endpoint coverage from Swagger", () => {
-    expect(API_SURFACE_CONTRACT.groups.filter).toHaveProperty(
+  it("generates tracer, filter, and observe endpoint coverage from Swagger", () => {
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty(
       "/tracer/trace/list_traces/",
     );
-    expect(API_SURFACE_CONTRACT.groups.filter).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty(
       "/tracer/observation-span/list_spans/",
     );
-    expect(API_SURFACE_CONTRACT.groups.filter).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty(
       "/tracer/trace-session/list_sessions/",
     );
-    expect(API_SURFACE_CONTRACT.groups.filter).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty(
       "/tracer/trace/list_voice_calls/",
     );
-    expect(API_SURFACE_CONTRACT.groups.filter).toHaveProperty("/tracer/users/");
-    expect(API_SURFACE_CONTRACT.groups.filter).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty("/tracer/users/");
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty(
       "/tracer/observation-span/root-spans/",
     );
-    expect(API_SURFACE_CONTRACT.groups.filter).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty(
       "/tracer/observation-span/get_evaluation_details/",
     );
-    expect(API_SURFACE_CONTRACT.groups.filter).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty(
       "/tracer/trace/{id}/tags/",
     );
-    expect(API_SURFACE_CONTRACT.groups.filter).toHaveProperty(
+    expect(API_SURFACE_CONTRACT.groups.tracer).toHaveProperty(
       "/tracer/dashboard/{dashboard_pk}/widgets/{id}/query/",
     );
   });
@@ -79,6 +79,19 @@ describe("api surface contract", () => {
     expect(getContractedApiMethods("/tracer/trace/{id}/tags/")).toEqual([
       "patch",
     ]);
+    expect(getContractedApiMethods("/usage/v2/add-addon/")).toEqual([
+      "delete",
+      "post",
+      "put",
+    ]);
+    expect(getContractedApiMethods("/usage/ee/licenses/")).toEqual([
+      "get",
+      "post",
+    ]);
+    expect(getContractedApiMethods("/falcon-ai/conversations/")).toEqual([
+      "get",
+      "post",
+    ]);
     expect(isContractedApiPath("/not-in-openapi/")).toBe(false);
     expect(() => apiPath("/not-in-openapi/")).toThrow(
       "API path is not in generated contract",
@@ -88,13 +101,31 @@ describe("api surface contract", () => {
     );
   });
 
-  it("does not let annotation/filter groups accidentally go empty", () => {
-    expect(Object.keys(API_SURFACE_PATHS).length).toBeGreaterThan(40);
+  it("does not let generated Management API coverage accidentally shrink", () => {
+    expect(API_SURFACE_CONTRACT.endpointCount).toBeGreaterThan(960);
+    expect(Object.keys(API_SURFACE_PATHS).length).toBe(
+      API_SURFACE_CONTRACT.endpointCount,
+    );
     expect(
-      Object.keys(API_SURFACE_CONTRACT.groups.annotation).length,
-    ).toBeGreaterThan(30);
+      Object.keys(API_SURFACE_CONTRACT.groups["model-hub"]).length,
+    ).toBeGreaterThan(360);
     expect(
-      Object.keys(API_SURFACE_CONTRACT.groups.filter).length,
-    ).toBeGreaterThan(20);
+      Object.keys(API_SURFACE_CONTRACT.groups.tracer).length,
+    ).toBeGreaterThan(155);
+    expect(
+      Object.keys(API_SURFACE_CONTRACT.groups.accounts).length,
+    ).toBeGreaterThan(75);
+    expect(
+      Object.keys(API_SURFACE_CONTRACT.groups.simulate).length,
+    ).toBeGreaterThan(100);
+    expect(
+      Object.keys(API_SURFACE_CONTRACT.groups.agentcc).length,
+    ).toBeGreaterThan(100);
+    expect(
+      Object.keys(API_SURFACE_CONTRACT.groups.usage).length,
+    ).toBeGreaterThan(55);
+    expect(
+      Object.keys(API_SURFACE_CONTRACT.groups["falcon-ai"]).length,
+    ).toBeGreaterThan(15);
   });
 });

@@ -58,6 +58,7 @@ import DateRangePill, {
 } from "src/sections/projects/LLMTracing/DateRangePill";
 import FilterChips from "src/sections/projects/LLMTracing/FilterChips";
 import TraceFilterPanel from "src/sections/projects/LLMTracing/TraceFilterPanel";
+import { apiPath } from "src/api/contracts/api-surface";
 import { useDashboardFilterValues } from "src/hooks/useDashboards";
 import {
   getPickerOptionLabel,
@@ -1406,7 +1407,8 @@ function DatasetRowSelector({ onSetSelection, onSelectAll }) {
     isFetching: isDatasetsFetching,
   } = useQuery({
     queryKey: ["datasets-list-simple"],
-    queryFn: () => axios.get("/model-hub/develops/get-datasets-names/"),
+    queryFn: () =>
+      axios.get(apiPath("/model-hub/develops/get-datasets-names/")),
     select: (d) => d.data?.result?.datasets || [],
     staleTime: 1000 * 60 * 5,
   });

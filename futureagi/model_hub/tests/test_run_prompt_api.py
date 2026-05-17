@@ -25,6 +25,7 @@ from accounts.models.workspace import Workspace
 from model_hub.models.choices import (
     DatasetSourceChoices,
     DataTypeChoices,
+    EvalExplanationSummaryStatus,
     SourceChoices,
     StatusType,
 )
@@ -105,6 +106,71 @@ def cell(db, dataset, input_column, row):
         row=row,
         value="Test input value",
     )
+
+
+class TestDatasetUtilityResponseContracts:
+    def test_get_base_columns_returns_typed_result(
+        self, auth_client, organization, workspace, dataset, input_column
+    ):
+        other_dataset = Dataset.objects.create(
+            name="Other Dataset",
+            organization=organization,
+            workspace=workspace,
+            source=DatasetSourceChoices.BUILD.value,
+        )
+        Column.objects.create(
+            name=input_column.name,
+            dataset=other_dataset,
+            data_type=DataTypeChoices.TEXT.value,
+            source=SourceChoices.OTHERS.value,
+        )
+        Column.objects.create(
+            name="Eval Score",
+            dataset=other_dataset,
+            data_type=DataTypeChoices.TEXT.value,
+            source=SourceChoices.EVALUATION.value,
+        )
+
+        response = auth_client.get(
+            "/model-hub/datasets/get-base-columns/",
+            {
+                "dataset_ids": [str(dataset.id), str(other_dataset.id)],
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        result = response.json()["result"]
+        assert result["base_columns"] == [input_column.name]
+
+    def test_explanation_summary_returns_typed_insufficient_data_result(
+        self, auth_client, dataset
+    ):
+        response = auth_client.get(
+            f"/model-hub/datasets/explanation-summary/{dataset.id}/",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        result = response.json()["result"]
+        assert result["response"] == []
+        assert result["last_updated"] is None
+        assert result["status"] == EvalExplanationSummaryStatus.INSUFFICIENT_DATA.value
+        assert result["row_count"] == 0
+        assert result["min_rows_required"] == 15
+
+    def test_refresh_explanation_summary_returns_typed_insufficient_data_result(
+        self, auth_client, dataset
+    ):
+        response = auth_client.post(
+            f"/model-hub/datasets/explanation-summary/{dataset.id}/refresh/",
+            {},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        result = response.json()["result"]
+        assert result["status"] == EvalExplanationSummaryStatus.INSUFFICIENT_DATA.value
+        assert result["row_count"] == 0
+        assert result["min_rows_required"] == 15
 
 
 @pytest.fixture

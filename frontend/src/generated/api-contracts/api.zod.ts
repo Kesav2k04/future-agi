@@ -15592,23 +15592,20 @@ export const ModelHubDatasetsExplanationSummaryReadParams = zod.object({
   "dataset_id": zod.string()
 })
 
+
+
+
 export const ModelHubDatasetsExplanationSummaryReadResponse = zod.object({
-  "status": zod.object({
-
-}).passthrough().optional(),
-  "message": zod.string().optional(),
+  "status": zod.boolean(),
   "result": zod.object({
+  "response": zod.object({
 
-}).passthrough().optional(),
-  "data": zod.object({
-
-}).passthrough().optional(),
-  "error": zod.object({
-
-}).passthrough().optional(),
-  "detail": zod.object({
-
-}).passthrough().optional()
+}).passthrough(),
+  "last_updated": zod.string().datetime({"offset":true}),
+  "status": zod.string().min(1),
+  "row_count": zod.number(),
+  "min_rows_required": zod.number()
+})
 })
 
 
@@ -15620,43 +15617,31 @@ export const ModelHubDatasetsExplanationSummaryRefreshCreateBody = zod.object({
 
 }).passthrough()
 
+
+
+
 export const ModelHubDatasetsExplanationSummaryRefreshCreateResponse = zod.object({
-  "status": zod.object({
-
-}).passthrough().optional(),
-  "message": zod.string().optional(),
+  "status": zod.boolean(),
   "result": zod.object({
+  "response": zod.object({
 
-}).passthrough().optional(),
-  "data": zod.object({
-
-}).passthrough().optional(),
-  "error": zod.object({
-
-}).passthrough().optional(),
-  "detail": zod.object({
-
-}).passthrough().optional()
+}).passthrough(),
+  "last_updated": zod.string().datetime({"offset":true}),
+  "status": zod.string().min(1),
+  "row_count": zod.number(),
+  "min_rows_required": zod.number()
+})
 })
 
 
+
+
+
 export const ModelHubDatasetsGetBaseColumnsListResponse = zod.object({
-  "status": zod.object({
-
-}).passthrough().optional(),
-  "message": zod.string().optional(),
+  "status": zod.boolean(),
   "result": zod.object({
-
-}).passthrough().optional(),
-  "data": zod.object({
-
-}).passthrough().optional(),
-  "error": zod.object({
-
-}).passthrough().optional(),
-  "detail": zod.object({
-
-}).passthrough().optional()
+  "base_columns": zod.array(zod.string().min(1))
+})
 })
 
 
@@ -15717,23 +15702,27 @@ export const ModelHubDatasetsHuggingfaceDetailCreateBody = zod.object({
   "dataset_id": zod.string().min(1)
 })
 
+
+
+
+
+
+
+
 export const ModelHubDatasetsHuggingfaceDetailCreateResponse = zod.object({
-  "status": zod.object({
-
-}).passthrough().optional(),
-  "message": zod.string().optional(),
+  "status": zod.boolean(),
   "result": zod.object({
-
-}).passthrough().optional(),
-  "data": zod.object({
-
-}).passthrough().optional(),
-  "error": zod.object({
-
-}).passthrough().optional(),
-  "detail": zod.object({
-
-}).passthrough().optional()
+  "message": zod.string().min(1),
+  "dataset": zod.object({
+  "id": zod.string().min(1),
+  "name": zod.string().min(1),
+  "description": zod.string(),
+  "downloads": zod.number(),
+  "likes": zod.number(),
+  "tags": zod.array(zod.string().min(1)),
+  "author": zod.string().min(1).optional()
+})
+})
 })
 
 
@@ -15747,23 +15736,25 @@ export const ModelHubDatasetsHuggingfaceListCreateBody = zod.object({
 }).passthrough().default(modelHubDatasetsHuggingfaceListCreateBodyFilterParamsDefault)
 })
 
+
+
+
+
+
+
 export const ModelHubDatasetsHuggingfaceListCreateResponse = zod.object({
-  "status": zod.object({
-
-}).passthrough().optional(),
-  "message": zod.string().optional(),
+  "status": zod.boolean(),
   "result": zod.object({
-
-}).passthrough().optional(),
-  "data": zod.object({
-
-}).passthrough().optional(),
-  "error": zod.object({
-
-}).passthrough().optional(),
-  "detail": zod.object({
-
-}).passthrough().optional()
+  "message": zod.string().min(1),
+  "total_datasets": zod.number(),
+  "datasets": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "name": zod.string().min(1),
+  "downloads": zod.number(),
+  "likes": zod.number(),
+  "author": zod.string().min(1).optional()
+}))
+})
 })
 
 
@@ -16832,23 +16823,20 @@ export const ModelHubDevelopsGetDerivedDatasetsReadParams = zod.object({
   "dataset_id": zod.string()
 })
 
+
+
+
 export const ModelHubDevelopsGetDerivedDatasetsReadResponse = zod.object({
-  "status": zod.object({
-
-}).passthrough().optional(),
-  "message": zod.string().optional(),
+  "status": zod.boolean(),
   "result": zod.object({
+  "response": zod.object({
 
-}).passthrough().optional(),
-  "data": zod.object({
-
-}).passthrough().optional(),
-  "error": zod.object({
-
-}).passthrough().optional(),
-  "detail": zod.object({
-
-}).passthrough().optional()
+}).passthrough(),
+  "last_updated": zod.string().datetime({"offset":true}),
+  "status": zod.string().min(1),
+  "row_count": zod.number(),
+  "min_rows_required": zod.number()
+})
 })
 
 

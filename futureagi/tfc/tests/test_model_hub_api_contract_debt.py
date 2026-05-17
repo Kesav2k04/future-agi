@@ -711,12 +711,12 @@ def test_model_hub_ai_writer_and_custom_model_endpoints_have_response_contracts(
             "ModelHubJSONResponse"
         ),
         ("GET", "/model-hub/datasets/explanation-summary/{dataset_id}/"): (
-            "ModelHubJSONResponse"
+            "DatasetExplanationSummaryResponse"
         ),
         ("POST", "/model-hub/datasets/explanation-summary/{dataset_id}/refresh/"): (
-            "ModelHubJSONResponse"
+            "DatasetExplanationSummaryResponse"
         ),
-        ("GET", "/model-hub/datasets/get-base-columns/"): "ModelHubJSONResponse",
+        ("GET", "/model-hub/datasets/get-base-columns/"): "BaseColumnsResponse",
         ("GET", "/model-hub/datasets/get-compare-row/{compare_id}/{row_id}/"): (
             "ModelHubJSONResponse"
         ),
@@ -724,10 +724,10 @@ def test_model_hub_ai_writer_and_custom_model_endpoints_have_response_contracts(
             "ModelHubJSONResponse"
         ),
         ("POST", "/model-hub/datasets/huggingface/detail/"): (
-            "ModelHubJSONResponse"
+            "HuggingFaceDatasetDetailResponse"
         ),
         ("POST", "/model-hub/datasets/huggingface/list/"): (
-            "ModelHubJSONResponse"
+            "HuggingFaceDatasetListResponse"
         ),
         ("GET", "/model-hub/dataset/{dataset_id}/run-prompt-stats/"): (
             "DatasetRunPromptStatsResponse"

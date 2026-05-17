@@ -181,6 +181,7 @@ import type {
   AutomationRuleApi,
   AutomationRuleEvaluateAcceptedResponseApi,
   AutomationRuleEvaluateResponseApi,
+  BaseColumnsResponseApi,
   BillingPortalResponseApi,
   BulkAnnotationRequestApi,
   BulkAnnotationResponseApi,
@@ -272,6 +273,7 @@ import type {
   DatasetCellDataRequestApi,
   DatasetColumnDetailResponseApi,
   DatasetEvalStatsResponseApi,
+  DatasetExplanationSummaryResponseApi,
   DatasetJsonSchemaResponseApi,
   DatasetMultipleStaticColumnsRequestApi,
   DatasetOptimizationApi,
@@ -403,7 +405,9 @@ import type {
   HuggingFaceDatasetConfigRequestApi,
   HuggingFaceDatasetCreateRequestApi,
   HuggingFaceDatasetDetailRequestApi,
+  HuggingFaceDatasetDetailResponseApi,
   HuggingFaceDatasetListRequestApi,
+  HuggingFaceDatasetListResponseApi,
   ImagineAnalysisResponseApi,
   ImportAnnotationsApi,
   IntegrationConnectionDetailApi,
@@ -23890,7 +23894,7 @@ export const modelHubDatasetsDeleteCompareDelete = async (compareId: string, opt
 
 
 export type modelHubDatasetsExplanationSummaryReadResponse200 = {
-  data: ModelHubJSONResponseApi
+  data: DatasetExplanationSummaryResponseApi
   status: 200
 }
 
@@ -23950,7 +23954,7 @@ export const modelHubDatasetsExplanationSummaryRead = async (datasetId: string, 
 
 
 export type modelHubDatasetsExplanationSummaryRefreshCreateResponse200 = {
-  data: ModelHubJSONResponseApi
+  data: DatasetExplanationSummaryResponseApi
   status: 200
 }
 
@@ -24012,7 +24016,7 @@ export const modelHubDatasetsExplanationSummaryRefreshCreate = async (datasetId:
 
 
 export type modelHubDatasetsGetBaseColumnsListResponse200 = {
-  data: ModelHubJSONResponseApi
+  data: BaseColumnsResponseApi
   status: 200
 }
 
@@ -24196,7 +24200,7 @@ export const modelHubDatasetsGetCompareRowDelete = async (compareId: string,
 
 
 export type modelHubDatasetsHuggingfaceDetailCreateResponse200 = {
-  data: ModelHubJSONResponseApi
+  data: HuggingFaceDatasetDetailResponseApi
   status: 200
 }
 
@@ -24257,7 +24261,7 @@ export const modelHubDatasetsHuggingfaceDetailCreate = async (huggingFaceDataset
 
 
 export type modelHubDatasetsHuggingfaceListCreateResponse200 = {
-  data: ModelHubJSONResponseApi
+  data: HuggingFaceDatasetListResponseApi
   status: 200
 }
 
@@ -26267,7 +26271,7 @@ export const modelHubDevelopsGetDatasetsList = async ( options?: RequestInit): P
 
 
 export type modelHubDevelopsGetDerivedDatasetsReadResponse200 = {
-  data: ModelHubJSONResponseApi
+  data: DatasetExplanationSummaryResponseApi
   status: 200
 }
 

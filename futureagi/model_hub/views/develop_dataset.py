@@ -122,6 +122,7 @@ from model_hub.models.run_prompt import PromptVersion, RunPrompter
 from model_hub.serializers.contracts import (
     AddAsNewDatasetRequestSerializer,
     AddRowsFromFileRequestSerializer,
+    BaseColumnsResponseSerializer,
     CloneDatasetRequestSerializer,
     ColumnConfigResponseSerializer,
     CompareDatasetStatsRequestSerializer,
@@ -135,6 +136,7 @@ from model_hub.serializers.contracts import (
     DatasetBehaviorRequestSerializer,
     DatasetCellDataRequestSerializer,
     DatasetColumnDetailResponseSerializer,
+    DatasetExplanationSummaryResponseSerializer,
     DatasetJsonSchemaResponseSerializer,
     DatasetMultipleStaticColumnsRequestSerializer,
     DatasetRowDataRequestSerializer,
@@ -145,7 +147,9 @@ from model_hub.serializers.contracts import (
     DatasetUpdateColumnTypeRequestSerializer,
     DuplicateDatasetRequestSerializer,
     DuplicateRowsRequestSerializer,
+    HuggingFaceDatasetDetailResponseSerializer,
     HuggingFaceDatasetDetailRequestSerializer,
+    HuggingFaceDatasetListResponseSerializer,
     HuggingFaceDatasetListRequestSerializer,
     LegacyKnowledgeBaseFilesRequestSerializer,
     LegacyKnowledgeBaseMutationRequestSerializer,
@@ -8301,7 +8305,10 @@ class GetHuggingFaceDatasetListView(APIView):
 
     @swagger_auto_schema(
         request_body=HuggingFaceDatasetListRequestSerializer,
-        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+        responses={
+            200: HuggingFaceDatasetListResponseSerializer,
+            **MODEL_HUB_ERROR_RESPONSES,
+        },
     )
     def post(self, request, *args, **kwargs):
         try:
@@ -8502,7 +8509,10 @@ class GetHuggingFaceDatasetDetailView(APIView):
 
     @swagger_auto_schema(
         request_body=HuggingFaceDatasetDetailRequestSerializer,
-        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+        responses={
+            200: HuggingFaceDatasetDetailResponseSerializer,
+            **MODEL_HUB_ERROR_RESPONSES,
+        },
     )
     def post(self, request, *args, **kwargs):
         try:
@@ -11742,7 +11752,10 @@ class GetDerivedDatasets(APIView):
     # parser_classes = (MultiPartParser, FormParser, JSONParser)
 
     @swagger_auto_schema(
-        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES}
+        responses={
+            200: DatasetExplanationSummaryResponseSerializer,
+            **MODEL_HUB_ERROR_RESPONSES,
+        }
     )
     def get(self, request, dataset_id, *args, **kwargs):
         try:
@@ -11771,7 +11784,7 @@ class GetBaseColumnsView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES}
+        responses={200: BaseColumnsResponseSerializer, **MODEL_HUB_ERROR_RESPONSES}
     )
     def get(self, request):
         try:
@@ -15025,7 +15038,10 @@ class GetDatasetExplanationSummary(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES}
+        responses={
+            200: DatasetExplanationSummaryResponseSerializer,
+            **MODEL_HUB_ERROR_RESPONSES,
+        }
     )
     def get(self, request, dataset_id):
         try:
@@ -15075,7 +15091,10 @@ class RefreshDatasetExplanationSummary(APIView):
 
     @swagger_auto_schema(
         request_body=ModelHubEmptyRequestSerializer,
-        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+        responses={
+            200: DatasetExplanationSummaryResponseSerializer,
+            **MODEL_HUB_ERROR_RESPONSES,
+        },
     )
     def post(self, request, dataset_id):
         try:

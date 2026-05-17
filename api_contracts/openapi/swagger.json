@@ -20677,7 +20677,7 @@
                     "200": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ModelHubJSONResponse"
+                            "$ref": "#/definitions/DatasetExplanationSummaryResponse"
                         }
                     },
                     "400": {
@@ -20742,7 +20742,7 @@
                     "200": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ModelHubJSONResponse"
+                            "$ref": "#/definitions/DatasetExplanationSummaryResponse"
                         }
                     },
                     "400": {
@@ -20798,7 +20798,7 @@
                     "200": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ModelHubJSONResponse"
+                            "$ref": "#/definitions/BaseColumnsResponse"
                         }
                     },
                     "400": {
@@ -20964,7 +20964,7 @@
                     "200": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ModelHubJSONResponse"
+                            "$ref": "#/definitions/HuggingFaceDatasetDetailResponse"
                         }
                     },
                     "400": {
@@ -21022,7 +21022,7 @@
                     "200": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ModelHubJSONResponse"
+                            "$ref": "#/definitions/HuggingFaceDatasetListResponse"
                         }
                     },
                     "400": {
@@ -22975,7 +22975,7 @@
                     "200": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ModelHubJSONResponse"
+                            "$ref": "#/definitions/DatasetExplanationSummaryResponse"
                         }
                     },
                     "400": {
@@ -74348,6 +74348,89 @@
                 }
             }
         },
+        "DatasetExplanationSummaryResponseResult": {
+            "required": [
+                "response",
+                "last_updated",
+                "status",
+                "row_count",
+                "min_rows_required"
+            ],
+            "type": "object",
+            "properties": {
+                "response": {
+                    "title": "Response",
+                    "type": "object",
+                    "x-nullable": true
+                },
+                "last_updated": {
+                    "title": "Last updated",
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true
+                },
+                "status": {
+                    "title": "Status",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "row_count": {
+                    "title": "Row count",
+                    "type": "integer"
+                },
+                "min_rows_required": {
+                    "title": "Min rows required",
+                    "type": "integer"
+                }
+            }
+        },
+        "DatasetExplanationSummaryResponse": {
+            "required": [
+                "status",
+                "result"
+            ],
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "boolean"
+                },
+                "result": {
+                    "$ref": "#/definitions/DatasetExplanationSummaryResponseResult"
+                }
+            }
+        },
+        "BaseColumnsResponseResult": {
+            "required": [
+                "base_columns"
+            ],
+            "type": "object",
+            "properties": {
+                "base_columns": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                }
+            }
+        },
+        "BaseColumnsResponse": {
+            "required": [
+                "status",
+                "result"
+            ],
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "boolean"
+                },
+                "result": {
+                    "$ref": "#/definitions/BaseColumnsResponseResult"
+                }
+            }
+        },
         "HuggingFaceDatasetDetailRequest": {
             "required": [
                 "dataset_id"
@@ -74358,6 +74441,87 @@
                     "title": "Dataset id",
                     "type": "string",
                     "minLength": 1
+                }
+            }
+        },
+        "HuggingFaceDatasetDetail": {
+            "required": [
+                "id",
+                "name",
+                "description",
+                "downloads",
+                "likes",
+                "tags"
+            ],
+            "type": "object",
+            "properties": {
+                "id": {
+                    "title": "Id",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "description": {
+                    "title": "Description",
+                    "type": "string"
+                },
+                "downloads": {
+                    "title": "Downloads",
+                    "type": "integer"
+                },
+                "likes": {
+                    "title": "Likes",
+                    "type": "integer"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "author": {
+                    "title": "Author",
+                    "type": "string",
+                    "minLength": 1,
+                    "x-nullable": true
+                }
+            }
+        },
+        "HuggingFaceDatasetDetailResponseResult": {
+            "required": [
+                "message",
+                "dataset"
+            ],
+            "type": "object",
+            "properties": {
+                "message": {
+                    "title": "Message",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "dataset": {
+                    "$ref": "#/definitions/HuggingFaceDatasetDetail"
+                }
+            }
+        },
+        "HuggingFaceDatasetDetailResponse": {
+            "required": [
+                "status",
+                "result"
+            ],
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "boolean"
+                },
+                "result": {
+                    "$ref": "#/definitions/HuggingFaceDatasetDetailResponseResult"
                 }
             }
         },
@@ -74373,6 +74537,82 @@
                     "title": "Filter params",
                     "type": "object",
                     "default": {}
+                }
+            }
+        },
+        "HuggingFaceDatasetListItem": {
+            "required": [
+                "id",
+                "name",
+                "downloads",
+                "likes"
+            ],
+            "type": "object",
+            "properties": {
+                "id": {
+                    "title": "Id",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "downloads": {
+                    "title": "Downloads",
+                    "type": "integer"
+                },
+                "likes": {
+                    "title": "Likes",
+                    "type": "integer"
+                },
+                "author": {
+                    "title": "Author",
+                    "type": "string",
+                    "minLength": 1,
+                    "x-nullable": true
+                }
+            }
+        },
+        "HuggingFaceDatasetListResponseResult": {
+            "required": [
+                "message",
+                "total_datasets",
+                "datasets"
+            ],
+            "type": "object",
+            "properties": {
+                "message": {
+                    "title": "Message",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "total_datasets": {
+                    "title": "Total datasets",
+                    "type": "integer"
+                },
+                "datasets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/HuggingFaceDatasetListItem"
+                    }
+                }
+            }
+        },
+        "HuggingFaceDatasetListResponse": {
+            "required": [
+                "status",
+                "result"
+            ],
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "boolean"
+                },
+                "result": {
+                    "$ref": "#/definitions/HuggingFaceDatasetListResponseResult"
                 }
             }
         },

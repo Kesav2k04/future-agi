@@ -10998,7 +10998,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "queryParameters": {},
         "responses": {
           "200": {
-            "$ref": "#/definitions/ModelHubJSONResponse"
+            "$ref": "#/definitions/DatasetExplanationSummaryResponse"
           },
           "400": {
             "$ref": "#/definitions/ModelHubErrorResponse"
@@ -11027,7 +11027,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "queryParameters": {},
         "responses": {
           "200": {
-            "$ref": "#/definitions/ModelHubJSONResponse"
+            "$ref": "#/definitions/DatasetExplanationSummaryResponse"
           },
           "400": {
             "$ref": "#/definitions/ModelHubErrorResponse"
@@ -11054,7 +11054,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "queryParameters": {},
         "responses": {
           "200": {
-            "$ref": "#/definitions/ModelHubJSONResponse"
+            "$ref": "#/definitions/BaseColumnsResponse"
           },
           "400": {
             "$ref": "#/definitions/ModelHubErrorResponse"
@@ -11135,7 +11135,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "queryParameters": {},
         "responses": {
           "200": {
-            "$ref": "#/definitions/ModelHubJSONResponse"
+            "$ref": "#/definitions/HuggingFaceDatasetDetailResponse"
           },
           "400": {
             "$ref": "#/definitions/ModelHubErrorResponse"
@@ -11164,7 +11164,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "queryParameters": {},
         "responses": {
           "200": {
-            "$ref": "#/definitions/ModelHubJSONResponse"
+            "$ref": "#/definitions/HuggingFaceDatasetListResponse"
           },
           "400": {
             "$ref": "#/definitions/ModelHubErrorResponse"
@@ -12090,7 +12090,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "queryParameters": {},
         "responses": {
           "200": {
-            "$ref": "#/definitions/ModelHubJSONResponse"
+            "$ref": "#/definitions/DatasetExplanationSummaryResponse"
           },
           "400": {
             "$ref": "#/definitions/ModelHubErrorResponse"
@@ -37266,6 +37266,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "BaseColumnsResponse": {
+      "required": [
+        "status",
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean"
+        },
+        "result": {
+          "$ref": "#/definitions/BaseColumnsResponseResult"
+        }
+      }
+    },
     "BillingPortalResponse": {
       "required": [
         "url"
@@ -40626,6 +40642,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "items": {
             "$ref": "#/definitions/DatasetEvalStatsItem"
           }
+        }
+      }
+    },
+    "DatasetExplanationSummaryResponse": {
+      "required": [
+        "status",
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean"
+        },
+        "result": {
+          "$ref": "#/definitions/DatasetExplanationSummaryResponseResult"
         }
       }
     },
@@ -44828,6 +44860,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "HuggingFaceDatasetDetailResponse": {
+      "required": [
+        "status",
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean"
+        },
+        "result": {
+          "$ref": "#/definitions/HuggingFaceDatasetDetailResponseResult"
+        }
+      }
+    },
     "HuggingFaceDatasetListRequest": {
       "type": "object",
       "properties": {
@@ -44840,6 +44888,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Filter params",
           "type": "object",
           "default": {}
+        }
+      }
+    },
+    "HuggingFaceDatasetListResponse": {
+      "required": [
+        "status",
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean"
+        },
+        "result": {
+          "$ref": "#/definitions/HuggingFaceDatasetListResponseResult"
         }
       }
     },
@@ -58957,6 +59021,21 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "BaseColumnsResponseResult": {
+      "required": [
+        "base_columns"
+      ],
+      "type": "object",
+      "properties": {
+        "base_columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "BulkAnnotationRecordRequest": {
       "required": [
         "observation_span_id"
@@ -60126,6 +60205,42 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "DatasetExplanationSummaryResponseResult": {
+      "required": [
+        "response",
+        "last_updated",
+        "status",
+        "row_count",
+        "min_rows_required"
+      ],
+      "type": "object",
+      "properties": {
+        "response": {
+          "title": "Response",
+          "type": "object",
+          "x-nullable": true
+        },
+        "last_updated": {
+          "title": "Last updated",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "minLength": 1
+        },
+        "row_count": {
+          "title": "Row count",
+          "type": "integer"
+        },
+        "min_rows_required": {
+          "title": "Min rows required",
+          "type": "integer"
+        }
+      }
+    },
     "JsonColumnSchemaEntry": {
       "required": [
         "name"
@@ -61162,6 +61277,48 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "format": "email",
           "readOnly": true,
           "minLength": 1
+        }
+      }
+    },
+    "HuggingFaceDatasetDetailResponseResult": {
+      "required": [
+        "message",
+        "dataset"
+      ],
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "dataset": {
+          "$ref": "#/definitions/HuggingFaceDatasetDetail"
+        }
+      }
+    },
+    "HuggingFaceDatasetListResponseResult": {
+      "required": [
+        "message",
+        "total_datasets",
+        "datasets"
+      ],
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "total_datasets": {
+          "title": "Total datasets",
+          "type": "integer"
+        },
+        "datasets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HuggingFaceDatasetListItem"
+          }
         }
       }
     },
@@ -67175,6 +67332,89 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "type": "string",
           "format": "date-time",
           "readOnly": true
+        }
+      }
+    },
+    "HuggingFaceDatasetDetail": {
+      "required": [
+        "id",
+        "name",
+        "description",
+        "downloads",
+        "likes",
+        "tags"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "downloads": {
+          "title": "Downloads",
+          "type": "integer"
+        },
+        "likes": {
+          "title": "Likes",
+          "type": "integer"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "author": {
+          "title": "Author",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "HuggingFaceDatasetListItem": {
+      "required": [
+        "id",
+        "name",
+        "downloads",
+        "likes"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "downloads": {
+          "title": "Downloads",
+          "type": "integer"
+        },
+        "likes": {
+          "title": "Likes",
+          "type": "integer"
+        },
+        "author": {
+          "title": "Author",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
         }
       }
     },

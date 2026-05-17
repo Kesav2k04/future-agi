@@ -72,6 +72,67 @@ class DuplicateEvalTemplateResponseSerializer(serializers.Serializer):
     result = DuplicateEvalTemplateResponseResultSerializer()
 
 
+class BaseColumnsResponseResultSerializer(serializers.Serializer):
+    base_columns = serializers.ListField(child=serializers.CharField())
+
+
+class BaseColumnsResponseSerializer(serializers.Serializer):
+    status = serializers.BooleanField()
+    result = BaseColumnsResponseResultSerializer()
+
+
+class DatasetExplanationSummaryResponseResultSerializer(serializers.Serializer):
+    response = serializers.JSONField(allow_null=True)
+    last_updated = serializers.DateTimeField(allow_null=True)
+    status = serializers.CharField()
+    row_count = serializers.IntegerField()
+    min_rows_required = serializers.IntegerField()
+
+
+class DatasetExplanationSummaryResponseSerializer(serializers.Serializer):
+    status = serializers.BooleanField()
+    result = DatasetExplanationSummaryResponseResultSerializer()
+
+
+class HuggingFaceDatasetListItemSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    downloads = serializers.IntegerField()
+    likes = serializers.IntegerField()
+    author = serializers.CharField(allow_null=True, required=False)
+
+
+class HuggingFaceDatasetListResponseResultSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    total_datasets = serializers.IntegerField()
+    datasets = HuggingFaceDatasetListItemSerializer(many=True)
+
+
+class HuggingFaceDatasetListResponseSerializer(serializers.Serializer):
+    status = serializers.BooleanField()
+    result = HuggingFaceDatasetListResponseResultSerializer()
+
+
+class HuggingFaceDatasetDetailSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    description = serializers.CharField(allow_blank=True)
+    downloads = serializers.IntegerField()
+    likes = serializers.IntegerField()
+    tags = serializers.ListField(child=serializers.CharField())
+    author = serializers.CharField(allow_null=True, required=False)
+
+
+class HuggingFaceDatasetDetailResponseResultSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    dataset = HuggingFaceDatasetDetailSerializer()
+
+
+class HuggingFaceDatasetDetailResponseSerializer(serializers.Serializer):
+    status = serializers.BooleanField()
+    result = HuggingFaceDatasetDetailResponseResultSerializer()
+
+
 class AIEvalWriterRequestSerializer(serializers.Serializer):
     description = serializers.CharField()
     output_format = serializers.ChoiceField(

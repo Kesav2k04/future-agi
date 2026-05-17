@@ -5524,9 +5524,58 @@ export interface ComparePreviewRunEvalRequestApi {
   source?: string;
 }
 
+export type DatasetExplanationSummaryResponseResultApiResponse = { [key: string]: unknown };
+
+export interface DatasetExplanationSummaryResponseResultApi {
+  response: DatasetExplanationSummaryResponseResultApiResponse;
+  last_updated: string;
+  /** @minLength 1 */
+  status: string;
+  row_count: number;
+  min_rows_required: number;
+}
+
+export interface DatasetExplanationSummaryResponseApi {
+  status: boolean;
+  result: DatasetExplanationSummaryResponseResultApi;
+}
+
+export interface BaseColumnsResponseResultApi {
+  base_columns: string[];
+}
+
+export interface BaseColumnsResponseApi {
+  status: boolean;
+  result: BaseColumnsResponseResultApi;
+}
+
 export interface HuggingFaceDatasetDetailRequestApi {
   /** @minLength 1 */
   dataset_id: string;
+}
+
+export interface HuggingFaceDatasetDetailApi {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  name: string;
+  description: string;
+  downloads: number;
+  likes: number;
+  tags: string[];
+  /** @minLength 1 */
+  author?: string;
+}
+
+export interface HuggingFaceDatasetDetailResponseResultApi {
+  /** @minLength 1 */
+  message: string;
+  dataset: HuggingFaceDatasetDetailApi;
+}
+
+export interface HuggingFaceDatasetDetailResponseApi {
+  status: boolean;
+  result: HuggingFaceDatasetDetailResponseResultApi;
 }
 
 export type HuggingFaceDatasetListRequestApiFilterParams = { [key: string]: unknown };
@@ -5534,6 +5583,29 @@ export type HuggingFaceDatasetListRequestApiFilterParams = { [key: string]: unkn
 export interface HuggingFaceDatasetListRequestApi {
   search_query?: string;
   filter_params?: HuggingFaceDatasetListRequestApiFilterParams;
+}
+
+export interface HuggingFaceDatasetListItemApi {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  name: string;
+  downloads: number;
+  likes: number;
+  /** @minLength 1 */
+  author?: string;
+}
+
+export interface HuggingFaceDatasetListResponseResultApi {
+  /** @minLength 1 */
+  message: string;
+  total_datasets: number;
+  datasets: HuggingFaceDatasetListItemApi[];
+}
+
+export interface HuggingFaceDatasetListResponseApi {
+  status: boolean;
+  result: HuggingFaceDatasetListResponseResultApi;
 }
 
 export type AddApiColumnRequestApiConfig = { [key: string]: unknown };

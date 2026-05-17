@@ -5,7 +5,7 @@
     "operations": 1336,
     "mutation_endpoints_without_body_schema": 0,
     "operations_without_response_schema": 0,
-    "broad_success_response_schemas": 320
+    "broad_success_response_schemas": 314
   },
   "by_group": {
     "accounts": {
@@ -83,7 +83,7 @@
       "operations": 473,
       "mutation_endpoints_without_body_schema": 0,
       "operations_without_response_schema": 0,
-      "broad_success_response_schemas": 202
+      "broad_success_response_schemas": 196
     },
     "saml2_auth": {
       "paths": 12,
@@ -1238,42 +1238,6 @@
     {
       "group": "model-hub",
       "method": "GET",
-      "path": "/model-hub/datasets/explanation-summary/{dataset_id}/",
-      "operation_id": "model-hub_datasets_explanation-summary_read",
-      "tags": [
-        "model-hub"
-      ],
-      "status_code": "200",
-      "schema": "ModelHubJSONResponse",
-      "reason": "ModelHubJSONResponse.result is an unshaped object"
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/datasets/explanation-summary/{dataset_id}/refresh/",
-      "operation_id": "model-hub_datasets_explanation-summary_refresh_create",
-      "tags": [
-        "model-hub"
-      ],
-      "status_code": "200",
-      "schema": "ModelHubJSONResponse",
-      "reason": "ModelHubJSONResponse.result is an unshaped object"
-    },
-    {
-      "group": "model-hub",
-      "method": "GET",
-      "path": "/model-hub/datasets/get-base-columns/",
-      "operation_id": "model-hub_datasets_get-base-columns_list",
-      "tags": [
-        "model-hub"
-      ],
-      "status_code": "200",
-      "schema": "ModelHubJSONResponse",
-      "reason": "ModelHubJSONResponse.result is an unshaped object"
-    },
-    {
-      "group": "model-hub",
-      "method": "GET",
       "path": "/model-hub/datasets/get-compare-row/{compare_id}/{row_id}/",
       "operation_id": "model-hub_datasets_get-compare-row_read",
       "tags": [
@@ -1288,30 +1252,6 @@
       "method": "DELETE",
       "path": "/model-hub/datasets/get-compare-row/{compare_id}/{row_id}/",
       "operation_id": "model-hub_datasets_get-compare-row_delete",
-      "tags": [
-        "model-hub"
-      ],
-      "status_code": "200",
-      "schema": "ModelHubJSONResponse",
-      "reason": "ModelHubJSONResponse.result is an unshaped object"
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/datasets/huggingface/detail/",
-      "operation_id": "model-hub_datasets_huggingface_detail_create",
-      "tags": [
-        "model-hub"
-      ],
-      "status_code": "200",
-      "schema": "ModelHubJSONResponse",
-      "reason": "ModelHubJSONResponse.result is an unshaped object"
-    },
-    {
-      "group": "model-hub",
-      "method": "POST",
-      "path": "/model-hub/datasets/huggingface/list/",
-      "operation_id": "model-hub_datasets_huggingface_list_create",
       "tags": [
         "model-hub"
       ],
@@ -1672,18 +1612,6 @@
       "method": "GET",
       "path": "/model-hub/develops/get-datasets/",
       "operation_id": "model-hub_develops_get-datasets_list",
-      "tags": [
-        "model-hub"
-      ],
-      "status_code": "200",
-      "schema": "ModelHubJSONResponse",
-      "reason": "ModelHubJSONResponse.result is an unshaped object"
-    },
-    {
-      "group": "model-hub",
-      "method": "GET",
-      "path": "/model-hub/develops/get-derived-datasets/{dataset_id}/",
-      "operation_id": "model-hub_develops_get-derived-datasets_read",
       "tags": [
         "model-hub"
       ],

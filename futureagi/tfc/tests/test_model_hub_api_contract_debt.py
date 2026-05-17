@@ -59,6 +59,8 @@ def test_model_hub_ai_writer_and_custom_model_apis_stay_out_of_contract_debt():
     report = _debt_report()
     protected_paths = {
         "/model-hub/ai-eval-writer/",
+        "/model-hub/columns/{column_id}/operation-config/",
+        "/model-hub/columns/{column_id}/rerun-operation/",
         "/model-hub/custom-models/",
         "/model-hub/custom-models/list/",
         "/model-hub/custom-models/{id}/",
@@ -71,6 +73,13 @@ def test_model_hub_ai_writer_and_custom_model_apis_stay_out_of_contract_debt():
         "/model-hub/custom-metric/test/",
         "/model-hub/custom-metric/update/",
         "/model-hub/custom-metric/{model_id}/",
+        "/model-hub/datasets/{dataset_id}/add-api-column/",
+        "/model-hub/datasets/{dataset_id}/add_vector_db_column/",
+        "/model-hub/datasets/{dataset_id}/classify-column/",
+        "/model-hub/datasets/{dataset_id}/conditional-column/",
+        "/model-hub/datasets/{dataset_id}/extract-entities/",
+        "/model-hub/datasets/{dataset_id}/preview/{operation_type}/",
+        "/model-hub/develops/{dataset_id}/extract-json-column/",
         "/model-hub/kb/",
         "/model-hub/kb/supported-embedding-models",
         "/model-hub/kb/supported_embedding_models/",
@@ -118,6 +127,9 @@ def test_model_hub_ai_writer_and_custom_model_apis_stay_out_of_contract_debt():
 def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts():
     expected = {
         ("POST", "/model-hub/ai-eval-writer/"): "AIEvalWriterRequest",
+        ("POST", "/model-hub/columns/{column_id}/rerun-operation/"): (
+            "RerunOperationRequest"
+        ),
         ("POST", "/model-hub/custom-models/{id}/"): (
             "CustomAIModelUpdateRequest"
         ),
@@ -134,6 +146,27 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
         ("POST", "/model-hub/custom-metric/test/"): "CustomMetricTestRequest",
         ("POST", "/model-hub/custom-metric/update/"): (
             "CustomMetricMutationRequest"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/add-api-column/"): (
+            "AddApiColumnRequest"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/add_vector_db_column/"): (
+            "VectorDBColumnRequest"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/classify-column/"): (
+            "ClassifyColumnRequest"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/conditional-column/"): (
+            "ConditionalColumnRequest"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/extract-entities/"): (
+            "ExtractEntitiesRequest"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/preview/{operation_type}/"): (
+            "PreviewDatasetOperationRequest"
+        ),
+        ("POST", "/model-hub/develops/{dataset_id}/extract-json-column/"): (
+            "ExtractJsonColumnRequest"
         ),
         ("POST", "/model-hub/kb/"): "KnowledgeBaseCreate",
         ("PUT", "/model-hub/kb/{id}/"): "KnowledgeBase",
@@ -201,6 +234,12 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
 def test_model_hub_ai_writer_and_custom_model_endpoints_have_response_contracts():
     expected = {
         ("POST", "/model-hub/ai-eval-writer/"): "AIEvalWriterResponse",
+        ("GET", "/model-hub/columns/{column_id}/operation-config/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("POST", "/model-hub/columns/{column_id}/rerun-operation/"): (
+            "ModelHubJSONResponse"
+        ),
         ("GET", "/model-hub/custom-models/"): "ModelHubPaginatedResponse",
         ("GET", "/model-hub/custom-models/list/"): "ModelHubPaginatedResponse",
         ("GET", "/model-hub/custom-models/{id}/"): "CustomAIModel",
@@ -223,6 +262,27 @@ def test_model_hub_ai_writer_and_custom_model_endpoints_have_response_contracts(
         ("POST", "/model-hub/custom-metric/test/"): "CustomMetricTestResponse",
         ("POST", "/model-hub/custom-metric/update/"): "ModelHubJSONResponse",
         ("GET", "/model-hub/custom-metric/{model_id}/"): "ModelHubPaginatedResponse",
+        ("POST", "/model-hub/datasets/{dataset_id}/add-api-column/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/add_vector_db_column/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/classify-column/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/conditional-column/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/extract-entities/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("POST", "/model-hub/datasets/{dataset_id}/preview/{operation_type}/"): (
+            "ModelHubJSONResponse"
+        ),
+        ("POST", "/model-hub/develops/{dataset_id}/extract-json-column/"): (
+            "ModelHubJSONResponse"
+        ),
         ("GET", "/model-hub/kb/"): "ModelHubJSONResponse",
         ("POST", "/model-hub/kb/"): "ModelHubJSONResponse",
         ("GET", "/model-hub/kb/supported-embedding-models"): (

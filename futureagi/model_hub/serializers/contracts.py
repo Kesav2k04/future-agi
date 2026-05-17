@@ -270,3 +270,82 @@ class PerformanceReportPaginatedResponseSerializer(serializers.Serializer):
     results = PerformanceReportSerializer(many=True)
     total_pages = serializers.IntegerField(required=False)
     current_page = serializers.IntegerField(required=False)
+
+
+class VectorDBColumnRequestSerializer(serializers.Serializer):
+    column_id = serializers.UUIDField()
+    new_column_name = serializers.CharField(required=False, allow_blank=True)
+    sub_type = serializers.CharField()
+    api_key = serializers.CharField()
+    collection_name = serializers.CharField(required=False, allow_blank=True)
+    url = serializers.CharField(required=False, allow_blank=True)
+    search_type = serializers.CharField(required=False, allow_blank=True)
+    key = serializers.CharField(required=False, allow_blank=True)
+    limit = serializers.IntegerField(required=False)
+    index_name = serializers.CharField(required=False, allow_blank=True)
+    top_k = serializers.IntegerField(required=False)
+    namespace = serializers.CharField(required=False, allow_blank=True)
+    embedding_config = serializers.JSONField(required=False)
+    concurrency = serializers.IntegerField(required=False, default=5)
+    query_key = serializers.CharField(required=False, allow_blank=True)
+    vector_length = serializers.IntegerField(required=False)
+
+
+class ExtractJsonColumnRequestSerializer(serializers.Serializer):
+    column_id = serializers.UUIDField()
+    json_key = serializers.CharField()
+    new_column_name = serializers.CharField(required=False, allow_blank=True)
+    concurrency = serializers.IntegerField(required=False, default=5)
+
+
+class ClassifyColumnRequestSerializer(serializers.Serializer):
+    column_id = serializers.UUIDField()
+    labels = serializers.ListField(child=serializers.CharField())
+    language_model_id = serializers.CharField(required=False, default="gpt-4o")
+    concurrency = serializers.IntegerField(required=False, default=5)
+    new_column_name = serializers.CharField(required=False, allow_blank=True)
+
+
+class ExtractEntitiesRequestSerializer(serializers.Serializer):
+    column_id = serializers.UUIDField()
+    instruction = serializers.CharField()
+    language_model_id = serializers.CharField(required=False, default="gpt-4")
+    concurrency = serializers.IntegerField(required=False, default=5)
+    new_column_name = serializers.CharField(required=False, allow_blank=True)
+
+
+class AddApiColumnRequestSerializer(serializers.Serializer):
+    column_name = serializers.CharField()
+    config = serializers.JSONField()
+    concurrency = serializers.IntegerField(required=False, default=5)
+
+
+class PythonCodeColumnRequestSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    new_column_name = serializers.CharField(required=False, allow_blank=True)
+    concurrency = serializers.IntegerField(required=False, default=5)
+
+
+class ConditionalColumnRequestSerializer(serializers.Serializer):
+    config = serializers.ListField(child=serializers.JSONField())
+    new_column_name = serializers.CharField()
+    concurrency = serializers.IntegerField(required=False, default=5)
+
+
+class RerunOperationRequestSerializer(serializers.Serializer):
+    operation_type = serializers.CharField()
+    config = serializers.JSONField(required=False)
+
+
+class PreviewDatasetOperationRequestSerializer(serializers.Serializer):
+    column_id = serializers.UUIDField(required=False)
+    json_key = serializers.CharField(required=False, allow_blank=True)
+    labels = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+    )
+    instruction = serializers.CharField(required=False, allow_blank=True)
+    language_model_id = serializers.CharField(required=False, allow_blank=True)
+    config = serializers.JSONField(required=False)
+    code = serializers.CharField(required=False, allow_blank=True)

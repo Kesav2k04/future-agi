@@ -9917,15 +9917,55 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "model-hub_columns_operation-config_list",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/columns/{column_id}/rerun-operation/": {
       "post": {
         "operationId": "model-hub_columns_rerun-operation_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/RerunOperationRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/create_custom_evals/": {
@@ -10665,25 +10705,88 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/model-hub/datasets/{dataset_id}/add-api-column/": {
       "post": {
         "operationId": "model-hub_datasets_add-api-column_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/AddApiColumnRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/datasets/{dataset_id}/add_vector_db_column/": {
       "post": {
         "operationId": "model-hub_datasets_add_vector_db_column_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/VectorDBColumnRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/datasets/{dataset_id}/classify-column/": {
       "post": {
         "operationId": "model-hub_datasets_classify-column_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/ClassifyColumnRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/datasets/{dataset_id}/compare-datasets/": {
@@ -10729,9 +10832,30 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/model-hub/datasets/{dataset_id}/conditional-column/": {
       "post": {
         "operationId": "model-hub_datasets_conditional-column_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/ConditionalColumnRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/datasets/{dataset_id}/derived-variables/": {
@@ -10761,9 +10885,30 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/model-hub/datasets/{dataset_id}/extract-entities/": {
       "post": {
         "operationId": "model-hub_datasets_extract-entities_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/ExtractEntitiesRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/datasets/{dataset_id}/merge/": {
@@ -10777,9 +10922,30 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/model-hub/datasets/{dataset_id}/preview/{operation_type}/": {
       "post": {
         "operationId": "model-hub_datasets_preview_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/PreviewDatasetOperationRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/delete-eval-template/": {
@@ -11121,9 +11287,30 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/model-hub/develops/{dataset_id}/extract-json-column/": {
       "post": {
         "operationId": "model-hub_develops_extract-json-column_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/ExtractJsonColumnRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ModelHubJSONResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "409": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ModelHubErrorResponse"
+          }
+        }
       }
     },
     "/model-hub/develops/{dataset_id}/get-dataset-table/": {
@@ -28668,6 +28855,29 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "AddApiColumnRequest": {
+      "required": [
+        "column_name",
+        "config"
+      ],
+      "type": "object",
+      "properties": {
+        "column_name": {
+          "title": "Column name",
+          "type": "string",
+          "minLength": 1
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
+        },
+        "concurrency": {
+          "title": "Concurrency",
+          "type": "integer",
+          "default": 5
+        }
+      }
+    },
     "AddEvalConfigsRequest": {
       "required": [
         "evaluations_config"
@@ -34011,6 +34221,42 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "ClassifyColumnRequest": {
+      "required": [
+        "column_id",
+        "labels"
+      ],
+      "type": "object",
+      "properties": {
+        "column_id": {
+          "title": "Column id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "language_model_id": {
+          "title": "Language model id",
+          "type": "string",
+          "default": "gpt-4o",
+          "minLength": 1
+        },
+        "concurrency": {
+          "title": "Concurrency",
+          "type": "integer",
+          "default": 5
+        },
+        "new_column_name": {
+          "title": "New column name",
+          "type": "string"
+        }
+      }
+    },
     "ClickHouseHealthResponse": {
       "required": [
         "status",
@@ -34052,6 +34298,31 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Error",
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "ConditionalColumnRequest": {
+      "required": [
+        "config",
+        "new_column_name"
+      ],
+      "type": "object",
+      "properties": {
+        "config": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "new_column_name": {
+          "title": "New column name",
+          "type": "string",
+          "minLength": 1
+        },
+        "concurrency": {
+          "title": "Concurrency",
+          "type": "integer",
+          "default": 5
         }
       }
     },
@@ -36577,6 +36848,68 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "type": "string",
           "maxLength": 255,
           "minLength": 1
+        }
+      }
+    },
+    "ExtractEntitiesRequest": {
+      "required": [
+        "column_id",
+        "instruction"
+      ],
+      "type": "object",
+      "properties": {
+        "column_id": {
+          "title": "Column id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "instruction": {
+          "title": "Instruction",
+          "type": "string",
+          "minLength": 1
+        },
+        "language_model_id": {
+          "title": "Language model id",
+          "type": "string",
+          "default": "gpt-4",
+          "minLength": 1
+        },
+        "concurrency": {
+          "title": "Concurrency",
+          "type": "integer",
+          "default": 5
+        },
+        "new_column_name": {
+          "title": "New column name",
+          "type": "string"
+        }
+      }
+    },
+    "ExtractJsonColumnRequest": {
+      "required": [
+        "column_id",
+        "json_key"
+      ],
+      "type": "object",
+      "properties": {
+        "column_id": {
+          "title": "Column id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "json_key": {
+          "title": "Json key",
+          "type": "string",
+          "minLength": 1
+        },
+        "new_column_name": {
+          "title": "New column name",
+          "type": "string"
+        },
+        "concurrency": {
+          "title": "Concurrency",
+          "type": "integer",
+          "default": 5
         }
       }
     },
@@ -41962,6 +42295,44 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "PreviewDatasetOperationRequest": {
+      "type": "object",
+      "properties": {
+        "column_id": {
+          "title": "Column id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "json_key": {
+          "title": "Json key",
+          "type": "string"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "instruction": {
+          "title": "Instruction",
+          "type": "string"
+        },
+        "language_model_id": {
+          "title": "Language model id",
+          "type": "string"
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        }
+      }
+    },
     "PricingCalculationResponse": {
       "required": [
         "status",
@@ -43626,6 +43997,23 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "failure_count": {
           "title": "Failure count",
           "type": "integer"
+        }
+      }
+    },
+    "RerunOperationRequest": {
+      "required": [
+        "operation_type"
+      ],
+      "type": "object",
+      "properties": {
+        "operation_type": {
+          "title": "Operation type",
+          "type": "string",
+          "minLength": 1
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
         }
       }
     },
@@ -48973,6 +49361,84 @@ export const OPENAPI_CONTRACT = Object.freeze({
         },
         "result": {
           "$ref": "#/definitions/ValidateLiveKitCredentialsResult"
+        }
+      }
+    },
+    "VectorDBColumnRequest": {
+      "required": [
+        "column_id",
+        "sub_type",
+        "api_key"
+      ],
+      "type": "object",
+      "properties": {
+        "column_id": {
+          "title": "Column id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "new_column_name": {
+          "title": "New column name",
+          "type": "string"
+        },
+        "sub_type": {
+          "title": "Sub type",
+          "type": "string",
+          "minLength": 1
+        },
+        "api_key": {
+          "title": "Api key",
+          "type": "string",
+          "minLength": 1
+        },
+        "collection_name": {
+          "title": "Collection name",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "search_type": {
+          "title": "Search type",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "index_name": {
+          "title": "Index name",
+          "type": "string"
+        },
+        "top_k": {
+          "title": "Top k",
+          "type": "integer"
+        },
+        "namespace": {
+          "title": "Namespace",
+          "type": "string"
+        },
+        "embedding_config": {
+          "title": "Embedding config",
+          "type": "object"
+        },
+        "concurrency": {
+          "title": "Concurrency",
+          "type": "integer",
+          "default": 5
+        },
+        "query_key": {
+          "title": "Query key",
+          "type": "string"
+        },
+        "vector_length": {
+          "title": "Vector length",
+          "type": "integer"
         }
       }
     },

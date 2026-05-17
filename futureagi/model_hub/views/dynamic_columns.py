@@ -10,6 +10,7 @@ import structlog
 import weaviate
 from django.db import close_old_connections, transaction
 from django.shortcuts import get_object_or_404
+from drf_yasg.utils import swagger_auto_schema
 from pinecone import Pinecone
 from qdrant_client import QdrantClient
 from rest_framework.permissions import IsAuthenticated
@@ -35,6 +36,19 @@ from model_hub.models.develop_dataset import (
     Column,
     Dataset,
     Row,
+)
+from model_hub.serializers.contracts import (
+    AddApiColumnRequestSerializer,
+    ClassifyColumnRequestSerializer,
+    ConditionalColumnRequestSerializer,
+    ExtractEntitiesRequestSerializer,
+    ExtractJsonColumnRequestSerializer,
+    MODEL_HUB_ERROR_RESPONSES,
+    ModelHubJSONResponseSerializer,
+    PreviewDatasetOperationRequestSerializer,
+    PythonCodeColumnRequestSerializer,
+    RerunOperationRequestSerializer,
+    VectorDBColumnRequestSerializer,
 )
 from model_hub.utils.json_path_resolver import parse_json_safely, resolve_json_path
 from model_hub.utils.utils import (
@@ -370,6 +384,10 @@ class AddVectorDBColumnView(APIView):
             logger.error(f"Error processing row: {str(e)}")
             return str(e), {"reason": str(e)}
 
+    @swagger_auto_schema(
+        request_body=VectorDBColumnRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, dataset_id, *args, **kwargs):
         try:
             config = request.data
@@ -503,6 +521,10 @@ class ExtractJsonColumnView(APIView):
         finally:
             close_old_connections()
 
+    @swagger_auto_schema(
+        request_body=ExtractJsonColumnRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, dataset_id, *args, **kwargs):
         try:
             column_id = request.data.get("column_id")
@@ -652,6 +674,10 @@ class ClassifyColumnView(APIView):
         finally:
             close_old_connections()
 
+    @swagger_auto_schema(
+        request_body=ClassifyColumnRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, dataset_id, *args, **kwargs):
         try:
             column_id = request.data.get("column_id")
@@ -826,6 +852,10 @@ Remember, accuracy and adherence to the specified format are crucial. Your task 
         finally:
             close_old_connections()
 
+    @swagger_auto_schema(
+        request_body=ExtractEntitiesRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, dataset_id, *args, **kwargs):
         try:
             column_id = request.data.get("column_id")
@@ -1032,6 +1062,10 @@ class AddApiColumnView(APIView):
             logger.exception(f"API call error: {str(e)}")
             return str(e), {"response_status": 400}
 
+    @swagger_auto_schema(
+        request_body=AddApiColumnRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, dataset_id, *args, **kwargs):
         try:
             column_name = request.data.get("column_name")
@@ -1203,6 +1237,10 @@ class ExecutePythonCodeView(APIView):
             traceback.format_exc()
             return str(e), {"reason": str(e)}
 
+    @swagger_auto_schema(
+        request_body=PythonCodeColumnRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, dataset_id, *args, **kwargs):
         try:
             code = request.data.get("code")
@@ -1521,6 +1559,10 @@ class ConditionalColumnView(APIView):
             logger.error(f"Error processing row: {str(e)}")
             return str(e), {"reason": str(e)}
 
+    @swagger_auto_schema(
+        request_body=ConditionalColumnRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, dataset_id, *args, **kwargs):
         try:
             config = request.data.get("config", [])
@@ -1595,6 +1637,9 @@ class GetOperationConfigView(APIView):
     _gm = GeneralMethods()
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES}
+    )
     def get(self, request, column_id, *args, **kwargs):
         """Get the configuration for all operations in a dataset"""
         try:
@@ -1628,6 +1673,10 @@ class RerunOperationView(APIView):
     _gm = GeneralMethods()
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        request_body=RerunOperationRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, column_id, *args, **kwargs):
         """Rerun a specific operation with its stored configuration"""
         try:
@@ -3023,6 +3072,10 @@ class PreviewDatasetOperationView(APIView):
             "created_at"
         )[:sample_size]
 
+    @swagger_auto_schema(
+        request_body=PreviewDatasetOperationRequestSerializer,
+        responses={200: ModelHubJSONResponseSerializer, **MODEL_HUB_ERROR_RESPONSES},
+    )
     def post(self, request, dataset_id, operation_type):
         try:
             # Get sample rows

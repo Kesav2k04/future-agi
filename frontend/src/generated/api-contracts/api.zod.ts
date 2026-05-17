@@ -14122,12 +14122,60 @@ export const ModelHubColumnsOperationConfigListParams = zod.object({
   "column_id": zod.string()
 })
 
+export const ModelHubColumnsOperationConfigListResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
 
 /**
  * Rerun a specific operation with its stored configuration
  */
 export const ModelHubColumnsRerunOperationCreateParams = zod.object({
   "column_id": zod.string()
+})
+
+
+
+
+export const ModelHubColumnsRerunOperationCreateBody = zod.object({
+  "operation_type": zod.string().min(1),
+  "config": zod.object({
+
+}).passthrough().optional()
+})
+
+export const ModelHubColumnsRerunOperationCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
 })
 
 
@@ -14973,13 +15021,119 @@ export const ModelHubDatasetsAddApiColumnCreateParams = zod.object({
 })
 
 
+export const modelHubDatasetsAddApiColumnCreateBodyConcurrencyDefault = 5;
+
+export const ModelHubDatasetsAddApiColumnCreateBody = zod.object({
+  "column_name": zod.string().min(1),
+  "config": zod.object({
+
+}).passthrough(),
+  "concurrency": zod.number().default(modelHubDatasetsAddApiColumnCreateBodyConcurrencyDefault)
+})
+
+export const ModelHubDatasetsAddApiColumnCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
+
 export const ModelHubDatasetsAddVectorDbColumnCreateParams = zod.object({
   "dataset_id": zod.string()
 })
 
 
+
+export const modelHubDatasetsAddVectorDbColumnCreateBodyConcurrencyDefault = 5;
+
+export const ModelHubDatasetsAddVectorDbColumnCreateBody = zod.object({
+  "column_id": zod.string().uuid(),
+  "new_column_name": zod.string().optional(),
+  "sub_type": zod.string().min(1),
+  "api_key": zod.string().min(1),
+  "collection_name": zod.string().optional(),
+  "url": zod.string().optional(),
+  "search_type": zod.string().optional(),
+  "key": zod.string().optional(),
+  "limit": zod.number().optional(),
+  "index_name": zod.string().optional(),
+  "top_k": zod.number().optional(),
+  "namespace": zod.string().optional(),
+  "embedding_config": zod.object({
+
+}).passthrough().optional(),
+  "concurrency": zod.number().default(modelHubDatasetsAddVectorDbColumnCreateBodyConcurrencyDefault),
+  "query_key": zod.string().optional(),
+  "vector_length": zod.number().optional()
+})
+
+export const ModelHubDatasetsAddVectorDbColumnCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
+
 export const ModelHubDatasetsClassifyColumnCreateParams = zod.object({
   "dataset_id": zod.string()
+})
+
+
+export const modelHubDatasetsClassifyColumnCreateBodyLanguageModelIdDefault = `gpt-4o`;
+
+export const modelHubDatasetsClassifyColumnCreateBodyConcurrencyDefault = 5;
+
+export const ModelHubDatasetsClassifyColumnCreateBody = zod.object({
+  "column_id": zod.string().uuid(),
+  "labels": zod.array(zod.string().min(1)),
+  "language_model_id": zod.string().min(1).default(modelHubDatasetsClassifyColumnCreateBodyLanguageModelIdDefault),
+  "concurrency": zod.number().default(modelHubDatasetsClassifyColumnCreateBodyConcurrencyDefault),
+  "new_column_name": zod.string().optional()
+})
+
+export const ModelHubDatasetsClassifyColumnCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
 })
 
 
@@ -15013,6 +15167,36 @@ export const ModelHubDatasetsConditionalColumnCreateParams = zod.object({
 })
 
 
+export const modelHubDatasetsConditionalColumnCreateBodyConcurrencyDefault = 5;
+
+export const ModelHubDatasetsConditionalColumnCreateBody = zod.object({
+  "config": zod.array(zod.object({
+
+}).passthrough()),
+  "new_column_name": zod.string().min(1),
+  "concurrency": zod.number().default(modelHubDatasetsConditionalColumnCreateBodyConcurrencyDefault)
+})
+
+export const ModelHubDatasetsConditionalColumnCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
+
 /**
  * This aggregates derived variables from run prompt columns that
 produce JSON outputs, making them available for use in other
@@ -15042,6 +15226,38 @@ export const ModelHubDatasetsExtractEntitiesCreateParams = zod.object({
 })
 
 
+export const modelHubDatasetsExtractEntitiesCreateBodyLanguageModelIdDefault = `gpt-4`;
+
+export const modelHubDatasetsExtractEntitiesCreateBodyConcurrencyDefault = 5;
+
+export const ModelHubDatasetsExtractEntitiesCreateBody = zod.object({
+  "column_id": zod.string().uuid(),
+  "instruction": zod.string().min(1),
+  "language_model_id": zod.string().min(1).default(modelHubDatasetsExtractEntitiesCreateBodyLanguageModelIdDefault),
+  "concurrency": zod.number().default(modelHubDatasetsExtractEntitiesCreateBodyConcurrencyDefault),
+  "new_column_name": zod.string().optional()
+})
+
+export const ModelHubDatasetsExtractEntitiesCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
+})
+
+
 export const ModelHubDatasetsMergeCreateParams = zod.object({
   "dataset_id": zod.string()
 })
@@ -15050,6 +15266,40 @@ export const ModelHubDatasetsMergeCreateParams = zod.object({
 export const ModelHubDatasetsPreviewCreateParams = zod.object({
   "dataset_id": zod.string(),
   "operation_type": zod.string()
+})
+
+
+export const modelHubDatasetsPreviewCreateBodyLabelsDefault = [];
+
+export const ModelHubDatasetsPreviewCreateBody = zod.object({
+  "column_id": zod.string().uuid().optional(),
+  "json_key": zod.string().optional(),
+  "labels": zod.array(zod.string().min(1)).default(modelHubDatasetsPreviewCreateBodyLabelsDefault),
+  "instruction": zod.string().optional(),
+  "language_model_id": zod.string().optional(),
+  "config": zod.object({
+
+}).passthrough().optional(),
+  "code": zod.string().optional()
+})
+
+export const ModelHubDatasetsPreviewCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
 })
 
 
@@ -15180,6 +15430,35 @@ export const ModelHubDevelopsEditDatasetBehaviorUpdateParams = zod.object({
 
 export const ModelHubDevelopsExtractJsonColumnCreateParams = zod.object({
   "dataset_id": zod.string()
+})
+
+
+export const modelHubDevelopsExtractJsonColumnCreateBodyConcurrencyDefault = 5;
+
+export const ModelHubDevelopsExtractJsonColumnCreateBody = zod.object({
+  "column_id": zod.string().uuid(),
+  "json_key": zod.string().min(1),
+  "new_column_name": zod.string().optional(),
+  "concurrency": zod.number().default(modelHubDevelopsExtractJsonColumnCreateBodyConcurrencyDefault)
+})
+
+export const ModelHubDevelopsExtractJsonColumnCreateResponse = zod.object({
+  "status": zod.object({
+
+}).passthrough().optional(),
+  "message": zod.string().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "data": zod.object({
+
+}).passthrough().optional(),
+  "error": zod.object({
+
+}).passthrough().optional(),
+  "detail": zod.object({
+
+}).passthrough().optional()
 })
 
 

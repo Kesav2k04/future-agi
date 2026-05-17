@@ -4385,6 +4385,33 @@ export interface ApiKeyApi {
   config_json?: ApiKeyApiConfigJson;
 }
 
+export type ModelHubJSONResponseApiStatus = { [key: string]: unknown };
+
+export type ModelHubJSONResponseApiResult = { [key: string]: unknown };
+
+export type ModelHubJSONResponseApiData = { [key: string]: unknown };
+
+export type ModelHubJSONResponseApiError = { [key: string]: unknown };
+
+export type ModelHubJSONResponseApiDetail = { [key: string]: unknown };
+
+export interface ModelHubJSONResponseApi {
+  status?: ModelHubJSONResponseApiStatus;
+  message?: string;
+  result?: ModelHubJSONResponseApiResult;
+  data?: ModelHubJSONResponseApiData;
+  error?: ModelHubJSONResponseApiError;
+  detail?: ModelHubJSONResponseApiDetail;
+}
+
+export type RerunOperationRequestApiConfig = { [key: string]: unknown };
+
+export interface RerunOperationRequestApi {
+  /** @minLength 1 */
+  operation_type: string;
+  config?: RerunOperationRequestApiConfig;
+}
+
 export interface CustomMetricListItemApi {
   id: string;
   /** @minLength 1 */
@@ -4407,25 +4434,6 @@ export interface CustomMetricMutationRequestApi {
   metric_type?: string;
   evaluation_type?: string;
   datasets?: CustomMetricMutationRequestApiDatasets;
-}
-
-export type ModelHubJSONResponseApiStatus = { [key: string]: unknown };
-
-export type ModelHubJSONResponseApiResult = { [key: string]: unknown };
-
-export type ModelHubJSONResponseApiData = { [key: string]: unknown };
-
-export type ModelHubJSONResponseApiError = { [key: string]: unknown };
-
-export type ModelHubJSONResponseApiDetail = { [key: string]: unknown };
-
-export interface ModelHubJSONResponseApi {
-  status?: ModelHubJSONResponseApiStatus;
-  message?: string;
-  result?: ModelHubJSONResponseApiResult;
-  data?: ModelHubJSONResponseApiData;
-  error?: ModelHubJSONResponseApiError;
-  detail?: ModelHubJSONResponseApiDetail;
 }
 
 export interface MetricTagOptionApi {
@@ -4771,6 +4779,86 @@ export interface AnnotationSummaryResultApi {
 export interface AnnotationSummaryResponseApi {
   status?: boolean;
   result: AnnotationSummaryResultApi;
+}
+
+export type AddApiColumnRequestApiConfig = { [key: string]: unknown };
+
+export interface AddApiColumnRequestApi {
+  /** @minLength 1 */
+  column_name: string;
+  config: AddApiColumnRequestApiConfig;
+  concurrency?: number;
+}
+
+export type VectorDBColumnRequestApiEmbeddingConfig = { [key: string]: unknown };
+
+export interface VectorDBColumnRequestApi {
+  column_id: string;
+  new_column_name?: string;
+  /** @minLength 1 */
+  sub_type: string;
+  /** @minLength 1 */
+  api_key: string;
+  collection_name?: string;
+  url?: string;
+  search_type?: string;
+  key?: string;
+  limit?: number;
+  index_name?: string;
+  top_k?: number;
+  namespace?: string;
+  embedding_config?: VectorDBColumnRequestApiEmbeddingConfig;
+  concurrency?: number;
+  query_key?: string;
+  vector_length?: number;
+}
+
+export interface ClassifyColumnRequestApi {
+  column_id: string;
+  labels: string[];
+  /** @minLength 1 */
+  language_model_id?: string;
+  concurrency?: number;
+  new_column_name?: string;
+}
+
+export type ConditionalColumnRequestApiConfigItem = { [key: string]: unknown };
+
+export interface ConditionalColumnRequestApi {
+  config: ConditionalColumnRequestApiConfigItem[];
+  /** @minLength 1 */
+  new_column_name: string;
+  concurrency?: number;
+}
+
+export interface ExtractEntitiesRequestApi {
+  column_id: string;
+  /** @minLength 1 */
+  instruction: string;
+  /** @minLength 1 */
+  language_model_id?: string;
+  concurrency?: number;
+  new_column_name?: string;
+}
+
+export type PreviewDatasetOperationRequestApiConfig = { [key: string]: unknown };
+
+export interface PreviewDatasetOperationRequestApi {
+  column_id?: string;
+  json_key?: string;
+  labels?: string[];
+  instruction?: string;
+  language_model_id?: string;
+  config?: PreviewDatasetOperationRequestApiConfig;
+  code?: string;
+}
+
+export interface ExtractJsonColumnRequestApi {
+  column_id: string;
+  /** @minLength 1 */
+  json_key: string;
+  new_column_name?: string;
+  concurrency?: number;
 }
 
 export interface EvalGroupApi {

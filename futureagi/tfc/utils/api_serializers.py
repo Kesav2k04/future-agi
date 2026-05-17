@@ -34,6 +34,7 @@ class ApiErrorResponseSerializer(serializers.Serializer):
     status = serializers.BooleanField(default=False)
     result = serializers.JSONField(required=False, allow_null=True)
     message = serializers.JSONField(required=False, allow_null=True)
+    error = serializers.JSONField(required=False, allow_null=True)
 
 
 class ApiSelectionTooLargeErrorSerializer(serializers.Serializer):

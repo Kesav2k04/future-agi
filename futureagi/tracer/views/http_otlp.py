@@ -1,6 +1,9 @@
 import json
 
 import structlog
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import serializers
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -13,6 +16,22 @@ from tracer.utils.parsers import ProtobufParser
 from tracer.utils.trace_ingestion import bulk_create_observation_span_task
 
 logger = structlog.get_logger(__name__)
+
+OTLP_HTTP_REQUEST_SCHEMA = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    description=(
+        "Legacy OTLP JSON/protobuf trace payload. Prefer /tracer/v1/traces "
+        "for new integrations."
+    ),
+)
+
+
+class OTLPHTTPTraceResponseSerializer(serializers.Serializer):
+    pass
+
+
+class OTLPHTTPErrorResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()
 
 
 class OTLPTraceHTTPView(APIView):
@@ -27,6 +46,14 @@ class OTLPTraceHTTPView(APIView):
     authentication_classes = [LangfuseBasicAuthentication, APIKeyAuthentication]
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        request_body=OTLP_HTTP_REQUEST_SCHEMA,
+        responses={
+            200: OTLPHTTPTraceResponseSerializer,
+            403: OTLPHTTPErrorResponseSerializer,
+            500: OTLPHTTPErrorResponseSerializer,
+        },
+    )
     def post(self, request, *args, **kwargs):
         """
         Asynchronously handles the POST request to create ObservationSpans from OTEL data.

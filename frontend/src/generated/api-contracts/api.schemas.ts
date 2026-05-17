@@ -1050,6 +1050,13 @@ export interface LangfuseHealthResponseApi {
   version: string;
 }
 
+export interface OTLPHTTPTraceResponseApi { [key: string]: unknown }
+
+export interface OTLPHTTPErrorResponseApi {
+  /** @minLength 1 */
+  detail: string;
+}
+
 export type LangfuseTracesResponseApiDataItem = { [key: string]: unknown };
 
 export interface LangfuseTracesMetaApi {
@@ -1099,10 +1106,13 @@ export type ApiErrorResponseApiResult = { [key: string]: unknown };
 
 export type ApiErrorResponseApiMessage = { [key: string]: unknown };
 
+export type ApiErrorResponseApiError = { [key: string]: unknown };
+
 export interface ApiErrorResponseApi {
   status?: boolean;
   result?: ApiErrorResponseApiResult;
   message?: ApiErrorResponseApiMessage;
+  error?: ApiErrorResponseApiError;
 }
 
 export type SpanAttributeKeyApiType = typeof SpanAttributeKeyApiType[keyof typeof SpanAttributeKeyApiType];
@@ -6410,6 +6420,444 @@ export interface EvalTaskApi {
   readonly progress?: string;
 }
 
+export interface LinearTeamApi {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  name: string;
+  key?: string;
+}
+
+export interface LinearTeamsResultApi {
+  connected: boolean;
+  teams: LinearTeamApi[];
+}
+
+export interface LinearTeamsResponseApi {
+  status?: boolean;
+  result: LinearTeamsResultApi;
+}
+
+export interface ErrorNameApi {
+  /** @minLength 1 */
+  name: string;
+  type: string;
+}
+
+export interface TrendPointApi {
+  timestamp: string;
+  value: number;
+  users: number;
+}
+
+export interface FeedListRowApi {
+  /** @minLength 1 */
+  cluster_id: string;
+  /** @minLength 1 */
+  source: string;
+  error: ErrorNameApi;
+  /** @minLength 1 */
+  status: string;
+  /** @minLength 1 */
+  severity: string;
+  occurrences: number;
+  trace_count: number;
+  /** @minLength 1 */
+  fix_layer: string;
+  users_affected: number;
+  sessions: number;
+  first_seen: string;
+  last_seen: string;
+  trends: TrendPointApi[];
+  assignees: string[];
+  /** @minLength 1 */
+  model: string;
+  /** @minLength 1 */
+  model_version: string;
+  /** @minLength 1 */
+  project: string;
+  /** @minLength 1 */
+  project_id: string;
+  /** @minLength 1 */
+  environment: string;
+  eval_score: number;
+  /** @minLength 1 */
+  trace_id: string;
+  /** @minLength 1 */
+  external_issue_url: string;
+  /** @minLength 1 */
+  external_issue_id: string;
+}
+
+export interface FeedListResponseApi {
+  data: FeedListRowApi[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface FeedListApiResponseApi {
+  status?: boolean;
+  result: FeedListResponseApi;
+}
+
+export interface FeedStatsApi {
+  total_errors: number;
+  escalating: number;
+  for_review: number;
+  acknowledged: number;
+  resolved: number;
+  affected_users: number;
+}
+
+export interface FeedStatsApiResponseApi {
+  status?: boolean;
+  result: FeedStatsApi;
+}
+
+export interface TracePreviewApi {
+  /** @minLength 1 */
+  trace_id: string;
+  /** @minLength 1 */
+  input: string;
+  /** @minLength 1 */
+  output: string;
+}
+
+export interface FeedDetailCoreApi {
+  row: FeedListRowApi;
+  /** @minLength 1 */
+  description: string;
+  success_trace: TracePreviewApi;
+  representative_trace: TracePreviewApi;
+}
+
+export interface FeedDetailApiResponseApi {
+  status?: boolean;
+  result: FeedDetailCoreApi;
+}
+
+export type FeedUpdateBodyApiStatus = typeof FeedUpdateBodyApiStatus[keyof typeof FeedUpdateBodyApiStatus];
+
+
+export const FeedUpdateBodyApiStatus = {
+  escalating: 'escalating',
+  for_review: 'for_review',
+  acknowledged: 'acknowledged',
+  resolved: 'resolved',
+} as const;
+
+export type FeedUpdateBodyApiSeverity = typeof FeedUpdateBodyApiSeverity[keyof typeof FeedUpdateBodyApiSeverity];
+
+
+export const FeedUpdateBodyApiSeverity = {
+  critical: 'critical',
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+} as const;
+
+export interface FeedUpdateBodyApi {
+  project_id?: string;
+  status?: FeedUpdateBodyApiStatus;
+  severity?: FeedUpdateBodyApiSeverity;
+  /** @minLength 1 */
+  assignee?: string;
+}
+
+export interface CreateLinearIssueApi {
+  /** @minLength 1 */
+  team_id: string;
+  title?: string;
+  description?: string;
+  priority?: number;
+}
+
+export interface CreateLinearIssueResultApi {
+  already_linked?: boolean;
+  /** @minLength 1 */
+  issue_id?: string;
+  /** @minLength 1 */
+  issue_url?: string;
+  /** @minLength 1 */
+  issue_title?: string;
+}
+
+export interface CreateLinearIssueResponseApi {
+  status?: boolean;
+  result: CreateLinearIssueResultApi;
+}
+
+export interface DeepAnalysisBodyApi {
+  /** @minLength 1 */
+  trace_id: string;
+  force?: boolean;
+}
+
+export interface DeepAnalysisDispatchResponseApi {
+  /** @minLength 1 */
+  status: string;
+  /** @minLength 1 */
+  trace_id: string;
+}
+
+export interface DeepAnalysisDispatchApiResponseApi {
+  status?: boolean;
+  result: DeepAnalysisDispatchResponseApi;
+}
+
+export interface EventsOverTimePointApi {
+  /** @minLength 1 */
+  date: string;
+  errors: number;
+  passing: number;
+  users: number;
+}
+
+export interface PatternInsightApi {
+  /** @minLength 1 */
+  value: string;
+  /** @minLength 1 */
+  caption: string;
+}
+
+export interface KeyMomentApi {
+  /** @minLength 1 */
+  kevinified: string;
+  verbatim: string;
+}
+
+export interface PatternSummaryApi {
+  insights: PatternInsightApi[];
+  key_moments: KeyMomentApi[];
+}
+
+export interface TraceSummaryApi {
+  eval_score: number;
+  latency_ms: number;
+  turns: number;
+  /** @minLength 1 */
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export type TraceEvidenceApiFailReelItem = {[key: string]: string};
+
+export type TraceEvidenceApiPassReelItem = {[key: string]: string};
+
+export interface TraceEvidenceApi {
+  /** @minLength 1 */
+  input: string;
+  /** @minLength 1 */
+  output: string;
+  fail_reel: TraceEvidenceApiFailReelItem[];
+  pass_reel: TraceEvidenceApiPassReelItem[];
+}
+
+export type AgentFlowGraphApiNodesItem = {[key: string]: string};
+
+export type AgentFlowGraphApiEdgesItem = {[key: string]: string};
+
+export interface AgentFlowGraphApi {
+  nodes: AgentFlowGraphApiNodesItem[];
+  edges: AgentFlowGraphApiEdgesItem[];
+}
+
+export type RepresentativeTraceApiRootCausesItem = {[key: string]: string};
+
+export type RepresentativeTraceApiRecommendationsItem = {[key: string]: string};
+
+export type RepresentativeTraceApiWhatChanged = {[key: string]: string};
+
+export interface RepresentativeTraceApi {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  status: string;
+  timestamp: string;
+  summary: TraceSummaryApi;
+  evidence: TraceEvidenceApi;
+  agent_flow: AgentFlowGraphApi;
+  root_causes: RepresentativeTraceApiRootCausesItem[];
+  recommendations: RepresentativeTraceApiRecommendationsItem[];
+  what_changed: RepresentativeTraceApiWhatChanged;
+}
+
+export interface OverviewResponseApi {
+  events_over_time: EventsOverTimePointApi[];
+  pattern_summary: PatternSummaryApi;
+  representative_traces: RepresentativeTraceApi[];
+}
+
+export interface OverviewApiResponseApi {
+  status?: boolean;
+  result: OverviewResponseApi;
+}
+
+export interface RootCauseApi {
+  rank: number;
+  /** @minLength 1 */
+  title: string;
+  /** @minLength 1 */
+  description: string;
+}
+
+export interface RecommendationApi {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  title: string;
+  description: string;
+  /** @minLength 1 */
+  priority: string;
+  root_cause_link: number;
+  /** @minLength 1 */
+  immediate_fix: string;
+  /** @minLength 1 */
+  insights: string;
+  evidence: string[];
+}
+
+export interface DeepAnalysisResponseApi {
+  /** @minLength 1 */
+  status: string;
+  /** @minLength 1 */
+  trace_id: string;
+  root_causes: RootCauseApi[];
+  recommendations: RecommendationApi[];
+  /** @minLength 1 */
+  immediate_fix: string;
+}
+
+export interface DeepAnalysisApiResponseApi {
+  status?: boolean;
+  result: DeepAnalysisResponseApi;
+}
+
+export interface SidebarTimelineApi {
+  first_seen: string;
+  last_seen: string;
+  age_days: number;
+}
+
+export interface SidebarAIMetadataApi {
+  /** @minLength 1 */
+  model: string;
+  /** @minLength 1 */
+  model_version: string;
+  /** @minLength 1 */
+  project: string;
+  eval_score: number;
+  /** @minLength 1 */
+  trace_id: string;
+}
+
+export interface EvaluationResultApi {
+  /** @minLength 1 */
+  label: string;
+  /** @minLength 1 */
+  type: string;
+  /** @minLength 1 */
+  result: string;
+  score: number;
+  /** @minLength 1 */
+  value: string;
+}
+
+export interface CoOccurringIssueApi {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  title: string;
+  type: string;
+  co_occurrence: number;
+  count: number;
+  /** @minLength 1 */
+  severity: string;
+}
+
+export interface FeedSidebarApi {
+  timeline: SidebarTimelineApi;
+  ai_metadata: SidebarAIMetadataApi;
+  evaluations: EvaluationResultApi[];
+  co_occurring_issues: CoOccurringIssueApi[];
+}
+
+export interface FeedSidebarApiResponseApi {
+  status?: boolean;
+  result: FeedSidebarApi;
+}
+
+export interface TracesAggregatesApi {
+  total_traces: number;
+  failing_traces: number;
+  passing_traces: number;
+  avg_score: number;
+  p50_latency: number;
+  p95_latency: number;
+  avg_turns: number;
+}
+
+export interface TracesListRowApi {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  input: string;
+  timestamp: string;
+  latency_ms: number;
+  tokens: number;
+  cost: number;
+  score: number;
+  turns: number;
+}
+
+export interface TracesTabResponseApi {
+  aggregates: TracesAggregatesApi;
+  traces: TracesListRowApi[];
+  total: number;
+}
+
+export interface TracesTabApiResponseApi {
+  status?: boolean;
+  result: TracesTabResponseApi;
+}
+
+export interface TrendMetricApi {
+  /** @minLength 1 */
+  label: string;
+  /** @minLength 1 */
+  value: string;
+  delta: number;
+  unit: string;
+}
+
+export interface ScoreTrendApi {
+  /** @minLength 1 */
+  label: string;
+  current: number;
+  prev: number;
+  sparkline: number[];
+}
+
+export interface HeatmapCellApi {
+  day: number;
+  hour: number;
+  value: number;
+}
+
+export interface TrendsTabResponseApi {
+  metrics: TrendMetricApi[];
+  events_over_time: EventsOverTimePointApi[];
+  score_trends: ScoreTrendApi[];
+  activity_heatmap: HeatmapCellApi[][];
+}
+
+export interface TrendsTabApiResponseApi {
+  status?: boolean;
+  result: TrendsTabResponseApi;
+}
+
 export type AnnotationLabelResponseApiSettings = { [key: string]: unknown };
 
 export interface AnnotationLabelResponseApi {
@@ -6425,6 +6873,61 @@ export interface AnnotationLabelResponseApi {
 export interface GetAnnotationLabelsResponseApi {
   status?: boolean;
   result: AnnotationLabelResponseApi[];
+}
+
+export type ImagineAnalysisItemApiStatus = typeof ImagineAnalysisItemApiStatus[keyof typeof ImagineAnalysisItemApiStatus];
+
+
+export const ImagineAnalysisItemApiStatus = {
+  pending: 'pending',
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface ImagineAnalysisItemApi {
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  widget_id: string;
+  status: ImagineAnalysisItemApiStatus;
+  content?: string;
+  error?: string;
+}
+
+export interface ImagineAnalysisResultApi {
+  analyses: ImagineAnalysisItemApi[];
+}
+
+export interface ImagineAnalysisResponseApi {
+  status?: boolean;
+  result: ImagineAnalysisResultApi;
+}
+
+export interface WidgetAnalysisApi {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  widget_id: string;
+  /**
+     * @minLength 1
+     * @maxLength 8000
+     */
+  prompt: string;
+}
+
+export interface TriggerAnalysisApi {
+  saved_view_id: string;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  trace_id: string;
+  project_id: string;
+  widgets: WidgetAnalysisApi[];
 }
 
 export type ObservabilityProviderApiProvider = typeof ObservabilityProviderApiProvider[keyof typeof ObservabilityProviderApiProvider];
@@ -7045,6 +7548,40 @@ export interface SharedLinkDetailApi {
   readonly share_url?: string;
 }
 
+export type SharedLinkResolveResponseApiResourceType = typeof SharedLinkResolveResponseApiResourceType[keyof typeof SharedLinkResolveResponseApiResourceType];
+
+
+export const SharedLinkResolveResponseApiResourceType = {
+  trace: 'trace',
+  dashboard: 'dashboard',
+  eval_run: 'eval_run',
+  dataset: 'dataset',
+  project: 'project',
+} as const;
+
+export type SharedLinkResolveResponseApiAccessType = typeof SharedLinkResolveResponseApiAccessType[keyof typeof SharedLinkResolveResponseApiAccessType];
+
+
+export const SharedLinkResolveResponseApiAccessType = {
+  public: 'public',
+  restricted: 'restricted',
+} as const;
+
+export type SharedLinkResolveResponseApiData = { [key: string]: unknown };
+
+export interface SharedLinkResolveResponseApi {
+  resource_type: SharedLinkResolveResponseApiResourceType;
+  /** @minLength 1 */
+  resource_id: string;
+  access_type: SharedLinkResolveResponseApiAccessType;
+  data: SharedLinkResolveResponseApiData;
+}
+
+export interface SharedLinkResolveErrorApi {
+  /** @minLength 1 */
+  error: string;
+}
+
 export interface GetTraceAnnotationApi {
   /**
      * @minLength 1
@@ -7054,6 +7591,111 @@ export interface GetTraceAnnotationApi {
   trace_id?: string;
   annotators?: string[];
   exclude_annotators?: string[];
+}
+
+export type TraceErrorAnalysisResultApiSummary = { [key: string]: unknown };
+
+export type TraceErrorAnalysisResultApiErrorsItem = { [key: string]: unknown };
+
+export type TraceErrorAnalysisResultApiGroupedErrorsItem = { [key: string]: unknown };
+
+export type TraceErrorAnalysisResultApiScores = { [key: string]: unknown };
+
+export type TraceErrorAnalysisResultApiMemoryContext = { [key: string]: unknown };
+
+export interface TraceErrorAnalysisResultApi {
+  analysis_exists: boolean;
+  /** @minLength 1 */
+  trace_id: string;
+  /** @minLength 1 */
+  message?: string;
+  analysis_id?: string;
+  analysis_date?: string;
+  agent_version?: string;
+  memory_enhanced?: boolean;
+  summary?: TraceErrorAnalysisResultApiSummary;
+  errors?: TraceErrorAnalysisResultApiErrorsItem[];
+  grouped_errors?: TraceErrorAnalysisResultApiGroupedErrorsItem[];
+  scores?: TraceErrorAnalysisResultApiScores;
+  memory_context?: TraceErrorAnalysisResultApiMemoryContext;
+}
+
+export interface TraceErrorAnalysisResponseApi {
+  status?: boolean;
+  result: TraceErrorAnalysisResultApi;
+}
+
+export type TraceErrorTaskResponseResultApiStatus = typeof TraceErrorTaskResponseResultApiStatus[keyof typeof TraceErrorTaskResponseResultApiStatus];
+
+
+export const TraceErrorTaskResponseResultApiStatus = {
+  running: 'running',
+  waiting: 'waiting',
+  paused: 'paused',
+} as const;
+
+export interface TraceErrorTaskResponseResultApi {
+  project_id: string;
+  /** @minLength 1 */
+  project_name: string;
+  sampling_rate: number;
+  status: TraceErrorTaskResponseResultApiStatus;
+  is_active?: boolean;
+  total_traces_analyzed?: number;
+  total_errors_found?: number;
+  failed_analyses?: number;
+  last_run_at?: string;
+  created?: boolean;
+}
+
+export interface TraceErrorTaskResponseApi {
+  status?: boolean;
+  result: TraceErrorTaskResponseResultApi;
+}
+
+export type TraceErrorTaskUpdateRequestApiStatus = typeof TraceErrorTaskUpdateRequestApiStatus[keyof typeof TraceErrorTaskUpdateRequestApiStatus];
+
+
+export const TraceErrorTaskUpdateRequestApiStatus = {
+  waiting: 'waiting',
+  paused: 'paused',
+} as const;
+
+export interface TraceErrorTaskUpdateRequestApi {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  sampling_rate: number;
+  status?: TraceErrorTaskUpdateRequestApiStatus;
+}
+
+export type TraceErrorTaskUpdateResultApiStatus = typeof TraceErrorTaskUpdateResultApiStatus[keyof typeof TraceErrorTaskUpdateResultApiStatus];
+
+
+export const TraceErrorTaskUpdateResultApiStatus = {
+  running: 'running',
+  waiting: 'waiting',
+  paused: 'paused',
+} as const;
+
+export interface TraceErrorTaskUpdateResultApi {
+  /** @minLength 1 */
+  message: string;
+  project_id: string;
+  /** @minLength 1 */
+  project_name: string;
+  sampling_rate: number;
+  status: TraceErrorTaskUpdateResultApiStatus;
+  /** @minLength 1 */
+  action: string;
+  old_rate: number;
+  new_rate: number;
+}
+
+export interface TraceErrorTaskUpdateResponseApi {
+  status?: boolean;
+  result: TraceErrorTaskUpdateResultApi;
 }
 
 export interface TraceSessionApi {
@@ -7226,6 +7868,40 @@ export interface UsersResponseApi {
 }
 
 export interface UserCodeExampleResponseApi {
+  status?: boolean;
+  /** @minLength 1 */
+  result: string;
+}
+
+export type OTLPHealthResponseApiStatus = typeof OTLPHealthResponseApiStatus[keyof typeof OTLPHealthResponseApiStatus];
+
+
+export const OTLPHealthResponseApiStatus = {
+  healthy: 'healthy',
+} as const;
+
+export interface OTLPHealthResponseApi {
+  status: OTLPHealthResponseApiStatus;
+  /** @minLength 1 */
+  service: string;
+}
+
+export interface OTLPPartialSuccessApi {
+  rejected_spans?: number;
+  error_message?: string;
+}
+
+export interface OTLPTraceResponseApi {
+  partial_success?: OTLPPartialSuccessApi;
+}
+
+export type WebhookRequestApiCall = { [key: string]: unknown };
+
+export interface WebhookRequestApi {
+  call: WebhookRequestApiCall;
+}
+
+export interface WebhookResponseApi {
   status?: boolean;
   /** @minLength 1 */
   result: string;
@@ -7983,6 +8659,16 @@ export type AgentccWebhooksList200 = {
   previous?: string;
   results: AgentccWebhookApi[];
 };
+
+/**
+ * Legacy OTLP JSON/protobuf trace payload. Prefer /tracer/v1/traces for new integrations.
+ */
+export type ApiPublicOtelV1TracesCreateBodyOne = { [key: string]: unknown };
+
+/**
+ * Legacy OTLP JSON/protobuf trace payload. Prefer /tracer/v1/traces for new integrations.
+ */
+export type ApiPublicOtelV1TracesCreateBodyTwo = { [key: string]: unknown };
 
 export type ApiTracesSpanAttributeDetailListParams = {
 project_id: string;
@@ -9482,6 +10168,121 @@ export type TracerEvalTaskListEvalTasksWithProjectName200 = {
   results: EvalTaskApi[];
 };
 
+export type TracerFeedIssuesListParams = {
+project_id?: string;
+search?: string;
+status?: TracerFeedIssuesListStatus;
+fix_layer?: string;
+source?: TracerFeedIssuesListSource;
+issue_group?: string;
+/**
+ * @minimum 1
+ */
+time_range_days?: number;
+sort_by?: TracerFeedIssuesListSortBy;
+sort_dir?: TracerFeedIssuesListSortDir;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type TracerFeedIssuesListStatus = typeof TracerFeedIssuesListStatus[keyof typeof TracerFeedIssuesListStatus];
+
+
+export const TracerFeedIssuesListStatus = {
+  escalating: 'escalating',
+  for_review: 'for_review',
+  acknowledged: 'acknowledged',
+  resolved: 'resolved',
+} as const;
+
+export type TracerFeedIssuesListSource = typeof TracerFeedIssuesListSource[keyof typeof TracerFeedIssuesListSource];
+
+
+export const TracerFeedIssuesListSource = {
+  scanner: 'scanner',
+  eval: 'eval',
+} as const;
+
+export type TracerFeedIssuesListSortBy = typeof TracerFeedIssuesListSortBy[keyof typeof TracerFeedIssuesListSortBy];
+
+
+export const TracerFeedIssuesListSortBy = {
+  last_seen: 'last_seen',
+  first_seen: 'first_seen',
+  error_count: 'error_count',
+  unique_traces: 'unique_traces',
+} as const;
+
+export type TracerFeedIssuesListSortDir = typeof TracerFeedIssuesListSortDir[keyof typeof TracerFeedIssuesListSortDir];
+
+
+export const TracerFeedIssuesListSortDir = {
+  asc: 'asc',
+  desc: 'desc',
+} as const;
+
+export type TracerFeedIssuesStatsListParams = {
+project_id?: string;
+/**
+ * @minimum 1
+ */
+time_range_days?: number;
+};
+
+export type TracerFeedIssuesReadParams = {
+project_id?: string;
+};
+
+export type TracerFeedIssuesRootCauseListParams = {
+/**
+ * @minLength 1
+ */
+trace_id: string;
+};
+
+export type TracerFeedIssuesSidebarListParams = {
+/**
+ * @minLength 1
+ */
+trace_id?: string;
+};
+
+export type TracerFeedIssuesTracesListParams = {
+/**
+ * @minimum 1
+ * @maximum 500
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type TracerFeedIssuesTrendsListParams = {
+/**
+ * @minimum 1
+ * @maximum 90
+ */
+days?: number;
+};
+
+export type TracerImagineAnalysisListParams = {
+saved_view_id: string;
+/**
+ * @minLength 1
+ * @maxLength 255
+ */
+trace_id: string;
+};
+
 export type TracerObservabilityProviderListParams = {
 /**
  * A page number within the paginated result set.
@@ -9715,6 +10516,16 @@ export type TracerObservationSpanRootSpans200 = {
   previous?: string;
   results: ObservationSpanApi[];
 };
+
+/**
+ * Legacy OTLP JSON/protobuf trace payload. Prefer /tracer/v1/traces for new integrations.
+ */
+export type TracerOtlpV1TracesCreateBodyOne = { [key: string]: unknown };
+
+/**
+ * Legacy OTLP JSON/protobuf trace payload. Prefer /tracer/v1/traces for new integrations.
+ */
+export type TracerOtlpV1TracesCreateBodyTwo = { [key: string]: unknown };
 
 export type TracerProjectVersionListParams = {
 /**

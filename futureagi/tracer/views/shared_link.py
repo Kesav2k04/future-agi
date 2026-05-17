@@ -1,5 +1,5 @@
 import structlog
-from django.utils import timezone
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -16,6 +16,8 @@ from tracer.serializers.shared_link import (
     SharedLinkCreateSerializer,
     SharedLinkDetailSerializer,
     SharedLinkListSerializer,
+    SharedLinkResolveErrorSerializer,
+    SharedLinkResolveResponseSerializer,
     SharedLinkUpdateSerializer,
 )
 
@@ -149,6 +151,16 @@ class SharedLinkViewSet(BaseModelViewSetMixin, ModelViewSet):
 # --------------------------------------------------------------------------
 
 
+@swagger_auto_schema(
+    method="get",
+    responses={
+        200: SharedLinkResolveResponseSerializer,
+        401: SharedLinkResolveErrorSerializer,
+        403: SharedLinkResolveErrorSerializer,
+        404: SharedLinkResolveErrorSerializer,
+        410: SharedLinkResolveErrorSerializer,
+    },
+)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def resolve_shared_link(request, token):

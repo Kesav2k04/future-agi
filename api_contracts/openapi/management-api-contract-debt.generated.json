@@ -3,8 +3,8 @@
   "summary": {
     "paths": 964,
     "operations": 1326,
-    "mutation_endpoints_without_body_schema": 343,
-    "operations_without_response_schema": 594
+    "mutation_endpoints_without_body_schema": 332,
+    "operations_without_response_schema": 568
   },
   "by_group": {
     "accounts": {
@@ -34,8 +34,8 @@
     "api": {
       "paths": 9,
       "operations": 9,
-      "mutation_endpoints_without_body_schema": 2,
-      "operations_without_response_schema": 3
+      "mutation_endpoints_without_body_schema": 1,
+      "operations_without_response_schema": 2
     },
     "call-websocket": {
       "paths": 1,
@@ -94,8 +94,8 @@
     "tracer": {
       "paths": 159,
       "operations": 231,
-      "mutation_endpoints_without_body_schema": 9,
-      "operations_without_response_schema": 23
+      "mutation_endpoints_without_body_schema": 0,
+      "operations_without_response_schema": 0
     },
     "usage": {
       "paths": 56,
@@ -106,8 +106,8 @@
     "v1": {
       "paths": 2,
       "operations": 2,
-      "mutation_endpoints_without_body_schema": 1,
-      "operations_without_response_schema": 2
+      "mutation_endpoints_without_body_schema": 0,
+      "operations_without_response_schema": 0
     }
   },
   "mutation_endpoints_without_body_schema": [
@@ -836,15 +836,6 @@
       "method": "POST",
       "path": "/api/public/ingestion",
       "operation_id": "api_public_ingestion_create",
-      "tags": [
-        "api"
-      ]
-    },
-    {
-      "group": "api",
-      "method": "POST",
-      "path": "/api/public/otel/v1/traces",
-      "operation_id": "api_public_otel_v1_traces_create",
       "tags": [
         "api"
       ]
@@ -2605,87 +2596,6 @@
       ]
     },
     {
-      "group": "tracer",
-      "method": "PATCH",
-      "path": "/tracer/feed/issues/{cluster_id}/",
-      "operation_id": "tracer_feed_issues_partial_update",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/feed/issues/{cluster_id}/create-linear-issue/",
-      "operation_id": "tracer_feed_issues_create-linear-issue_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/feed/issues/{cluster_id}/deep-analysis/",
-      "operation_id": "tracer_feed_issues_deep-analysis_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/imagine-analysis/",
-      "operation_id": "tracer_imagine-analysis_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/otlp/v1/traces",
-      "operation_id": "tracer_otlp_v1_traces_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/trace-error-task/{project_id}/",
-      "operation_id": "tracer_trace-error-task_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/v1/traces",
-      "operation_id": "tracer_v1_traces_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/v1/traces/",
-      "operation_id": "tracer_v1_traces_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/webhook/",
-      "operation_id": "tracer_webhook_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
       "group": "usage",
       "method": "POST",
       "path": "/usage/admin/custom-plan/",
@@ -3187,15 +3097,6 @@
       "operation_id": "usage_webhook_create",
       "tags": [
         "usage"
-      ]
-    },
-    {
-      "group": "v1",
-      "method": "POST",
-      "path": "/v1/traces/",
-      "operation_id": "v1_traces_create",
-      "tags": [
-        "v1"
       ]
     }
   ],
@@ -4357,15 +4258,6 @@
       "method": "POST",
       "path": "/api/public/ingestion",
       "operation_id": "api_public_ingestion_create",
-      "tags": [
-        "api"
-      ]
-    },
-    {
-      "group": "api",
-      "method": "POST",
-      "path": "/api/public/otel/v1/traces",
-      "operation_id": "api_public_otel_v1_traces_create",
       "tags": [
         "api"
       ]
@@ -7521,213 +7413,6 @@
       ]
     },
     {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/feed/integrations/linear/teams/",
-      "operation_id": "tracer_feed_integrations_linear_teams_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/feed/issues/",
-      "operation_id": "tracer_feed_issues_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/feed/issues/stats/",
-      "operation_id": "tracer_feed_issues_stats_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/feed/issues/{cluster_id}/",
-      "operation_id": "tracer_feed_issues_read",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "PATCH",
-      "path": "/tracer/feed/issues/{cluster_id}/",
-      "operation_id": "tracer_feed_issues_partial_update",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/feed/issues/{cluster_id}/create-linear-issue/",
-      "operation_id": "tracer_feed_issues_create-linear-issue_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/feed/issues/{cluster_id}/deep-analysis/",
-      "operation_id": "tracer_feed_issues_deep-analysis_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/feed/issues/{cluster_id}/overview/",
-      "operation_id": "tracer_feed_issues_overview_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/feed/issues/{cluster_id}/root-cause/",
-      "operation_id": "tracer_feed_issues_root-cause_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/feed/issues/{cluster_id}/sidebar/",
-      "operation_id": "tracer_feed_issues_sidebar_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/feed/issues/{cluster_id}/traces/",
-      "operation_id": "tracer_feed_issues_traces_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/feed/issues/{cluster_id}/trends/",
-      "operation_id": "tracer_feed_issues_trends_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/imagine-analysis/",
-      "operation_id": "tracer_imagine-analysis_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/imagine-analysis/",
-      "operation_id": "tracer_imagine-analysis_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/otlp/v1/traces",
-      "operation_id": "tracer_otlp_v1_traces_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/shared/{token}/",
-      "operation_id": "tracer_shared_read",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/trace-error-analysis/{trace_id}/",
-      "operation_id": "tracer_trace-error-analysis_read",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/trace-error-task/{project_id}/",
-      "operation_id": "tracer_trace-error-task_read",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/trace-error-task/{project_id}/",
-      "operation_id": "tracer_trace-error-task_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "GET",
-      "path": "/tracer/v1/health",
-      "operation_id": "tracer_v1_health_list",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/v1/traces",
-      "operation_id": "tracer_v1_traces_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/v1/traces/",
-      "operation_id": "tracer_v1_traces_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/webhook/",
-      "operation_id": "tracer_webhook_create",
-      "tags": [
-        "tracer"
-      ]
-    },
-    {
       "group": "usage",
       "method": "GET",
       "path": "/usage/admin/custom-plan/",
@@ -8526,24 +8211,6 @@
       "operation_id": "usage_workspace-usage-summary_list",
       "tags": [
         "usage"
-      ]
-    },
-    {
-      "group": "v1",
-      "method": "GET",
-      "path": "/v1/health",
-      "operation_id": "v1_health_list",
-      "tags": [
-        "v1"
-      ]
-    },
-    {
-      "group": "v1",
-      "method": "POST",
-      "path": "/v1/traces/",
-      "operation_id": "v1_traces_create",
-      "tags": [
-        "v1"
       ]
     }
   ]

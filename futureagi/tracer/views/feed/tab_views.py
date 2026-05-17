@@ -13,23 +13,38 @@ import structlog
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
+from tfc.utils.api_contracts import validated_request
+from tfc.utils.api_serializers import ApiErrorResponseSerializer
 from tfc.utils.general_methods import GeneralMethods
 from tracer.serializers.feed import (
+    DeepAnalysisApiResponseSerializer,
     DeepAnalysisBodySerializer,
+    DeepAnalysisDispatchApiResponseSerializer,
     DeepAnalysisDispatchResponseSerializer,
     DeepAnalysisQuerySerializer,
     DeepAnalysisResponseSerializer,
+    FeedSidebarApiResponseSerializer,
     FeedSidebarQuerySerializer,
     FeedSidebarSerializer,
+    OverviewApiResponseSerializer,
     OverviewResponseSerializer,
+    TracesTabApiResponseSerializer,
     TracesTabQuerySerializer,
     TracesTabResponseSerializer,
+    TrendsTabApiResponseSerializer,
     TrendsTabQuerySerializer,
     TrendsTabResponseSerializer,
 )
 from tracer.utils import feed as feed_service
 
 logger = structlog.get_logger(__name__)
+
+ERROR_RESPONSES = {
+    400: ApiErrorResponseSerializer,
+    403: ApiErrorResponseSerializer,
+    404: ApiErrorResponseSerializer,
+    500: ApiErrorResponseSerializer,
+}
 
 
 class FeedOverviewView(APIView):
@@ -38,6 +53,9 @@ class FeedOverviewView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
+    @validated_request(
+        responses={200: OverviewApiResponseSerializer, **ERROR_RESPONSES},
+    )
     def get(self, request, cluster_id: str):
         try:
             result = feed_service.get_overview_tab(cluster_id)
@@ -57,12 +75,12 @@ class FeedTracesView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
+    @validated_request(
+        query_serializer=TracesTabQuerySerializer,
+        responses={200: TracesTabApiResponseSerializer, **ERROR_RESPONSES},
+    )
     def get(self, request, cluster_id: str):
-        query = TracesTabQuerySerializer(data=request.query_params)
-        if not query.is_valid():
-            return self._gm.bad_request(query.errors)
-
-        params = query.validated_data
+        params = request.validated_query_data
         try:
             result = feed_service.get_traces_tab(
                 cluster_id,
@@ -85,12 +103,12 @@ class FeedTrendsView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
+    @validated_request(
+        query_serializer=TrendsTabQuerySerializer,
+        responses={200: TrendsTabApiResponseSerializer, **ERROR_RESPONSES},
+    )
     def get(self, request, cluster_id: str):
-        query = TrendsTabQuerySerializer(data=request.query_params)
-        if not query.is_valid():
-            return self._gm.bad_request(query.errors)
-
-        days = query.validated_data.get("days", 14)
+        days = request.validated_query_data.get("days", 14)
         try:
             result = feed_service.get_trends_tab(cluster_id, days=days)
         except Exception:
@@ -115,11 +133,12 @@ class FeedSidebarView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
+    @validated_request(
+        query_serializer=FeedSidebarQuerySerializer,
+        responses={200: FeedSidebarApiResponseSerializer, **ERROR_RESPONSES},
+    )
     def get(self, request, cluster_id: str):
-        query = FeedSidebarQuerySerializer(data=request.query_params)
-        if not query.is_valid():
-            return self._gm.bad_request(query.errors)
-        trace_id = query.validated_data.get("trace_id") or None
+        trace_id = request.validated_query_data.get("trace_id") or None
 
         try:
             result = feed_service.get_sidebar(cluster_id, trace_id=trace_id)
@@ -145,11 +164,12 @@ class FeedRootCauseView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
+    @validated_request(
+        query_serializer=DeepAnalysisQuerySerializer,
+        responses={200: DeepAnalysisApiResponseSerializer, **ERROR_RESPONSES},
+    )
     def get(self, request, cluster_id: str):
-        query = DeepAnalysisQuerySerializer(data=request.query_params)
-        if not query.is_valid():
-            return self._gm.bad_request(query.errors)
-        trace_id = query.validated_data["trace_id"]
+        trace_id = request.validated_query_data["trace_id"]
 
         try:
             result = feed_service.get_deep_analysis(cluster_id, trace_id=trace_id)
@@ -182,12 +202,13 @@ class FeedDeepAnalysisView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
+    @validated_request(
+        request_serializer=DeepAnalysisBodySerializer,
+        responses={200: DeepAnalysisDispatchApiResponseSerializer, **ERROR_RESPONSES},
+    )
     def post(self, request, cluster_id: str):
-        body = DeepAnalysisBodySerializer(data=request.data)
-        if not body.is_valid():
-            return self._gm.bad_request(body.errors)
-        trace_id = body.validated_data["trace_id"]
-        force = body.validated_data.get("force", False)
+        trace_id = request.validated_data["trace_id"]
+        force = request.validated_data.get("force", False)
 
         try:
             result = feed_service.dispatch_deep_analysis(

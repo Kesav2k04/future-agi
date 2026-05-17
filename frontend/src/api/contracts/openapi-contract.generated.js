@@ -4209,9 +4209,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/api/public/otel/v1/traces": {
       "post": {
         "operationId": "api_public_otel_v1_traces_create",
-        "requestBody": null,
+        "requestBody": {
+          "description": "Legacy OTLP JSON/protobuf trace payload. Prefer /tracer/v1/traces for new integrations.",
+          "type": "object"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OTLPHTTPTraceResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/OTLPHTTPErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/OTLPHTTPErrorResponse"
+          }
+        }
       }
     },
     "/api/public/traces": {
@@ -15640,53 +15653,290 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "tracer_feed_integrations_linear_teams_list",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/LinearTeamsResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/": {
       "get": {
         "operationId": "tracer_feed_issues_list",
         "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
+        "queryParameters": {
+          "project_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "search": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "escalating",
+                "for_review",
+                "acknowledged",
+                "resolved"
+              ]
+            }
+          },
+          "fix_layer": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "scanner",
+                "eval"
+              ]
+            }
+          },
+          "issue_group": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "time_range_days": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "sort_by": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "last_seen",
+                "first_seen",
+                "error_count",
+                "unique_traces"
+              ],
+              "default": "last_seen"
+            }
+          },
+          "sort_dir": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            }
+          },
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 25
+            }
+          },
+          "offset": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FeedListApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/stats/": {
       "get": {
         "operationId": "tracer_feed_issues_stats_list",
         "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
+        "queryParameters": {
+          "project_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "time_range_days": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FeedStatsApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/{cluster_id}/": {
       "get": {
         "operationId": "tracer_feed_issues_read",
         "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
+        "queryParameters": {
+          "project_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FeedDetailApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       },
       "patch": {
         "operationId": "tracer_feed_issues_partial_update",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/FeedUpdateBody"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FeedDetailApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/{cluster_id}/create-linear-issue/": {
       "post": {
         "operationId": "tracer_feed_issues_create-linear-issue_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/CreateLinearIssue"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/CreateLinearIssueResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/{cluster_id}/deep-analysis/": {
       "post": {
         "operationId": "tracer_feed_issues_deep-analysis_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/DeepAnalysisBody"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DeepAnalysisDispatchApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/{cluster_id}/overview/": {
@@ -15694,39 +15944,163 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "tracer_feed_issues_overview_list",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OverviewApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/{cluster_id}/root-cause/": {
       "get": {
         "operationId": "tracer_feed_issues_root-cause_list",
         "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
+        "queryParameters": {
+          "trace_id": {
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/DeepAnalysisApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/{cluster_id}/sidebar/": {
       "get": {
         "operationId": "tracer_feed_issues_sidebar_list",
         "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
+        "queryParameters": {
+          "trace_id": {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FeedSidebarApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/{cluster_id}/traces/": {
       "get": {
         "operationId": "tracer_feed_issues_traces_list",
         "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
+        "queryParameters": {
+          "limit": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 50
+            }
+          },
+          "offset": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/TracesTabApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/feed/issues/{cluster_id}/trends/": {
       "get": {
         "operationId": "tracer_feed_issues_trends_list",
         "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
+        "queryParameters": {
+          "days": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90,
+              "default": 14
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/TrendsTabApiResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/get-annotation-labels/": {
@@ -15751,14 +16125,64 @@ export const OPENAPI_CONTRACT = Object.freeze({
       "get": {
         "operationId": "tracer_imagine-analysis_list",
         "requestBody": null,
-        "queryParameters": {},
-        "responses": {}
+        "queryParameters": {
+          "saved_view_id": {
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "trace_id": {
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ImagineAnalysisResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       },
       "post": {
         "operationId": "tracer_imagine-analysis_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/TriggerAnalysis"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/ImagineAnalysisResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/observability-provider/": {
@@ -16656,9 +17080,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/tracer/otlp/v1/traces": {
       "post": {
         "operationId": "tracer_otlp_v1_traces_create",
-        "requestBody": null,
+        "requestBody": {
+          "description": "Legacy OTLP JSON/protobuf trace payload. Prefer /tracer/v1/traces for new integrations.",
+          "type": "object"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OTLPHTTPTraceResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/OTLPHTTPErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/OTLPHTTPErrorResponse"
+          }
+        }
       }
     },
     "/tracer/project-version/": {
@@ -17768,7 +18205,23 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "tracer_shared_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/SharedLinkResolveResponse"
+          },
+          "401": {
+            "$ref": "#/definitions/SharedLinkResolveError"
+          },
+          "403": {
+            "$ref": "#/definitions/SharedLinkResolveError"
+          },
+          "404": {
+            "$ref": "#/definitions/SharedLinkResolveError"
+          },
+          "410": {
+            "$ref": "#/definitions/SharedLinkResolveError"
+          }
+        }
       }
     },
     "/tracer/trace-annotation/": {
@@ -17930,7 +18383,23 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "tracer_trace-error-analysis_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/TraceErrorAnalysisResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/trace-error-task/{project_id}/": {
@@ -17938,13 +18407,47 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "tracer_trace-error-task_read",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/TraceErrorTaskResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       },
       "post": {
         "operationId": "tracer_trace-error-task_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/TraceErrorTaskUpdateRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/TraceErrorTaskUpdateResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "404": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/tracer/trace-session/": {
@@ -19357,31 +19860,85 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "tracer_v1_health_list",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OTLPHealthResponse"
+          }
+        }
       }
     },
     "/tracer/v1/traces": {
       "post": {
         "operationId": "tracer_v1_traces_create",
-        "requestBody": null,
+        "requestBody": {
+          "description": "OpenTelemetry ExportTraceServiceRequest. JSON payloads use the OTLP HTTP JSON mapping; protobuf payloads use application/x-protobuf.",
+          "type": "object"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "429": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          }
+        }
       }
     },
     "/tracer/v1/traces/": {
       "post": {
         "operationId": "tracer_v1_traces_create",
-        "requestBody": null,
+        "requestBody": {
+          "description": "OpenTelemetry ExportTraceServiceRequest. JSON payloads use the OTLP HTTP JSON mapping; protobuf payloads use application/x-protobuf.",
+          "type": "object"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "429": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          }
+        }
       }
     },
     "/tracer/webhook/": {
       "post": {
         "operationId": "tracer_webhook_create",
-        "requestBody": null,
+        "requestBody": {
+          "$ref": "#/definitions/WebhookRequest"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/WebhookResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          }
+        }
       }
     },
     "/usage/admin/custom-plan/": {
@@ -20177,15 +20734,38 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "operationId": "v1_health_list",
         "requestBody": null,
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OTLPHealthResponse"
+          }
+        }
       }
     },
     "/v1/traces/": {
       "post": {
         "operationId": "v1_traces_create",
-        "requestBody": null,
+        "requestBody": {
+          "description": "OpenTelemetry ExportTraceServiceRequest. JSON payloads use the OTLP HTTP JSON mapping; protobuf payloads use application/x-protobuf.",
+          "type": "object"
+        },
         "queryParameters": {},
-        "responses": {}
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "429": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/OTLPTraceResponse"
+          }
+        }
       }
     }
   },
@@ -23719,6 +24299,11 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Message",
           "type": "object",
           "x-nullable": true
+        },
+        "error": {
+          "title": "Error",
+          "type": "object",
+          "x-nullable": true
         }
       }
     },
@@ -24926,6 +25511,48 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "CreateLinearIssue": {
+      "required": [
+        "team_id"
+      ],
+      "type": "object",
+      "properties": {
+        "team_id": {
+          "title": "Team id",
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "integer",
+          "default": 0
+        }
+      }
+    },
+    "CreateLinearIssueResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/CreateLinearIssueResult"
+        }
+      }
+    },
     "CreateNode": {
       "required": [
         "id",
@@ -25877,6 +26504,56 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "DeepAnalysisApiResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/DeepAnalysisResponse"
+        }
+      }
+    },
+    "DeepAnalysisBody": {
+      "required": [
+        "trace_id"
+      ],
+      "type": "object",
+      "properties": {
+        "trace_id": {
+          "title": "Trace id",
+          "type": "string",
+          "minLength": 1
+        },
+        "force": {
+          "title": "Force",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "DeepAnalysisDispatchApiResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/DeepAnalysisDispatchResponse"
+        }
+      }
+    },
     "DeleteEvalConfigResponse": {
       "required": [
         "message"
@@ -26737,6 +27414,107 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "FeedDetailApiResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/FeedDetailCore"
+        }
+      }
+    },
+    "FeedListApiResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/FeedListResponse"
+        }
+      }
+    },
+    "FeedSidebarApiResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/FeedSidebar"
+        }
+      }
+    },
+    "FeedStatsApiResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/FeedStats"
+        }
+      }
+    },
+    "FeedUpdateBody": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "title": "Project id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "escalating",
+            "for_review",
+            "acknowledged",
+            "resolved"
+          ]
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string",
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "assignee": {
+          "title": "Assignee",
+          "type": "string",
+          "format": "email",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
     "Feedback": {
       "required": [
         "source_id",
@@ -27259,6 +28037,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "ImagineAnalysisResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/ImagineAnalysisResult"
+        }
+      }
+    },
     "ImportAnnotations": {
       "required": [
         "annotations"
@@ -27689,6 +28483,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "LinearTeamsResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/LinearTeamsResult"
+        }
+      }
+    },
     "NodeRead": {
       "type": "object",
       "properties": {
@@ -27896,6 +28706,52 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Categories",
           "type": "object",
           "readOnly": true
+        }
+      }
+    },
+    "OTLPHTTPErrorResponse": {
+      "required": [
+        "detail"
+      ],
+      "type": "object",
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "OTLPHTTPTraceResponse": {
+      "type": "object",
+      "properties": {}
+    },
+    "OTLPHealthResponse": {
+      "required": [
+        "status",
+        "service"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "healthy"
+          ]
+        },
+        "service": {
+          "title": "Service",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "OTLPTraceResponse": {
+      "type": "object",
+      "properties": {
+        "partial_success": {
+          "$ref": "#/definitions/OTLPPartialSuccess"
         }
       }
     },
@@ -28516,6 +29372,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "failed",
             "cancelled"
           ]
+        }
+      }
+    },
+    "OverviewApiResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/OverviewResponse"
         }
       }
     },
@@ -32252,6 +33124,58 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "SharedLinkResolveError": {
+      "required": [
+        "error"
+      ],
+      "type": "object",
+      "properties": {
+        "error": {
+          "title": "Error",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "SharedLinkResolveResponse": {
+      "required": [
+        "resource_type",
+        "resource_id",
+        "access_type",
+        "data"
+      ],
+      "type": "object",
+      "properties": {
+        "resource_type": {
+          "title": "Resource type",
+          "type": "string",
+          "enum": [
+            "trace",
+            "dashboard",
+            "eval_run",
+            "dataset",
+            "project"
+          ]
+        },
+        "resource_id": {
+          "title": "Resource id",
+          "type": "string",
+          "minLength": 1
+        },
+        "access_type": {
+          "title": "Access type",
+          "type": "string",
+          "enum": [
+            "public",
+            "restricted"
+          ]
+        },
+        "data": {
+          "title": "Data",
+          "type": "object"
+        }
+      }
+    },
     "SpanAttributeDetailResponse": {
       "required": [
         "key",
@@ -32928,6 +33852,76 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "TraceErrorAnalysisResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/TraceErrorAnalysisResult"
+        }
+      }
+    },
+    "TraceErrorTaskResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/TraceErrorTaskResponseResult"
+        }
+      }
+    },
+    "TraceErrorTaskUpdateRequest": {
+      "required": [
+        "sampling_rate"
+      ],
+      "type": "object",
+      "properties": {
+        "sampling_rate": {
+          "title": "Sampling rate",
+          "type": "number",
+          "maximum": 1,
+          "minimum": 0
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "waiting",
+            "paused"
+          ]
+        }
+      }
+    },
+    "TraceErrorTaskUpdateResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/TraceErrorTaskUpdateResult"
+        }
+      }
+    },
     "TraceSession": {
       "required": [
         "project"
@@ -32974,6 +33968,71 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "items": {
             "type": "string",
             "minLength": 1
+          }
+        }
+      }
+    },
+    "TracesTabApiResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/TracesTabResponse"
+        }
+      }
+    },
+    "TrendsTabApiResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/TrendsTabResponse"
+        }
+      }
+    },
+    "TriggerAnalysis": {
+      "required": [
+        "saved_view_id",
+        "trace_id",
+        "project_id",
+        "widgets"
+      ],
+      "type": "object",
+      "properties": {
+        "saved_view_id": {
+          "title": "Saved view id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "trace_id": {
+          "title": "Trace id",
+          "type": "string",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "project_id": {
+          "title": "Project id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "widgets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WidgetAnalysis"
           }
         }
       }
@@ -33406,6 +34465,36 @@ export const OPENAPI_CONTRACT = Object.freeze({
         },
         "result": {
           "$ref": "#/definitions/UsersResult"
+        }
+      }
+    },
+    "WebhookRequest": {
+      "required": [
+        "call"
+      ],
+      "type": "object",
+      "properties": {
+        "call": {
+          "title": "Call",
+          "type": "object"
+        }
+      }
+    },
+    "WebhookResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "title": "Result",
+          "type": "string",
+          "minLength": 1
         }
       }
     },
@@ -34155,6 +35244,33 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "CreateLinearIssueResult": {
+      "type": "object",
+      "properties": {
+        "already_linked": {
+          "title": "Already linked",
+          "type": "boolean"
+        },
+        "issue_id": {
+          "title": "Issue id",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "issue_url": {
+          "title": "Issue url",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "issue_title": {
+          "title": "Issue title",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
     "InputMapping": {
       "description": "List of input mappings from port display_name to source reference",
       "required": [
@@ -34453,6 +35569,65 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "DeepAnalysisResponse": {
+      "required": [
+        "status",
+        "trace_id",
+        "root_causes",
+        "recommendations",
+        "immediate_fix"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "minLength": 1
+        },
+        "trace_id": {
+          "title": "Trace id",
+          "type": "string",
+          "minLength": 1
+        },
+        "root_causes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RootCause"
+          }
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Recommendation"
+          }
+        },
+        "immediate_fix": {
+          "title": "Immediate fix",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "DeepAnalysisDispatchResponse": {
+      "required": [
+        "status",
+        "trace_id"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "minLength": 1
+        },
+        "trace_id": {
+          "title": "Trace id",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "DeploymentInfoResult": {
       "required": [
         "mode"
@@ -34581,6 +35756,127 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "FeedDetailCore": {
+      "required": [
+        "row",
+        "description",
+        "success_trace",
+        "representative_trace"
+      ],
+      "type": "object",
+      "properties": {
+        "row": {
+          "$ref": "#/definitions/FeedListRow"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "success_trace": {
+          "$ref": "#/definitions/TracePreview"
+        },
+        "representative_trace": {
+          "$ref": "#/definitions/TracePreview"
+        }
+      }
+    },
+    "FeedListResponse": {
+      "required": [
+        "data",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FeedListRow"
+          }
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        }
+      }
+    },
+    "FeedSidebar": {
+      "required": [
+        "timeline",
+        "ai_metadata",
+        "evaluations",
+        "co_occurring_issues"
+      ],
+      "type": "object",
+      "properties": {
+        "timeline": {
+          "$ref": "#/definitions/SidebarTimeline"
+        },
+        "ai_metadata": {
+          "$ref": "#/definitions/SidebarAIMetadata"
+        },
+        "evaluations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EvaluationResult"
+          }
+        },
+        "co_occurring_issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CoOccurringIssue"
+          }
+        }
+      }
+    },
+    "FeedStats": {
+      "required": [
+        "total_errors",
+        "escalating",
+        "for_review",
+        "acknowledged",
+        "resolved",
+        "affected_users"
+      ],
+      "type": "object",
+      "properties": {
+        "total_errors": {
+          "title": "Total errors",
+          "type": "integer"
+        },
+        "escalating": {
+          "title": "Escalating",
+          "type": "integer"
+        },
+        "for_review": {
+          "title": "For review",
+          "type": "integer"
+        },
+        "acknowledged": {
+          "title": "Acknowledged",
+          "type": "integer"
+        },
+        "resolved": {
+          "title": "Resolved",
+          "type": "integer"
+        },
+        "affected_users": {
+          "title": "Affected users",
+          "type": "integer"
+        }
+      }
+    },
     "AnnotationLabelResponse": {
       "required": [
         "id",
@@ -34640,6 +35936,20 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "ImagineAnalysisResult": {
+      "required": [
+        "analyses"
+      ],
+      "type": "object",
+      "properties": {
+        "analyses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ImagineAnalysisItem"
+          }
+        }
+      }
+    },
     "ImportAnnotationEntry": {
       "required": [
         "label_id",
@@ -34690,6 +36000,25 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "total_pages": {
           "title": "Total pages",
           "type": "integer"
+        }
+      }
+    },
+    "LinearTeamsResult": {
+      "required": [
+        "connected",
+        "teams"
+      ],
+      "type": "object",
+      "properties": {
+        "connected": {
+          "title": "Connected",
+          "type": "boolean"
+        },
+        "teams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/LinearTeam"
+          }
         }
       }
     },
@@ -34752,6 +36081,44 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "type": "string",
           "format": "uuid",
           "readOnly": true
+        }
+      }
+    },
+    "OTLPPartialSuccess": {
+      "type": "object",
+      "properties": {
+        "rejected_spans": {
+          "title": "Rejected spans",
+          "type": "integer"
+        },
+        "error_message": {
+          "title": "Error message",
+          "type": "string"
+        }
+      }
+    },
+    "OverviewResponse": {
+      "required": [
+        "events_over_time",
+        "pattern_summary",
+        "representative_traces"
+      ],
+      "type": "object",
+      "properties": {
+        "events_over_time": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventsOverTimePoint"
+          }
+        },
+        "pattern_summary": {
+          "$ref": "#/definitions/PatternSummary"
+        },
+        "representative_traces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RepresentativeTrace"
+          }
         }
       }
     },
@@ -35684,6 +37051,270 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "TraceErrorAnalysisResult": {
+      "required": [
+        "analysis_exists",
+        "trace_id"
+      ],
+      "type": "object",
+      "properties": {
+        "analysis_exists": {
+          "title": "Analysis exists",
+          "type": "boolean"
+        },
+        "trace_id": {
+          "title": "Trace id",
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "analysis_id": {
+          "title": "Analysis id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "analysis_date": {
+          "title": "Analysis date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "agent_version": {
+          "title": "Agent version",
+          "type": "string",
+          "x-nullable": true
+        },
+        "memory_enhanced": {
+          "title": "Memory enhanced",
+          "type": "boolean"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "object"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "grouped_errors": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "scores": {
+          "title": "Scores",
+          "type": "object"
+        },
+        "memory_context": {
+          "title": "Memory context",
+          "type": "object"
+        }
+      }
+    },
+    "TraceErrorTaskResponseResult": {
+      "required": [
+        "project_id",
+        "project_name",
+        "sampling_rate",
+        "status"
+      ],
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "title": "Project id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "project_name": {
+          "title": "Project name",
+          "type": "string",
+          "minLength": 1
+        },
+        "sampling_rate": {
+          "title": "Sampling rate",
+          "type": "number"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "running",
+            "waiting",
+            "paused"
+          ]
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean"
+        },
+        "total_traces_analyzed": {
+          "title": "Total traces analyzed",
+          "type": "integer"
+        },
+        "total_errors_found": {
+          "title": "Total errors found",
+          "type": "integer"
+        },
+        "failed_analyses": {
+          "title": "Failed analyses",
+          "type": "integer"
+        },
+        "last_run_at": {
+          "title": "Last run at",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "created": {
+          "title": "Created",
+          "type": "boolean"
+        }
+      }
+    },
+    "TraceErrorTaskUpdateResult": {
+      "required": [
+        "message",
+        "project_id",
+        "project_name",
+        "sampling_rate",
+        "status",
+        "action",
+        "old_rate",
+        "new_rate"
+      ],
+      "type": "object",
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string",
+          "minLength": 1
+        },
+        "project_id": {
+          "title": "Project id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "project_name": {
+          "title": "Project name",
+          "type": "string",
+          "minLength": 1
+        },
+        "sampling_rate": {
+          "title": "Sampling rate",
+          "type": "number"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "running",
+            "waiting",
+            "paused"
+          ]
+        },
+        "action": {
+          "title": "Action",
+          "type": "string",
+          "minLength": 1
+        },
+        "old_rate": {
+          "title": "Old rate",
+          "type": "number"
+        },
+        "new_rate": {
+          "title": "New rate",
+          "type": "number"
+        }
+      }
+    },
+    "TracesTabResponse": {
+      "required": [
+        "aggregates",
+        "traces",
+        "total"
+      ],
+      "type": "object",
+      "properties": {
+        "aggregates": {
+          "$ref": "#/definitions/TracesAggregates"
+        },
+        "traces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TracesListRow"
+          }
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      }
+    },
+    "TrendsTabResponse": {
+      "required": [
+        "metrics",
+        "events_over_time",
+        "score_trends",
+        "activity_heatmap"
+      ],
+      "type": "object",
+      "properties": {
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TrendMetric"
+          }
+        },
+        "events_over_time": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventsOverTimePoint"
+          }
+        },
+        "score_trends": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ScoreTrend"
+          }
+        },
+        "activity_heatmap": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/HeatmapCell"
+            }
+          }
+        }
+      }
+    },
+    "WidgetAnalysis": {
+      "required": [
+        "widget_id",
+        "prompt"
+      ],
+      "type": "object",
+      "properties": {
+        "widget_id": {
+          "title": "Widget id",
+          "type": "string",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string",
+          "maxLength": 8000,
+          "minLength": 1
+        }
+      }
+    },
     "UsersResult": {
       "required": [
         "table",
@@ -35968,6 +37599,88 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "Recommendation": {
+      "required": [
+        "id",
+        "title",
+        "description",
+        "priority",
+        "root_cause_link",
+        "immediate_fix",
+        "insights",
+        "evidence"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "title": "Title",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "string",
+          "minLength": 1
+        },
+        "root_cause_link": {
+          "title": "Root cause link",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "immediate_fix": {
+          "title": "Immediate fix",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "insights": {
+          "title": "Insights",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "RootCause": {
+      "required": [
+        "rank",
+        "title",
+        "description"
+      ],
+      "type": "object",
+      "properties": {
+        "rank": {
+          "title": "Rank",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "EELicenseGrant": {
       "required": [
         "id",
@@ -36037,6 +37750,517 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Status",
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "FeedListRow": {
+      "required": [
+        "cluster_id",
+        "source",
+        "error",
+        "status",
+        "severity",
+        "occurrences",
+        "trace_count",
+        "fix_layer",
+        "users_affected",
+        "sessions",
+        "first_seen",
+        "last_seen",
+        "trends",
+        "assignees",
+        "model",
+        "model_version",
+        "project",
+        "project_id",
+        "environment",
+        "eval_score",
+        "trace_id",
+        "external_issue_url",
+        "external_issue_id"
+      ],
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "title": "Cluster id",
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "title": "Source",
+          "type": "string",
+          "minLength": 1
+        },
+        "error": {
+          "$ref": "#/definitions/ErrorName"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string",
+          "minLength": 1
+        },
+        "occurrences": {
+          "title": "Occurrences",
+          "type": "integer"
+        },
+        "trace_count": {
+          "title": "Trace count",
+          "type": "integer"
+        },
+        "fix_layer": {
+          "title": "Fix layer",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "users_affected": {
+          "title": "Users affected",
+          "type": "integer"
+        },
+        "sessions": {
+          "title": "Sessions",
+          "type": "integer"
+        },
+        "first_seen": {
+          "title": "First seen",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "last_seen": {
+          "title": "Last seen",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "trends": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TrendPoint"
+          }
+        },
+        "assignees": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "model_version": {
+          "title": "Model version",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "project_id": {
+          "title": "Project id",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "eval_score": {
+          "title": "Eval score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "trace_id": {
+          "title": "Trace id",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "external_issue_url": {
+          "title": "External issue url",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "external_issue_id": {
+          "title": "External issue id",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "TracePreview": {
+      "required": [
+        "trace_id",
+        "input",
+        "output"
+      ],
+      "type": "object",
+      "properties": {
+        "trace_id": {
+          "title": "Trace id",
+          "type": "string",
+          "minLength": 1
+        },
+        "input": {
+          "title": "Input",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "output": {
+          "title": "Output",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      },
+      "x-nullable": true
+    },
+    "CoOccurringIssue": {
+      "required": [
+        "id",
+        "title",
+        "type",
+        "co_occurrence",
+        "count",
+        "severity"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "title": "Title",
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "co_occurrence": {
+          "title": "Co occurrence",
+          "type": "number"
+        },
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "EvaluationResult": {
+      "required": [
+        "label",
+        "type",
+        "result",
+        "score",
+        "value"
+      ],
+      "type": "object",
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "minLength": 1
+        },
+        "result": {
+          "title": "Result",
+          "type": "string",
+          "minLength": 1
+        },
+        "score": {
+          "title": "Score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "value": {
+          "title": "Value",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "SidebarAIMetadata": {
+      "required": [
+        "model",
+        "model_version",
+        "project",
+        "eval_score",
+        "trace_id"
+      ],
+      "type": "object",
+      "properties": {
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "model_version": {
+          "title": "Model version",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "eval_score": {
+          "title": "Eval score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "trace_id": {
+          "title": "Trace id",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "SidebarTimeline": {
+      "required": [
+        "first_seen",
+        "last_seen",
+        "age_days"
+      ],
+      "type": "object",
+      "properties": {
+        "first_seen": {
+          "title": "First seen",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "last_seen": {
+          "title": "Last seen",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "age_days": {
+          "title": "Age days",
+          "type": "integer",
+          "x-nullable": true
+        }
+      }
+    },
+    "ImagineAnalysisItem": {
+      "required": [
+        "id",
+        "widget_id",
+        "status"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "format": "uuid"
+        },
+        "widget_id": {
+          "title": "Widget id",
+          "type": "string",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "content": {
+          "title": "Content",
+          "type": "string",
+          "x-nullable": true
+        },
+        "error": {
+          "title": "Error",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "LinearTeam": {
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "title": "Key",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "EventsOverTimePoint": {
+      "required": [
+        "date",
+        "errors",
+        "passing",
+        "users"
+      ],
+      "type": "object",
+      "properties": {
+        "date": {
+          "title": "Date",
+          "type": "string",
+          "minLength": 1
+        },
+        "errors": {
+          "title": "Errors",
+          "type": "integer"
+        },
+        "passing": {
+          "title": "Passing",
+          "type": "integer"
+        },
+        "users": {
+          "title": "Users",
+          "type": "integer"
+        }
+      }
+    },
+    "PatternSummary": {
+      "required": [
+        "insights",
+        "key_moments"
+      ],
+      "type": "object",
+      "properties": {
+        "insights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PatternInsight"
+          }
+        },
+        "key_moments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/KeyMoment"
+          }
+        }
+      }
+    },
+    "RepresentativeTrace": {
+      "required": [
+        "id",
+        "status",
+        "timestamp",
+        "summary",
+        "evidence",
+        "agent_flow",
+        "root_causes",
+        "recommendations",
+        "what_changed"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "minLength": 1
+        },
+        "timestamp": {
+          "title": "Timestamp",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "summary": {
+          "$ref": "#/definitions/TraceSummary"
+        },
+        "evidence": {
+          "$ref": "#/definitions/TraceEvidence"
+        },
+        "agent_flow": {
+          "$ref": "#/definitions/AgentFlowGraph"
+        },
+        "root_causes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          }
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          }
+        },
+        "what_changed": {
+          "title": "What changed",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-nullable": true
+          },
+          "x-nullable": true
         }
       }
     },
@@ -36262,6 +38486,186 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "TracesAggregates": {
+      "required": [
+        "total_traces",
+        "failing_traces",
+        "passing_traces",
+        "avg_score",
+        "p50_latency",
+        "p95_latency",
+        "avg_turns"
+      ],
+      "type": "object",
+      "properties": {
+        "total_traces": {
+          "title": "Total traces",
+          "type": "integer"
+        },
+        "failing_traces": {
+          "title": "Failing traces",
+          "type": "integer"
+        },
+        "passing_traces": {
+          "title": "Passing traces",
+          "type": "integer"
+        },
+        "avg_score": {
+          "title": "Avg score",
+          "type": "number"
+        },
+        "p50_latency": {
+          "title": "P50 latency",
+          "type": "integer"
+        },
+        "p95_latency": {
+          "title": "P95 latency",
+          "type": "integer"
+        },
+        "avg_turns": {
+          "title": "Avg turns",
+          "type": "number"
+        }
+      }
+    },
+    "TracesListRow": {
+      "required": [
+        "id",
+        "input",
+        "timestamp",
+        "latency_ms",
+        "tokens",
+        "cost",
+        "score",
+        "turns"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "input": {
+          "title": "Input",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "timestamp": {
+          "title": "Timestamp",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "latency_ms": {
+          "title": "Latency ms",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "tokens": {
+          "title": "Tokens",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "cost": {
+          "title": "Cost",
+          "type": "number",
+          "x-nullable": true
+        },
+        "score": {
+          "title": "Score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "turns": {
+          "title": "Turns",
+          "type": "integer",
+          "x-nullable": true
+        }
+      }
+    },
+    "HeatmapCell": {
+      "required": [
+        "day",
+        "hour",
+        "value"
+      ],
+      "type": "object",
+      "properties": {
+        "day": {
+          "title": "Day",
+          "type": "integer"
+        },
+        "hour": {
+          "title": "Hour",
+          "type": "integer"
+        },
+        "value": {
+          "title": "Value",
+          "type": "integer"
+        }
+      }
+    },
+    "ScoreTrend": {
+      "required": [
+        "label",
+        "current",
+        "prev",
+        "sparkline"
+      ],
+      "type": "object",
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string",
+          "minLength": 1
+        },
+        "current": {
+          "title": "Current",
+          "type": "number"
+        },
+        "prev": {
+          "title": "Prev",
+          "type": "number"
+        },
+        "sparkline": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "TrendMetric": {
+      "required": [
+        "label",
+        "value",
+        "delta",
+        "unit"
+      ],
+      "type": "object",
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "title": "Value",
+          "type": "string",
+          "minLength": 1
+        },
+        "delta": {
+          "title": "Delta",
+          "type": "number"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        }
+      }
+    },
     "MessageContentItem": {
       "description": "Array of content items",
       "required": [
@@ -36305,6 +38709,200 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "type": "string",
           "format": "uri",
           "minLength": 1
+        }
+      }
+    },
+    "ErrorName": {
+      "required": [
+        "name",
+        "type"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      }
+    },
+    "TrendPoint": {
+      "required": [
+        "timestamp",
+        "value",
+        "users"
+      ],
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "title": "Timestamp",
+          "type": "string",
+          "format": "date-time"
+        },
+        "value": {
+          "title": "Value",
+          "type": "integer"
+        },
+        "users": {
+          "title": "Users",
+          "type": "integer"
+        }
+      }
+    },
+    "KeyMoment": {
+      "required": [
+        "kevinified",
+        "verbatim"
+      ],
+      "type": "object",
+      "properties": {
+        "kevinified": {
+          "title": "Kevinified",
+          "type": "string",
+          "minLength": 1
+        },
+        "verbatim": {
+          "title": "Verbatim",
+          "type": "string"
+        }
+      }
+    },
+    "PatternInsight": {
+      "required": [
+        "value",
+        "caption"
+      ],
+      "type": "object",
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "string",
+          "minLength": 1
+        },
+        "caption": {
+          "title": "Caption",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "AgentFlowGraph": {
+      "required": [
+        "nodes",
+        "edges"
+      ],
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          }
+        }
+      }
+    },
+    "TraceEvidence": {
+      "required": [
+        "input",
+        "output",
+        "fail_reel",
+        "pass_reel"
+      ],
+      "type": "object",
+      "properties": {
+        "input": {
+          "title": "Input",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "output": {
+          "title": "Output",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "fail_reel": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          }
+        },
+        "pass_reel": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "x-nullable": true
+            }
+          }
+        }
+      }
+    },
+    "TraceSummary": {
+      "required": [
+        "eval_score",
+        "latency_ms",
+        "turns",
+        "model",
+        "input_tokens",
+        "output_tokens"
+      ],
+      "type": "object",
+      "properties": {
+        "eval_score": {
+          "title": "Eval score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "latency_ms": {
+          "title": "Latency ms",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "turns": {
+          "title": "Turns",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "model": {
+          "title": "Model",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "input_tokens": {
+          "title": "Input tokens",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "output_tokens": {
+          "title": "Output tokens",
+          "type": "integer",
+          "x-nullable": true
         }
       }
     }

@@ -99,3 +99,14 @@ class SharedLinkDetailSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(f"/shared/{obj.token}")
         return f"/shared/{obj.token}"
+
+
+class SharedLinkResolveResponseSerializer(serializers.Serializer):
+    resource_type = serializers.ChoiceField(choices=ResourceType.choices)
+    resource_id = serializers.CharField()
+    access_type = serializers.ChoiceField(choices=AccessType.choices)
+    data = serializers.JSONField()
+
+
+class SharedLinkResolveErrorSerializer(serializers.Serializer):
+    error = serializers.CharField()

@@ -6071,6 +6071,18 @@ export const ApiPublicHealthListResponse = zod.object({
 
 
 /**
+ * Asynchronously handles the POST request to create ObservationSpans from OTEL data.
+ */
+export const ApiPublicOtelV1TracesCreateBody = zod.object({
+
+}).passthrough().describe('Legacy OTLP JSON\/protobuf trace payload. Prefer \/tracer\/v1\/traces for new integrations.')
+
+export const ApiPublicOtelV1TracesCreateResponse = zod.object({
+
+}).passthrough()
+
+
+/**
  * Vapi validates Langfuse credentials by calling this endpoint with
 ``?limit=1``.      Returns an empty list with standard pagination
 metadata so the credential check passes.
@@ -21842,10 +21854,222 @@ export const TracerEvalTaskDeleteParams = zod.object({
 
 
 /**
+ * Returns the list of Linear teams for the team picker dropdown.
+Requires an active Linear integration for the user's org.
+ * @summary GET /tracer/feed/integrations/linear/teams/
+ */
+export const tracerFeedIntegrationsLinearTeamsListResponseStatusDefault = true;
+
+
+
+export const TracerFeedIntegrationsLinearTeamsListResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIntegrationsLinearTeamsListResponseStatusDefault),
+  "result": zod.object({
+  "connected": zod.boolean(),
+  "teams": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "name": zod.string().min(1),
+  "key": zod.string().optional()
+}))
+})
+})
+
+
+/**
+ * GET /tracer/feed/issues/ — paginated cluster list with filters/sort.
+ */
+
+export const tracerFeedIssuesListQuerySortByDefault = `last_seen`;
+export const tracerFeedIssuesListQuerySortDirDefault = `desc`;
+export const tracerFeedIssuesListQueryLimitDefault = 25;
+export const tracerFeedIssuesListQueryLimitMax = 200;
+
+export const tracerFeedIssuesListQueryOffsetDefault = 0;
+export const tracerFeedIssuesListQueryOffsetMin = 0;
+
+
+
+export const TracerFeedIssuesListQueryParams = zod.object({
+  "project_id": zod.string().uuid().optional(),
+  "search": zod.string().optional(),
+  "status": zod.enum(['escalating', 'for_review', 'acknowledged', 'resolved']).optional(),
+  "fix_layer": zod.string().optional(),
+  "source": zod.enum(['scanner', 'eval']).optional(),
+  "issue_group": zod.string().optional(),
+  "time_range_days": zod.number().min(1).optional(),
+  "sort_by": zod.enum(['last_seen', 'first_seen', 'error_count', 'unique_traces']).default(tracerFeedIssuesListQuerySortByDefault),
+  "sort_dir": zod.enum(['asc', 'desc']).default(tracerFeedIssuesListQuerySortDirDefault),
+  "limit": zod.number().min(1).max(tracerFeedIssuesListQueryLimitMax).default(tracerFeedIssuesListQueryLimitDefault),
+  "offset": zod.number().min(tracerFeedIssuesListQueryOffsetMin).default(tracerFeedIssuesListQueryOffsetDefault)
+})
+
+export const tracerFeedIssuesListResponseStatusDefault = true;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export const TracerFeedIssuesListResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesListResponseStatusDefault),
+  "result": zod.object({
+  "data": zod.array(zod.object({
+  "cluster_id": zod.string().min(1),
+  "source": zod.string().min(1),
+  "error": zod.object({
+  "name": zod.string().min(1),
+  "type": zod.string()
+}),
+  "status": zod.string().min(1),
+  "severity": zod.string().min(1),
+  "occurrences": zod.number(),
+  "trace_count": zod.number(),
+  "fix_layer": zod.string().min(1),
+  "users_affected": zod.number(),
+  "sessions": zod.number(),
+  "first_seen": zod.string().datetime({"offset":true}),
+  "last_seen": zod.string().datetime({"offset":true}),
+  "trends": zod.array(zod.object({
+  "timestamp": zod.string().datetime({"offset":true}),
+  "value": zod.number(),
+  "users": zod.number()
+})),
+  "assignees": zod.array(zod.string().min(1)),
+  "model": zod.string().min(1),
+  "model_version": zod.string().min(1),
+  "project": zod.string().min(1),
+  "project_id": zod.string().min(1),
+  "environment": zod.string().min(1),
+  "eval_score": zod.number(),
+  "trace_id": zod.string().min(1),
+  "external_issue_url": zod.string().min(1),
+  "external_issue_id": zod.string().min(1)
+})),
+  "total": zod.number(),
+  "limit": zod.number(),
+  "offset": zod.number()
+})
+})
+
+
+/**
+ * GET /tracer/feed/issues/stats/ — top stats bar totals.
+ */
+
+
+
+export const TracerFeedIssuesStatsListQueryParams = zod.object({
+  "project_id": zod.string().uuid().optional(),
+  "time_range_days": zod.number().min(1).optional()
+})
+
+export const tracerFeedIssuesStatsListResponseStatusDefault = true;
+
+export const TracerFeedIssuesStatsListResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesStatsListResponseStatusDefault),
+  "result": zod.object({
+  "total_errors": zod.number(),
+  "escalating": zod.number(),
+  "for_review": zod.number(),
+  "acknowledged": zod.number(),
+  "resolved": zod.number(),
+  "affected_users": zod.number()
+})
+})
+
+
+/**
  * GET + PATCH /tracer/feed/issues/{cluster_id}/
  */
 export const TracerFeedIssuesReadParams = zod.object({
   "cluster_id": zod.string()
+})
+
+export const TracerFeedIssuesReadQueryParams = zod.object({
+  "project_id": zod.string().uuid().optional()
+})
+
+export const tracerFeedIssuesReadResponseStatusDefault = true;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export const TracerFeedIssuesReadResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesReadResponseStatusDefault),
+  "result": zod.object({
+  "row": zod.object({
+  "cluster_id": zod.string().min(1),
+  "source": zod.string().min(1),
+  "error": zod.object({
+  "name": zod.string().min(1),
+  "type": zod.string()
+}),
+  "status": zod.string().min(1),
+  "severity": zod.string().min(1),
+  "occurrences": zod.number(),
+  "trace_count": zod.number(),
+  "fix_layer": zod.string().min(1),
+  "users_affected": zod.number(),
+  "sessions": zod.number(),
+  "first_seen": zod.string().datetime({"offset":true}),
+  "last_seen": zod.string().datetime({"offset":true}),
+  "trends": zod.array(zod.object({
+  "timestamp": zod.string().datetime({"offset":true}),
+  "value": zod.number(),
+  "users": zod.number()
+})),
+  "assignees": zod.array(zod.string().min(1)),
+  "model": zod.string().min(1),
+  "model_version": zod.string().min(1),
+  "project": zod.string().min(1),
+  "project_id": zod.string().min(1),
+  "environment": zod.string().min(1),
+  "eval_score": zod.number(),
+  "trace_id": zod.string().min(1),
+  "external_issue_url": zod.string().min(1),
+  "external_issue_id": zod.string().min(1)
+}),
+  "description": zod.string().min(1),
+  "success_trace": zod.object({
+  "trace_id": zod.string().min(1),
+  "input": zod.string().min(1),
+  "output": zod.string().min(1)
+}),
+  "representative_trace": zod.object({
+  "trace_id": zod.string().min(1),
+  "input": zod.string().min(1),
+  "output": zod.string().min(1)
+})
+})
 })
 
 
@@ -21857,11 +22081,119 @@ export const TracerFeedIssuesPartialUpdateParams = zod.object({
 })
 
 
+
+
+export const TracerFeedIssuesPartialUpdateBody = zod.object({
+  "project_id": zod.string().uuid().optional(),
+  "status": zod.enum(['escalating', 'for_review', 'acknowledged', 'resolved']).optional(),
+  "severity": zod.enum(['critical', 'high', 'medium', 'low']).optional(),
+  "assignee": zod.string().email().min(1).optional()
+})
+
+export const tracerFeedIssuesPartialUpdateResponseStatusDefault = true;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export const TracerFeedIssuesPartialUpdateResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesPartialUpdateResponseStatusDefault),
+  "result": zod.object({
+  "row": zod.object({
+  "cluster_id": zod.string().min(1),
+  "source": zod.string().min(1),
+  "error": zod.object({
+  "name": zod.string().min(1),
+  "type": zod.string()
+}),
+  "status": zod.string().min(1),
+  "severity": zod.string().min(1),
+  "occurrences": zod.number(),
+  "trace_count": zod.number(),
+  "fix_layer": zod.string().min(1),
+  "users_affected": zod.number(),
+  "sessions": zod.number(),
+  "first_seen": zod.string().datetime({"offset":true}),
+  "last_seen": zod.string().datetime({"offset":true}),
+  "trends": zod.array(zod.object({
+  "timestamp": zod.string().datetime({"offset":true}),
+  "value": zod.number(),
+  "users": zod.number()
+})),
+  "assignees": zod.array(zod.string().min(1)),
+  "model": zod.string().min(1),
+  "model_version": zod.string().min(1),
+  "project": zod.string().min(1),
+  "project_id": zod.string().min(1),
+  "environment": zod.string().min(1),
+  "eval_score": zod.number(),
+  "trace_id": zod.string().min(1),
+  "external_issue_url": zod.string().min(1),
+  "external_issue_id": zod.string().min(1)
+}),
+  "description": zod.string().min(1),
+  "success_trace": zod.object({
+  "trace_id": zod.string().min(1),
+  "input": zod.string().min(1),
+  "output": zod.string().min(1)
+}),
+  "representative_trace": zod.object({
+  "trace_id": zod.string().min(1),
+  "input": zod.string().min(1),
+  "output": zod.string().min(1)
+})
+})
+})
+
+
 /**
  * POST /tracer/feed/issues/{cluster_id}/create-linear-issue/
  */
 export const TracerFeedIssuesCreateLinearIssueCreateParams = zod.object({
   "cluster_id": zod.string()
+})
+
+
+export const tracerFeedIssuesCreateLinearIssueCreateBodyPriorityDefault = 0;
+
+export const TracerFeedIssuesCreateLinearIssueCreateBody = zod.object({
+  "team_id": zod.string().min(1),
+  "title": zod.string().optional(),
+  "description": zod.string().optional(),
+  "priority": zod.number().default(tracerFeedIssuesCreateLinearIssueCreateBodyPriorityDefault)
+})
+
+export const tracerFeedIssuesCreateLinearIssueCreateResponseStatusDefault = true;
+
+
+
+
+export const TracerFeedIssuesCreateLinearIssueCreateResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesCreateLinearIssueCreateResponseStatusDefault),
+  "result": zod.object({
+  "already_linked": zod.boolean().optional(),
+  "issue_id": zod.string().min(1).optional(),
+  "issue_url": zod.string().min(1).optional(),
+  "issue_title": zod.string().min(1).optional()
+})
 })
 
 
@@ -21873,11 +22205,90 @@ export const TracerFeedIssuesDeepAnalysisCreateParams = zod.object({
 })
 
 
+export const tracerFeedIssuesDeepAnalysisCreateBodyForceDefault = false;
+
+export const TracerFeedIssuesDeepAnalysisCreateBody = zod.object({
+  "trace_id": zod.string().min(1),
+  "force": zod.boolean().default(tracerFeedIssuesDeepAnalysisCreateBodyForceDefault)
+})
+
+export const tracerFeedIssuesDeepAnalysisCreateResponseStatusDefault = true;
+
+
+
+export const TracerFeedIssuesDeepAnalysisCreateResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesDeepAnalysisCreateResponseStatusDefault),
+  "result": zod.object({
+  "status": zod.string().min(1),
+  "trace_id": zod.string().min(1)
+})
+})
+
+
 /**
  * GET /tracer/feed/issues/{cluster_id}/overview/
  */
 export const TracerFeedIssuesOverviewListParams = zod.object({
   "cluster_id": zod.string()
+})
+
+export const tracerFeedIssuesOverviewListResponseStatusDefault = true;
+
+
+
+
+
+
+
+
+
+
+export const TracerFeedIssuesOverviewListResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesOverviewListResponseStatusDefault),
+  "result": zod.object({
+  "events_over_time": zod.array(zod.object({
+  "date": zod.string().min(1),
+  "errors": zod.number(),
+  "passing": zod.number(),
+  "users": zod.number()
+})),
+  "pattern_summary": zod.object({
+  "insights": zod.array(zod.object({
+  "value": zod.string().min(1),
+  "caption": zod.string().min(1)
+})),
+  "key_moments": zod.array(zod.object({
+  "kevinified": zod.string().min(1),
+  "verbatim": zod.string()
+}))
+}),
+  "representative_traces": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "status": zod.string().min(1),
+  "timestamp": zod.string().datetime({"offset":true}),
+  "summary": zod.object({
+  "eval_score": zod.number(),
+  "latency_ms": zod.number(),
+  "turns": zod.number(),
+  "model": zod.string().min(1),
+  "input_tokens": zod.number(),
+  "output_tokens": zod.number()
+}),
+  "evidence": zod.object({
+  "input": zod.string().min(1),
+  "output": zod.string().min(1),
+  "fail_reel": zod.array(zod.record(zod.string(), zod.string())),
+  "pass_reel": zod.array(zod.record(zod.string(), zod.string()))
+}),
+  "agent_flow": zod.object({
+  "nodes": zod.array(zod.record(zod.string(), zod.string())),
+  "edges": zod.array(zod.record(zod.string(), zod.string()))
+}),
+  "root_causes": zod.array(zod.record(zod.string(), zod.string())),
+  "recommendations": zod.array(zod.record(zod.string(), zod.string())),
+  "what_changed": zod.record(zod.string(), zod.string())
+}))
+})
 })
 
 
@@ -21893,6 +22304,50 @@ export const TracerFeedIssuesRootCauseListParams = zod.object({
 })
 
 
+
+
+export const TracerFeedIssuesRootCauseListQueryParams = zod.object({
+  "trace_id": zod.string().min(1)
+})
+
+export const tracerFeedIssuesRootCauseListResponseStatusDefault = true;
+
+
+
+
+
+
+
+
+
+
+
+
+export const TracerFeedIssuesRootCauseListResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesRootCauseListResponseStatusDefault),
+  "result": zod.object({
+  "status": zod.string().min(1),
+  "trace_id": zod.string().min(1),
+  "root_causes": zod.array(zod.object({
+  "rank": zod.number(),
+  "title": zod.string().min(1),
+  "description": zod.string().min(1)
+})),
+  "recommendations": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "title": zod.string().min(1),
+  "description": zod.string(),
+  "priority": zod.string().min(1),
+  "root_cause_link": zod.number(),
+  "immediate_fix": zod.string().min(1),
+  "insights": zod.string().min(1),
+  "evidence": zod.array(zod.string().min(1))
+})),
+  "immediate_fix": zod.string().min(1)
+})
+})
+
+
 /**
  * Accepts an optional ``?trace_id=`` query param. When present, the
 trace-level sections (AI Metadata + Evaluations) are computed for
@@ -21905,11 +22360,107 @@ export const TracerFeedIssuesSidebarListParams = zod.object({
 })
 
 
+
+
+export const TracerFeedIssuesSidebarListQueryParams = zod.object({
+  "trace_id": zod.string().min(1).optional()
+})
+
+export const tracerFeedIssuesSidebarListResponseStatusDefault = true;
+
+
+
+
+
+
+
+
+
+
+
+
+export const TracerFeedIssuesSidebarListResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesSidebarListResponseStatusDefault),
+  "result": zod.object({
+  "timeline": zod.object({
+  "first_seen": zod.string().datetime({"offset":true}),
+  "last_seen": zod.string().datetime({"offset":true}),
+  "age_days": zod.number()
+}),
+  "ai_metadata": zod.object({
+  "model": zod.string().min(1),
+  "model_version": zod.string().min(1),
+  "project": zod.string().min(1),
+  "eval_score": zod.number(),
+  "trace_id": zod.string().min(1)
+}),
+  "evaluations": zod.array(zod.object({
+  "label": zod.string().min(1),
+  "type": zod.string().min(1),
+  "result": zod.string().min(1),
+  "score": zod.number(),
+  "value": zod.string().min(1)
+})),
+  "co_occurring_issues": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "title": zod.string().min(1),
+  "type": zod.string(),
+  "co_occurrence": zod.number(),
+  "count": zod.number(),
+  "severity": zod.string().min(1)
+}))
+})
+})
+
+
 /**
  * GET /tracer/feed/issues/{cluster_id}/traces/
  */
 export const TracerFeedIssuesTracesListParams = zod.object({
   "cluster_id": zod.string()
+})
+
+export const tracerFeedIssuesTracesListQueryLimitDefault = 50;
+export const tracerFeedIssuesTracesListQueryLimitMax = 500;
+
+export const tracerFeedIssuesTracesListQueryOffsetDefault = 0;
+export const tracerFeedIssuesTracesListQueryOffsetMin = 0;
+
+
+
+export const TracerFeedIssuesTracesListQueryParams = zod.object({
+  "limit": zod.number().min(1).max(tracerFeedIssuesTracesListQueryLimitMax).default(tracerFeedIssuesTracesListQueryLimitDefault),
+  "offset": zod.number().min(tracerFeedIssuesTracesListQueryOffsetMin).default(tracerFeedIssuesTracesListQueryOffsetDefault)
+})
+
+export const tracerFeedIssuesTracesListResponseStatusDefault = true;
+
+
+
+export const TracerFeedIssuesTracesListResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesTracesListResponseStatusDefault),
+  "result": zod.object({
+  "aggregates": zod.object({
+  "total_traces": zod.number(),
+  "failing_traces": zod.number(),
+  "passing_traces": zod.number(),
+  "avg_score": zod.number(),
+  "p50_latency": zod.number(),
+  "p95_latency": zod.number(),
+  "avg_turns": zod.number()
+}),
+  "traces": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "input": zod.string().min(1),
+  "timestamp": zod.string().datetime({"offset":true}),
+  "latency_ms": zod.number(),
+  "tokens": zod.number(),
+  "cost": zod.number(),
+  "score": zod.number(),
+  "turns": zod.number()
+})),
+  "total": zod.number()
+})
 })
 
 
@@ -21918,6 +22469,50 @@ export const TracerFeedIssuesTracesListParams = zod.object({
  */
 export const TracerFeedIssuesTrendsListParams = zod.object({
   "cluster_id": zod.string()
+})
+
+export const tracerFeedIssuesTrendsListQueryDaysDefault = 14;
+export const tracerFeedIssuesTrendsListQueryDaysMax = 90;
+
+
+
+export const TracerFeedIssuesTrendsListQueryParams = zod.object({
+  "days": zod.number().min(1).max(tracerFeedIssuesTrendsListQueryDaysMax).default(tracerFeedIssuesTrendsListQueryDaysDefault)
+})
+
+export const tracerFeedIssuesTrendsListResponseStatusDefault = true;
+
+
+
+
+
+export const TracerFeedIssuesTrendsListResponse = zod.object({
+  "status": zod.boolean().default(tracerFeedIssuesTrendsListResponseStatusDefault),
+  "result": zod.object({
+  "metrics": zod.array(zod.object({
+  "label": zod.string().min(1),
+  "value": zod.string().min(1),
+  "delta": zod.number(),
+  "unit": zod.string()
+})),
+  "events_over_time": zod.array(zod.object({
+  "date": zod.string().min(1),
+  "errors": zod.number(),
+  "passing": zod.number(),
+  "users": zod.number()
+})),
+  "score_trends": zod.array(zod.object({
+  "label": zod.string().min(1),
+  "current": zod.number(),
+  "prev": zod.number(),
+  "sparkline": zod.array(zod.number())
+})),
+  "activity_heatmap": zod.array(zod.array(zod.object({
+  "day": zod.number(),
+  "hour": zod.number(),
+  "value": zod.number()
+})))
+})
 })
 
 
@@ -21936,6 +22531,77 @@ export const TracerGetAnnotationLabelsListResponse = zod.object({
 
 }).passthrough().optional()
 }))
+})
+
+
+/**
+ * Poll for analysis results.
+ */
+export const tracerImagineAnalysisListQueryTraceIdMax = 255;
+
+
+
+export const TracerImagineAnalysisListQueryParams = zod.object({
+  "saved_view_id": zod.string().uuid(),
+  "trace_id": zod.string().min(1).max(tracerImagineAnalysisListQueryTraceIdMax)
+})
+
+export const tracerImagineAnalysisListResponseStatusDefault = true;
+export const tracerImagineAnalysisListResponseResultAnalysesItemWidgetIdMax = 100;
+
+
+
+export const TracerImagineAnalysisListResponse = zod.object({
+  "status": zod.boolean().default(tracerImagineAnalysisListResponseStatusDefault),
+  "result": zod.object({
+  "analyses": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "widget_id": zod.string().min(1).max(tracerImagineAnalysisListResponseResultAnalysesItemWidgetIdMax),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed']),
+  "content": zod.string().optional(),
+  "error": zod.string().optional()
+}))
+})
+})
+
+
+/**
+ * Trigger analysis for widgets. Creates DB records + starts Temporal workflows.
+ */
+export const tracerImagineAnalysisCreateBodyTraceIdMax = 255;
+
+export const tracerImagineAnalysisCreateBodyWidgetsItemWidgetIdMax = 100;
+
+export const tracerImagineAnalysisCreateBodyWidgetsItemPromptMax = 8000;
+
+
+
+export const TracerImagineAnalysisCreateBody = zod.object({
+  "saved_view_id": zod.string().uuid(),
+  "trace_id": zod.string().min(1).max(tracerImagineAnalysisCreateBodyTraceIdMax),
+  "project_id": zod.string().uuid(),
+  "widgets": zod.array(zod.object({
+  "widget_id": zod.string().min(1).max(tracerImagineAnalysisCreateBodyWidgetsItemWidgetIdMax),
+  "prompt": zod.string().min(1).max(tracerImagineAnalysisCreateBodyWidgetsItemPromptMax)
+}))
+})
+
+export const tracerImagineAnalysisCreateResponseStatusDefault = true;
+export const tracerImagineAnalysisCreateResponseResultAnalysesItemWidgetIdMax = 100;
+
+
+
+export const TracerImagineAnalysisCreateResponse = zod.object({
+  "status": zod.boolean().default(tracerImagineAnalysisCreateResponseStatusDefault),
+  "result": zod.object({
+  "analyses": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "widget_id": zod.string().min(1).max(tracerImagineAnalysisCreateResponseResultAnalysesItemWidgetIdMax),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed']),
+  "content": zod.string().optional(),
+  "error": zod.string().optional()
+}))
+})
 })
 
 
@@ -24049,6 +24715,18 @@ export const TracerObservationSpanDeleteParams = zod.object({
 })
 
 
+/**
+ * Asynchronously handles the POST request to create ObservationSpans from OTEL data.
+ */
+export const TracerOtlpV1TracesCreateBody = zod.object({
+
+}).passthrough().describe('Legacy OTLP JSON\/protobuf trace payload. Prefer \/tracer\/v1\/traces for new integrations.')
+
+export const TracerOtlpV1TracesCreateResponse = zod.object({
+
+}).passthrough()
+
+
 export const TracerProjectVersionListQueryParams = zod.object({
   "page": zod.number().optional().describe('A page number within the paginated result set.'),
   "limit": zod.number().optional().describe('Number of results to return per page.')
@@ -25764,6 +26442,18 @@ export const TracerSharedReadParams = zod.object({
 })
 
 
+
+
+export const TracerSharedReadResponse = zod.object({
+  "resource_type": zod.enum(['trace', 'dashboard', 'eval_run', 'dataset', 'project']),
+  "resource_id": zod.string().min(1),
+  "access_type": zod.enum(['public', 'restricted']),
+  "data": zod.object({
+
+}).passthrough()
+})
+
+
 export const TracerTraceAnnotationListQueryParams = zod.object({
   "page": zod.number().optional().describe('A page number within the paginated result set.'),
   "limit": zod.number().optional().describe('Number of results to return per page.')
@@ -25903,6 +26593,38 @@ export const TracerTraceErrorAnalysisReadParams = zod.object({
   "trace_id": zod.string()
 })
 
+export const tracerTraceErrorAnalysisReadResponseStatusDefault = true;
+
+
+
+export const TracerTraceErrorAnalysisReadResponse = zod.object({
+  "status": zod.boolean().default(tracerTraceErrorAnalysisReadResponseStatusDefault),
+  "result": zod.object({
+  "analysis_exists": zod.boolean(),
+  "trace_id": zod.string().min(1),
+  "message": zod.string().min(1).optional(),
+  "analysis_id": zod.string().uuid().optional(),
+  "analysis_date": zod.string().datetime({"offset":true}).optional(),
+  "agent_version": zod.string().optional(),
+  "memory_enhanced": zod.boolean().optional(),
+  "summary": zod.object({
+
+}).passthrough().optional(),
+  "errors": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "grouped_errors": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "scores": zod.object({
+
+}).passthrough().optional(),
+  "memory_context": zod.object({
+
+}).passthrough().optional()
+})
+})
+
 
 /**
  * Get current task configuration for a project
@@ -25910,6 +26632,25 @@ GET /api/trace-error-task/<project_id>/
  */
 export const TracerTraceErrorTaskReadParams = zod.object({
   "project_id": zod.string()
+})
+
+export const tracerTraceErrorTaskReadResponseStatusDefault = true;
+
+
+export const TracerTraceErrorTaskReadResponse = zod.object({
+  "status": zod.boolean().default(tracerTraceErrorTaskReadResponseStatusDefault),
+  "result": zod.object({
+  "project_id": zod.string().uuid(),
+  "project_name": zod.string().min(1),
+  "sampling_rate": zod.number(),
+  "status": zod.enum(['running', 'waiting', 'paused']),
+  "is_active": zod.boolean().optional(),
+  "total_traces_analyzed": zod.number().optional(),
+  "total_errors_found": zod.number().optional(),
+  "failed_analyses": zod.number().optional(),
+  "last_run_at": zod.string().datetime({"offset":true}).optional(),
+  "created": zod.boolean().optional()
+})
 })
 
 
@@ -25924,6 +26665,35 @@ POST /api/trace-error-task/<project_id>/
  */
 export const TracerTraceErrorTaskCreateParams = zod.object({
   "project_id": zod.string()
+})
+
+export const tracerTraceErrorTaskCreateBodySamplingRateMin = 0;
+export const tracerTraceErrorTaskCreateBodySamplingRateMax = 1;
+
+
+
+export const TracerTraceErrorTaskCreateBody = zod.object({
+  "sampling_rate": zod.number().min(tracerTraceErrorTaskCreateBodySamplingRateMin).max(tracerTraceErrorTaskCreateBodySamplingRateMax),
+  "status": zod.enum(['waiting', 'paused']).optional()
+})
+
+export const tracerTraceErrorTaskCreateResponseStatusDefault = true;
+
+
+
+
+export const TracerTraceErrorTaskCreateResponse = zod.object({
+  "status": zod.boolean().default(tracerTraceErrorTaskCreateResponseStatusDefault),
+  "result": zod.object({
+  "message": zod.string().min(1),
+  "project_id": zod.string().uuid(),
+  "project_name": zod.string().min(1),
+  "sampling_rate": zod.number(),
+  "status": zod.enum(['running', 'waiting', 'paused']),
+  "action": zod.string().min(1),
+  "old_rate": zod.number(),
+  "new_rate": zod.number()
+})
 })
 
 
@@ -28332,6 +29102,45 @@ export const TracerUsersGetCodeExampleListResponse = zod.object({
 
 
 /**
+ * Health check - always returns OK.
+ */
+
+
+
+export const TracerV1HealthListResponse = zod.object({
+  "status": zod.enum(['healthy']),
+  "service": zod.string().min(1)
+})
+
+
+/**
+ * The request body contains an ExportTraceServiceRequest with resource spans.
+ * @summary Handle OTLP trace export request.
+ */
+export const TracerV1TracesCreateResponse = zod.object({
+  "partial_success": zod.object({
+  "rejected_spans": zod.number().optional(),
+  "error_message": zod.string().optional()
+}).optional()
+})
+
+
+export const TracerWebhookCreateBody = zod.object({
+  "call": zod.object({
+
+}).passthrough()
+})
+
+export const tracerWebhookCreateResponseStatusDefault = true;
+
+
+export const TracerWebhookCreateResponse = zod.object({
+  "status": zod.boolean().default(tracerWebhookCreateResponseStatusDefault),
+  "result": zod.string().min(1)
+})
+
+
+/**
  * List or create EE licenses.
  */
 
@@ -28546,4 +29355,28 @@ export const UsageV2PaymentMethodsDefaultCreateParams = zod.object({
  */
 export const UsageV2PaymentMethodsDefaultDeleteParams = zod.object({
   "pm_id": zod.string()
+})
+
+
+/**
+ * Health check - always returns OK.
+ */
+
+
+
+export const V1HealthListResponse = zod.object({
+  "status": zod.enum(['healthy']),
+  "service": zod.string().min(1)
+})
+
+
+/**
+ * The request body contains an ExportTraceServiceRequest with resource spans.
+ * @summary Handle OTLP trace export request.
+ */
+export const V1TracesCreateResponse = zod.object({
+  "partial_success": zod.object({
+  "rejected_spans": zod.number().optional(),
+  "error_message": zod.string().optional()
+}).optional()
 })

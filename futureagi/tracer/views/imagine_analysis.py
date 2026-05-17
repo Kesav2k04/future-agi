@@ -11,10 +11,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from tfc.utils.api_contracts import validated_request
+from tfc.utils.api_serializers import ApiErrorResponseSerializer
 from tracer.models.imagine_analysis import ImagineAnalysis
 from tracer.models.saved_view import SavedView
 
 logger = structlog.get_logger(__name__)
+
+ERROR_RESPONSES = {
+    400: ApiErrorResponseSerializer,
+    403: ApiErrorResponseSerializer,
+    404: ApiErrorResponseSerializer,
+    500: ApiErrorResponseSerializer,
+}
 
 
 class WidgetAnalysisSerializer(serializers.Serializer):
@@ -29,15 +38,38 @@ class TriggerAnalysisSerializer(serializers.Serializer):
     widgets = WidgetAnalysisSerializer(many=True)
 
 
+class ImagineAnalysisQuerySerializer(serializers.Serializer):
+    saved_view_id = serializers.UUIDField()
+    trace_id = serializers.CharField(max_length=255)
+
+
+class ImagineAnalysisItemSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    widget_id = serializers.CharField(max_length=100)
+    status = serializers.ChoiceField(choices=ImagineAnalysis.STATUS_CHOICES)
+    content = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    error = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+
+
+class ImagineAnalysisResultSerializer(serializers.Serializer):
+    analyses = ImagineAnalysisItemSerializer(many=True)
+
+
+class ImagineAnalysisResponseSerializer(serializers.Serializer):
+    status = serializers.BooleanField(default=True)
+    result = ImagineAnalysisResultSerializer()
+
+
 class ImagineAnalysisView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @validated_request(
+        request_serializer=TriggerAnalysisSerializer,
+        responses={200: ImagineAnalysisResponseSerializer, **ERROR_RESPONSES},
+    )
     def post(self, request):
         """Trigger analysis for widgets. Creates DB records + starts Temporal workflows."""
-        serializer = TriggerAnalysisSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        data = serializer.validated_data
+        data = request.validated_data
         org = getattr(request, "organization", None) or request.user.organization
 
         # Validate saved view exists
@@ -141,20 +173,14 @@ class ImagineAnalysisView(APIView):
 
         return Response({"status": True, "result": {"analyses": results}})
 
+    @validated_request(
+        query_serializer=ImagineAnalysisQuerySerializer,
+        responses={200: ImagineAnalysisResponseSerializer, **ERROR_RESPONSES},
+    )
     def get(self, request):
         """Poll for analysis results."""
-        saved_view_id = request.query_params.get(
-            "saved_view_id"
-        ) or request.query_params.get("savedViewId")
-        trace_id = request.query_params.get("trace_id") or request.query_params.get(
-            "traceId"
-        )
-
-        if not saved_view_id or not trace_id:
-            return Response(
-                {"status": False, "error": "saved_view_id and trace_id required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        saved_view_id = request.validated_query_data["saved_view_id"]
+        trace_id = request.validated_query_data["trace_id"]
 
         analyses = ImagineAnalysis.objects.filter(
             saved_view_id=saved_view_id,

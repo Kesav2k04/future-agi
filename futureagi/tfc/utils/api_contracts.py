@@ -42,6 +42,22 @@ def _validate_response(view_name, serializer, response, strict):
         )
 
 
+def validate_request_data(request, serializer_class):
+    """Validate a function-based view request body with a declared serializer."""
+
+    serializer = serializer_class(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
+
+
+def validate_query_params(request, serializer_class):
+    """Validate a function-based view query string with a declared serializer."""
+
+    serializer = serializer_class(data=request.query_params)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
+
+
 def validated_request(
     request_serializer=None,
     *,

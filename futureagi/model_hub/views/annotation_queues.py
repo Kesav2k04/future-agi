@@ -2710,12 +2710,9 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
 
         return queryset.order_by("-created_at")
 
-    @swagger_auto_schema(query_serializer=AnnotationQueueListQuerySerializer)
+    @validated_request(query_serializer=AnnotationQueueListQuerySerializer)
     def list(self, request, *args, **kwargs):
-        serializer = AnnotationQueueListQuerySerializer(data=request.query_params)
-        if not serializer.is_valid():
-            return self._gm.bad_request(serializer.errors)
-        self._validated_queue_list_query = serializer.validated_data
+        self._validated_queue_list_query = request.validated_query_data
         return super().list(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
@@ -2837,8 +2834,8 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
         serializer = self.get_serializer(queue)
         return self._gm.success_response(serializer.data)
 
-    @swagger_auto_schema(
-        request_body=QueueHardDeleteRequestSerializer,
+    @validated_request(
+        request_serializer=QueueHardDeleteRequestSerializer,
         responses={200: QueueHardDeleteResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="hard-delete")
@@ -2852,9 +2849,7 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
         a typo'd request.
         """
         queue = self.get_object()
-        serializer = QueueHardDeleteRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = request.validated_data
         if data.get("force") is not True:
             return self._gm.bad_request(
                 "Hard delete requires force=true. Use the archive endpoint "
@@ -2987,16 +2982,14 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
             }
         )
 
-    @swagger_auto_schema(
-        request_body=QueueStatusRequestSerializer,
+    @validated_request(
+        request_serializer=QueueStatusRequestSerializer,
         responses={200: QueueStatusResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="update-status")
     def update_status(self, request, pk=None):
         queue = self.get_object()
-        serializer = QueueStatusRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        new_status = serializer.validated_data.get("status")
+        new_status = request.validated_data.get("status")
 
         if not new_status:
             return self._gm.bad_request("Status is required.")
@@ -3018,17 +3011,14 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
         serializer = self.get_serializer(queue)
         return self._gm.success_response(serializer.data)
 
-    @swagger_auto_schema(
+    @validated_request(
         query_serializer=QueueExportQuerySerializer,
         responses={200: QueueExportAnnotationsResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["get"], url_path="export")
     def export_annotations(self, request, pk=None):
         """Export all items with their annotations."""
-        query_serializer = QueueExportQuerySerializer(data=request.query_params)
-        if not query_serializer.is_valid():
-            return self._gm.bad_request(query_serializer.errors)
-        query_params = query_serializer.validated_data
+        query_params = request.validated_query_data
 
         queue = self.get_object()
         items_qs = (

@@ -245,7 +245,7 @@ class GeneralMethods:
         if value is None:
             return ""
         if isinstance(value, str):
-            return value
+            return str(value)
         if isinstance(value, Mapping):
             return ", ".join(
                 f"{key}: {self._stringify_error_value(item)}"

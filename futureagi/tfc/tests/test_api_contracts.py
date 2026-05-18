@@ -16,6 +16,10 @@ class _DemoResultSerializer(serializers.Serializer):
     name = serializers.CharField()
 
 
+class _DemoQuerySerializer(serializers.Serializer):
+    page = serializers.IntegerField(min_value=1)
+
+
 class _DemoResponseSerializer(serializers.Serializer):
     status = serializers.BooleanField()
     result = _DemoResultSerializer()
@@ -50,6 +54,12 @@ class _ListResponseView(APIView):
     )
     def get(self, request):
         return Response([{"name": "Future AGI"}])
+
+
+class _QueryView(APIView):
+    @validated_request(query_serializer=_DemoQuerySerializer)
+    def get(self, request):
+        return Response({"page": request.validated_query_data["page"]})
 
 
 class _BadListResponseView(APIView):
@@ -111,7 +121,22 @@ def test_validated_request_rejects_invalid_body():
     response = _DemoView.as_view()(factory.post("/", {"wrong": "shape"}))
 
     assert response.status_code == 400
-    assert "name" in response.data
+    assert response.data["status"] is False
+    assert response.data["result"] == "name: This field is required."
+    assert response.data["message"] == "name: This field is required."
+    assert response.data["details"] == {"name": ["This field is required."]}
+
+
+def test_validated_request_rejects_invalid_query_with_error_envelope():
+    factory = APIRequestFactory()
+
+    response = _QueryView.as_view()(factory.get("/", {"page": "zero"}))
+
+    assert response.status_code == 400
+    assert response.data["status"] is False
+    assert response.data["result"] == "page: A valid integer is required."
+    assert response.data["message"] == "page: A valid integer is required."
+    assert response.data["details"] == {"page": ["A valid integer is required."]}
 
 
 def test_validated_request_can_strictly_validate_responses():

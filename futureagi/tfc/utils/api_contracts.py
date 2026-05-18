@@ -9,6 +9,7 @@ from rest_framework import serializers
 from rest_framework.response import Response
 
 from tfc.utils.api_serializers import ManagementAPIErrorResponseSerializer
+from tfc.utils.general_methods import GeneralMethods
 
 logger = structlog.get_logger(__name__)
 
@@ -135,24 +136,27 @@ def validated_request(
         def wrapper(self, request, *args, **kwargs):
             request.validated_data = {}
             request.validated_query_data = {}
+            gm = GeneralMethods(request=request)
 
             if query_serializer is not None:
                 serializer = query_serializer(data=request.query_params)
-                serializer.is_valid(raise_exception=True)
+                if not serializer.is_valid():
+                    return gm.bad_request(serializer.errors)
                 request.validated_query_data = serializer.validated_data
 
             if request_serializer is not None:
                 serializer = request_serializer(data=request.data)
-                is_valid = serializer.is_valid(
-                    raise_exception=strict_request_validation
-                )
-                if not is_valid and settings.DEBUG:
-                    logger.warning(
-                        "API request does not match declared serializer.",
-                        view_func=view_func.__name__,
-                        serializer_class=request_serializer.__name__,
-                        validation_errors=serializer.errors,
-                    )
+                is_valid = serializer.is_valid()
+                if not is_valid:
+                    if strict_request_validation:
+                        return gm.bad_request(serializer.errors)
+                    if settings.DEBUG:
+                        logger.warning(
+                            "API request does not match declared serializer.",
+                            view_func=view_func.__name__,
+                            serializer_class=request_serializer.__name__,
+                            validation_errors=serializer.errors,
+                        )
                 request.validated_data = serializer.validated_data
 
             response = view_func(self, request, *args, **kwargs)

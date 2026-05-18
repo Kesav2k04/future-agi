@@ -116,12 +116,7 @@ class GetTraceAnnotationValuesResponseSerializer(serializers.Serializer):
     result = GetTraceAnnotationValuesResultSerializer()
 
 
-# Simple bulk annotation serializer
-class BulkAnnotationSerializer(serializers.Serializer):
-    records = serializers.ListField(child=serializers.DictField())
-
-
-class BulkAnnotationAnnotationRequestSerializer(serializers.Serializer):
+class BulkAnnotationAnnotationRequestSerializer(StrictInputSerializer):
     annotation_label_id = serializers.UUIDField()
     value = serializers.CharField(required=False, allow_blank=True)
     value_float = serializers.FloatField(required=False)
@@ -132,20 +127,25 @@ class BulkAnnotationAnnotationRequestSerializer(serializers.Serializer):
     )
 
 
-class BulkAnnotationNoteRequestSerializer(serializers.Serializer):
+class BulkAnnotationNoteRequestSerializer(StrictInputSerializer):
     text = serializers.CharField()
 
 
-class BulkAnnotationRecordRequestSerializer(serializers.Serializer):
+class BulkAnnotationRecordRequestSerializer(StrictInputSerializer):
     observation_span_id = serializers.CharField()
     annotations = BulkAnnotationAnnotationRequestSerializer(
         many=True,
         required=False,
+        default=list,
     )
-    notes = BulkAnnotationNoteRequestSerializer(many=True, required=False)
+    notes = BulkAnnotationNoteRequestSerializer(
+        many=True,
+        required=False,
+        default=list,
+    )
 
 
-class BulkAnnotationRequestSerializer(serializers.Serializer):
+class BulkAnnotationRequestSerializer(StrictInputSerializer):
     records = BulkAnnotationRecordRequestSerializer(many=True)
 
 

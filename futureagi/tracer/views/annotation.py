@@ -26,7 +26,6 @@ from tracer.models.span_notes import SpanNotes
 from tracer.serializers.annotation import (
     BulkAnnotationRequestSerializer,
     BulkAnnotationResponseSerializer,
-    BulkAnnotationSerializer,
     GetAnnotationLabelsQuerySerializer,
     GetAnnotationLabelsResponseSerializer,
     GetTraceAnnotationValuesResponseSerializer,
@@ -414,9 +413,9 @@ class BulkAnnotationView(APIView):
         """Validate the incoming request data and check global limits."""
         MAX_RECORDS = 1000
 
-        serializer = BulkAnnotationSerializer(data=request.data)
+        serializer = BulkAnnotationRequestSerializer(data=request.data)
         if not serializer.is_valid():
-            return self._gm.bad_request(f"Validation error: {serializer.errors}")
+            return self._gm.bad_request(serializer.errors)
 
         validated_data = serializer.validated_data
         records = validated_data["records"]

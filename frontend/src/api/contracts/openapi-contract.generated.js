@@ -7014,6 +7014,9 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "responses": {
           "200": {
             "$ref": "#/definitions/DeploymentInfoResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiTextErrorResponse"
           }
         }
       }
@@ -7041,6 +7044,15 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "responses": {
           "200": {
             "$ref": "#/definitions/LangfuseHealthResponse"
+          },
+          "401": {
+            "$ref": "#/definitions/ApiDetailErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiDetailErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiTextErrorResponse"
           }
         }
       }
@@ -7055,6 +7067,9 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "responses": {
           "207": {
             "$ref": "#/definitions/LangfuseIngestionResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiDetailErrorResponse"
           }
         }
       }
@@ -7088,6 +7103,15 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "responses": {
           "200": {
             "$ref": "#/definitions/LangfuseTracesResponse"
+          },
+          "401": {
+            "$ref": "#/definitions/ApiDetailErrorResponse"
+          },
+          "403": {
+            "$ref": "#/definitions/ApiDetailErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiTextErrorResponse"
           }
         }
       }
@@ -7117,16 +7141,16 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "$ref": "#/definitions/SpanAttributeDetailResponse"
           },
           "400": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           },
           "404": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           },
           "500": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           },
           "503": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           }
         }
       }
@@ -7149,16 +7173,16 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "$ref": "#/definitions/SpanAttributeKeysResponse"
           },
           "400": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           },
           "404": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           },
           "500": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           },
           "503": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           }
         }
       }
@@ -7202,16 +7226,16 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "$ref": "#/definitions/SpanAttributeValuesResponse"
           },
           "400": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           },
           "404": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           },
           "500": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           },
           "503": {
-            "$ref": "#/definitions/ApiErrorResponse"
+            "$ref": "#/definitions/ApiTextErrorResponse"
           }
         }
       }

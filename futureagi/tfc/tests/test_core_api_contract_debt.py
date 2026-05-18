@@ -59,7 +59,7 @@ def test_small_core_api_tags_stay_debt_free():
 
 def test_small_core_api_error_contract_debt_is_burned_down():
     report = _debt_report()
-    groups = {"ai-tools", "call-websocket", "health", "v1"}
+    groups = {"ai-tools", "api", "call-websocket", "health", "v1"}
 
     for group in groups:
         group_report = report["by_group"][group]
@@ -78,6 +78,26 @@ def test_small_core_api_endpoints_have_contracts():
     assert (
         _response_ref(_operation("/api/public/ingestion", "POST"), "207")
         == "LangfuseIngestionResponse"
+    )
+    assert (
+        _response_ref(_operation("/api/public/ingestion", "POST"), "403")
+        == "ApiDetailErrorResponse"
+    )
+    assert (
+        _response_ref(_operation("/api/deployment-info/", "GET"), "500")
+        == "ApiTextErrorResponse"
+    )
+    assert (
+        _response_ref(_operation("/api/public/health", "GET"), "401")
+        == "ApiDetailErrorResponse"
+    )
+    assert (
+        _response_ref(_operation("/api/public/traces", "GET"), "403")
+        == "ApiDetailErrorResponse"
+    )
+    assert (
+        _response_ref(_operation("/api/traces/span-attribute-keys/", "GET"), "503")
+        == "ApiTextErrorResponse"
     )
     assert (
         _response_ref(_operation("/api/health/clickhouse/", "GET"))

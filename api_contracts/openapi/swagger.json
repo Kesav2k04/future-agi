@@ -12894,6 +12894,12 @@
                         "schema": {
                             "$ref": "#/definitions/DeploymentInfoResponse"
                         }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ApiTextErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -12940,6 +12946,24 @@
                         "schema": {
                             "$ref": "#/definitions/LangfuseHealthResponse"
                         }
+                    },
+                    "401": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ApiDetailErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ApiDetailErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ApiTextErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -12971,7 +12995,10 @@
                         }
                     },
                     "403": {
-                        "description": "Forbidden"
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ApiDetailErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -13037,6 +13064,24 @@
                         "schema": {
                             "$ref": "#/definitions/LangfuseTracesResponse"
                         }
+                    },
+                    "401": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ApiDetailErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ApiDetailErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/ApiTextErrorResponse"
+                        }
                     }
                 },
                 "tags": [
@@ -13076,25 +13121,25 @@
                     "400": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     },
                     "404": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     },
                     "500": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     },
                     "503": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     }
                 },
@@ -13128,25 +13173,25 @@
                     "400": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     },
                     "404": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     },
                     "500": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     },
                     "503": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     }
                 },
@@ -13201,25 +13246,25 @@
                     "400": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     },
                     "404": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     },
                     "500": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     },
                     "503": {
                         "description": "",
                         "schema": {
-                            "$ref": "#/definitions/ApiErrorResponse"
+                            "$ref": "#/definitions/ApiTextErrorResponse"
                         }
                     }
                 },
@@ -72117,31 +72162,6 @@
                 }
             }
         },
-        "ApiErrorResponse": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "title": "Status",
-                    "type": "boolean",
-                    "default": false
-                },
-                "result": {
-                    "title": "Result",
-                    "type": "object",
-                    "x-nullable": true
-                },
-                "message": {
-                    "title": "Message",
-                    "type": "object",
-                    "x-nullable": true
-                },
-                "error": {
-                    "title": "Error",
-                    "type": "object",
-                    "x-nullable": true
-                }
-            }
-        },
         "SpanAttributeKey": {
             "required": [
                 "key",
@@ -75059,6 +75079,31 @@
                 },
                 "result": {
                     "$ref": "#/definitions/AIFilterResult"
+                }
+            }
+        },
+        "ApiErrorResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "title": "Status",
+                    "type": "boolean",
+                    "default": false
+                },
+                "result": {
+                    "title": "Result",
+                    "type": "object",
+                    "x-nullable": true
+                },
+                "message": {
+                    "title": "Message",
+                    "type": "object",
+                    "x-nullable": true
+                },
+                "error": {
+                    "title": "Error",
+                    "type": "object",
+                    "x-nullable": true
                 }
             }
         },

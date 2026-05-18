@@ -15103,12 +15103,19 @@ export type apiDeploymentInfoListResponse200 = {
   status: 200
 }
 
+export type apiDeploymentInfoListResponse500 = {
+  data: ApiTextErrorResponseApi
+  status: 500
+}
+
 export type apiDeploymentInfoListResponseSuccess = (apiDeploymentInfoListResponse200) & {
   headers: Headers;
 };
-;
+export type apiDeploymentInfoListResponseError = (apiDeploymentInfoListResponse500) & {
+  headers: Headers;
+};
 
-export type apiDeploymentInfoListResponse = (apiDeploymentInfoListResponseSuccess)
+export type apiDeploymentInfoListResponse = (apiDeploymentInfoListResponseSuccess | apiDeploymentInfoListResponseError)
 
 export const getApiDeploymentInfoListUrl = () => {
 
@@ -15190,12 +15197,29 @@ export type apiPublicHealthListResponse200 = {
   status: 200
 }
 
+export type apiPublicHealthListResponse401 = {
+  data: ApiDetailErrorResponseApi
+  status: 401
+}
+
+export type apiPublicHealthListResponse403 = {
+  data: ApiDetailErrorResponseApi
+  status: 403
+}
+
+export type apiPublicHealthListResponse500 = {
+  data: ApiTextErrorResponseApi
+  status: 500
+}
+
 export type apiPublicHealthListResponseSuccess = (apiPublicHealthListResponse200) & {
   headers: Headers;
 };
-;
+export type apiPublicHealthListResponseError = (apiPublicHealthListResponse401 | apiPublicHealthListResponse403 | apiPublicHealthListResponse500) & {
+  headers: Headers;
+};
 
-export type apiPublicHealthListResponse = (apiPublicHealthListResponseSuccess)
+export type apiPublicHealthListResponse = (apiPublicHealthListResponseSuccess | apiPublicHealthListResponseError)
 
 export const getApiPublicHealthListUrl = () => {
 
@@ -15234,7 +15258,7 @@ export type apiPublicIngestionCreateResponse207 = {
 }
 
 export type apiPublicIngestionCreateResponse403 = {
-  data: void
+  data: ApiDetailErrorResponseApi
   status: 403
 }
 
@@ -15331,12 +15355,29 @@ export type apiPublicTracesListResponse200 = {
   status: 200
 }
 
+export type apiPublicTracesListResponse401 = {
+  data: ApiDetailErrorResponseApi
+  status: 401
+}
+
+export type apiPublicTracesListResponse403 = {
+  data: ApiDetailErrorResponseApi
+  status: 403
+}
+
+export type apiPublicTracesListResponse500 = {
+  data: ApiTextErrorResponseApi
+  status: 500
+}
+
 export type apiPublicTracesListResponseSuccess = (apiPublicTracesListResponse200) & {
   headers: Headers;
 };
-;
+export type apiPublicTracesListResponseError = (apiPublicTracesListResponse401 | apiPublicTracesListResponse403 | apiPublicTracesListResponse500) & {
+  headers: Headers;
+};
 
-export type apiPublicTracesListResponse = (apiPublicTracesListResponseSuccess)
+export type apiPublicTracesListResponse = (apiPublicTracesListResponseSuccess | apiPublicTracesListResponseError)
 
 export const getApiPublicTracesListUrl = () => {
 
@@ -15371,22 +15412,22 @@ export type apiTracesSpanAttributeDetailListResponse200 = {
 }
 
 export type apiTracesSpanAttributeDetailListResponse400 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 400
 }
 
 export type apiTracesSpanAttributeDetailListResponse404 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 404
 }
 
 export type apiTracesSpanAttributeDetailListResponse500 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 500
 }
 
 export type apiTracesSpanAttributeDetailListResponse503 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 503
 }
 
@@ -15443,22 +15484,22 @@ export type apiTracesSpanAttributeKeysListResponse200 = {
 }
 
 export type apiTracesSpanAttributeKeysListResponse400 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 400
 }
 
 export type apiTracesSpanAttributeKeysListResponse404 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 404
 }
 
 export type apiTracesSpanAttributeKeysListResponse500 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 500
 }
 
 export type apiTracesSpanAttributeKeysListResponse503 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 503
 }
 
@@ -15512,22 +15553,22 @@ export type apiTracesSpanAttributeValuesListResponse200 = {
 }
 
 export type apiTracesSpanAttributeValuesListResponse400 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 400
 }
 
 export type apiTracesSpanAttributeValuesListResponse404 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 404
 }
 
 export type apiTracesSpanAttributeValuesListResponse500 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 500
 }
 
 export type apiTracesSpanAttributeValuesListResponse503 = {
-  data: ApiErrorResponseApi
+  data: ApiTextErrorResponseApi
   status: 503
 }
 

@@ -3435,19 +3435,6 @@ export interface SpanAttributeDetailResponseApi {
   p95?: number;
 }
 
-export type ApiErrorResponseApiResult = { [key: string]: unknown };
-
-export type ApiErrorResponseApiMessage = { [key: string]: unknown };
-
-export type ApiErrorResponseApiError = { [key: string]: unknown };
-
-export interface ApiErrorResponseApi {
-  status?: boolean;
-  result?: ApiErrorResponseApiResult;
-  message?: ApiErrorResponseApiMessage;
-  error?: ApiErrorResponseApiError;
-}
-
 export type SpanAttributeKeyApiType = typeof SpanAttributeKeyApiType[keyof typeof SpanAttributeKeyApiType];
 
 
@@ -4662,6 +4649,19 @@ export interface AIFilterResultApi {
 export interface AIFilterResponseApi {
   status?: boolean;
   result: AIFilterResultApi;
+}
+
+export type ApiErrorResponseApiResult = { [key: string]: unknown };
+
+export type ApiErrorResponseApiMessage = { [key: string]: unknown };
+
+export type ApiErrorResponseApiError = { [key: string]: unknown };
+
+export interface ApiErrorResponseApi {
+  status?: boolean;
+  result?: ApiErrorResponseApiResult;
+  message?: ApiErrorResponseApiMessage;
+  error?: ApiErrorResponseApiError;
 }
 
 export type AnnotationQueueApiStatus = typeof AnnotationQueueApiStatus[keyof typeof AnnotationQueueApiStatus];

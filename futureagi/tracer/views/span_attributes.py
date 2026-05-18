@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from tfc.utils.api_serializers import ApiErrorResponseSerializer
+from tfc.utils.api_serializers import ApiTextErrorResponseSerializer
 from tfc.utils.general_methods import GeneralMethods
 from tracer.serializers.span_attributes import (
     SpanAttributeDetailQuerySerializer,
@@ -28,10 +28,10 @@ from tracer.services.clickhouse.client import ClickHouseClient, is_clickhouse_en
 logger = structlog.get_logger(__name__)
 
 ERROR_RESPONSES = {
-    400: ApiErrorResponseSerializer,
-    404: ApiErrorResponseSerializer,
-    500: ApiErrorResponseSerializer,
-    503: ApiErrorResponseSerializer,
+    400: ApiTextErrorResponseSerializer,
+    404: ApiTextErrorResponseSerializer,
+    500: ApiTextErrorResponseSerializer,
+    503: ApiTextErrorResponseSerializer,
 }
 
 

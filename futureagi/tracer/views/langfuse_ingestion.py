@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from accounts.authentication import APIKeyAuthentication, LangfuseBasicAuthentication
 from integrations.transformers.langfuse_transformer import LangfuseTransformer
+from tfc.utils.api_serializers import ApiDetailErrorResponseSerializer
 from tracer.models.project import Project
 from tracer.serializers.langfuse_ingestion import (
     LangfuseIngestionRequestSerializer,
@@ -132,7 +133,7 @@ class LangfuseIngestionView(APIView):
         request_body=LangfuseIngestionRequestSerializer,
         responses={
             207: LangfuseIngestionResponseSerializer,
-            403: "Forbidden",
+            403: ApiDetailErrorResponseSerializer,
         },
     )
     def post(self, request, *args, **kwargs):

@@ -115,7 +115,7 @@ def test_agentcc_gateway_and_webhook_endpoints_have_response_contracts():
             "AgentccListResultResponse"
         ),
         ("GET", "/agentcc/gateways/{id}/mcp-status/"): (
-            "AgentccJSONResultResponse"
+            "GatewayMCPStatusResponse"
         ),
         ("GET", "/agentcc/guardrail-configs/pii-entities/"): (
             "PIIEntitiesResponse"

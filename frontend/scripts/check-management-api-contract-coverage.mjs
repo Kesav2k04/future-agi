@@ -18,6 +18,8 @@ const MIN_ENDPOINTS = 960;
 const MAX_MUTATIONS_WITHOUT_BODY_SCHEMA = 0;
 const MAX_OPERATIONS_WITHOUT_RESPONSE_SCHEMA = 0;
 const MAX_BROAD_SUCCESS_RESPONSE_SCHEMAS = 0;
+const MAX_OPERATIONS_WITHOUT_ERROR_RESPONSE_SCHEMA = 625;
+const MAX_BROAD_ERROR_RESPONSE_SCHEMAS = 2898;
 const MIN_GROUP_PATHS = {
   accounts: 75,
   agentcc: 100,
@@ -31,6 +33,7 @@ const MUTATION_METHODS = new Set(["post", "put", "patch"]);
 const NON_RESPONSE_OPTIONAL_METHODS = new Set(["delete"]);
 const NO_BODY_RESPONSE_STATUS = /^(204|205|304|3\d\d)$/;
 const SUCCESS_RESPONSE_STATUS = /^2\d\d$/;
+const ERROR_RESPONSE_STATUS = /^[45]\d\d$/;
 const EXACT_EMPTY_SUCCESS_RESPONSE_SCHEMAS = new Set([
   // OTLP export success responses are intentionally an empty JSON object.
   // This is an exact protocol acknowledgement, not an untyped application DTO.
@@ -110,6 +113,17 @@ function responseSchemaEntries(operation) {
     }));
 }
 
+function errorResponseSchemaEntries(operation) {
+  return Object.entries(operation.responses || {})
+    .filter(
+      ([statusCode, response]) => ERROR_RESPONSE_STATUS.test(statusCode) && response?.schema,
+    )
+    .map(([statusCode, response]) => ({
+      statusCode,
+      schema: response.schema,
+    }));
+}
+
 function refName(schema) {
   return schema?.$ref?.replace("#/definitions/", "") || null;
 }
@@ -166,6 +180,49 @@ const broadSuccessResponseSchemas = operations.flatMap(
   ({ method, pathName, operation }) =>
     responseSchemaEntries(operation).flatMap(({ statusCode, schema }) => {
       const reason = broadSuccessResponseReason(schema);
+      if (!reason) return [];
+      return [
+        {
+          method,
+          pathName,
+          statusCode,
+          schema: refName(schema) || "inline",
+          reason,
+        },
+      ];
+    }),
+);
+
+const operationsWithoutErrorResponseSchema = operations.filter(({ operation }) => {
+  const errorResponses = errorResponseSchemaEntries(operation);
+  return errorResponses.length === 0;
+});
+
+function broadErrorResponseReason(schema) {
+  const schemaName = refName(schema);
+  const resolved = dereference(schema);
+
+  if (isUnshapedObject(resolved)) {
+    return schemaName
+      ? `${schemaName} is an unshaped object response`
+      : "inline error response is an unshaped object";
+  }
+
+  for (const key of ["error", "message", "detail", "result", "data"]) {
+    if (isUnshapedObject(resolved.properties?.[key])) {
+      return schemaName
+        ? `${schemaName}.${key} is an unshaped object`
+        : `inline error response ${key} is an unshaped object`;
+    }
+  }
+
+  return null;
+}
+
+const broadErrorResponseSchemas = operations.flatMap(
+  ({ method, pathName, operation }) =>
+    errorResponseSchemaEntries(operation).flatMap(({ statusCode, schema }) => {
+      const reason = broadErrorResponseReason(schema);
       if (!reason) return [];
       return [
         {
@@ -260,6 +317,36 @@ if (broadSuccessResponseSchemas.length > MAX_BROAD_SUCCESS_RESPONSE_SCHEMAS) {
   );
 }
 
+if (
+  operationsWithoutErrorResponseSchema.length >
+  MAX_OPERATIONS_WITHOUT_ERROR_RESPONSE_SCHEMA
+) {
+  failures.push(
+    [
+      `Operations without error response schemas increased from ${MAX_OPERATIONS_WITHOUT_ERROR_RESPONSE_SCHEMA} to ${operationsWithoutErrorResponseSchema.length}.`,
+      ...operationsWithoutErrorResponseSchema
+        .slice(0, 40)
+        .map(
+          ({ method, pathName }) => `  - ${method.toUpperCase()} ${pathName}`,
+        ),
+    ].join("\n"),
+  );
+}
+
+if (broadErrorResponseSchemas.length > MAX_BROAD_ERROR_RESPONSE_SCHEMAS) {
+  failures.push(
+    [
+      `Broad error response schemas increased from ${MAX_BROAD_ERROR_RESPONSE_SCHEMAS} to ${broadErrorResponseSchemas.length}.`,
+      ...broadErrorResponseSchemas
+        .slice(0, 40)
+        .map(
+          ({ method, pathName, statusCode, schema, reason }) =>
+            `  - ${method.toUpperCase()} ${pathName} -> ${statusCode} ${schema}: ${reason}`,
+        ),
+    ].join("\n"),
+  );
+}
+
 if (unsupportedSchemaKeys.length) {
   failures.push(
     [
@@ -298,5 +385,7 @@ console.log(
     `  mutation endpoints without request body schemas: ${mutationWithoutBodySchema.length}/${MAX_MUTATIONS_WITHOUT_BODY_SCHEMA}`,
     `  operations without response schemas: ${operationWithoutResponseSchema.length}/${MAX_OPERATIONS_WITHOUT_RESPONSE_SCHEMA}`,
     `  broad success response schemas: ${broadSuccessResponseSchemas.length}/${MAX_BROAD_SUCCESS_RESPONSE_SCHEMAS}`,
+    `  operations without error response schemas: ${operationsWithoutErrorResponseSchema.length}/${MAX_OPERATIONS_WITHOUT_ERROR_RESPONSE_SCHEMA}`,
+    `  broad error response schemas: ${broadErrorResponseSchemas.length}/${MAX_BROAD_ERROR_RESPONSE_SCHEMAS}`,
   ].join("\n"),
 );

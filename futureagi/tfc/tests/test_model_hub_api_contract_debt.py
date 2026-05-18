@@ -554,28 +554,28 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
             "OptimizeDatasetMutationRequest"
         ),
         ("POST", "/model-hub/optimize-dataset/{model_id}/column-config/"): (
-            "OptimizeDatasetOperationRequest"
+            "OptimizeDatasetColumnConfigUpdateRequest"
         ),
         (
             "POST",
             "/model-hub/optimize-dataset/{model_id}/column-config/prompt-template-explore/{optimization_id}/",
-        ): "OptimizeDatasetOperationRequest",
+        ): "OptimizeDatasetColumnConfigUpdateRequest",
         (
             "POST",
             "/model-hub/optimize-dataset/{model_id}/column-config/right-answers/{optimization_id}/",
-        ): "OptimizeDatasetOperationRequest",
+        ): "OptimizeDatasetColumnConfigUpdateRequest",
         (
             "POST",
             "/model-hub/optimize-dataset/{model_id}/prompt-template-explore/{optimization_id}/",
-        ): "OptimizeDatasetOperationRequest",
+        ): "OptimizeDatasetPageRequest",
         (
             "POST",
             "/model-hub/optimize-dataset/{model_id}/prompt-template-result/{optimization_id}/",
-        ): "OptimizeDatasetOperationRequest",
+        ): "ModelHubEmptyRequest",
         (
             "POST",
             "/model-hub/optimize-dataset/{model_id}/right-answers/{optimization_id}/",
-        ): "OptimizeDatasetOperationRequest",
+        ): "OptimizeDatasetPageRequest",
         ("POST", "/model-hub/optimisation/create/"): "OptimizationDataset",
         ("PUT", "/model-hub/optimisation/create/"): "OptimizationDataset",
         ("POST", "/model-hub/optimisation/update/{id}/"): "OptimizationDataset",

@@ -86,23 +86,25 @@ def test_livekit_endpoints_have_explicit_response_contracts():
             "ValidateLiveKitCredentialsResponse"
         ),
         ("POST", "/simulate/api/livekit/webhook/"): "LiveKitOkResponse",
-    }
-    expected_objects = {
-        ("GET", "/simulate/api/livekit/call-config/{call_id}/", "200"),
-        ("POST", "/simulate/api/livekit/transcripts/{call_id}/", "201"),
-        ("GET", "/simulate/api/livekit/phone-resolution/{phone_number}/", "200"),
+        ("GET", "/simulate/api/livekit/call-config/{call_id}/"): (
+            "LiveKitCallConfigResponse"
+        ),
+        ("POST", "/simulate/api/livekit/transcripts/{call_id}/", "201"): (
+            "LiveKitTranscriptCreatedResponse"
+        ),
+        ("GET", "/simulate/api/livekit/phone-resolution/{phone_number}/"): (
+            "LiveKitPhoneResolutionResponse"
+        ),
     }
 
-    for (method, path), definition_name in expected_refs.items():
-        assert _schema_ref_name(_response_schema(_operation(path, method))) == (
-            definition_name
-        )
-
-    for method, path, status_code in expected_objects:
-        assert (
-            _response_schema(_operation(path, method), status_code)["type"]
-            == "object"
-        )
+    for key, definition_name in expected_refs.items():
+        method, path, *status_code = key
+        assert _schema_ref_name(
+            _response_schema(
+                _operation(path, method),
+                status_code[0] if status_code else "200",
+            )
+        ) == definition_name
 
 
 def test_livekit_contract_debt_stays_burned_down():

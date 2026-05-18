@@ -78,14 +78,14 @@ def test_test_execution_endpoints_have_response_contracts():
         (
             "POST",
             "/simulate/test-executions/{test_execution_id}/eval-explanation-summary/refresh/",
-        ): "ApiSuccessResponse",
+        ): "EvalExplanationSummaryRefreshResponse",
         ("GET", "/simulate/test-executions/{test_execution_id}/optimiser-analysis/"): (
-            "ApiSuccessResponse"
+            "OptimiserAnalysisResponse"
         ),
         (
             "POST",
             "/simulate/test-executions/{test_execution_id}/optimiser-analysis/refresh/",
-        ): "ApiSuccessResponse",
+        ): "OptimiserAnalysisRefreshResponse",
         ("POST", "/simulate/run-tests/{run_test_id}/delete-test-executions/"): (
             "TestExecutionBulkDeleteResponse"
         ),

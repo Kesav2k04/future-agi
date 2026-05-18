@@ -84,8 +84,10 @@ jobs:
       - name: Run annotation/filter contract tests
         run: >
           yarn test:run
+          src/api/contracts/__tests__/openapi-contract.test.js
           src/api/contracts/__tests__/filter-contract.test.js
           src/api/contracts/__tests__/api-surface.test.js
+          src/utils/__tests__/axios.test.js
           src/api/annotation-queues/__tests__/annotation-queues.test.js
           src/api/scores/__tests__/scores.test.js
           src/sections/projects/LLMTracing/__tests__/TraceFilterPanel.test.jsx
@@ -197,3 +199,21 @@ jobs:
           tfc/tests/test_usage_api_contract_debt.py
           ee/usage/tests/test_events_schema.py
           ee/usage/tests/test_billing_api.py
+          tfc/tests/test_api_contracts.py
+          tfc/tests/test_accounts_api_contract_debt.py
+          tfc/tests/test_core_api_contract_debt.py
+          tfc/tests/test_model_hub_api_contract_debt.py
+          agent_playground/tests/test_api_contract_debt.py
+          agentcc/tests/test_api_contract_debt.py
+          mcp_server/tests/test_api_contract_debt.py
+          saml2_auth/tests/test_api_contract_debt.py
+          sdk/tests/test_api_contract_debt.py
+          simulate/tests/test_agent_version_api_contract.py
+          simulate/tests/test_call_transcript_api_contract.py
+          simulate/tests/test_chat_simulation_api_contract.py
+          simulate/tests/test_livekit_api_contract.py
+          simulate/tests/test_persona_api_contract.py
+          simulate/tests/test_simulate_api_contract_debt.py
+          simulate/tests/test_simulator_agent_api_contract.py
+          simulate/tests/test_test_execution_api_contract.py
+          tracer/tests/test_tracer_feed_api_contract.py

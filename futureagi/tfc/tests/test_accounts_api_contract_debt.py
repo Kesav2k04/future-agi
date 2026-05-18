@@ -37,7 +37,10 @@ def _body_ref(operation):
 
 
 def _response_ref(operation, status_code="200"):
-    return operation["responses"][status_code]["schema"]["$ref"].rsplit("/", 1)[-1]
+    responses = operation["responses"]
+    if status_code not in responses:
+        status_code = next(code for code in sorted(responses) if code.startswith("2"))
+    return responses[status_code]["schema"]["$ref"].rsplit("/", 1)[-1]
 
 
 def test_accounts_contract_debt_is_fully_burned_down():
@@ -89,8 +92,8 @@ def test_accounts_endpoints_have_response_contracts():
         ("POST", "/accounts/accept-invitation/{uidb64}/{token}/"): (
             "AccountsTokenPairResponse"
         ),
-        ("GET", "/accounts/config/"): "AccountsJSONResponse",
-        ("GET", "/accounts/key/get_secret_keys/"): "AccountsPaginatedResponse",
+        ("GET", "/accounts/config/"): "PublicConfigResponse",
+        ("GET", "/accounts/key/get_secret_keys/"): "SecretKeyListResponse",
         ("POST", "/accounts/me/timezone/"): "TimezoneResponse",
         ("POST", "/accounts/organization/invite/"): "InviteCreateResponse",
         ("DELETE", "/accounts/organization/invite/cancel/"): "RBACMessageResponse",
@@ -106,7 +109,7 @@ def test_accounts_endpoints_have_response_contracts():
             "MemberRoleUpdateResponse"
         ),
         ("POST", "/accounts/passkey/register/options/"): "PasskeyOptionsResponse",
-        ("PATCH", "/accounts/passkeys/{id}/"): "AccountsJSONResponse",
+        ("PATCH", "/accounts/passkeys/{id}/"): "PasskeyRenameResponse",
         ("POST", "/accounts/token/refresh/"): "AccountsAccessTokenResponse",
         ("GET", "/accounts/workspace/{workspace_id}/members/"): (
             "MemberListResponse"
@@ -117,10 +120,10 @@ def test_accounts_endpoints_have_response_contracts():
         ("POST", "/accounts/workspace/{workspace_id}/members/role/"): (
             "WorkspaceMemberRoleUpdateResponse"
         ),
-        ("GET", "/accounts/workspace/list/"): "AccountsJSONResponse",
-        ("GET", "/accounts/workspaces/"): "AccountsJSONResponse",
+        ("GET", "/accounts/workspace/list/"): "WorkspaceListPaginatedResponse",
+        ("GET", "/accounts/workspaces/"): "WorkspaceManagementListResponse",
         ("POST", "/accounts/workspaces/{workspace_id}/members/"): (
-            "AccountsJSONResponse"
+            "WorkspaceMembersAddResponse"
         ),
     }
 

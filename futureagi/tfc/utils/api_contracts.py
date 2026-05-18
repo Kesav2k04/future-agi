@@ -111,6 +111,7 @@ def validated_request(
     *,
     query_serializer=None,
     responses=None,
+    request_methods=None,
     strict_request_validation=True,
     strict_response_validation=False,
     **swagger_kwargs,
@@ -121,6 +122,9 @@ def validated_request(
     endpoints should prefer this over a doc-only ``swagger_auto_schema`` plus
     ad-hoc ``request.data`` parsing.
     """
+    request_method_set = (
+        {method.upper() for method in request_methods} if request_methods else None
+    )
 
     def decorator(view_func):
         swagger_options = dict(swagger_kwargs)
@@ -144,7 +148,14 @@ def validated_request(
                     return gm.bad_request(serializer.errors)
                 request.validated_query_data = serializer.validated_data
 
-            if request_serializer is not None:
+            should_validate_body = (
+                request_serializer is not None
+                and (
+                    request_method_set is None
+                    or request.method.upper() in request_method_set
+                )
+            )
+            if should_validate_body:
                 serializer = request_serializer(data=request.data)
                 is_valid = serializer.is_valid()
                 if not is_valid:

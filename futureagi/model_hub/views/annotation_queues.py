@@ -5725,9 +5725,10 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         method="get",
         responses={200: QueueDiscussionResponseSerializer, **ERROR_RESPONSES},
     )
-    @swagger_auto_schema(
+    @validated_request(
         method="post",
-        request_body=DiscussionCommentRequestSerializer,
+        request_serializer=DiscussionCommentRequestSerializer,
+        request_methods=["POST"],
         responses={200: QueueDiscussionResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["get", "post"], url_path="discussion")
@@ -5765,9 +5766,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
                 ).data
             return self._gm.success_response(payload)
 
-        serializer = DiscussionCommentRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = request.validated_data
 
         comment = str(data.get("comment") or "").strip()
         if not comment:

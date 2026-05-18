@@ -5,9 +5,9 @@
     "futureagi/tracer/views"
   ],
   "summary": {
-    "runtime_backed_validated_request_decorators": 48,
-    "direct_swagger_auto_schema_decorators": 386,
-    "doc_only_input_contract_decorators": 259,
+    "runtime_backed_validated_request_decorators": 49,
+    "direct_swagger_auto_schema_decorators": 385,
+    "doc_only_input_contract_decorators": 258,
     "broad_request_contract_decorators": 0
   },
   "doc_only_input_contract_decorators": [
@@ -521,14 +521,6 @@
       "function": "post",
       "serializers": [
         "AIEvalWriterRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 5728,
-      "function": "discussion",
-      "serializers": [
-        "DiscussionCommentRequestSerializer"
       ]
     },
     {

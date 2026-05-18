@@ -4,6 +4,7 @@ EvalTask API Tests
 Tests for /tracer/eval-task/ endpoints.
 """
 
+import json
 import uuid
 
 import pytest
@@ -100,6 +101,21 @@ class TestEvalTaskListAPI:
         )
         assert response.status_code == status.HTTP_200_OK
 
+    def test_list_eval_tasks_rejects_legacy_query_aliases(self, auth_client, project):
+        """List endpoint should expose only canonical query params."""
+        response = auth_client.get(
+            "/tracer/eval-task/list_eval_tasks/",
+            {
+                "projectId": str(project.id),
+                "sortParams": json.dumps(
+                    [{"column_id": "created_at", "direction": "desc"}]
+                ),
+                "pageNumber": "1",
+            },
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
 
 @pytest.mark.integration
 @pytest.mark.api
@@ -121,6 +137,31 @@ class TestEvalTaskListWithProjectNameAPI:
         assert response.status_code == status.HTTP_200_OK
         data = get_result(response)
         assert "metadata" in data or "table" in data
+
+    def test_list_with_project_name_rejects_legacy_filter_shape(
+        self, auth_client, project
+    ):
+        """Filter query payload must use the canonical filter object."""
+        response = auth_client.get(
+            "/tracer/eval-task/list_eval_tasks_with_project_name/",
+            {
+                "project_id": str(project.id),
+                "filters": json.dumps(
+                    [
+                        {
+                            "column_id": "name",
+                            "filterConfig": {
+                                "filter_type": "text",
+                                "filter_op": "equals",
+                                "filter_value": "Task",
+                            },
+                        }
+                    ]
+                ),
+            },
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @pytest.mark.integration

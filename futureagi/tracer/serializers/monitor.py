@@ -1,3 +1,5 @@
+import json
+
 from rest_framework import serializers
 
 from accounts.serializers.user import UserSerializer
@@ -10,7 +12,7 @@ from tracer.models.monitor import (
 )
 from tracer.models.observation_span import ObservationSpan
 from tracer.models.project import Project
-from tracer.serializers.filters import filter_list_field
+from tracer.serializers.filters import StrictInputSerializer, filter_list_field
 
 OBSERVATION_SPAN_TYPES = [t[0] for t in ObservationSpan.OBSERVATION_SPAN_TYPES]
 
@@ -282,9 +284,32 @@ class MetricDetailSerializer(serializers.ModelSerializer):
         return obj.eval_template.config.get("output")
 
 
-class FetchGraphSerializer(serializers.Serializer):
+class FetchGraphMetricConfigField(serializers.Field):
+    def to_internal_value(self, data):
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError(
+                    "req_data_config must be valid JSON."
+                ) from exc
+        if not isinstance(data, dict):
+            raise serializers.ValidationError("req_data_config must be an object.")
+        if "type" not in data:
+            raise serializers.ValidationError("req_data_config.type is required.")
+        if data["type"] not in ("EVAL", "SYSTEM_METRIC", "SYSTEM_METRICS"):
+            raise serializers.ValidationError(
+                "req_data_config.type must be EVAL, SYSTEM_METRIC, or SYSTEM_METRICS."
+            )
+        return data
+
+    def to_representation(self, value):
+        return value
+
+
+class FetchGraphSerializer(StrictInputSerializer):
     interval = serializers.CharField()
-    filters = filter_list_field()
-    property = serializers.CharField()
-    req_data_config = serializers.JSONField()
-    project_id = serializers.CharField()
+    filters = filter_list_field(required=False, default=list)
+    property = serializers.CharField(required=False, allow_blank=True, default="average")
+    req_data_config = FetchGraphMetricConfigField()
+    project_id = serializers.UUIDField()

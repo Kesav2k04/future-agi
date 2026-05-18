@@ -3,12 +3,12 @@ from rest_framework import serializers
 from tracer.models.project import Project
 from tracer.models.trace_session import TraceSession
 from tracer.serializers.filters import (
-    StrictInputSerializer,
     ObserveGraphDataRequestSerializer,
+    SortParamListQueryParamField,
+    StrictInputSerializer,
     filter_list_field,
     filter_list_query_param_field,
 )
-from tracer.serializers.trace import SortParamListQueryParamField
 from tracer.utils.helper import validate_filters_helper, validate_sort_params_helper
 
 

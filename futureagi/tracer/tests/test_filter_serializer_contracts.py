@@ -7,9 +7,14 @@ from model_hub.serializers.contracts import (
     OptimizeDatasetListQuerySerializer,
     PromptMetricsQuerySerializer,
 )
-from tracer.serializers.eval_task import EditEvalTaskSerializer
+from tracer.serializers.custom_eval_config import CustomEvalConfigListQuerySerializer
 from tracer.serializers.dashboard import DashboardFilterValuesQuerySerializer
+from tracer.serializers.eval_task import (
+    EditEvalTaskSerializer,
+    EvalTaskListQuerySerializer,
+)
 from tracer.serializers.filters import ObserveGraphDataRequestSerializer
+from tracer.serializers.monitor import FetchGraphSerializer
 from tracer.serializers.observation_span import (
     ObservationAttributeListQuerySerializer,
     SpanIndexQuerySerializer,
@@ -236,6 +241,41 @@ class TestFilterSerializerContracts:
 
         assert not serializer.is_valid()
         assert "filters" in serializer.errors
+
+    def test_eval_task_list_query_accepts_canonical_filters_and_sort(self):
+        serializer = EvalTaskListQuerySerializer(
+            data={
+                "project_id": "1372e742-a10b-4d98-9ca4-31ef4d67115f",
+                "filters": json.dumps([_span_attr_filter()]),
+                "sort_params": json.dumps(
+                    [{"column_id": "created_at", "direction": "desc"}]
+                ),
+                "page_number": "1",
+                "page_size": "50",
+            }
+        )
+
+        assert serializer.is_valid(), serializer.errors
+        assert serializer.validated_data["filters"][0]["column_id"] == "customer_tier"
+        assert serializer.validated_data["sort_params"] == [
+            {"column_id": "created_at", "direction": "desc"}
+        ]
+
+    def test_eval_task_list_query_rejects_legacy_aliases(self):
+        serializer = EvalTaskListQuerySerializer(
+            data={
+                "projectId": "1372e742-a10b-4d98-9ca4-31ef4d67115f",
+                "sortParams": json.dumps(
+                    [{"column_id": "created_at", "direction": "desc"}]
+                ),
+                "pageNumber": "1",
+            }
+        )
+
+        assert not serializer.is_valid()
+        assert "projectId" in serializer.errors
+        assert "sortParams" in serializer.errors
+        assert "pageNumber" in serializer.errors
 
     def test_session_graph_request_accepts_canonical_filters(self):
         serializer = TraceSessionGraphDataRequestSerializer(
@@ -510,6 +550,34 @@ class TestFilterSerializerContracts:
 
         assert serializer.is_valid(), serializer.errors
         assert serializer.validated_data["req_data_config"]["id"] == "latency"
+
+    def test_fetch_graph_query_rejects_legacy_aliases(self):
+        serializer = FetchGraphSerializer(
+            data={
+                "projectId": "1372e742-a10b-4d98-9ca4-31ef4d67115f",
+                "reqDataConfig": json.dumps(
+                    {"id": "latency", "type": "SYSTEM_METRIC"}
+                ),
+                "interval": "day",
+            }
+        )
+
+        assert not serializer.is_valid()
+        assert "projectId" in serializer.errors
+        assert "reqDataConfig" in serializer.errors
+
+    def test_custom_eval_config_list_query_rejects_legacy_aliases(self):
+        serializer = CustomEvalConfigListQuerySerializer(
+            data={
+                "projectId": "1372e742-a10b-4d98-9ca4-31ef4d67115f",
+                "taskId": "1372e742-a10b-4d98-9ca4-31ef4d67115f",
+                "filters": json.dumps({}),
+            }
+        )
+
+        assert not serializer.is_valid()
+        assert "projectId" in serializer.errors
+        assert "taskId" in serializer.errors
 
     def test_observation_attribute_query_requires_project_filter_object(self):
         serializer = ObservationAttributeListQuerySerializer(

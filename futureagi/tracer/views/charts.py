@@ -1,4 +1,3 @@
-import json
 import time
 
 import structlog
@@ -46,31 +45,7 @@ class ChartsView(ModelViewSet):
         start_time = time.time()
 
         try:
-            # Get data from query parameters
-            query_data = {
-                "interval": request.query_params.get("interval"),
-                "filters": request.query_params.get("filters"),
-                "property": request.query_params.get("property"),
-                "req_data_config": request.query_params.get("req_data_config")
-                or request.query_params.get("reqDataConfig"),
-                "project_id": request.query_params.get("project_id")
-                or request.query_params.get("projectId"),
-            }
-
-            # Parse JSON fields
-            try:
-                if query_data["filters"]:
-                    query_data["filters"] = json.loads(query_data["filters"])
-                if query_data["req_data_config"]:
-                    query_data["req_data_config"] = json.loads(
-                        query_data["req_data_config"]
-                    )
-            except json.JSONDecodeError as e:
-                return self._gm.bad_request(
-                    f"Invalid JSON format in query parameters: {str(e)}"
-                )
-
-            serializer = self.serializer_class(data=query_data)
+            serializer = self.serializer_class(data=request.query_params)
             if not serializer.is_valid():
                 return self._gm.bad_request(serializer.errors)
 

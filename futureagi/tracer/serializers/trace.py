@@ -5,10 +5,10 @@ from tracer.models.project_version import ProjectVersion
 from tracer.models.trace import Trace
 from tracer.models.trace_session import TraceSession
 from tracer.serializers.filters import (
+    SortParamListQueryParamField,
     StrictInputSerializer,
     filter_list_field,
     filter_list_query_param_field,
-    parse_filter_list_payload,
 )
 from tracer.utils.helper import validate_filters_helper
 
@@ -60,36 +60,6 @@ class CommaSeparatedStringListField(serializers.Field):
 
     def to_representation(self, value):
         return value or []
-
-
-class SortParamField(serializers.JSONField):
-    ALLOWED_KEYS = {"column_id", "direction"}
-    REQUIRED_KEYS = {"column_id"}
-
-    def to_internal_value(self, data):
-        value = super().to_internal_value(data)
-        if not isinstance(value, dict):
-            raise serializers.ValidationError("Sort item must be an object.")
-        missing = sorted(self.REQUIRED_KEYS - set(value))
-        if missing:
-            raise serializers.ValidationError(
-                f"Missing sort item keys: {', '.join(missing)}"
-            )
-        extra = sorted(set(value) - self.ALLOWED_KEYS)
-        if extra:
-            raise serializers.ValidationError(
-                f"Unknown sort item keys: {', '.join(extra)}"
-            )
-        direction = value.get("direction", "desc")
-        if direction not in ("asc", "desc"):
-            raise serializers.ValidationError("direction must be 'asc' or 'desc'.")
-        return {"column_id": value["column_id"], "direction": direction}
-
-
-class SortParamListQueryParamField(serializers.CharField):
-    def to_internal_value(self, data):
-        sort_params = parse_filter_list_payload(data)
-        return serializers.ListField(child=SortParamField()).run_validation(sort_params)
 
 
 class TraceListQuerySerializer(StrictInputSerializer):

@@ -9,7 +9,12 @@ from tracer.models.eval_task import (
     RunType,
 )
 from tracer.models.project import Project
-from tracer.serializers.filters import eval_task_filters_field
+from tracer.serializers.filters import (
+    SortParamListQueryParamField,
+    StrictInputSerializer,
+    eval_task_filters_field,
+    filter_list_query_param_field,
+)
 
 
 class PaginationQuerySerializer(serializers.Serializer):
@@ -24,6 +29,23 @@ class PaginationQuerySerializer(serializers.Serializer):
     page = serializers.IntegerField(required=False, default=1, min_value=1)
     page_size = serializers.IntegerField(
         required=False, default=25, min_value=1, max_value=100
+    )
+
+
+class EvalTaskListQuerySerializer(StrictInputSerializer):
+    project_id = serializers.UUIDField(required=False)
+    name = serializers.CharField(required=False, allow_blank=True)
+    filters = filter_list_query_param_field(required=False, default=list)
+    sort_params = SortParamListQueryParamField(required=False, default=list)
+    page_number = serializers.IntegerField(required=False, default=0, min_value=0)
+    page_size = serializers.IntegerField(
+        required=False, default=30, min_value=1, max_value=500
+    )
+
+
+class EvalTaskListWithProjectNameQuerySerializer(EvalTaskListQuerySerializer):
+    page_size = serializers.IntegerField(
+        required=False, default=10, min_value=1, max_value=500
     )
 
 

@@ -99,6 +99,8 @@ from tracer.models.eval_task import EvalTask, EvalTaskLogger, EvalTaskStatus, Ru
 from tracer.models.observation_span import EvalLogger, ObservationSpan
 from tracer.serializers.eval_task import (
     EditEvalTaskSerializer,
+    EvalTaskListQuerySerializer,
+    EvalTaskListWithProjectNameQuerySerializer,
     EvalTaskSerializer,
     PaginationQuerySerializer,
 )
@@ -131,9 +133,7 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
         if eval_task_id:
             queryset = queryset.filter(id=eval_task_id)
 
-        project_id = self.request.query_params.get(
-            "project_id"
-        ) or self.request.query_params.get("projectId")
+        project_id = self.request.query_params.get("project_id")
         if project_id:
             queryset = queryset.filter(project_id=project_id)
 
@@ -170,6 +170,11 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
         List Eval Tasks filtered
         """
         try:
+            query_serializer = EvalTaskListQuerySerializer(data=request.query_params)
+            if not query_serializer.is_valid():
+                return self._gm.bad_request(query_serializer.errors)
+            query_data = query_serializer.validated_data
+
             queryset = self.get_queryset()
             serializer = self.get_serializer(queryset, many=True)
             eval_tasks = serializer.data
@@ -211,12 +216,12 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
                 }
                 result.append(parsed_data)
 
-            filters = self.request.data.get("filters", [])
+            filters = query_data.get("filters", [])
             if filters:
                 filter_engine = FilterEngine(result)
                 result = filter_engine.apply_filters(filters)
 
-            sort_params = self.request.data.get("sort_params", [])
+            sort_params = query_data.get("sort_params", [])
             if sort_params:
                 for sort_param in reversed(sort_params):
                     sort_key = sort_param.get("column_id")
@@ -230,8 +235,8 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
                     result.sort(key=sort_key_func, reverse=reverse)
 
             total_rows = len(result)
-            page_number = self.request.query_params.get("page_number", 0)
-            page_size = self.request.query_params.get("page_size", 30)
+            page_number = query_data.get("page_number", 0)
+            page_size = query_data.get("page_size", 30)
             start = int(page_number) * int(page_size)
             end = start + int(page_size)
             result = result[start:end]
@@ -875,6 +880,13 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
         List Eval Tasks filtered
         """
         try:
+            query_serializer = EvalTaskListWithProjectNameQuerySerializer(
+                data=request.query_params
+            )
+            if not query_serializer.is_valid():
+                return self._gm.bad_request(query_serializer.errors)
+            query_data = query_serializer.validated_data
+
             queryset = self.get_queryset()
 
             result = []
@@ -898,18 +910,12 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
                 }
                 result.append(parsed_data)
 
-            filters = self.request.query_params.get("filters", [])
-            if filters:
-                filters = json.loads(filters)
+            filters = query_data.get("filters", [])
             if filters:
                 filter_engine = FilterEngine(result)
                 result = filter_engine.apply_filters(filters)
 
-            sort_params = self.request.query_params.get(
-                "sort_params", []
-            ) or self.request.query_params.get("sortParams", [])
-            if sort_params:
-                sort_params = json.loads(sort_params)
+            sort_params = query_data.get("sort_params", [])
             if sort_params:
                 for sort_param in reversed(sort_params):
                     sort_key = sort_param.get("column_id")
@@ -925,12 +931,8 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
                     result.sort(key=sort_key_func, reverse=reverse)
 
             total_rows = len(result)
-            page_number = self.request.query_params.get(
-                "page_number", 0
-            ) or self.request.query_params.get("pageNumber", 0)
-            page_size = self.request.query_params.get(
-                "page_size", 10
-            ) or self.request.query_params.get("pageSize", 10)
+            page_number = query_data.get("page_number", 0)
+            page_size = query_data.get("page_size", 10)
             start = int(page_number) * int(page_size)
             end = start + int(page_size)
             result = result[start:end]

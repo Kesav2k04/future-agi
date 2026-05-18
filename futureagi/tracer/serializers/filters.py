@@ -66,6 +66,10 @@ FILTER_LIST_QUERY_PARAM_SCHEMA = {
     "type": "string",
     "description": "JSON-encoded canonical filter list.",
 }
+JSON_OBJECT_QUERY_PARAM_SCHEMA = {
+    "type": "string",
+    "description": "JSON-encoded object.",
+}
 
 EVAL_TASK_FILTERS_SCHEMA = {
     "type": "object",
@@ -275,6 +279,75 @@ class FilterListQueryParamField(serializers.CharField):
         return FilterListField().run_validation(data)
 
 
+class JsonObjectQueryParamField(serializers.Field):
+    class Meta:
+        swagger_schema_fields = JSON_OBJECT_QUERY_PARAM_SCHEMA
+
+    def to_internal_value(self, data):
+        if data in (None, ""):
+            return {}
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError(
+                    "Value must be valid JSON."
+                ) from exc
+        if not isinstance(data, dict):
+            raise serializers.ValidationError("Value must be an object.")
+        return data
+
+    def to_representation(self, value):
+        return value or {}
+
+
+class SortParamField(serializers.JSONField):
+    ALLOWED_KEYS = {"column_id", "direction"}
+    REQUIRED_KEYS = {"column_id"}
+
+    class Meta:
+        swagger_schema_fields = {
+            "type": "object",
+            "properties": {
+                "column_id": {"type": "string"},
+                "direction": {"type": "string", "enum": ["asc", "desc"]},
+            },
+            "required": ["column_id"],
+            "additionalProperties": False,
+        }
+
+    def to_internal_value(self, data):
+        value = super().to_internal_value(data)
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Sort item must be an object.")
+        missing = sorted(self.REQUIRED_KEYS - set(value))
+        if missing:
+            raise serializers.ValidationError(
+                f"Missing sort item keys: {', '.join(missing)}"
+            )
+        extra = sorted(set(value) - self.ALLOWED_KEYS)
+        if extra:
+            raise serializers.ValidationError(
+                f"Unknown sort item keys: {', '.join(extra)}"
+            )
+        direction = value.get("direction", "desc")
+        if direction not in ("asc", "desc"):
+            raise serializers.ValidationError("direction must be 'asc' or 'desc'.")
+        return {"column_id": value["column_id"], "direction": direction}
+
+
+class SortParamListQueryParamField(serializers.CharField):
+    class Meta:
+        swagger_schema_fields = {
+            "type": "string",
+            "description": "JSON-encoded list of sort params.",
+        }
+
+    def to_internal_value(self, data):
+        sort_params = parse_filter_list_payload(data)
+        return serializers.ListField(child=SortParamField()).run_validation(sort_params)
+
+
 class ObserveGraphDataRequestSerializer(StrictInputSerializer):
     project_id = serializers.UUIDField()
     filters = FilterListField(required=False, default=list)
@@ -348,3 +421,7 @@ def filter_list_query_param_field(**kwargs):
 
 def eval_task_filters_field(**kwargs):
     return EvalTaskFiltersField(**kwargs)
+
+
+def json_object_query_param_field(**kwargs):
+    return JsonObjectQueryParamField(**kwargs)

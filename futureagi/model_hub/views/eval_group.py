@@ -9,7 +9,10 @@ from rest_framework.viewsets import ModelViewSet
 logger = structlog.get_logger(__name__)
 from model_hub.models.eval_groups import EvalGroup, History
 from model_hub.models.evals_metric import EvalTemplate
-from model_hub.serializers.eval_group import EvalGroupSerializer
+from model_hub.serializers.eval_group import (
+    ApplyEvalGroupRequestSerializer,
+    EvalGroupSerializer,
+)
 from model_hub.services.eval_group import (
     apply_eval_group,
     create_eval_group,
@@ -418,17 +421,17 @@ class EvalGroupView(BaseModelViewSetMixin, ModelViewSet):
     @action(detail=False, methods=["post"], url_path="apply-eval-group")
     def apply_eval_group(self, request, *args, **kwargs):
         try:
-            eval_group_id = request.data.get("eval_group_id")
-            filters = request.data.get("filters")
-            page_id = request.data.get("page_id")
-            mapping = request.data.get("mapping")
-            deselected_evals = request.data.get("deselected_evals")
-            params = request.data.get("params", {})
+            serializer = ApplyEvalGroupRequestSerializer(data=request.data)
+            if not serializer.is_valid():
+                return self._gm.bad_request(serializer.errors)
+            payload = serializer.validated_data
 
-            if params is not None and not isinstance(params, dict):
-                return self._gm.bad_request(
-                    "Invalid function parameter input. Please check the value and try again."
-                )
+            eval_group_id = payload["eval_group_id"]
+            filters = payload.get("filters", {})
+            page_id = payload["page_id"]
+            mapping = payload["mapping"]
+            deselected_evals = payload.get("deselected_evals", [])
+            params = payload.get("params", {})
 
             try:
                 eval_group = EvalGroup.no_workspace_objects.get(

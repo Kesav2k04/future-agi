@@ -34,8 +34,11 @@ import {
 
 vi.mock("src/utils/axios", () => ({
   default: {
+    delete: vi.fn(),
     get: vi.fn(),
+    patch: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
   },
 }));
 
@@ -202,7 +205,9 @@ describe("Annotation Queues API", () => {
       await waitFor(() => expect(axios.get).toHaveBeenCalled());
 
       const requestConfig = axios.get.mock.calls[0][1];
-      expect(requestConfig.paramsSerializer.serialize(requestConfig.params)).toBe(
+      expect(
+        requestConfig.paramsSerializer.serialize(requestConfig.params),
+      ).toBe(
         "status=pending&status=completed&source_type=dataset_row&source_type=trace&page=1&limit=25",
       );
     });

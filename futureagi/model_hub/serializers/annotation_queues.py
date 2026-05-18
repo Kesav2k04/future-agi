@@ -1093,9 +1093,6 @@ class AssignItemsSerializer(StrictInputSerializer):
         required=False,
         default=list,
     )
-    # Legacy single-user assignment shape. Kept explicit in the request
-    # contract so OpenAPI does not document this endpoint as QueueItem writes.
-    user_id = serializers.UUIDField(required=False, allow_null=True)
     action = serializers.ChoiceField(
         choices=["add", "set", "remove"],
         required=False,
@@ -1103,36 +1100,19 @@ class AssignItemsSerializer(StrictInputSerializer):
     )
 
 
-class MentionReferencesField(serializers.Field):
-    class Meta:
-        swagger_schema_fields = {
-            "type": "array",
-            "items": {"type": "string"},
-        }
-
-    def to_internal_value(self, data):
-        return data
-
-    def to_representation(self, value):
-        return value
-
-
 class DiscussionCommentRequestSerializer(StrictInputSerializer):
     comment = serializers.CharField(required=False, allow_blank=True)
-    content = serializers.CharField(required=False, allow_blank=True)
     label_id = serializers.UUIDField(required=False)
-    label = serializers.UUIDField(required=False)
     target_annotator_id = serializers.UUIDField(required=False)
     thread_id = serializers.UUIDField(required=False)
-    thread = serializers.UUIDField(required=False)
-    # Mentions are normalized in the view because the endpoint still supports
-    # legacy string payloads while returning the older API error text for bad
-    # shapes.
-    mentioned_user_ids = MentionReferencesField(required=False)
-    mentions = MentionReferencesField(required=False)
+    mentioned_user_ids = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+    )
 
     def validate(self, attrs):
-        if not str(attrs.get("comment") or attrs.get("content") or "").strip():
+        if not str(attrs.get("comment") or "").strip():
             raise serializers.ValidationError("Comment text is required.")
         return attrs
 
@@ -1143,21 +1123,17 @@ class DiscussionThreadStatusRequestSerializer(StrictInputSerializer):
 
 class DiscussionReactionRequestSerializer(StrictInputSerializer):
     emoji = serializers.CharField(required=False, allow_blank=True, max_length=16)
-    reaction = serializers.CharField(required=False, allow_blank=True, max_length=16)
 
     def validate(self, attrs):
-        if not str(attrs.get("emoji") or attrs.get("reaction") or "").strip():
+        if not str(attrs.get("emoji") or "").strip():
             raise serializers.ValidationError("emoji is required.")
         return attrs
 
 
 class ReviewLabelCommentRequestSerializer(StrictInputSerializer):
     label_id = serializers.UUIDField(required=False)
-    label = serializers.UUIDField(required=False)
     target_annotator_id = serializers.UUIDField(required=False)
-    annotator_id = serializers.UUIDField(required=False)
     comment = serializers.CharField(required=False, allow_blank=True)
-    notes = serializers.CharField(required=False, allow_blank=True)
 
 
 class ReviewItemRequestSerializer(StrictInputSerializer):
@@ -1180,7 +1156,7 @@ class ImportAnnotationEntrySerializer(StrictInputSerializer):
 
 
 class ImportAnnotationsSerializer(StrictInputSerializer):
-    annotations = ImportAnnotationEntrySerializer(many=True)
+    annotations = ImportAnnotationEntrySerializer(many=True, allow_empty=False)
     annotator_id = serializers.UUIDField(required=False)
 
 

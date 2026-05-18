@@ -1590,7 +1590,6 @@ class TestAssignItems:
             {
                 "item_ids": item_ids,
                 "user_ids": [],
-                "user_id": None,
                 "action": "set",
             },
             format="json",

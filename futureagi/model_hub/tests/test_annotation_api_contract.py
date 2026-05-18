@@ -11,6 +11,7 @@ from model_hub.serializers.annotation_queues import (
     AnnotationQueueSerializer,
     AssignItemsSerializer,
     DiscussionCommentRequestSerializer,
+    DiscussionReactionRequestSerializer,
     ReviewItemRequestSerializer,
     SelectionSerializer,
     SubmitAnnotationsSerializer,
@@ -406,18 +407,47 @@ class TestAnnotationApiContract:
         )
         assert clear.is_valid(), clear.errors
 
+        legacy_single_user = AssignItemsSerializer(
+            data={"item_ids": [item_id], "user_id": user_id}
+        )
+        assert not legacy_single_user.is_valid()
+        assert "user_id" in legacy_single_user.errors
+
     def test_discussion_and_review_request_contracts_validate_shape(self):
         empty_comment = DiscussionCommentRequestSerializer(data={"comment": ""})
         assert not empty_comment.is_valid()
 
         comment = DiscussionCommentRequestSerializer(
             data={
-                "content": "Can you recheck @reviewer@example.com?",
+                "comment": "Can you recheck @reviewer@example.com?",
                 "mentioned_user_ids": [f"user:{_uuid()}"],
                 "target_annotator_id": _uuid(),
             }
         )
         assert comment.is_valid(), comment.errors
+
+        legacy_comment_aliases = DiscussionCommentRequestSerializer(
+            data={
+                "content": "Can you recheck this?",
+                "label": _uuid(),
+                "thread": _uuid(),
+                "mentions": [f"user:{_uuid()}"],
+            }
+        )
+        assert not legacy_comment_aliases.is_valid()
+        assert "content" in legacy_comment_aliases.errors
+        assert "label" in legacy_comment_aliases.errors
+        assert "thread" in legacy_comment_aliases.errors
+        assert "mentions" in legacy_comment_aliases.errors
+
+        reaction = DiscussionReactionRequestSerializer(data={"emoji": "👍"})
+        assert reaction.is_valid(), reaction.errors
+
+        legacy_reaction_alias = DiscussionReactionRequestSerializer(
+            data={"reaction": "👍"}
+        )
+        assert not legacy_reaction_alias.is_valid()
+        assert "reaction" in legacy_reaction_alias.errors
 
         review = ReviewItemRequestSerializer(
             data={
@@ -432,6 +462,23 @@ class TestAnnotationApiContract:
             }
         )
         assert review.is_valid(), review.errors
+
+        legacy_review_aliases = ReviewItemRequestSerializer(
+            data={
+                "action": "request_changes",
+                "label_comments": [
+                    {
+                        "label": _uuid(),
+                        "annotator_id": _uuid(),
+                        "notes": "Wrong label value.",
+                    }
+                ],
+            }
+        )
+        assert not legacy_review_aliases.is_valid()
+        assert "label" in str(legacy_review_aliases.errors)
+        assert "annotator_id" in str(legacy_review_aliases.errors)
+        assert "notes" in str(legacy_review_aliases.errors)
 
         invalid_action = ReviewItemRequestSerializer(data={"action": "send_back"})
         assert not invalid_action.is_valid()

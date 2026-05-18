@@ -615,13 +615,14 @@ const patchAssignmentCacheValue = (value, variables) => {
 export const useAssignQueueItems = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ queueId, itemIds, userId, userIds, action }) =>
-      axios.post(annotationQueueEndpoints.assignItems(queueId), {
+    mutationFn: ({ queueId, itemIds, userId, userIds, action }) => {
+      const normalizedUserIds = userIds ?? (userId ? [userId] : []);
+      return axios.post(annotationQueueEndpoints.assignItems(queueId), {
         item_ids: itemIds,
-        ...(userIds
-          ? { user_ids: userIds, action: action || "add" }
-          : { user_id: userId }),
-      }),
+        user_ids: normalizedUserIds,
+        action: action || (userIds ? "add" : "set"),
+      });
+    },
     onMutate: async (variables) => {
       const itemIds = variables.itemIds || [];
 

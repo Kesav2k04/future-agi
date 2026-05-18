@@ -5465,13 +5465,12 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
 
         Accepts:
           item_ids: list of item UUIDs (required)
-          user_ids: list of user UUIDs to assign (use this for multi-assign)
-          user_id:  single user UUID (legacy compat, treated as user_ids=[user_id])
+          user_ids: list of user UUIDs to assign
           action:   "add" (default) | "set" | "remove"
                     add    — add users to existing assignments
                     set    — replace all assignments with the given users
                     remove — remove given users from assignments
-                    If user_ids is empty with action="set", clears all assignments.
+                    If user_ids is empty with action="set", clears assignments.
         """
         queue = self._get_queue_for_management(queue_id, request)
         if queue is None:
@@ -5481,14 +5480,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         item_ids = serializer.validated_data["item_ids"]
         user_ids = serializer.validated_data.get("user_ids", [])
-        user_id = serializer.validated_data.get("user_id")
         action = serializer.validated_data.get("action", "add")
-
-        # Legacy compat: single user_id
-        if user_id is not None and not user_ids:
-            user_ids = [user_id]
-            if action == "add":
-                action = "set"  # legacy single-assign was a full replace
 
         if not item_ids:
             return self._gm.bad_request("item_ids is required.")
@@ -5533,8 +5525,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
                         "Only queue managers can change items assigned to another annotator."
                     )
 
-        # Handle unassign (user_id=null with no user_ids)
-        if user_id is None and not user_ids and action == "set":
+        if not user_ids and action == "set":
             # Clear all assignments for these items
             items = QueueItem.objects.filter(
                 id__in=item_ids,
@@ -5843,7 +5834,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        comment = str(data.get("comment") or data.get("content") or "").strip()
+        comment = str(data.get("comment") or "").strip()
         if not comment:
             return self._gm.bad_request("Comment text is required.")
 
@@ -5854,7 +5845,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             ).select_related("label")
         }
         label = None
-        label_id = data.get("label_id") or data.get("label")
+        label_id = data.get("label_id")
         if label_id:
             label = queue_labels.get(str(label_id))
             if not label:
@@ -5883,7 +5874,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
                 return self._gm.bad_request("Target annotator not found.")
 
         thread = None
-        thread_id = data.get("thread_id") or data.get("thread")
+        thread_id = data.get("thread_id")
         if thread_id:
             try:
                 thread_uuid = uuid.UUID(str(thread_id))
@@ -5903,13 +5894,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             label = thread.label
             target_annotator = thread.target_annotator
 
-        raw_mentions = data.get("mentioned_user_ids")
-        if raw_mentions is None:
-            raw_mentions = data.get("mentions", [])
-        if isinstance(raw_mentions, str):
-            raw_mentions = [raw_mentions]
-        if not isinstance(raw_mentions, list):
-            return self._gm.bad_request("mentioned_user_ids must be a list.")
+        raw_mentions = data.get("mentioned_user_ids", [])
 
         mention_ids, mention_emails = _split_mention_references(raw_mentions)
         mention_ids.update(_extract_mentioned_user_ids(comment))
@@ -6072,11 +6057,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
 
         serializer = DiscussionReactionRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        emoji = str(
-            serializer.validated_data.get("emoji")
-            or serializer.validated_data.get("reaction")
-            or ""
-        )
+        emoji = str(serializer.validated_data.get("emoji") or "")
         if not _is_supported_discussion_reaction(emoji):
             return self._gm.bad_request("Unsupported reaction emoji.")
 
@@ -6199,13 +6180,11 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             if not isinstance(raw_comment, dict):
                 return self._gm.bad_request("Each label comment must be an object.")
 
-            comment = str(
-                raw_comment.get("comment") or raw_comment.get("notes") or ""
-            ).strip()
+            comment = str(raw_comment.get("comment") or "").strip()
             if not comment:
                 continue
 
-            label_id = raw_comment.get("label_id") or raw_comment.get("label")
+            label_id = raw_comment.get("label_id")
             if not label_id:
                 return self._gm.bad_request("label_id is required for label comments.")
             label = queue_labels.get(str(label_id))
@@ -6215,9 +6194,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
                 )
 
             target_annotator = None
-            target_annotator_id = raw_comment.get(
-                "target_annotator_id"
-            ) or raw_comment.get("annotator_id")
+            target_annotator_id = raw_comment.get("target_annotator_id")
             if not target_annotator_id:
                 return self._gm.bad_request(
                     "target_annotator_id is required for label feedback."
@@ -6443,11 +6420,10 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         except QueueItem.DoesNotExist:
             return self._gm.not_found("Queue item not found.")
 
-        annotations_data = request.data.get("annotations", [])
-        annotator_id = request.data.get("annotator_id")
-
-        if not annotations_data:
-            return self._gm.bad_request("annotations list is required.")
+        serializer = ImportAnnotationsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        annotations_data = serializer.validated_data["annotations"]
+        annotator_id = serializer.validated_data.get("annotator_id")
 
         annotator = request.user
         if annotator_id:

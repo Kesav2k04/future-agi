@@ -1213,6 +1213,40 @@ class TestReviewItem:
         assert label_comment["thread_status"] == QueueItemReviewThread.STATUS_OPEN
         assert label_comment["blocking"] is True
 
+    def test_review_rejects_legacy_label_comment_aliases(
+        self,
+        auth_client,
+        queue_with_items,
+        user,
+        organization,
+    ):
+        queue_id, item_ids, label = queue_with_items
+        item = QueueItem.objects.get(pk=item_ids[0])
+        item.review_status = "pending_review"
+        item.status = QueueItemStatus.IN_PROGRESS.value
+        item.save(update_fields=["review_status", "status", "updated_at"])
+        _create_score_for_item(item, label, user, organization)
+
+        resp = auth_client.post(
+            review_url(queue_id, item_ids[0]),
+            {
+                "action": "request_changes",
+                "label_comments": [
+                    {
+                        "label": str(label.id),
+                        "annotator_id": str(user.id),
+                        "notes": "Sentiment should be negative.",
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert "label" in str(resp.data)
+        assert "annotator_id" in str(resp.data)
+        assert "notes" in str(resp.data)
+
     def test_label_feedback_requires_target_annotator(
         self,
         auth_client,
@@ -1639,6 +1673,30 @@ class TestQueueItemDiscussion:
             second_user.id
         ]
 
+    def test_discussion_rejects_legacy_comment_aliases(
+        self,
+        auth_client,
+        queue_with_items,
+        second_user,
+        label,
+    ):
+        queue_id, item_ids, _ = queue_with_items
+
+        resp = auth_client.post(
+            discussion_url(queue_id, item_ids[0]),
+            {
+                "content": "Please double-check this label.",
+                "label": str(label.id),
+                "mentions": [str(second_user.id)],
+            },
+            format="json",
+        )
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert "content" in str(resp.data)
+        assert "label" in str(resp.data)
+        assert "mentions" in str(resp.data)
+
     def test_discussion_visibility_respects_target_annotator(
         self,
         auth_client,
@@ -1864,7 +1922,7 @@ class TestQueueItemDiscussion:
         *_, recipients = email_helper.call_args.args
         assert recipients == [second_user.email]
 
-    def test_discussion_comment_accepts_legacy_mentions_string_email(
+    def test_discussion_comment_extracts_mention_from_comment_text(
         self,
         auth_client,
         queue_with_items,
@@ -1891,8 +1949,7 @@ class TestQueueItemDiscussion:
             resp = auth_client.post(
                 discussion_url(queue_id, item_ids[0]),
                 {
-                    "comment": "Please check this legacy mention payload.",
-                    "mentions": f"@{second_user.email}",
+                    "comment": f"Please check this @{second_user.email}.",
                 },
                 format="json",
             )
@@ -2136,7 +2193,8 @@ class TestQueueItemDiscussion:
         )
 
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
-        assert "mentioned_user_ids must be a list" in str(resp.data)
+        assert "mentioned_user_ids" in resp.data
+        assert "not_a_list" in str(resp.data)
 
     def test_discussion_comment_rejects_non_member_uuid_mention(
         self,
@@ -3942,7 +4000,11 @@ class TestAnnotateDetail:
         # Assign 2 items to user
         auth_client.post(
             assign_url(queue_id),
-            {"item_ids": [str(item_ids[0]), str(item_ids[1])], "user_id": str(user.id)},
+            {
+                "item_ids": [str(item_ids[0]), str(item_ids[1])],
+                "user_ids": [str(user.id)],
+                "action": "set",
+            },
             format="json",
         )
         # Complete first item
@@ -4161,7 +4223,11 @@ class TestAssignItems:
         queue_id, item_ids, _ = queue_with_items
         resp = auth_client.post(
             assign_url(queue_id),
-            {"item_ids": [str(item_ids[0]), str(item_ids[1])], "user_id": str(user.id)},
+            {
+                "item_ids": [str(item_ids[0]), str(item_ids[1])],
+                "user_ids": [str(user.id)],
+                "action": "set",
+            },
             format="json",
         )
         assert resp.status_code == status.HTTP_200_OK
@@ -4170,24 +4236,37 @@ class TestAssignItems:
             item = QueueItem.objects.get(pk=iid)
             assert item.assigned_to_id == user.id
 
-    @pytest.mark.xfail(
-        reason="Pre-existing: passing user_id=null doesn't clear assigned_to. "
-        "The assign endpoint's unassign branch needs review (Team B E14 "
-        "neighborhood). Frontend uses action='set' with empty list instead."
-    )
+    def test_assign_rejects_legacy_single_user_alias(
+        self, auth_client, queue_with_items, user
+    ):
+        queue_id, item_ids, _ = queue_with_items
+
+        resp = auth_client.post(
+            assign_url(queue_id),
+            {"item_ids": [str(item_ids[0])], "user_id": str(user.id)},
+            format="json",
+        )
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert "user_id" in str(resp.data)
+
     def test_unassign_items(self, auth_client, queue_with_items, user):
-        """Unassign items by passing user_id=null."""
+        """Unassign items by setting an empty assignment list."""
         queue_id, item_ids, _ = queue_with_items
         # Assign first
         auth_client.post(
             assign_url(queue_id),
-            {"item_ids": [str(item_ids[0])], "user_id": str(user.id)},
+            {
+                "item_ids": [str(item_ids[0])],
+                "user_ids": [str(user.id)],
+                "action": "set",
+            },
             format="json",
         )
         # Unassign
         resp = auth_client.post(
             assign_url(queue_id),
-            {"item_ids": [str(item_ids[0])], "user_id": None},
+            {"item_ids": [str(item_ids[0])], "user_ids": [], "action": "set"},
             format="json",
         )
         assert resp.status_code == status.HTTP_200_OK
@@ -4199,7 +4278,7 @@ class TestAssignItems:
         queue_id, _, _ = queue_with_items
         resp = auth_client.post(
             assign_url(queue_id),
-            {"item_ids": [], "user_id": str(uuid.uuid4())},
+            {"item_ids": [], "user_ids": [str(uuid.uuid4())], "action": "set"},
             format="json",
         )
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
@@ -4210,7 +4289,11 @@ class TestAssignItems:
         # Assign first item to user
         auth_client.post(
             assign_url(queue_id),
-            {"item_ids": [str(item_ids[0])], "user_id": str(user.id)},
+            {
+                "item_ids": [str(item_ids[0])],
+                "user_ids": [str(user.id)],
+                "action": "set",
+            },
             format="json",
         )
         resp = auth_client.get(items_url(queue_id), {"assigned_to": "me"})
@@ -4229,7 +4312,11 @@ class TestAssignItems:
         # Assign the last item to user
         auth_client.post(
             assign_url(queue_id),
-            {"item_ids": [str(item_ids[2])], "user_id": str(user.id)},
+            {
+                "item_ids": [str(item_ids[2])],
+                "user_ids": [str(user.id)],
+                "action": "set",
+            },
             format="json",
         )
         resp = auth_client.get(next_item_url(queue_id))
@@ -4297,7 +4384,11 @@ class TestProgress:
         # Assign all to user
         auth_client.post(
             assign_url(queue_id),
-            {"item_ids": [str(i) for i in item_ids], "user_id": str(user.id)},
+            {
+                "item_ids": [str(i) for i in item_ids],
+                "user_ids": [str(user.id)],
+                "action": "set",
+            },
             format="json",
         )
         # Complete one
@@ -4328,7 +4419,11 @@ class TestProgress:
         # Assign first 2 items to user, leave third unassigned
         auth_client.post(
             assign_url(queue_id),
-            {"item_ids": [str(item_ids[0]), str(item_ids[1])], "user_id": str(user.id)},
+            {
+                "item_ids": [str(item_ids[0]), str(item_ids[1])],
+                "user_ids": [str(user.id)],
+                "action": "set",
+            },
             format="json",
         )
         # Complete the first (assigned) item

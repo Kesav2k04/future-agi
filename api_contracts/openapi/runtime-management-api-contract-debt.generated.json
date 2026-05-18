@@ -5,9 +5,9 @@
     "futureagi/tracer/views"
   ],
   "summary": {
-    "runtime_backed_validated_request_decorators": 27,
-    "direct_swagger_auto_schema_decorators": 405,
-    "doc_only_input_contract_decorators": 280,
+    "runtime_backed_validated_request_decorators": 46,
+    "direct_swagger_auto_schema_decorators": 386,
+    "doc_only_input_contract_decorators": 261,
     "broad_request_contract_decorators": 2
   },
   "doc_only_input_contract_decorators": [
@@ -541,162 +541,10 @@
     },
     {
       "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 3261,
-      "function": "export_to_dataset",
-      "serializers": [
-        "QueueExportToDatasetRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 3537,
-      "function": "get_or_create_default",
-      "serializers": [
-        "QueueDefaultRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 3681,
-      "function": "add_label",
-      "serializers": [
-        "QueueLabelRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 3758,
-      "function": "remove_label",
-      "serializers": [
-        "QueueLabelRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 3782,
-      "function": "for_source",
-      "serializers": [
-        "QueueForSourceQuerySerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 4280,
-      "function": "list",
-      "serializers": [
-        "QueueItemListQuerySerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 4317,
-      "function": "add_items",
-      "serializers": [
-        "AddItemsSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 4538,
-      "function": "bulk_remove",
-      "serializers": [
-        "BulkRemoveItemsSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 4663,
-      "function": "submit_annotations",
-      "serializers": [
-        "SubmitAnnotationsSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 4932,
-      "function": "complete_item",
-      "serializers": [
-        "QueueItemNavigationRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 5030,
-      "function": "skip_item",
-      "serializers": [
-        "QueueItemNavigationRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 5096,
-      "function": "next_item",
-      "serializers": [
-        "QueueItemNextQuerySerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 5193,
-      "function": "annotate_detail",
-      "serializers": [
-        "QueueItemAnnotateDetailQuerySerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 5425,
-      "function": "assign_items",
-      "serializers": [
-        "AssignItemsSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 5760,
+      "line": 5728,
       "function": "discussion",
       "serializers": [
         "DiscussionCommentRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 5951,
-      "function": null,
-      "serializers": [
-        "DiscussionThreadStatusRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 5969,
-      "function": null,
-      "serializers": [
-        "DiscussionThreadStatusRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 5987,
-      "function": null,
-      "serializers": [
-        "DiscussionReactionRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 6055,
-      "function": "review_item",
-      "serializers": [
-        "ReviewItemRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/model_hub/views/annotation_queues.py",
-      "line": 6373,
-      "function": "import_annotations",
-      "serializers": [
-        "ImportAnnotationsSerializer"
       ]
     },
     {

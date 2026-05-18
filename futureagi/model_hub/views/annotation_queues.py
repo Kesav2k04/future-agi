@@ -3258,8 +3258,8 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
         queue = self.get_object()
         return self._gm.success_response(_build_annotation_queue_export_fields(queue))
 
-    @swagger_auto_schema(
-        request_body=QueueExportToDatasetRequestSerializer,
+    @validated_request(
+        request_serializer=QueueExportToDatasetRequestSerializer,
         responses={200: QueueExportToDatasetResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="export-to-dataset")
@@ -3268,9 +3268,7 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
         from model_hub.models.develop_dataset import Cell, Column, Dataset, Row
 
         queue = self.get_object()
-        serializer = QueueExportToDatasetRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = request.validated_data
         dataset_id = data.get("dataset_id")
         dataset_name = data.get("dataset_name")
         status_filter = _normalize_query_filter_value(
@@ -3534,8 +3532,8 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
         result = calculate_agreement(queue)
         return self._gm.success_response(result)
 
-    @swagger_auto_schema(
-        request_body=QueueDefaultRequestSerializer,
+    @validated_request(
+        request_serializer=QueueDefaultRequestSerializer,
         responses={200: QueueDefaultResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=False, methods=["post"], url_path="get-or-create-default")
@@ -3553,9 +3551,7 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
         from simulate.models.agent_definition import AgentDefinition
         from tracer.models.project import Project
 
-        serializer = QueueDefaultRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = request.validated_data
         project_id = data.get("project_id")
         dataset_id = data.get("dataset_id")
         agent_definition_id = data.get("agent_definition_id")
@@ -3678,8 +3674,8 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
             }
         )
 
-    @swagger_auto_schema(
-        request_body=QueueLabelRequestSerializer,
+    @validated_request(
+        request_serializer=QueueLabelRequestSerializer,
         responses={200: QueueAddLabelResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="add-label")
@@ -3690,9 +3686,7 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
         Queue items are created lazily when someone actually annotates.
         """
         queue = self.get_object()
-        serializer = QueueLabelRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = request.validated_data
         label_id = data.get("label_id")
         required = _is_truthy(data.get("required", True))
 
@@ -3755,17 +3749,15 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
             }
         )
 
-    @swagger_auto_schema(
-        request_body=QueueLabelRequestSerializer,
+    @validated_request(
+        request_serializer=QueueLabelRequestSerializer,
         responses={200: QueueRemoveLabelResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="remove-label")
     def remove_label(self, request, pk=None):
         """Remove a label from an annotation queue."""
         queue = self.get_object()
-        serializer = QueueLabelRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        label_id = serializer.validated_data.get("label_id")
+        label_id = request.validated_data.get("label_id")
 
         if not label_id:
             return self._gm.bad_request("label_id is required.")
@@ -3779,7 +3771,7 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
 
         return self._gm.success_response({"removed": True})
 
-    @swagger_auto_schema(
+    @validated_request(
         query_serializer=QueueForSourceQuerySerializer,
         responses={200: QueueForSourceResponseSerializer, **ERROR_RESPONSES},
     )
@@ -3795,10 +3787,7 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
           - source_type, source_id  (single source)
           - OR sources (JSON array of {source_type, source_id} objects for multi-source lookup)
         """
-        query_serializer = QueueForSourceQuerySerializer(data=request.query_params)
-        if not query_serializer.is_valid():
-            return self._gm.bad_request(query_serializer.errors)
-        query_params = query_serializer.validated_data
+        query_params = request.validated_query_data
         sources = query_params["sources"]
 
         # Validate all sources
@@ -4277,12 +4266,9 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             *queue_item_ordering.get(ordering, queue_item_ordering["-created_at"])
         )
 
-    @swagger_auto_schema(query_serializer=QueueItemListQuerySerializer)
+    @validated_request(query_serializer=QueueItemListQuerySerializer)
     def list(self, request, *args, **kwargs):
-        serializer = QueueItemListQuerySerializer(data=request.query_params)
-        if not serializer.is_valid():
-            return self._gm.bad_request(serializer.errors)
-        self._validated_queue_item_list_query = serializer.validated_data
+        self._validated_queue_item_list_query = request.validated_query_data
         return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -4314,8 +4300,8 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             return denied
         return super().destroy(request, *args, **kwargs)
 
-    @swagger_auto_schema(
-        request_body=AddItemsSerializer,
+    @validated_request(
+        request_serializer=AddItemsSerializer,
         responses={
             200: QueueAddItemsResponseSerializer,
             400: ApiSelectionTooLargeErrorSerializer,
@@ -4325,9 +4311,6 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
     )
     @action(detail=False, methods=["post"], url_path="add-items")
     def add_items(self, request, queue_id=None):
-        serializer = AddItemsSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
         try:
             queue = AnnotationQueue.objects.get(
                 pk=queue_id,
@@ -4341,13 +4324,14 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         if denied is not None:
             return denied
 
-        if serializer.validated_data.get("selection"):
+        data = request.validated_data
+        if data.get("selection"):
             return self._add_items_filter_mode(
-                request, queue, serializer.validated_data["selection"]
+                request, queue, data["selection"]
             )
 
         return self._add_items_enumerated(
-            request, queue, serializer.validated_data["items"]
+            request, queue, data["items"]
         )
 
     def _add_items_enumerated(self, request, queue, items_data):
@@ -4535,8 +4519,8 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             }
         )
 
-    @swagger_auto_schema(
-        request_body=BulkRemoveItemsSerializer,
+    @validated_request(
+        request_serializer=BulkRemoveItemsSerializer,
         responses={200: QueueBulkRemoveItemsResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=False, methods=["post"], url_path="bulk-remove")
@@ -4548,9 +4532,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         if denied is not None:
             return denied
 
-        serializer = BulkRemoveItemsSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        item_ids = serializer.validated_data["item_ids"]
+        item_ids = request.validated_data["item_ids"]
         if not item_ids:
             return self._gm.bad_request("item_ids is required.")
 
@@ -4660,8 +4642,8 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
 
         return available_qs.order_by(*QUEUE_ITEM_WORK_ORDERING).first()
 
-    @swagger_auto_schema(
-        request_body=SubmitAnnotationsSerializer,
+    @validated_request(
+        request_serializer=SubmitAnnotationsSerializer,
         responses={200: QueueSubmitAnnotationsResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="annotations/submit")
@@ -4778,12 +4760,10 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
                             "This item is assigned to another annotator."
                         )
 
-        serializer = SubmitAnnotationsSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        annotations_data = serializer.validated_data["annotations"]
-        legacy_notes = serializer.validated_data.get("notes", "")
-        item_notes = serializer.validated_data.get("item_notes")
+        data = request.validated_data
+        annotations_data = data["annotations"]
+        legacy_notes = data.get("notes", "")
+        item_notes = data.get("item_notes")
         submitted = 0
 
         # Resolve source FK for Score creation
@@ -4929,16 +4909,14 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         item.reserved_at = None
         item.reservation_expires_at = None
 
-    @swagger_auto_schema(
-        request_body=QueueItemNavigationRequestSerializer,
+    @validated_request(
+        request_serializer=QueueItemNavigationRequestSerializer,
         responses={200: QueueNavigationResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="complete")
     def complete_item(self, request, queue_id=None, pk=None):
         """Mark item as completed and return next pending item."""
-        serializer = QueueItemNavigationRequestSerializer(data=request.data or {})
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = request.validated_data
         try:
             item = QueueItem.objects.select_related("queue").get(
                 pk=pk,
@@ -5027,16 +5005,14 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             }
         )
 
-    @swagger_auto_schema(
-        request_body=QueueItemNavigationRequestSerializer,
+    @validated_request(
+        request_serializer=QueueItemNavigationRequestSerializer,
         responses={200: QueueNavigationResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="skip")
     def skip_item(self, request, queue_id=None, pk=None):
         """Mark item as skipped and return next pending item."""
-        serializer = QueueItemNavigationRequestSerializer(data=request.data or {})
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = request.validated_data
         try:
             item = QueueItem.objects.get(
                 pk=pk,
@@ -5093,7 +5069,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             }
         )
 
-    @swagger_auto_schema(
+    @validated_request(
         query_serializer=QueueItemNextQuerySerializer,
         responses={200: QueueNextItemResponseSerializer, **ERROR_RESPONSES},
     )
@@ -5108,10 +5084,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
           exclude_review_status: optional review status to omit (for annotator queues)
           include_completed: when true, navigation can visit completed items too
         """
-        query_serializer = QueueItemNextQuerySerializer(data=request.query_params)
-        if not query_serializer.is_valid():
-            return self._gm.bad_request(query_serializer.errors)
-        query_params = query_serializer.validated_data
+        query_params = request.validated_query_data
 
         review_status = query_params.get("review_status")
         exclude_review_status = query_params.get("exclude_review_status")
@@ -5190,19 +5163,14 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         item_data = QueueItemSerializer(item).data
         return self._gm.success_response({"item": item_data})
 
-    @swagger_auto_schema(
+    @validated_request(
         query_serializer=QueueItemAnnotateDetailQuerySerializer,
         responses={200: QueueAnnotateDetailResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["get"], url_path="annotate-detail")
     def annotate_detail(self, request, queue_id=None, pk=None):
         """Get full annotation workspace data for an item."""
-        query_serializer = QueueItemAnnotateDetailQuerySerializer(
-            data=request.query_params
-        )
-        if not query_serializer.is_valid():
-            return self._gm.bad_request(query_serializer.errors)
-        query_params = query_serializer.validated_data
+        query_params = request.validated_query_data
 
         try:
             item = QueueItem.objects.select_related(
@@ -5422,8 +5390,8 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         serializer = AnnotateDetailSerializer(data, context={"request": request})
         return self._gm.success_response(serializer.data)
 
-    @swagger_auto_schema(
-        request_body=AssignItemsSerializer,
+    @validated_request(
+        request_serializer=AssignItemsSerializer,
         responses={200: QueueAssignItemsResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=False, methods=["post"], url_path="assign")
@@ -5443,11 +5411,10 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         if queue is None:
             return self._gm.not_found("Queue not found.")
 
-        serializer = AssignItemsSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        item_ids = serializer.validated_data["item_ids"]
-        user_ids = serializer.validated_data.get("user_ids", [])
-        action = serializer.validated_data.get("action", "add")
+        data = request.validated_data
+        item_ids = data["item_ids"]
+        user_ids = data.get("user_ids", [])
+        action = data.get("action", "add")
 
         if not item_ids:
             return self._gm.bad_request("item_ids is required.")
@@ -5729,6 +5696,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             update_fields.extend(["reopened_by", "reopened_at"])
         thread.save(update_fields=update_fields)
 
+        data = getattr(request, "validated_data", request.data)
         status_comment = QueueItemReviewComment.objects.create(
             thread=thread,
             queue_item=item,
@@ -5736,7 +5704,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             label=thread.label,
             target_annotator=thread.target_annotator,
             action=action,
-            comment=str(request.data.get("comment") or default_comment).strip()
+            comment=str(data.get("comment") or default_comment).strip()
             or default_comment,
             organization=request.organization,
             workspace=getattr(request, "workspace", None),
@@ -5948,8 +5916,8 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             )
         )
 
-    @swagger_auto_schema(
-        request_body=DiscussionThreadStatusRequestSerializer,
+    @validated_request(
+        request_serializer=DiscussionThreadStatusRequestSerializer,
         responses={200: QueueDiscussionResponseSerializer, **ERROR_RESPONSES},
     )
     @action(
@@ -5966,8 +5934,8 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             next_status=QueueItemReviewThread.STATUS_RESOLVED,
         )
 
-    @swagger_auto_schema(
-        request_body=DiscussionThreadStatusRequestSerializer,
+    @validated_request(
+        request_serializer=DiscussionThreadStatusRequestSerializer,
         responses={200: QueueDiscussionResponseSerializer, **ERROR_RESPONSES},
     )
     @action(
@@ -5984,8 +5952,8 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             next_status=QueueItemReviewThread.STATUS_REOPENED,
         )
 
-    @swagger_auto_schema(
-        request_body=DiscussionReactionRequestSerializer,
+    @validated_request(
+        request_serializer=DiscussionReactionRequestSerializer,
         responses={200: QueueDiscussionResponseSerializer, **ERROR_RESPONSES},
     )
     @action(
@@ -6022,9 +5990,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         if comment is None:
             return self._gm.not_found("Discussion comment not found.")
 
-        serializer = DiscussionReactionRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        emoji = str(serializer.validated_data.get("emoji") or "")
+        emoji = str(request.validated_data.get("emoji") or "")
         if not _is_supported_discussion_reaction(emoji):
             return self._gm.bad_request("Unsupported reaction emoji.")
 
@@ -6052,8 +6018,8 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             )
         )
 
-    @swagger_auto_schema(
-        request_body=ReviewItemRequestSerializer,
+    @validated_request(
+        request_serializer=ReviewItemRequestSerializer,
         responses={200: QueueReviewItemResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="review")
@@ -6094,9 +6060,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         except QueueItem.DoesNotExist:
             return self._gm.not_found("Queue item not found.")
 
-        serializer = ReviewItemRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = request.validated_data
 
         requested_action = data.get("action")
         action_aliases = {
@@ -6370,8 +6334,8 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             }
         )
 
-    @swagger_auto_schema(
-        request_body=ImportAnnotationsSerializer,
+    @validated_request(
+        request_serializer=ImportAnnotationsSerializer,
         responses={200: QueueImportAnnotationsResponseSerializer, **ERROR_RESPONSES},
     )
     @action(detail=True, methods=["post"], url_path="annotations/import")
@@ -6387,10 +6351,9 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
         except QueueItem.DoesNotExist:
             return self._gm.not_found("Queue item not found.")
 
-        serializer = ImportAnnotationsSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        annotations_data = serializer.validated_data["annotations"]
-        annotator_id = serializer.validated_data.get("annotator_id")
+        data = request.validated_data
+        annotations_data = data["annotations"]
+        annotator_id = data.get("annotator_id")
 
         annotator = request.user
         if annotator_id:

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import uuid
 from datetime import timedelta
 from typing import Any, Dict, Tuple
@@ -2039,8 +2040,49 @@ class TestGetAnnotationValues:
         result = _result(resp)
         assert "annotations" in result or isinstance(result, list)
 
+    def test_returns_annotations_for_span_with_annotator_filter(
+        self, auth_client, user, observation_span, star_label
+    ):
+        auth_client.post(
+            SCORE_URL,
+            {
+                "source_type": "observation_span",
+                "source_id": observation_span.id,
+                "label_id": str(star_label.id),
+                "value": {"rating": 4},
+            },
+            format="json",
+        )
+
+        resp = auth_client.get(
+            TRACER_ANN_VALUES,
+            {
+                "observation_span_id": str(observation_span.id),
+                "annotators": json.dumps([str(user.id)]),
+            },
+        )
+
+        assert resp.status_code == 200, resp.data
+        result = _result(resp)
+        assert len(result["annotations"]) == 1
+        assert result["annotations"][0]["annotator_id"] == str(user.id)
+
     def test_missing_params_400(self, auth_client):
         resp = auth_client.get(TRACER_ANN_VALUES)
+        assert resp.status_code == 400
+
+    def test_rejects_legacy_query_aliases(self, auth_client, observation_span):
+        resp = auth_client.get(
+            TRACER_ANN_VALUES, {"observationSpanId": str(observation_span.id)}
+        )
+        assert resp.status_code == 400
+        assert "observationSpanId" in str(resp.data)
+
+    def test_rejects_invalid_annotators_json(self, auth_client, observation_span):
+        resp = auth_client.get(
+            TRACER_ANN_VALUES,
+            {"observation_span_id": str(observation_span.id), "annotators": "not-json"},
+        )
         assert resp.status_code == 400
 
 

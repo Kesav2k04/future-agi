@@ -1,5 +1,4 @@
 import json
-import uuid
 
 import structlog
 from django.contrib.auth import get_user_model
@@ -29,6 +28,7 @@ from tracer.serializers.annotation import (
     BulkAnnotationResponseSerializer,
     BulkAnnotationSerializer,
     GetAnnotationLabelsResponseSerializer,
+    GetTraceAnnotationValuesResponseSerializer,
     GetTraceAnnotationSerializer,
 )
 from tracer.services.clickhouse.query_service import (
@@ -218,67 +218,31 @@ class TraceAnnotationView(ModelViewSet):
     # Main endpoint
     # ------------------------------------------------------------------
 
+    @swagger_auto_schema(
+        query_serializer=GetTraceAnnotationSerializer,
+        responses={200: GetTraceAnnotationValuesResponseSerializer, **ERROR_RESPONSES},
+    )
     @action(detail=False, methods=["get"])
     def get_annotation_values(self, request, *args, **kwargs):
         try:
-            observation_span_id = request.query_params.get(
-                "observation_span_id"
-            ) or request.query_params.get("observationSpanId")
-            trace_id = request.query_params.get("trace_id") or request.query_params.get(
-                "traceId"
+            serializer = GetTraceAnnotationSerializer(data=request.query_params)
+            if not serializer.is_valid():
+                return self._gm.bad_request(serializer.errors)
+
+            query_params = serializer.validated_data
+            observation_span_id = query_params.get("observation_span_id")
+            trace_id = query_params.get("trace_id")
+            annotators_list = [
+                str(annotator) for annotator in query_params.get("annotators", [])
+            ]
+            exclude_annotators_list = [
+                str(annotator)
+                for annotator in query_params.get("exclude_annotators", [])
+            ]
+            observation_span_id = (
+                str(observation_span_id) if observation_span_id else None
             )
-            annotators = request.query_params.get("annotators")
-            exclude_annotators = request.query_params.get(
-                "exclude_annotators"
-            ) or request.query_params.get("excludeAnnotators")
-
-            # Parse JSON lists for annotators and exclude_annotators
-            annotators_list = None
-            if annotators:
-                try:
-                    annotators_list = json.loads(annotators)
-                    if not isinstance(annotators_list, list):
-                        return self._gm.bad_request(
-                            "Invalid annotators format. Expected JSON array."
-                        )
-                    # Validate UUID format for each item
-                    for uuid_str in annotators_list:
-                        uuid.UUID(uuid_str)
-                except (json.JSONDecodeError, ValueError):
-                    return self._gm.bad_request(
-                        "Invalid annotators format. Expected JSON array of UUIDs."
-                    )
-
-            exclude_annotators_list = None
-            if exclude_annotators:
-                try:
-                    exclude_annotators_list = json.loads(exclude_annotators)
-                    if not isinstance(exclude_annotators_list, list):
-                        return self._gm.bad_request(
-                            "Invalid exclude_annotators format. Expected JSON array."
-                        )
-                    # Validate UUID format for each item
-                    for uuid_str in exclude_annotators_list:
-                        uuid.UUID(uuid_str)
-                except (json.JSONDecodeError, ValueError):
-                    return self._gm.bad_request(
-                        "Invalid exclude_annotators format. Expected JSON array of UUIDs."
-                    )
-
-            if not observation_span_id and not trace_id:
-                return self._gm.bad_request(
-                    "At least one of observation_span_id or trace_id is required"
-                )
-
-            serializer = GetTraceAnnotationSerializer(
-                data={
-                    "observation_span_id": observation_span_id,
-                    "trace_id": trace_id,
-                    "annotators": annotators_list,
-                    "exclude_annotators": exclude_annotators_list,
-                }
-            )
-            serializer.is_valid(raise_exception=True)
+            trace_id = str(trace_id) if trace_id else None
 
             # ClickHouse dispatch for annotation data
             analytics = AnalyticsQueryService()

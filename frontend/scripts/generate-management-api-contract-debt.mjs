@@ -33,6 +33,11 @@ const HTTP_METHODS = new Set([
   "head",
   "options",
 ]);
+const EXACT_EMPTY_SUCCESS_RESPONSE_SCHEMAS = new Set([
+  // OTLP export success responses are intentionally an empty JSON object.
+  // This is an exact protocol acknowledgement, not an untyped application DTO.
+  "OTLPHTTPTraceResponse",
+]);
 
 const swagger = JSON.parse(fs.readFileSync(swaggerPath, "utf8"));
 const paths = swagger.paths || {};
@@ -144,6 +149,10 @@ function isUnshapedObject(schema) {
 
 function broadSuccessResponseReason(schema) {
   const schemaName = refName(schema);
+  if (schemaName && EXACT_EMPTY_SUCCESS_RESPONSE_SCHEMAS.has(schemaName)) {
+    return null;
+  }
+
   const resolved = dereference(schema);
   if (isUnshapedObject(resolved)) {
     return schemaName

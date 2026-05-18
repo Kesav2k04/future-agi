@@ -5,7 +5,7 @@
     "operations": 1336,
     "mutation_endpoints_without_body_schema": 0,
     "operations_without_response_schema": 0,
-    "broad_success_response_schemas": 106
+    "broad_success_response_schemas": 104
   },
   "by_group": {
     "accounts": {
@@ -41,7 +41,7 @@
       "operations": 9,
       "mutation_endpoints_without_body_schema": 0,
       "operations_without_response_schema": 0,
-      "broad_success_response_schemas": 1
+      "broad_success_response_schemas": 0
     },
     "call-websocket": {
       "paths": 1,
@@ -111,7 +111,7 @@
       "operations": 233,
       "mutation_endpoints_without_body_schema": 0,
       "operations_without_response_schema": 0,
-      "broad_success_response_schemas": 1
+      "broad_success_response_schemas": 0
     },
     "usage": {
       "paths": 66,
@@ -131,18 +131,6 @@
   "mutation_endpoints_without_body_schema": [],
   "operations_without_response_schema": [],
   "broad_success_response_schemas": [
-    {
-      "group": "api",
-      "method": "POST",
-      "path": "/api/public/otel/v1/traces",
-      "operation_id": "api_public_otel_v1_traces_create",
-      "tags": [
-        "api"
-      ],
-      "status_code": "200",
-      "schema": "OTLPHTTPTraceResponse",
-      "reason": "OTLPHTTPTraceResponse is an unshaped object response"
-    },
     {
       "group": "model-hub",
       "method": "POST",
@@ -1390,18 +1378,6 @@
       "status_code": "200",
       "schema": "ModelHubJSONResponse",
       "reason": "ModelHubJSONResponse.result is an unshaped object"
-    },
-    {
-      "group": "tracer",
-      "method": "POST",
-      "path": "/tracer/otlp/v1/traces",
-      "operation_id": "tracer_otlp_v1_traces_create",
-      "tags": [
-        "tracer"
-      ],
-      "status_code": "200",
-      "schema": "OTLPHTTPTraceResponse",
-      "reason": "OTLPHTTPTraceResponse is an unshaped object response"
     }
   ]
 }

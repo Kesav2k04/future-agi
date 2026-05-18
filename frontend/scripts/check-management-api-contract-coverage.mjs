@@ -17,7 +17,7 @@ const swaggerPath = path.join(
 const MIN_ENDPOINTS = 960;
 const MAX_MUTATIONS_WITHOUT_BODY_SCHEMA = 0;
 const MAX_OPERATIONS_WITHOUT_RESPONSE_SCHEMA = 0;
-const MAX_BROAD_SUCCESS_RESPONSE_SCHEMAS = 106;
+const MAX_BROAD_SUCCESS_RESPONSE_SCHEMAS = 104;
 const MIN_GROUP_PATHS = {
   accounts: 75,
   agentcc: 100,
@@ -31,6 +31,11 @@ const MUTATION_METHODS = new Set(["post", "put", "patch"]);
 const NON_RESPONSE_OPTIONAL_METHODS = new Set(["delete"]);
 const NO_BODY_RESPONSE_STATUS = /^(204|205|304|3\d\d)$/;
 const SUCCESS_RESPONSE_STATUS = /^2\d\d$/;
+const EXACT_EMPTY_SUCCESS_RESPONSE_SCHEMAS = new Set([
+  // OTLP export success responses are intentionally an empty JSON object.
+  // This is an exact protocol acknowledgement, not an untyped application DTO.
+  "OTLPHTTPTraceResponse",
+]);
 const UNSUPPORTED_SWAGGER_2_SCHEMA_KEYS = new Set([
   "anyOf",
   "nullable",
@@ -129,6 +134,10 @@ function isUnshapedObject(schema) {
 
 function broadSuccessResponseReason(schema) {
   const schemaName = refName(schema);
+  if (schemaName && EXACT_EMPTY_SUCCESS_RESPONSE_SCHEMAS.has(schemaName)) {
+    return null;
+  }
+
   const resolved = dereference(schema);
   if (isUnshapedObject(resolved)) {
     return schemaName

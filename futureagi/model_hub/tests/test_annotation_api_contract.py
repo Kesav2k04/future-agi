@@ -137,6 +137,13 @@ class TestAnnotationApiContract:
         assert not mixed.is_valid()
         assert "Provide exactly one" in str(mixed.errors)
 
+        legacy_item_alias = AddItemsSerializer(
+            data={"items": [{"sourceType": "trace", "sourceId": _uuid()}]}
+        )
+        assert not legacy_item_alias.is_valid()
+        assert "sourceType" in str(legacy_item_alias.errors)
+        assert "sourceId" in str(legacy_item_alias.errors)
+
     def test_action_request_serializers_document_real_payloads(self):
         expected_refs = {
             (
@@ -442,6 +449,12 @@ class TestAnnotationApiContract:
         invalid = SubmitAnnotationsSerializer(data={"annotations": [{"value": "yes"}]})
         assert not invalid.is_valid()
         assert "annotations" in invalid.errors
+
+        legacy_nested_alias = SubmitAnnotationsSerializer(
+            data={"annotations": [{"labelId": _uuid(), "value": "yes"}]}
+        )
+        assert not legacy_nested_alias.is_valid()
+        assert "labelId" in str(legacy_nested_alias.errors)
 
     def test_score_write_contracts_include_queue_context_and_notes(self):
         create = CreateScoreSerializer(

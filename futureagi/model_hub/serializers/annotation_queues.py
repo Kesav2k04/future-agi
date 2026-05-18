@@ -488,28 +488,26 @@ class SelectionSerializer(StrictInputSerializer):
     is_voice_call = serializers.BooleanField(required=False, default=False)
 
 
+class AddQueueItemSerializer(StrictInputSerializer):
+    source_type = serializers.ChoiceField(choices=sorted(SOURCE_TYPE_FK_MAP))
+    # Source ids are UUIDs for most source types, but observation spans use a
+    # string primary key, so this stays a string and the resolver validates it.
+    source_id = serializers.CharField(allow_blank=False)
+
+
 class AddItemsSerializer(StrictInputSerializer):
     """Accepts either the enumerated ``items`` payload or a filter-mode
     ``selection`` payload. Exactly one of the two is required."""
 
-    items = serializers.ListField(
-        child=serializers.DictField(),
+    items = AddQueueItemSerializer(
+        many=True,
         required=False,
-        allow_empty=False,
     )
     selection = SelectionSerializer(required=False)
 
     def validate_items(self, value):
-        valid_types = set(SOURCE_TYPE_FK_MAP)
-        for item in value:
-            if "source_type" not in item or "source_id" not in item:
-                raise serializers.ValidationError(
-                    "Each item must have 'source_type' and 'source_id'."
-                )
-            if item["source_type"] not in valid_types:
-                raise serializers.ValidationError(
-                    f"Invalid source_type: {item['source_type']}"
-                )
+        if not value:
+            raise serializers.ValidationError("items must not be empty.")
         return value
 
     def validate(self, attrs):
@@ -1385,23 +1383,18 @@ class QueueItemReviewThreadSerializer(serializers.ModelSerializer):
         return obj.target_annotator.email if obj.target_annotator else None
 
 
+class SubmitAnnotationEntrySerializer(StrictInputSerializer):
+    label_id = serializers.UUIDField()
+    value = serializers.JSONField()
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+
 class SubmitAnnotationsSerializer(StrictInputSerializer):
-    annotations = serializers.ListField(
-        child=serializers.DictField(),
-        min_length=1,
-    )
+    annotations = SubmitAnnotationEntrySerializer(many=True, allow_empty=False)
     notes = serializers.CharField(required=False, allow_blank=True, default="")
     item_notes = serializers.CharField(
         required=False, allow_blank=True, allow_null=True, default=None
     )
-
-    def validate_annotations(self, value):
-        for ann in value:
-            if "label_id" not in ann or "value" not in ann:
-                raise serializers.ValidationError(
-                    "Each annotation must have 'label_id' and 'value'."
-                )
-        return value
 
 
 class QueueLabelDetailSerializer(serializers.ModelSerializer):

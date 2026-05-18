@@ -1415,6 +1415,21 @@ class TestAddItems:
             QueueItem.objects.filter(queue_id=queue, deleted=False).count() == 1
         )
 
+    def test_manual_mode_rejects_legacy_item_aliases(
+        self, auth_client, queue, dataset_with_rows
+    ):
+        _, rows = dataset_with_rows
+
+        resp = auth_client.post(
+            _add_items_url(queue),
+            {"items": [{"sourceType": "dataset_row", "sourceId": str(rows[0].id)}]},
+            format="json",
+        )
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert "sourceType" in str(resp.data)
+        assert "sourceId" in str(resp.data)
+
     def test_filter_mode_traces(self, auth_client, queue, project, trace):
         """Use selection.mode=filter for trace source type."""
         payload = {
@@ -1668,6 +1683,28 @@ class TestSubmitAnnotations:
         )
         assert resp.status_code == 200
         assert _result(resp)["submitted"] == 0
+        assert Score.objects.filter(queue_item=item).count() == 0
+
+    def test_submit_rejects_legacy_label_alias(
+        self, auth_client, queue, dataset_with_rows, categorical_label
+    ):
+        item = self._setup(auth_client, queue, dataset_with_rows, categorical_label)
+
+        resp = auth_client.post(
+            _submit_url(queue, item.id),
+            {
+                "annotations": [
+                    {
+                        "labelId": str(categorical_label.id),
+                        "value": {"selected": ["Good"]},
+                    }
+                ]
+            },
+            format="json",
+        )
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert "labelId" in str(resp.data)
         assert Score.objects.filter(queue_item=item).count() == 0
 
     def test_submit_to_paused_queue_400(

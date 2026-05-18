@@ -4,7 +4,11 @@ from tracer.models.project import Project
 from tracer.models.project_version import ProjectVersion
 from tracer.models.trace import Trace
 from tracer.models.trace_session import TraceSession
-from tracer.serializers.filters import filter_list_field, filter_list_query_param_field
+from tracer.serializers.filters import (
+    filter_list_field,
+    filter_list_query_param_field,
+    parse_filter_list_payload,
+)
 from tracer.utils.helper import validate_filters_helper
 
 
@@ -41,6 +45,61 @@ class TraceExportSerializer(serializers.Serializer):
 
     def validate_filters(self, value):
         return validate_filters_helper(value)
+
+
+class CommaSeparatedStringListField(serializers.Field):
+    def to_internal_value(self, data):
+        if data in (None, ""):
+            return []
+        if isinstance(data, (list, tuple)):
+            items = data
+        else:
+            items = str(data).split(",")
+        return [str(item).strip() for item in items if str(item).strip()]
+
+    def to_representation(self, value):
+        return value or []
+
+
+class SortParamField(serializers.JSONField):
+    ALLOWED_KEYS = {"column_id", "direction"}
+    REQUIRED_KEYS = {"column_id"}
+
+    def to_internal_value(self, data):
+        value = super().to_internal_value(data)
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Sort item must be an object.")
+        missing = sorted(self.REQUIRED_KEYS - set(value))
+        if missing:
+            raise serializers.ValidationError(
+                f"Missing sort item keys: {', '.join(missing)}"
+            )
+        extra = sorted(set(value) - self.ALLOWED_KEYS)
+        if extra:
+            raise serializers.ValidationError(
+                f"Unknown sort item keys: {', '.join(extra)}"
+            )
+        direction = value.get("direction", "desc")
+        if direction not in ("asc", "desc"):
+            raise serializers.ValidationError("direction must be 'asc' or 'desc'.")
+        return {"column_id": value["column_id"], "direction": direction}
+
+
+class SortParamListQueryParamField(serializers.CharField):
+    def to_internal_value(self, data):
+        sort_params = parse_filter_list_payload(data)
+        return serializers.ListField(child=SortParamField()).run_validation(sort_params)
+
+
+class TraceListQuerySerializer(serializers.Serializer):
+    project_version_id = serializers.UUIDField(required=True)
+    trace_ids = CommaSeparatedStringListField(required=False, default=list)
+    filters = filter_list_query_param_field(required=False, default=list)
+    sort_params = SortParamListQueryParamField(required=False, default=list)
+    page_number = serializers.IntegerField(required=False, default=0, min_value=0)
+    page_size = serializers.IntegerField(
+        required=False, default=30, min_value=1, max_value=500
+    )
 
 
 class UsersQuerySerializer(serializers.Serializer):

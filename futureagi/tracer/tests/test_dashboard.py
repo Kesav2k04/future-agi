@@ -24,7 +24,7 @@ from tracer.serializers.dashboard import (
     DashboardSerializer,
     DashboardWidgetSerializer,
 )
-from tracer.views.dashboard import DashboardViewSet
+from tracer.views.dashboard import DashboardViewSet, _normalize_dashboard_query_filters
 from tracer.services.clickhouse.query_builders.dashboard import (
     AGGREGATIONS,
     SYSTEM_METRICS,
@@ -2443,6 +2443,80 @@ class TestDashboardQuerySerializer:
         serializer = DashboardQuerySerializer(data=data)
         assert serializer.is_valid(), serializer.errors
 
+    def test_canonical_filters_with_source_metadata_pass(self):
+        data = {
+            "workflow": "observability",
+            "project_ids": ["proj-1"],
+            "time_range": {"preset": "7D"},
+            "granularity": "day",
+            "metrics": [
+                {
+                    "name": "latency",
+                    "type": "system_metric",
+                    "aggregation": "avg",
+                    "filters": [
+                        {
+                            "column_id": "status",
+                            "source": "traces",
+                            "filter_config": {
+                                "filter_type": "text",
+                                "filter_op": "in",
+                                "filter_value": ["OK"],
+                                "col_type": "SYSTEM_METRIC",
+                            },
+                        }
+                    ],
+                }
+            ],
+            "filters": [
+                {
+                    "column_id": "latency",
+                    "source": "traces",
+                    "filter_config": {
+                        "filter_type": "number",
+                        "filter_op": "greater_than",
+                        "filter_value": 100,
+                        "col_type": "SYSTEM_METRIC",
+                    },
+                }
+            ],
+        }
+        serializer = DashboardQuerySerializer(data=data)
+
+        assert serializer.is_valid(), serializer.errors
+        normalized = _normalize_dashboard_query_filters(serializer.validated_data)
+        assert normalized["filters"][0] == {
+            "metric_type": "system_metric",
+            "metric_name": "latency",
+            "operator": "greater_than",
+            "value": 100,
+            "source": "traces",
+        }
+        assert normalized["metrics"][0]["filters"][0]["operator"] == "contains"
+
+    def test_legacy_dashboard_filter_shape_fails_global_serializer(self):
+        data = {
+            "workflow": "observability",
+            "project_ids": ["proj-1"],
+            "time_range": {"preset": "7D"},
+            "granularity": "day",
+            "metrics": [
+                {"name": "latency", "type": "system_metric", "aggregation": "avg"}
+            ],
+            "filters": [
+                {
+                    "metric_type": "system_metric",
+                    "metric_name": "latency",
+                    "operator": "greater_than",
+                    "value": 100,
+                }
+            ],
+        }
+        serializer = DashboardQuerySerializer(data=data)
+
+        assert not serializer.is_valid()
+        assert "filters" in serializer.errors
+
     def test_missing_metrics_fails(self):
         """Verify missing metrics field fails validation."""
         data = {
@@ -2528,9 +2602,9 @@ class TestFilterOperators:
             # Should produce a non-empty string
             assert len(result) > 0, f"Operator {op_name} produced empty SQL"
             # Should not contain un-replaced format placeholders
-            assert (
-                "{" not in result
-            ), f"Operator {op_name} has unresolved placeholder: {result}"
+            assert "{" not in result, (
+                f"Operator {op_name} has unresolved placeholder: {result}"
+            )
 
     def test_between_operator_requires_two_values(self, sample_query_config):
         """Verify between operator with non-list value is skipped."""
@@ -2668,6 +2742,8 @@ class TestDashboardQueryBuilderBase:
         all_buckets = [datetime(2025, 1, 1).isoformat()]
         metric_info = {"id": "duration", "name": "Duration", "aggregation": "avg"}
         rows = [{"time_bucket": datetime(2025, 1, 1), "value": 42.5}]
-        result = base._format_metric_result(metric_info, rows, all_buckets, {"duration": "s"})
+        result = base._format_metric_result(
+            metric_info, rows, all_buckets, {"duration": "s"}
+        )
         assert result["name"] == "Duration"
         assert result["unit"] == "s"

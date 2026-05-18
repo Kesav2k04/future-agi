@@ -42,6 +42,70 @@ from tracer.utils.sql_queries import SQL_query_handler
 
 logger = structlog.get_logger(__name__)
 
+DASHBOARD_FILTER_COL_TYPE_TO_METRIC_TYPE = {
+    "SYSTEM_METRIC": "system_metric",
+    "EVAL_METRIC": "eval_metric",
+    "ANNOTATION": "annotation_metric",
+    "SPAN_ATTRIBUTE": "custom_attribute",
+    "CUSTOM_COLUMN": "custom_column",
+}
+
+DASHBOARD_FILTER_OP_TO_INTERNAL = {
+    "equals": "equal_to",
+    "not_equals": "not_equal_to",
+    "in": "contains",
+    "not_in": "not_contains",
+    "contains": "str_contains",
+    "not_contains": "str_not_contains",
+    "is_not_null": "is_set",
+    "is_null": "is_not_set",
+}
+
+
+def _dashboard_filter_to_internal(filter_item):
+    config = filter_item.get("filter_config") if isinstance(filter_item, dict) else None
+    if not isinstance(config, dict):
+        return filter_item
+
+    col_type = config.get("col_type") or "SYSTEM_METRIC"
+    metric_type = DASHBOARD_FILTER_COL_TYPE_TO_METRIC_TYPE.get(
+        col_type, "system_metric"
+    )
+    filter_type = config.get("filter_type") or "text"
+    internal = {
+        "metric_type": metric_type,
+        "metric_name": filter_item.get("column_id"),
+        "operator": DASHBOARD_FILTER_OP_TO_INTERNAL.get(
+            config.get("filter_op"), config.get("filter_op")
+        ),
+        "value": config.get("filter_value"),
+        "source": filter_item.get("source", "traces"),
+    }
+    if filter_item.get("output_type"):
+        internal["output_type"] = filter_item["output_type"]
+    if metric_type == "custom_attribute":
+        internal["attribute_type"] = "number" if filter_type == "number" else "string"
+    return internal
+
+
+def _normalize_dashboard_query_filters(query_config):
+    """Translate canonical API filters to the dashboard builders' internal shape."""
+    query_config = dict(query_config)
+    query_config["filters"] = [
+        _dashboard_filter_to_internal(filter_item)
+        for filter_item in query_config.get("filters", [])
+    ]
+    metrics = []
+    for metric in query_config.get("metrics", []):
+        metric_copy = dict(metric)
+        metric_copy["filters"] = [
+            _dashboard_filter_to_internal(filter_item)
+            for filter_item in metric_copy.get("filters", [])
+        ]
+        metrics.append(metric_copy)
+    query_config["metrics"] = metrics
+    return query_config
+
 
 def _customer_attribute_metric_aliases():
     from tracer.utils.filters import FilterEngine
@@ -114,18 +178,24 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
         )
 
     def _format_merged_metric_results(self, query_config, all_metric_results):
-        formatter = DatasetQueryBuilder({**query_config, "metrics": query_config["metrics"]})
+        formatter = DatasetQueryBuilder(
+            {**query_config, "metrics": query_config["metrics"]}
+        )
         start_date, end_date = formatter.parse_time_range()
         from tracer.services.clickhouse.query_builders.dashboard_base import (
             _generate_time_buckets,
         )
 
-        all_buckets = _generate_time_buckets(start_date, end_date, formatter.granularity)
+        all_buckets = _generate_time_buckets(
+            start_date, end_date, formatter.granularity
+        )
         unit_map = {**METRIC_UNITS, **DATASET_METRIC_UNITS, **SIMULATION_METRIC_UNITS}
         formatted_metrics = []
         for metric_info, rows in all_metric_results:
             formatted_metrics.append(
-                formatter._format_metric_result(metric_info, rows, all_buckets, unit_map)
+                formatter._format_metric_result(
+                    metric_info, rows, all_buckets, unit_map
+                )
             )
 
         return {
@@ -158,9 +228,9 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
     def _run_simulation_analytics_queries(self, analytics, simulation_config):
         return self._run_simulation_queries(
             simulation_config,
-            lambda sql, params: analytics.execute_ch_query(
-                sql, params, timeout_ms=10000
-            ).data,
+            lambda sql, params: (
+                analytics.execute_ch_query(sql, params, timeout_ms=10000).data
+            ),
         )
 
     def _run_simulation_clickhouse_queries(self, ch_client, simulation_config):
@@ -281,7 +351,7 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
         serializer = DashboardQuerySerializer(data=request.data)
         if not serializer.is_valid():
             return self._gm.bad_request(f"Invalid query config: {serializer.errors}")
-        query_config = serializer.validated_data
+        query_config = _normalize_dashboard_query_filters(serializer.validated_data)
 
         # Backward compat: infer source from workflow when missing
         workflow = query_config.get("workflow")
@@ -294,7 +364,9 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                 else:
                     m["source"] = "traces"
 
-        query_config["metrics"] = self._normalize_metric_sources(query_config["metrics"])
+        query_config["metrics"] = self._normalize_metric_sources(
+            query_config["metrics"]
+        )
 
         # Partition metrics by source
         # "both" source metrics (e.g. annotations) go to trace_metrics
@@ -855,7 +927,9 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                         CustomEvalConfig.objects.filter(
                             project_id__in=project_ids,
                             deleted=False,
-                        ).values_list("eval_template_id", flat=True).distinct()
+                        )
+                        .values_list("eval_template_id", flat=True)
+                        .distinct()
                     )
                 elif used_template_ids and filter_by_project:
                     # CH returned CustomEvalConfig IDs; resolve to EvalTemplate
@@ -1444,7 +1518,10 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
             )
 
             for metric in metrics:
-                if metric.get("source") == "simulation" and metric.get("type") == "string":
+                if (
+                    metric.get("source") == "simulation"
+                    and metric.get("type") == "string"
+                ):
                     metric["allowed_aggregations"] = ["count", "count_distinct"]
 
             metrics = _suppress_customer_attribute_metric_aliases(metrics)
@@ -1963,9 +2040,7 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                         ).values_list("id", "user_id")
                     )
                     name_map = {str(k): v for k, v in name_map.items()}
-                    values = [
-                        {"value": v, "label": name_map.get(v, v)} for v in values
-                    ]
+                    values = [{"value": v, "label": name_map.get(v, v)} for v in values]
                 else:
                     values = [{"value": v, "label": v} for v in values]
 
@@ -2008,14 +2083,10 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                     for opt in settings.get("options", []):
                         if isinstance(opt, dict):
                             option_value = (
-                                opt.get("value")
-                                or opt.get("label")
-                                or opt.get("name")
+                                opt.get("value") or opt.get("label") or opt.get("name")
                             )
                             option_label = (
-                                opt.get("label")
-                                or opt.get("name")
-                                or option_value
+                                opt.get("label") or opt.get("name") or option_value
                             )
                             add_value_option(
                                 values, seen_values, option_value, option_label
@@ -2543,13 +2614,17 @@ class DashboardWidgetViewSet(BaseModelViewSetMixin, ModelViewSet):
 
         Routes each metric to the appropriate builder based on source.
         """
+        query_config = _normalize_dashboard_query_filters(query_config)
+
         # Infer source from workflow for backward compat
         workflow = query_config.get("workflow", "")
         for m in query_config.get("metrics", []):
             if "source" not in m:
                 m["source"] = "datasets" if workflow == "dataset" else "traces"
 
-        query_config["metrics"] = self._normalize_metric_sources(query_config["metrics"])
+        query_config["metrics"] = self._normalize_metric_sources(
+            query_config["metrics"]
+        )
 
         trace_metrics = [
             m for m in query_config["metrics"] if m.get("source") == "traces"

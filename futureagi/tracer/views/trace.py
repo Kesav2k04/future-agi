@@ -60,6 +60,7 @@ from tracer.serializers.observation_span import (
     SpanExportSerializer,
 )
 from tracer.serializers.trace import (
+    TraceListQuerySerializer,
     TraceExportSerializer,
     TraceSerializer,
     UserCodeExampleResponseSerializer,
@@ -1543,17 +1544,19 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             traceback.print_exc()
             return self._gm.bad_request(f"Failed to fetch evaluation names: {str(e)}")
 
+    @swagger_auto_schema(query_serializer=TraceListQuerySerializer)
     @action(detail=False, methods=["get"])
     def list_traces(self, request, *args, **kwargs):
         """
         List traces filtered by project ID and project version ID with optimized queries.
         """
         try:
-            project_version_id = self.request.query_params.get(
-                "project_version_id"
-            ) or self.request.query_params.get("projectVersionId")
-            if not project_version_id:
-                raise Exception("Project version id is required")
+            query_serializer = TraceListQuerySerializer(data=request.query_params)
+            if not query_serializer.is_valid():
+                return self._gm.bad_request(query_serializer.errors)
+
+            query_params = query_serializer.validated_data
+            project_version_id = str(query_params["project_version_id"])
             project_version = None
             try:
                 project_version = ProjectVersion.objects.get(
@@ -1569,7 +1572,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             if analytics.should_use_clickhouse(QueryType.TRACE_LIST):
                 try:
                     return self._list_traces_clickhouse(
-                        request, project_version_id, analytics
+                        request, project_version_id, analytics, query_params
                     )
                 except Exception as e:
                     logger.warning(
@@ -1581,11 +1584,8 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             base_query = Trace.objects.filter(project_version_id=project_version_id)
 
             # Add trace_ids filter if provided
-            trace_ids = self.request.query_params.get(
-                "trace_ids"
-            ) or self.request.query_params.get("traceIds")
+            trace_ids = query_params["trace_ids"]
             if trace_ids:
-                trace_ids = trace_ids.split(",")
                 if len(trace_ids) > 0:
                     base_query = base_query.filter(id__in=trace_ids)
 
@@ -1784,9 +1784,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             )
 
             # Apply filters - combine all filter conditions for better performance
-            filters = self.request.query_params.get("filters", [])
-            if filters:
-                filters = json.loads(filters)
+            filters = query_params["filters"]
 
             if filters:
                 # Combine all filter conditions into a single Q object
@@ -1869,12 +1867,8 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             total_count = base_query.count()
 
             # Apply pagination
-            page_number = int(self.request.query_params.get("page_number", 0)) or int(
-                self.request.query_params.get("pageNumber", 0)
-            )
-            page_size = int(self.request.query_params.get("page_size", 30)) or int(
-                self.request.query_params.get("pageSize", 30)
-            )
+            page_number = query_params["page_number"]
+            page_size = query_params["page_size"]
             start = page_number * page_size
             base_query = base_query[start : start + page_size]
 
@@ -5423,24 +5417,16 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
 
         return Response(response_data)
 
-    def _list_traces_clickhouse(self, request, project_version_id, analytics):
+    def _list_traces_clickhouse(
+        self, request, project_version_id, analytics, query_params
+    ):
         """List traces using ClickHouse backend."""
         from tracer.services.clickhouse.query_builders import TraceListQueryBuilder
 
-        filters = request.query_params.get("filters", "[]")
-        sort_params = request.query_params.get(
-            "sort_params", "[]"
-        ) or request.query_params.get("sortParams", "[]")
-
-        import json
-
-        filters = json.loads(filters) if isinstance(filters, str) else filters
-        sort_params = (
-            json.loads(sort_params) if isinstance(sort_params, str) else sort_params
-        )
-
-        page_number = int(request.query_params.get("page_number", 0))
-        page_size = int(request.query_params.get("page_size", 30))
+        filters = query_params["filters"]
+        sort_params = query_params["sort_params"]
+        page_number = query_params["page_number"]
+        page_size = query_params["page_size"]
 
         # Get project_id from project_version
         project_version = ProjectVersion.objects.get(

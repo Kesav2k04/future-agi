@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, timedelta
 
 import structlog
@@ -6,6 +5,7 @@ from django.db import models
 from django.db.models import Count
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
@@ -30,7 +30,15 @@ from tracer.models.trace import Trace
 from tracer.models.trace_scan import TraceScanConfig
 from tracer.models.trace_session import TraceSession
 from tracer.queries.error_analysis import TraceErrorAnalysisDB
-from tracer.serializers.project import ProjectNameUpdateSerializer, ProjectSerializer
+from tracer.serializers.project import (
+    ProjectGraphDataQuerySerializer,
+    ProjectNameUpdateSerializer,
+    ProjectSerializer,
+    ProjectUserGraphDataQuerySerializer,
+    ProjectUserGraphDataRequestSerializer,
+    ProjectUserMetricsRequestSerializer,
+    ProjectUsersAggregateGraphDataRequestSerializer,
+)
 from tracer.utils.constants import (
     INSTALLATION_GUIDE,
     INSTRUMENTORS,
@@ -587,24 +595,19 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
             logger.exception(f"Error updating project tags: {e}")
             return self._gm.bad_request("Error updating tags")
 
+    @swagger_auto_schema(query_serializer=ProjectGraphDataQuerySerializer)
     @action(detail=False, methods=["get"])
     def get_graph_data(self, request, *args, **kwargs):
-        project_id = self.request.query_params.get(
-            "project_id"
-        ) or self.request.query_params.get("projectId")
-        if not project_id:
-            return self._gm.bad_request("Project id is required.")
+        query_serializer = ProjectGraphDataQuerySerializer(data=request.query_params)
+        if not query_serializer.is_valid():
+            return self._gm.bad_request(query_serializer.errors)
+        query_params = query_serializer.validated_data
+        project_id = str(query_params["project_id"])
 
         try:
-            # Get interval and filters from request
-            interval = self.request.query_params.get("interval", "hour")
-            filters = self.request.query_params.get("filters", [])
-            if filters:
-                filters = json.loads(filters)
-
             response_data = get_all_system_metrics(
-                interval=interval,
-                filters=filters,
+                interval=query_params["interval"],
+                filters=query_params["filters"],
                 property="average",
                 system_metric_filters={"project_id": project_id},
             )
@@ -620,16 +623,17 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
             logger.exception(f"Error in get_graph_data: {str(e)}")
             return self._gm.bad_request("Error fetching graph data")
 
+    @swagger_auto_schema(request_body=ProjectUserMetricsRequestSerializer)
     @action(detail=False, methods=["post"])
     def get_user_metrics(self, request, *args, **kwargs):
         try:
-            end_user_id = self.request.data.get("end_user_id")
-            filters = request.data.get("filters", [])
-            project_id = request.data.get("project_id")
-            if not project_id:
-                return self._gm.bad_request("Project id is required.")
-            if not end_user_id:
-                return self._gm.bad_request("End User id is required.")
+            body_serializer = ProjectUserMetricsRequestSerializer(data=request.data)
+            if not body_serializer.is_valid():
+                return self._gm.bad_request(body_serializer.errors)
+            body = body_serializer.validated_data
+            end_user_id = str(body["end_user_id"])
+            project_id = str(body["project_id"])
+            filters = body["filters"]
             try:
                 end_user = EndUser.objects.get(
                     id=end_user_id,
@@ -703,6 +707,7 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
             logger.exception(f"ERROR IN RETRIEVING USER METRICS: {e}")
             return self._gm.internal_server_error_response()
 
+    @swagger_auto_schema(request_body=ProjectUsersAggregateGraphDataRequestSerializer)
     @action(detail=False, methods=["post"])
     def get_users_aggregate_graph_data(self, request, *args, **kwargs):
         """
@@ -712,13 +717,16 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
         All metrics are aggregated at the user level.
         """
         try:
-            project_id = request.data.get("project_id")
-            if not project_id:
-                return self._gm.bad_request("project_id is required")
-
-            filters = request.data.get("filters", [])
-            interval = request.data.get("interval", "day")
-            req_data_config = request.data.get("req_data_config", {})
+            body_serializer = ProjectUsersAggregateGraphDataRequestSerializer(
+                data=request.data
+            )
+            if not body_serializer.is_valid():
+                return self._gm.bad_request(body_serializer.errors)
+            body = body_serializer.validated_data
+            project_id = str(body["project_id"])
+            filters = body["filters"]
+            interval = body["interval"]
+            req_data_config = body["req_data_config"]
             metric_type = req_data_config.get("type", "SYSTEM_METRIC")
             metric_id = req_data_config.get("id", "active_users")
 
@@ -796,7 +804,7 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                     graph_data = get_eval_graph_data(
                         interval=interval,
                         filters=filters,
-                        property=request.data.get("property", "average"),
+                        property=body["property"],
                         observe_type="trace",
                         req_data_config=req_data_config,
                         eval_logger_filters={"trace_ids_queryset": user_trace_qs},
@@ -805,7 +813,7 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                     graph_data = get_annotation_graph_data(
                         interval=interval,
                         filters=filters,
-                        property=request.data.get("property", "average"),
+                        property=body["property"],
                         observe_type="trace",
                         req_data_config=req_data_config,
                         annotation_logger_filters={"trace_ids_queryset": user_trace_qs},
@@ -820,15 +828,25 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
             logger.exception(f"Error in get_users_aggregate_graph_data: {str(e)}")
             return self._gm.bad_request(f"Error fetching user graph data: {str(e)}")
 
+    @swagger_auto_schema(
+        query_serializer=ProjectUserGraphDataQuerySerializer,
+        request_body=ProjectUserGraphDataRequestSerializer,
+    )
     @action(detail=False, methods=["post"])
     def get_user_graph_data(self, request, *args, **kwargs):
         try:
-            project_id = request.query_params.get("project_id")
-            if not project_id:
-                return self._gm.bad_request("Project id is required.")
-            end_user_id = request.query_params.get("end_user_id")
-            if not end_user_id:
-                return self._gm.bad_request("End User id is required.")
+            query_serializer = ProjectUserGraphDataQuerySerializer(
+                data=request.query_params
+            )
+            if not query_serializer.is_valid():
+                return self._gm.bad_request(query_serializer.errors)
+            body_serializer = ProjectUserGraphDataRequestSerializer(data=request.data)
+            if not body_serializer.is_valid():
+                return self._gm.bad_request(body_serializer.errors)
+            query_params = query_serializer.validated_data
+            body = body_serializer.validated_data
+            project_id = str(query_params["project_id"])
+            end_user_id = str(query_params["end_user_id"])
             try:
                 end_user_id = str(
                     EndUser.objects.get(
@@ -842,9 +860,8 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                 return self._gm.bad_request("User not found for the given end_user_id")
 
             try:
-                # Get interval and filters from request
-                interval = request.data.get("interval", "hour")
-                filters = request.data.get("filters", [])
+                interval = body["interval"]
+                filters = body["filters"]
                 # Get spans with a single efficient query
                 spans = (
                     ObservationSpan.objects.filter(

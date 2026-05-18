@@ -120,6 +120,7 @@
       "ANNOTATION",
       "ANNOTATION_RUNS",
       "VOICE_ANNOTATION",
+      "CUSTOM_COLUMN",
       "NORMAL",
       "PROMPT_METRIC",
       "PROMPT_METRIC_RUNS"
@@ -129,7 +130,8 @@
       "system": "SYSTEM_METRIC",
       "eval": "EVAL_METRIC",
       "evaluation": "EVAL_METRIC",
-      "annotation": "ANNOTATION"
+      "annotation": "ANNOTATION",
+      "custom_column": "CUSTOM_COLUMN"
     }
   }
 }

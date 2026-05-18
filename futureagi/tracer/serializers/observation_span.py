@@ -1,3 +1,5 @@
+import json
+
 from rest_framework import serializers
 
 from tracer.constants.provider_logos import PROVIDER_LOGOS
@@ -7,6 +9,44 @@ from tracer.models.project_version import ProjectVersion
 from tracer.models.trace import Trace
 from tracer.serializers.filters import filter_list_field
 from tracer.utils.helper import validate_filters_helper
+
+
+class ProjectScopeQueryParamField(serializers.CharField):
+    class Meta:
+        swagger_schema_fields = {
+            "type": "string",
+            "description": 'JSON-encoded object with canonical key: {"project_id": "<uuid>"}.',
+        }
+
+    def to_internal_value(self, data):
+        value = data
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError(
+                    "filters must be valid JSON."
+                ) from exc
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("filters must be an object.")
+        extra_keys = sorted(set(value) - {"project_id"})
+        if extra_keys:
+            raise serializers.ValidationError(
+                f"Unknown filter keys: {', '.join(extra_keys)}"
+            )
+        project_id = value.get("project_id")
+        if not project_id:
+            raise serializers.ValidationError("project_id is required.")
+        return {"project_id": str(serializers.UUIDField().run_validation(project_id))}
+
+
+class ObservationAttributeListQuerySerializer(serializers.Serializer):
+    filters = ProjectScopeQueryParamField()
+    row_type = serializers.ChoiceField(
+        choices=["spans", "traces", "sessions", "voiceCalls"],
+        required=False,
+        default="spans",
+    )
 
 
 class ObservationSpanSerializer(serializers.ModelSerializer):

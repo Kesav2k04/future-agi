@@ -44,6 +44,14 @@ FILTER_ITEM_SCHEMA = {
             "type": "string",
             "description": "Optional UI label for chips and saved views.",
         },
+        "source": {
+            "type": "string",
+            "description": "Optional source surface for mixed-source filters, for example traces, datasets, or simulation.",
+        },
+        "output_type": {
+            "type": "string",
+            "description": "Optional metric output type metadata used by eval and annotation filters.",
+        },
         "filter_config": FILTER_CONFIG_SCHEMA,
     },
     "required": ["column_id", "filter_config"],

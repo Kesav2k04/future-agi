@@ -34,6 +34,7 @@ from model_hub.serializers.contracts import (
     OptimizeDatasetKnowledgeBaseDetailResponseSerializer,
     OptimizeDatasetKnowledgeBaseListResponseSerializer,
     OptimizeDatasetKnowledgeBaseRequestSerializer,
+    OptimizeDatasetListQuerySerializer,
     OptimizeDatasetMutationRequestSerializer,
     OptimizeDatasetOperationRequestSerializer,
     OptimizeDatasetPaginatedResponseSerializer,
@@ -100,27 +101,35 @@ OPTIMIZE_DATASET_DYNAMIC_ROWS_RESPONSE_SCHEMA = openapi.Schema(
 
 class OptimizedDatasetView(APIView):
     permission_classes = [IsAuthenticated]
+    _gm = GeneralMethods()
 
     @swagger_auto_schema(
+        query_serializer=OptimizeDatasetListQuerySerializer,
         responses={
             200: OptimizeDatasetPaginatedResponseSerializer,
             **MODEL_HUB_ERROR_RESPONSES,
-        }
+        },
     )
     def get(self, request, model_id, *args, **kwarg):
         try:
-            # sort_by = request.query_params.get("sort_by")
-            filters = request.query_params.get("filters", [])
+            query_serializer = OptimizeDatasetListQuerySerializer(
+                data=request.query_params
+            )
+            if not query_serializer.is_valid():
+                return self._gm.bad_request(query_serializer.errors)
+            filters = query_serializer.validated_data["filters"]
 
-            model = AIModel.objects.filter(id=model_id)
+            model = AIModel.objects.only("id").get(id=model_id)
 
-            filter_dict = {"model": model[0]}
-            for filter in filters:
-                if filter["operator"] in ["between"]:
-                    filter_dict[f'{filter["key"]}__gte'] = filter["value"][0]
-                    filter_dict[f'{filter["key"]}__lte'] = filter["value"][1]
-                elif filter["dataType"] in ["equal", ""]:
-                    filter_dict[f'{filter["key"]}'] = filter["value"][0]
+            filter_dict = {"model": model}
+            for filter_item in filters:
+                filter_key = filter_item["key"]
+                filter_value = filter_item["value"]
+                if filter_item["operator"] == "between":
+                    filter_dict[f"{filter_key}__gte"] = filter_value[0]
+                    filter_dict[f"{filter_key}__lte"] = filter_value[1]
+                else:
+                    filter_dict[filter_key] = filter_value[0]
 
             optimized_dataset_queryset = OptimizeDataset.objects.filter(**filter_dict)
 
@@ -133,6 +142,8 @@ class OptimizedDatasetView(APIView):
             serializer = OptimizeDatasetSerializer(result_page, many=True)
             return paginator.get_paginated_response(serializer.data)
 
+        except AIModel.DoesNotExist:
+            raise NotFound("AI model not found.")
         except NotFound:
             raise
         except Exception as e:
@@ -731,12 +742,12 @@ class TemplateResultsView(APIView):
 
         for i in range(num_templates):
             score_columns.append(
-                f"arrayElement(EvalResults.Value, indexOf(EvalResults.Key, 'optimized_{optimization_id}_{metric_id}_{i}_score')) AS temp{i+1}_score"
+                f"arrayElement(EvalResults.Value, indexOf(EvalResults.Key, 'optimized_{optimization_id}_{metric_id}_{i}_score')) AS temp{i + 1}_score"
             )
             score_conditions.append(
-                f"if(isNotNull(temp{i+1}_score) AND temp{i+1}_score != '', toFloat32(temp{i+1}_score), -1) AS t{i+1}_score"
+                f"if(isNotNull(temp{i + 1}_score) AND temp{i + 1}_score != '', toFloat32(temp{i + 1}_score), -1) AS t{i + 1}_score"
             )
-            avg_scores.append(f"AVG(t{i+1}_score) AS avg_t{i+1}_score")
+            avg_scores.append(f"AVG(t{i + 1}_score) AS avg_t{i + 1}_score")
 
         # Include the original score column and condition
         score_columns.append(
@@ -750,17 +761,17 @@ class TemplateResultsView(APIView):
         # Construct the SQL query dynamically
         query = f"""
         WITH
-            {', '.join(score_columns)},
-            {', '.join(score_conditions)}
+            {", ".join(score_columns)},
+            {", ".join(score_conditions)}
         SELECT
-            {', '.join(avg_scores)}
+            {", ".join(avg_scores)}
         FROM events
         WHERE AIModel = '{model_id}'
         AND ModelVersion = '{version}'
         AND Environment = {environment}
         AND has(Features.Key, 'node_id')
         AND deleted = 0
-        AND {' AND '.join([f"t{i+1}_score != -1" for i in range(num_templates)])}
+        AND {" AND ".join([f"t{i + 1}_score != -1" for i in range(num_templates)])}
         AND og_score != -1
         GROUP BY AIModel
         """
@@ -1325,7 +1336,7 @@ class OptimizeDatasetPromptExploreColumnConfig(APIView):
                     # Add the new metric if it doesn't exist in the input array
                     existing_cols.append(
                         {
-                            "label": f"(T{idx+1}) {metric.name}",
+                            "label": f"(T{idx + 1}) {metric.name}",
                             "value": f"{str(metric.id)}-{idx}",
                             "enabled": True,
                         }

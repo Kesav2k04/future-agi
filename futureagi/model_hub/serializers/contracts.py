@@ -1,5 +1,10 @@
 from rest_framework import serializers
 
+from tracer.serializers.filters import (
+    filter_list_query_param_field,
+    parse_filter_list_payload,
+)
+
 from model_hub.serializers.optimize_dataset import (
     OptimizeDatasetKbSerializer,
     OptimizeDatasetSerializer,
@@ -214,7 +219,9 @@ class CustomAIModelDefaultMetricRequestSerializer(serializers.Serializer):
 
 
 class CustomAIModelBaselineRequestSerializer(serializers.Serializer):
-    environment = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    environment = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     model_version = serializers.CharField(
         required=False, allow_blank=True, allow_null=True
     )
@@ -433,6 +440,16 @@ class PromptMetricsResponseSerializer(serializers.Serializer):
     result = PromptMetricsResultSerializer()
 
 
+class PromptMetricsQuerySerializer(serializers.Serializer):
+    prompt_template_id = serializers.UUIDField()
+    filters = filter_list_query_param_field(required=False, default=list)
+    search_term = serializers.CharField(required=False, allow_blank=True, default="")
+    page_number = serializers.IntegerField(required=False, default=0, min_value=0)
+    page_size = serializers.IntegerField(
+        required=False, default=10, min_value=1, max_value=100
+    )
+
+
 class PromptMetricsEmptyScreenResultSerializer(serializers.Serializer):
     python = serializers.CharField()
     typescript = serializers.CharField()
@@ -476,10 +493,16 @@ class RunPromptColumnConfigResponseSerializer(serializers.Serializer):
 class RunPromptToolOptionSerializer(serializers.Serializer):
     id = serializers.CharField()
     name = serializers.CharField()
-    yaml_config = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    yaml_config = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
     config = serializers.JSONField(required=False)
-    config_type = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    description = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    config_type = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
+    description = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
 
 
 class RunPromptChoiceOptionSerializer(serializers.Serializer):
@@ -662,9 +685,7 @@ class LegacyKnowledgeBaseTableRowSerializer(serializers.Serializer):
 
 
 class LegacyKnowledgeBaseTableResultSerializer(serializers.Serializer):
-    column_config = LegacyKnowledgeBaseTableColumnSerializer(
-        many=True, required=False
-    )
+    column_config = LegacyKnowledgeBaseTableColumnSerializer(many=True, required=False)
     table_data = LegacyKnowledgeBaseTableRowSerializer(many=True, required=False)
     total_rows = serializers.IntegerField(required=False)
 
@@ -726,6 +747,44 @@ class OptimizeDatasetMutationRequestSerializer(serializers.Serializer):
     )
     prompt = serializers.CharField(required=False, allow_blank=True)
     variables = serializers.JSONField(required=False)
+
+
+class OptimizeDatasetFilterSerializer(serializers.Serializer):
+    key = serializers.ChoiceField(
+        choices=[
+            "name",
+            "optimize_type",
+            "environment",
+            "version",
+            "status",
+            "created_at",
+            "updated_at",
+            "start_date",
+            "end_date",
+        ]
+    )
+    operator = serializers.ChoiceField(choices=["equals", "between"])
+    value = serializers.ListField(child=serializers.JSONField(), allow_empty=False)
+    data_type = serializers.ChoiceField(
+        choices=["string", "number", "date", "datetime"], required=False
+    )
+
+    def validate(self, data):
+        if data["operator"] == "between" and len(data["value"]) != 2:
+            raise serializers.ValidationError("between requires exactly two values.")
+        return data
+
+
+class OptimizeDatasetFilterListQueryParamField(serializers.CharField):
+    def to_internal_value(self, data):
+        filters = parse_filter_list_payload(data)
+        return serializers.ListField(
+            child=OptimizeDatasetFilterSerializer()
+        ).run_validation(filters)
+
+
+class OptimizeDatasetListQuerySerializer(serializers.Serializer):
+    filters = OptimizeDatasetFilterListQueryParamField(required=False, default=list)
 
 
 class OptimizeDatasetKnowledgeBaseRequestSerializer(serializers.Serializer):
@@ -1030,24 +1089,32 @@ class ColumnConfigResultSerializer(serializers.Serializer):
     name = serializers.CharField()
     template = serializers.UUIDField(required=False)
     template_config = serializers.JSONField(required=False)
-    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    description = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     config = serializers.JSONField(required=False)
     status = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     prompt_config = serializers.JSONField(required=False)
     model = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     messages = serializers.JSONField(required=False)
-    output_format = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    output_format = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     temperature = serializers.FloatField(required=False, allow_null=True)
     frequency_penalty = serializers.FloatField(required=False, allow_null=True)
     presence_penalty = serializers.FloatField(required=False, allow_null=True)
     max_tokens = serializers.IntegerField(required=False, allow_null=True)
     top_p = serializers.FloatField(required=False, allow_null=True)
     response_format = serializers.JSONField(required=False)
-    tool_choice = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    tool_choice = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     tools = serializers.ListField(child=serializers.CharField(), required=False)
 
-    optimize_type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    optimize_type = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     optimized_k_prompts = serializers.JSONField(required=False)
     model_config = serializers.JSONField(required=False)
     user_eval_template_ids = serializers.ListField(
@@ -1338,10 +1405,14 @@ class EvalTemplateCreateResponseSerializer(serializers.Serializer):
 class EvalTemplateDetailResponseResultSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     name = serializers.CharField()
-    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    description = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     template_type = serializers.CharField()
     eval_type = serializers.CharField()
-    instructions = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    instructions = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     model = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     output_type = serializers.CharField()
     pass_threshold = serializers.FloatField()
@@ -1694,7 +1765,9 @@ class EvalTemplateCreateV2RequestSerializer(serializers.Serializer):
     )
     pass_threshold = serializers.FloatField(required=False, min_value=0, max_value=1)
     choice_scores = serializers.JSONField(required=False, allow_null=True)
-    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    description = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     tags = serializers.ListField(
         child=serializers.CharField(),
         required=False,
@@ -1765,7 +1838,9 @@ class EvalTemplateUpdateV2RequestSerializer(serializers.Serializer):
     )
     choice_scores = serializers.JSONField(required=False, allow_null=True)
     multi_choice = serializers.BooleanField(required=False, allow_null=True)
-    description = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    description = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
     tags = serializers.ListField(
         child=serializers.CharField(),
         required=False,
@@ -1862,7 +1937,9 @@ class EvalTemplateVersionRestoreResponseSerializer(serializers.Serializer):
 
 class CompositeEvalCreateRequestSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
-    description = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    description = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
     tags = serializers.ListField(
         child=serializers.CharField(),
         required=False,
@@ -1886,7 +1963,9 @@ class CompositeEvalCreateRequestSerializer(serializers.Serializer):
 
 class CompositeEvalUpdateRequestSerializer(serializers.Serializer):
     name = serializers.CharField(required=False, allow_null=True, max_length=255)
-    description = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    description = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
     tags = serializers.ListField(
         child=serializers.CharField(),
         required=False,
@@ -1975,7 +2054,9 @@ class CompositeEvalCreateResponseSerializer(serializers.Serializer):
 class CompositeEvalDetailResponseResultSerializer(
     CompositeEvalCreateResponseResultSerializer
 ):
-    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    description = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     tags = serializers.ListField(child=serializers.CharField(), required=False)
     created_at = serializers.CharField(required=False, allow_blank=True)
     updated_at = serializers.CharField(required=False, allow_blank=True)
@@ -1994,7 +2075,9 @@ class CompositeChildResultSerializer(serializers.Serializer):
     score = serializers.FloatField(required=False, allow_null=True)
     output = serializers.JSONField(required=False, allow_null=True)
     reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    output_type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    output_type = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     status = serializers.CharField()
     error = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     log_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -2003,7 +2086,9 @@ class CompositeChildResultSerializer(serializers.Serializer):
 
 
 class CompositeEvalExecuteResponseResultSerializer(serializers.Serializer):
-    composite_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    composite_id = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
     composite_name = serializers.CharField()
     aggregation_enabled = serializers.BooleanField()
     aggregation_function = serializers.CharField(
@@ -2019,7 +2104,9 @@ class CompositeEvalExecuteResponseResultSerializer(serializers.Serializer):
     total_children = serializers.IntegerField()
     completed_children = serializers.IntegerField()
     failed_children = serializers.IntegerField()
-    evaluation_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    evaluation_id = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
 
 
 class CompositeEvalExecuteResponseSerializer(serializers.Serializer):

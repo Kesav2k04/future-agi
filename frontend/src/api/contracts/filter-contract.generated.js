@@ -138,6 +138,7 @@ export const FILTER_CONTRACT = Object.freeze({
       "ANNOTATION",
       "ANNOTATION_RUNS",
       "VOICE_ANNOTATION",
+      "CUSTOM_COLUMN",
       "NORMAL",
       "PROMPT_METRIC",
       "PROMPT_METRIC_RUNS",
@@ -148,6 +149,7 @@ export const FILTER_CONTRACT = Object.freeze({
       eval: "EVAL_METRIC",
       evaluation: "EVAL_METRIC",
       annotation: "ANNOTATION",
+      custom_column: "CUSTOM_COLUMN",
     },
   },
 });

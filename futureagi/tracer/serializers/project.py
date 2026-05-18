@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from tracer.models.project import Project
+from tracer.serializers.filters import filter_list_field, filter_list_query_param_field
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -35,3 +36,38 @@ class ProjectVersionExportSerializer(serializers.Serializer):
     runs_ids = serializers.ListField(
         child=serializers.UUIDField(), required=False, allow_null=True
     )
+
+
+class ProjectGraphDataQuerySerializer(serializers.Serializer):
+    project_id = serializers.UUIDField()
+    interval = serializers.CharField(required=False, default="hour", allow_blank=False)
+    filters = filter_list_query_param_field(required=False, default=list)
+
+
+class ProjectUserMetricsRequestSerializer(serializers.Serializer):
+    end_user_id = serializers.UUIDField()
+    project_id = serializers.UUIDField()
+    interval = serializers.CharField(required=False, default="day", allow_blank=False)
+    filters = filter_list_field(required=False, default=list)
+
+
+class ProjectUsersAggregateGraphDataRequestSerializer(serializers.Serializer):
+    project_id = serializers.UUIDField()
+    interval = serializers.CharField(required=False, default="day", allow_blank=False)
+    filters = filter_list_field(required=False, default=list)
+    property = serializers.CharField(
+        required=False, default="average", allow_blank=False
+    )
+    req_data_config = serializers.DictField(
+        child=serializers.JSONField(), required=False, default=dict
+    )
+
+
+class ProjectUserGraphDataQuerySerializer(serializers.Serializer):
+    project_id = serializers.UUIDField()
+    end_user_id = serializers.UUIDField()
+
+
+class ProjectUserGraphDataRequestSerializer(serializers.Serializer):
+    interval = serializers.CharField(required=False, default="hour", allow_blank=False)
+    filters = filter_list_field(required=False, default=list)

@@ -5,7 +5,6 @@ import {
   Chip,
   IconButton,
   Popover,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { formatDistanceToNow } from "date-fns";
@@ -19,6 +18,10 @@ import { DataTable, DataTablePagination } from "src/components/data-table";
 import { useDebounce } from "src/hooks/use-debounce";
 import axios, { endpoints } from "src/utils/axios";
 import DeleteConfirmation from "./DeleteConfirmation";
+
+// Server-driven statuses — poll the list while any row sits in one of these.
+const POLL_STATUSES = new Set(["pending", "running"]);
+const POLL_INTERVAL_MS = 5000;
 
 // ── Status Config ──
 
@@ -304,6 +307,14 @@ const TaskListView = ({
       return resp?.result;
     },
     keepPreviousData: true,
+    structuralSharing: false,
+    refetchInterval: (query) =>
+      (query?.state?.data?.table || []).some((t) =>
+        POLL_STATUSES.has(t?.status?.toLowerCase?.()),
+      )
+        ? POLL_INTERVAL_MS
+        : false,
+    refetchIntervalInBackground: false,
   });
 
   const items = useMemo(

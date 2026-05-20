@@ -780,7 +780,7 @@ class CompositeEvalChild(ModelBaseModel):
         help_text="Weight for weighted aggregation (0.0-10.0)",
     )
     config = models.JSONField(
-        default=dict,
+        null=True,
         blank=True,
         help_text="Per-binding child eval runtime config overrides.",
     )

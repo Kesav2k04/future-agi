@@ -99,8 +99,8 @@ def _execute_child(
             if version.model:
                 runtime_config["model"] = version.model
 
-        link_config = getattr(link, "config", None) or {}
-        if isinstance(link_config, dict) and link_config:
+        link_config = link.config or {}
+        if link_config:
             link_params = link_config.get("params")
             runtime_config.update(
                 {k: v for k, v in link_config.items() if k != "params"}

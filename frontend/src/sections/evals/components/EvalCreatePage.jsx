@@ -788,7 +788,7 @@ const EvalCreatePage = () => {
                       fontWeight={600}
                       sx={{ mb: 0.5 }}
                     >
-                      Eval Name<span style={{ color: "red" }}>*</span>
+                      Eval Name<Box component="span" sx={{ color: "error.main", ml: 0.25 }}>*</Box>
                     </Typography>
                     <TextField
                       fullWidth

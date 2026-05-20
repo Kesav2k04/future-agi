@@ -27,9 +27,9 @@
     "broad_request_contract_decorators": 0
   },
   "app_wide_summary": {
-    "runtime_backed_validated_request_decorators": 378,
-    "direct_swagger_auto_schema_decorators": 379,
-    "doc_only_input_contract_decorators": 97,
+    "runtime_backed_validated_request_decorators": 383,
+    "direct_swagger_auto_schema_decorators": 374,
+    "doc_only_input_contract_decorators": 92,
     "broad_request_contract_decorators": 0
   },
   "doc_only_input_contract_decorators": [],
@@ -465,51 +465,6 @@
       "function": "post",
       "serializers": [
         "MCPOAuthTokenRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/agent_definition.py",
-      "line": 68,
-      "class": "AgentDefinitionView",
-      "function": "get",
-      "serializers": [
-        "AgentDefinitionFilterSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/agent_definition.py",
-      "line": 170,
-      "class": "AgentDefinitionView",
-      "function": "delete",
-      "serializers": [
-        "AgentDefinitionBulkDeleteRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/agent_definition.py",
-      "line": 225,
-      "class": "CreateAgentDefinitionView",
-      "function": "post",
-      "serializers": [
-        "AgentDefinitionCreateRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/agent_definition.py",
-      "line": 479,
-      "class": "AgentDefinitionOperationsViewSet",
-      "function": "fetch_assistant_from_provider",
-      "serializers": [
-        "FetchAssistantRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/agent_definition.py",
-      "line": 571,
-      "class": "EditAgentDefinitionView",
-      "function": "put",
-      "serializers": [
-        "AgentDefinitionEditRequestSerializer"
       ]
     },
     {

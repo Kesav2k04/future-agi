@@ -106,6 +106,12 @@ class TestListAgentDefinitions:
         for result in data["results"]:
             assert result["agent_type"] == "voice"
 
+    def test_rejects_unknown_query_params(self, auth_client):
+        response = auth_client.get("/simulate/agent-definitions/?legacyFilter=voice")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["status"] is False
+        assert response.data["details"]["legacyFilter"] == ["Unknown field."]
+
     def test_pin_agent_definition_id(self, auth_client, agent_definition):
         response = auth_client.get(
             f"/simulate/agent-definitions/?agent_definition_id={agent_definition.id}"
@@ -195,6 +201,24 @@ class TestCreateAgentDefinition:
         data = response.json()
         assert "error" in data
         assert "details" in data
+
+    def test_create_rejects_unknown_fields(self, auth_client):
+        payload = {
+            "agent_name": "New Text Bot",
+            "agent_type": "text",
+            "commit_message": "Initial text agent",
+            "inbound": True,
+            "legacy_extra": "should-not-be-accepted",
+        }
+        response = auth_client.post(
+            "/simulate/agent-definitions/create/",
+            payload,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["status"] is False
+        assert response.data["details"]["legacy_extra"] == ["Unknown field."]
 
     def test_invalid_agent_type(self, auth_client):
         payload = {
@@ -372,6 +396,20 @@ class TestEditAgentDefinition:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_edit_rejects_unknown_fields(self, auth_client, agent_definition):
+        response = auth_client.put(
+            f"/simulate/agent-definitions/{agent_definition.id}/edit/",
+            {
+                "agent_name": "Updated Agent Name",
+                "legacy_extra": "should-not-be-accepted",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["status"] is False
+        assert response.data["details"]["legacy_extra"] == ["Unknown field."]
+
     def test_not_found(self, auth_client):
         fake_id = uuid.uuid4()
         response = auth_client.put(
@@ -430,6 +468,20 @@ class TestBulkDeleteAgentDefinitions:
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_delete_rejects_unknown_fields(self, auth_client, agent_definition):
+        response = auth_client.delete(
+            "/simulate/agent-definitions/",
+            {
+                "agent_ids": [str(agent_definition.id)],
+                "legacy_extra": "should-not-be-accepted",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["status"] is False
+        assert response.data["details"]["legacy_extra"] == ["Unknown field."]
 
     def test_nonexistent_ids(self, auth_client):
         response = auth_client.delete(
@@ -591,6 +643,22 @@ class TestFetchAssistantFromProvider:
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_rejects_unknown_fields(self, auth_client):
+        response = auth_client.post(
+            self.URL,
+            {
+                "assistant_id": "asst_123",
+                "api_key": "key_123",
+                "provider": "vapi",
+                "legacy_extra": "should-not-be-accepted",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["status"] is False
+        assert response.data["details"]["legacy_extra"] == ["Unknown field."]
 
     def test_unauthenticated(self, api_client):
         response = api_client.post(

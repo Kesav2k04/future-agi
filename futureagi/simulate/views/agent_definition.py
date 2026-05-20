@@ -42,6 +42,7 @@ try:
 except ImportError:
     VapiService = _ee_stub("VapiService")
 from tfc.ee_gating import FeatureUnavailable
+from tfc.utils.api_contracts import validated_request
 from tfc.utils.api_serializers import ApiErrorWithDetailsResponseSerializer
 from tfc.utils.base_viewset import BaseModelViewSetMixin
 from tfc.utils.error_codes import get_error_message
@@ -65,7 +66,7 @@ class AgentDefinitionView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
-    @swagger_auto_schema(
+    @validated_request(
         query_serializer=AgentDefinitionFilterSerializer,
         responses={
             200: AgentDefinitionListResponseSerializer(many=True),
@@ -73,6 +74,8 @@ class AgentDefinitionView(APIView):
             404: ApiErrorWithDetailsResponseSerializer,
             500: ApiErrorWithDetailsResponseSerializer,
         },
+        reject_unknown_fields=True,
+        framework_query_params=("page", "limit"),
     )
     def get(self, request, *args, **kwargs):
         """
@@ -86,14 +89,7 @@ class AgentDefinitionView(APIView):
             if not user_organization:
                 return self._gm.not_found("Organization not found for the user.")
 
-            # Validate query parameters through serializer
-            filter_serializer = AgentDefinitionFilterSerializer(
-                data=request.query_params
-            )
-            if not filter_serializer.is_valid():
-                return self._gm.bad_request(filter_serializer.errors)
-
-            validated = filter_serializer.validated_data
+            validated = request.validated_query_data
             search_query = validated.get("search", "").strip()
             agent_type = validated.get("agent_type", None)
             required_agent_id = validated.get("agent_definition_id", None)
@@ -167,24 +163,21 @@ class AgentDefinitionView(APIView):
                 f"Failed to retrieve agent definitions: {str(e)}"
             )
 
-    @swagger_auto_schema(
-        request_body=AgentDefinitionBulkDeleteRequestSerializer,
+    @validated_request(
+        request_serializer=AgentDefinitionBulkDeleteRequestSerializer,
         responses={
             200: AgentDefinitionBulkDeleteResponseSerializer,
             400: ApiErrorWithDetailsResponseSerializer,
             500: ApiErrorWithDetailsResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     def delete(self, request):
         """
         Bulk soft-delete agent definitions.
         """
         try:
-            serializer = AgentDefinitionBulkDeleteRequestSerializer(data=request.data)
-            if not serializer.is_valid():
-                return self._gm.bad_request(serializer.errors)
-
-            agent_ids = serializer.validated_data["agent_ids"]
+            agent_ids = request.validated_data["agent_ids"]
 
             with transaction.atomic():
                 updated_agents = AgentDefinition.objects.filter(
@@ -222,26 +215,22 @@ class CreateAgentDefinitionView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
-    @swagger_auto_schema(
-        request_body=AgentDefinitionCreateRequestSerializer,
+    @validated_request(
+        request_serializer=AgentDefinitionCreateRequestSerializer,
         responses={
             201: AgentDefinitionCreateResponseSerializer,
             400: ApiErrorWithDetailsResponseSerializer,
             404: ApiErrorWithDetailsResponseSerializer,
             500: ApiErrorWithDetailsResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     def post(self, request, *args, **kwargs):
         """
         Create a new agent definition with its first version.
         """
         try:
-            # Validate request through serializer
-            req_serializer = AgentDefinitionCreateRequestSerializer(data=request.data)
-            if not req_serializer.is_valid():
-                return self._gm.bad_request(req_serializer.errors)
-
-            validated = req_serializer.validated_data
+            validated = request.validated_data
             organization = (
                 getattr(request, "organization", None) or request.user.organization
             )
@@ -476,14 +465,15 @@ class AgentDefinitionOperationsViewSet(BaseModelViewSetMixin, ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
-    @swagger_auto_schema(
-        request_body=FetchAssistantRequestSerializer,
+    @validated_request(
+        request_serializer=FetchAssistantRequestSerializer,
         responses={
             200: FetchAssistantResponseSerializer,
             400: ApiErrorWithDetailsResponseSerializer,
             403: ApiErrorWithDetailsResponseSerializer,
             500: ApiErrorWithDetailsResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     @action(detail=False, methods=["post"])
     def fetch_assistant_from_provider(self, request):
@@ -493,9 +483,7 @@ class AgentDefinitionOperationsViewSet(BaseModelViewSetMixin, ModelViewSet):
         """
 
         try:
-            serializer = FetchAssistantRequestSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            validated = serializer.validated_data
+            validated = request.validated_data
 
             api_key = validated["api_key"]
             provider = validated["provider"]
@@ -506,7 +494,9 @@ class AgentDefinitionOperationsViewSet(BaseModelViewSetMixin, ModelViewSet):
             if provider == ProviderChoices.VAPI:
                 from tfc.ee_gating import EEFeature, check_ee_feature
 
-                org = getattr(request, "organization", None) or request.user.organization
+                org = (
+                    getattr(request, "organization", None) or request.user.organization
+                )
                 check_ee_feature(
                     EEFeature.VOICE_SIM,
                     org_id=str(org.id) if org else None,
@@ -568,14 +558,15 @@ class EditAgentDefinitionView(APIView):
     permission_classes = [IsAuthenticated]
     _gm = GeneralMethods()
 
-    @swagger_auto_schema(
-        request_body=AgentDefinitionEditRequestSerializer,
+    @validated_request(
+        request_serializer=AgentDefinitionEditRequestSerializer,
         responses={
             200: AgentDefinitionEditResponseSerializer,
             400: ApiErrorWithDetailsResponseSerializer,
             404: ApiErrorWithDetailsResponseSerializer,
             500: ApiErrorWithDetailsResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     def put(self, request, agent_id, *args, **kwargs):
         """
@@ -589,16 +580,11 @@ class EditAgentDefinitionView(APIView):
                 deleted=False,
             )
 
-            # Validate request through request serializer
-            req_serializer = AgentDefinitionEditRequestSerializer(data=request.data)
-            if not req_serializer.is_valid():
-                return self._gm.bad_request(req_serializer.errors)
-
             # Update agent fields directly from validated data. NOTE:
             # ``livekit_*`` fields are NOT model columns on AgentDefinition;
             # they live on the related ProviderCredentials row and are
             # routed below via ``_sync_provider_credentials``.
-            validated = req_serializer.validated_data
+            validated = request.validated_data
             update_fields = [
                 "agent_name",
                 "agent_type",

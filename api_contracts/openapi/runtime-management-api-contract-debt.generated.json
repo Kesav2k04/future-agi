@@ -27,9 +27,9 @@
     "broad_request_contract_decorators": 0
   },
   "app_wide_summary": {
-    "runtime_backed_validated_request_decorators": 397,
-    "direct_swagger_auto_schema_decorators": 360,
-    "doc_only_input_contract_decorators": 78,
+    "runtime_backed_validated_request_decorators": 401,
+    "direct_swagger_auto_schema_decorators": 355,
+    "doc_only_input_contract_decorators": 73,
     "broad_request_contract_decorators": 0
   },
   "doc_only_input_contract_decorators": [],
@@ -465,51 +465,6 @@
       "function": "post",
       "serializers": [
         "MCPOAuthTokenRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/livekit_api.py",
-      "line": 245,
-      "class": null,
-      "function": null,
-      "serializers": [
-        "LiveKitTranscriptsRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/livekit_api.py",
-      "line": 315,
-      "class": null,
-      "function": null,
-      "serializers": [
-        "LiveKitCallExecutionUpdateRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/livekit_api.py",
-      "line": 352,
-      "class": null,
-      "function": null,
-      "serializers": [
-        "LiveKitTemporalSignalRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/livekit_api.py",
-      "line": 516,
-      "class": "ValidateLiveKitCredentialsView",
-      "function": "post",
-      "serializers": [
-        "ValidateLiveKitCredentialsRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/livekit_api.py",
-      "line": 635,
-      "class": null,
-      "function": null,
-      "serializers": [
-        "LIVEKIT_WEBHOOK_REQUEST"
       ]
     },
     {

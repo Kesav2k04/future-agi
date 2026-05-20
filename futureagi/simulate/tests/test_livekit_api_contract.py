@@ -1,5 +1,13 @@
 import json
+import uuid
 from pathlib import Path
+
+import pytest
+from asgiref.sync import async_to_sync
+from django.test import override_settings
+from rest_framework.test import APIRequestFactory
+
+from simulate.views.livekit_api import TranscriptsView
 
 
 def _repo_root():
@@ -7,9 +15,7 @@ def _repo_root():
 
 
 def _swagger():
-    with (
-        _repo_root() / "api_contracts" / "openapi" / "swagger.json"
-    ).open() as f:
+    with (_repo_root() / "api_contracts" / "openapi" / "swagger.json").open() as f:
         return json.load(f)
 
 
@@ -65,9 +71,7 @@ def test_livekit_mutations_have_explicit_body_contracts():
             definition_name
         )
 
-    webhook_body = _body_schema(
-        _operation("/simulate/api/livekit/webhook/", "POST")
-    )
+    webhook_body = _body_schema(_operation("/simulate/api/livekit/webhook/", "POST"))
     assert webhook_body["type"] == "object"
 
 
@@ -76,9 +80,7 @@ def test_livekit_endpoints_have_explicit_response_contracts():
         ("PATCH", "/simulate/api/livekit/call-execution/{call_id}/"): (
             "LiveKitOkResponse"
         ),
-        ("POST", "/simulate/api/livekit/temporal-signal/"): (
-            "LiveKitOkResponse"
-        ),
+        ("POST", "/simulate/api/livekit/temporal-signal/"): ("LiveKitOkResponse"),
         ("GET", "/simulate/api/livekit/listener-token/{call_id}/"): (
             "LiveKitListenerTokenResponse"
         ),
@@ -99,12 +101,15 @@ def test_livekit_endpoints_have_explicit_response_contracts():
 
     for key, definition_name in expected_refs.items():
         method, path, *status_code = key
-        assert _schema_ref_name(
-            _response_schema(
-                _operation(path, method),
-                status_code[0] if status_code else "200",
+        assert (
+            _schema_ref_name(
+                _response_schema(
+                    _operation(path, method),
+                    status_code[0] if status_code else "200",
+                )
             )
-        ) == definition_name
+            == definition_name
+        )
 
 
 def test_livekit_contract_debt_stays_burned_down():
@@ -129,3 +134,47 @@ def test_livekit_contract_debt_stays_burned_down():
 
     assert body_debt.isdisjoint(covered_paths)
     assert response_debt.isdisjoint(covered_paths)
+
+
+def test_livekit_runtime_contract_debt_stays_burned_down():
+    report = (
+        _repo_root()
+        / "api_contracts"
+        / "openapi"
+        / "runtime-management-api-contract-debt.generated.json"
+    )
+    debt = json.loads(report.read_text())
+    livekit_debt = [
+        item
+        for item in debt["app_wide_doc_only_input_contract_decorators"]
+        if item["path"] == "futureagi/simulate/views/livekit_api.py"
+    ]
+
+    assert livekit_debt == []
+
+
+@pytest.mark.django_db
+@override_settings(INTERNAL_API_SECRET="test-secret")
+def test_livekit_transcripts_rejects_unknown_request_fields():
+    factory = APIRequestFactory()
+    request = factory.post(
+        f"/simulate/api/livekit/transcripts/{uuid.uuid4()}/",
+        {
+            "role": "user",
+            "content": "hello",
+            "start_time_ms": 0,
+            "displayName": "Future AGI",
+        },
+        format="json",
+        HTTP_AUTHORIZATION="Bearer test-secret",
+    )
+
+    response = async_to_sync(TranscriptsView.as_view())(
+        request,
+        call_id=str(uuid.uuid4()),
+    )
+
+    assert response.status_code == 400
+    assert response.data["status"] is False
+    assert response.data["message"] == "displayName: Unknown field."
+    assert response.data["details"] == {"displayName": ["Unknown field."]}

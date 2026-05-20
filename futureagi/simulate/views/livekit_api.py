@@ -30,6 +30,7 @@ from simulate.repositories import (
     CallTranscriptRepository,
     PhoneNumberRepository,
 )
+from tfc.utils.api_contracts import validated_request
 from tfc.utils.api_serializers import ApiTextErrorResponseSerializer
 from tfc.utils.general_methods import GeneralMethods
 from tracer.models.observability_provider import ProviderChoices
@@ -86,7 +87,9 @@ class LiveKitPhoneResolutionResponseSerializer(serializers.Serializer):
 
 
 class LiveKitCallExecutionUpdateRequestSerializer(serializers.Serializer):
-    provider_call_data = serializers.JSONField(required=False)
+    provider_call_data = serializers.DictField(
+        child=serializers.JSONField(), required=False
+    )
     started_at = serializers.DateTimeField(required=False)
     completed_at = serializers.DateTimeField(required=False)
     ended_at = serializers.DateTimeField(required=False)
@@ -242,16 +245,17 @@ class CallConfigView(InternalAPIView):
 class TranscriptsView(InternalAPIView):
     """Create transcript row(s) for a call execution."""
 
-    @swagger_auto_schema(
-        request_body=LiveKitTranscriptsRequestSerializer,
+    @validated_request(
+        request_serializer=LiveKitTranscriptsRequestSerializer,
         responses={
             201: LiveKitTranscriptCreatedResponseSerializer,
             400: LiveKitErrorResponseSerializer,
             404: LiveKitErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     async def post(self, request: Request, call_id: str) -> Response:
-        data = request.data
+        data = request.validated_data
 
         # Bulk mode: {"transcripts": [{role, content, start_time_ms}, ...]}
         if "transcripts" in data:
@@ -312,16 +316,17 @@ class PhoneResolutionView(InternalAPIView):
 class CallExecutionUpdateView(InternalAPIView):
     """Update lifecycle fields on a call execution."""
 
-    @swagger_auto_schema(
-        request_body=LiveKitCallExecutionUpdateRequestSerializer,
+    @validated_request(
+        request_serializer=LiveKitCallExecutionUpdateRequestSerializer,
         responses={
             200: LiveKitOkResponseSerializer,
             400: LiveKitErrorResponseSerializer,
             404: LiveKitErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     async def patch(self, request: Request, call_id: str) -> Response:
-        data = request.data
+        data = request.validated_data
         allowed_fields = {
             "provider_call_data",
             "started_at",
@@ -349,16 +354,17 @@ class CallExecutionUpdateView(InternalAPIView):
 class TemporalSignalView(InternalAPIView):
     """Send a call_ended signal to a Temporal workflow."""
 
-    @swagger_auto_schema(
-        request_body=LiveKitTemporalSignalRequestSerializer,
+    @validated_request(
+        request_serializer=LiveKitTemporalSignalRequestSerializer,
         responses={
             200: LiveKitOkResponseSerializer,
             400: LiveKitErrorResponseSerializer,
             502: LiveKitErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     async def post(self, request: Request) -> Response:
-        data = request.data
+        data = request.validated_data
         workflow_id = data.get("workflow_id", "")
         call_id = data.get("call_id", "")
         signal_status = data.get("status", "completed")
@@ -513,12 +519,13 @@ class ValidateLiveKitCredentialsView(APIView):
         super().__init__(**kwargs)
         self.gm = GeneralMethods()
 
-    @swagger_auto_schema(
-        request_body=ValidateLiveKitCredentialsRequestSerializer,
+    @validated_request(
+        request_serializer=ValidateLiveKitCredentialsRequestSerializer,
         responses={
             200: ValidateLiveKitCredentialsResponseSerializer,
             400: ApiTextErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     def post(self, request: Request) -> Response:
         from livekit.api import (
@@ -530,12 +537,15 @@ class ValidateLiveKitCredentialsView(APIView):
 
         from simulate.serializers.agent_definition import _is_masked
 
-        data = request.data
+        data = request.validated_data
         livekit_url = (data.get("livekit_url") or "").strip()
         api_key = (data.get("api_key") or "").strip()
         api_secret = (data.get("api_secret") or "").strip()
         agent_name = (data.get("agent_name") or "").strip()
-        agent_definition_id = (data.get("agent_definition_id") or "").strip()
+        agent_definition_id_value = data.get("agent_definition_id")
+        agent_definition_id = (
+            str(agent_definition_id_value) if agent_definition_id_value else ""
+        )
 
         # When validating an existing agent from the edit form, the api_key
         # and api_secret fields contain MASKED display values (the api_key
@@ -638,6 +648,7 @@ class LiveKitWebhookView(AsyncAPIView):
             200: LiveKitOkResponseSerializer,
             401: LiveKitErrorResponseSerializer,
         },
+        runtime_request_validation=True,
     )
     async def post(self, request: Request) -> Response:
         # Verify webhook signature

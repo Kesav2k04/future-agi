@@ -27,9 +27,9 @@
     "broad_request_contract_decorators": 0
   },
   "app_wide_summary": {
-    "runtime_backed_validated_request_decorators": 383,
-    "direct_swagger_auto_schema_decorators": 374,
-    "doc_only_input_contract_decorators": 92,
+    "runtime_backed_validated_request_decorators": 389,
+    "direct_swagger_auto_schema_decorators": 368,
+    "doc_only_input_contract_decorators": 86,
     "broad_request_contract_decorators": 0
   },
   "doc_only_input_contract_decorators": [],
@@ -694,61 +694,7 @@
     },
     {
       "path": "futureagi/simulate/views/scenarios.py",
-      "line": 198,
-      "class": "ScenariosListView",
-      "function": "get",
-      "serializers": [
-        "ScenarioFilterSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/scenarios.py",
-      "line": 297,
-      "class": "ScenariosListView",
-      "function": "get_multi_datasets_column_configs",
-      "serializers": [
-        "ScenarioMultiDatasetFilterSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/scenarios.py",
-      "line": 338,
-      "class": "CreateScenarioView",
-      "function": "post",
-      "serializers": [
-        "ScenarioCreateRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/scenarios.py",
-      "line": 759,
-      "class": "EditScenarioView",
-      "function": "put",
-      "serializers": [
-        "ScenarioEditRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/scenarios.py",
-      "line": 860,
-      "class": "EditScenarioPromptsView",
-      "function": "put",
-      "serializers": [
-        "ScenarioEditPromptsRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/scenarios.py",
-      "line": 937,
-      "class": "AddScenarioRowsView",
-      "function": "post",
-      "serializers": [
-        "ScenarioAddRowsRequestSerializer"
-      ]
-    },
-    {
-      "path": "futureagi/simulate/views/scenarios.py",
-      "line": 1088,
+      "line": 1066,
       "class": "AddScenarioColumnsView",
       "function": "post",
       "serializers": [

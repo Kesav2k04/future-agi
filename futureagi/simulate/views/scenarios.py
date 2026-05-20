@@ -79,6 +79,7 @@ from tfc.temporal.simulate import (
     start_create_graph_scenario_workflow_sync,
     start_create_script_scenario_workflow_sync,
 )
+from tfc.utils.api_contracts import validated_request
 from tfc.utils.general_methods import GeneralMethods
 from tfc.utils.pagination import ExtendedPageNumberPagination
 
@@ -195,16 +196,17 @@ class ScenariosListView(APIView):
         self.response = self.finalize_response(request, response, *args, **kwargs)
         return self.response
 
-    @swagger_auto_schema(
+    @validated_request(
+        query_serializer=ScenarioFilterSerializer,
         tags=["Scenarios"],
         operation_summary="List scenarios",
         operation_description="Returns a paginated list of scenarios for the user's organization.",
-        query_serializer=ScenarioFilterSerializer,
         responses={
             200: ScenarioListResponseSerializer,
             404: ScenarioErrorResponseSerializer,
             500: ScenarioErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     def get(self, request, *args, **kwargs):
         """
@@ -223,12 +225,10 @@ class ScenariosListView(APIView):
             if not user_organization:
                 return self._gm.not_found("Organization not found for the user.")
 
-            # Validate and parse query params
-            filter_ser = ScenarioFilterSerializer(data=request.query_params)
-            filter_ser.is_valid()  # defaults applied even if invalid; raw fallback kept below
-            search_query = request.query_params.get("search", "").strip()
-            agent_definition_id = request.query_params.get("agent_definition_id", None)
-            agent_type = request.query_params.get("agent_type", None)
+            validated_query = request.validated_query_data
+            search_query = validated_query.get("search", "").strip()
+            agent_definition_id = validated_query.get("agent_definition_id", None)
+            agent_type = validated_query.get("agent_type", None)
 
             # Build base queryset with optimized joins
             base_queryset = Scenarios.objects.filter(
@@ -294,21 +294,19 @@ class ScenariosListView(APIView):
                 f"Failed to retrieve scenarios: {str(e)}"
             )
 
-    @swagger_auto_schema(
+    @validated_request(
+        query_serializer=ScenarioMultiDatasetFilterSerializer,
         tags=["Scenarios"],
         operation_summary="Get multi-dataset column configs",
         operation_description="Returns column configurations for multiple scenarios.",
-        query_serializer=ScenarioMultiDatasetFilterSerializer,
         responses={
             200: ScenarioMultiDatasetResponseSerializer,
             400: ScenarioErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     def get_multi_datasets_column_configs(self, request, *args, **kwargs):
-        filter_ser = ScenarioMultiDatasetFilterSerializer(data=request.query_params)
-        if not filter_ser.is_valid():
-            return self._gm.bad_request(filter_ser.errors)
-        scenario_ids = filter_ser.validated_data["scenarios"]
+        scenario_ids = request.validated_query_data["scenarios"]
 
         try:
             # Get all unique dataset IDs from the filtered scenarios
@@ -335,16 +333,18 @@ class CreateScenarioView(APIView):
         super().__init__(**kwargs)
         self.gm = GeneralMethods()
 
-    @swagger_auto_schema(
+    @validated_request(
+        request_serializer=ScenarioCreateRequestSerializer,
         tags=["Scenarios"],
         operation_summary="Create scenario",
         operation_description="Creates a new scenario (dataset, script, or graph kind). Returns 202 with processing status.",
-        request_body=ScenarioCreateRequestSerializer,
         responses={
             202: ScenarioCreateResponseSerializer,
             400: ScenarioErrorResponseSerializer,
             500: ScenarioErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
+        serializer_context=lambda request: {"request": request},
     )
     def post(self, request, *args, **kwargs):
         """
@@ -356,14 +356,7 @@ class CreateScenarioView(APIView):
         check_ee_feature(EEFeature.SYNTHETIC_DATA, org_id=str(org.id))
 
         try:
-            serializer = ScenarioCreateRequestSerializer(
-                data=request.data, context={"request": request}
-            )
-
-            if not serializer.is_valid():
-                return self.gm.bad_request(serializer.errors)
-
-            validated_data = serializer.validated_data
+            validated_data = request.validated_data
             scenario_kind = validated_data.get("kind", Scenarios.ScenarioTypes.DATASET)
 
             # Create a temporary scenario record with PROCESSING status
@@ -756,17 +749,18 @@ class EditScenarioView(APIView):
         super().__init__(**kwargs)
         self.gm = GeneralMethods()
 
-    @swagger_auto_schema(
+    @validated_request(
+        request_serializer=ScenarioEditRequestSerializer,
         tags=["Scenarios"],
         operation_summary="Edit scenario",
         operation_description="Updates scenario name, description, graph, or prompt.",
-        request_body=ScenarioEditRequestSerializer,
         responses={
             200: ScenarioEditResponseSerializer,
             400: ScenarioErrorResponseSerializer,
             404: ScenarioErrorResponseSerializer,
             500: ScenarioErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     def put(self, request, scenario_id, *args, **kwargs):
         """
@@ -782,13 +776,7 @@ class EditScenarioView(APIView):
                 deleted=False,
             )
 
-            # Validate the data
-            serializer = ScenarioEditRequestSerializer(data=request.data)
-
-            if not serializer.is_valid():
-                return self.gm.bad_request(serializer.errors)
-
-            validated_data = serializer.validated_data
+            validated_data = request.validated_data
 
             # Update the scenario
             if validated_data.get("name"):
@@ -857,17 +845,18 @@ class EditScenarioPromptsView(APIView):
         super().__init__(**kwargs)
         self.gm = GeneralMethods()
 
-    @swagger_auto_schema(
+    @validated_request(
+        request_serializer=ScenarioEditPromptsRequestSerializer,
         tags=["Scenarios"],
         operation_summary="Edit scenario prompts",
         operation_description="Updates the simulator agent prompt for a scenario.",
-        request_body=ScenarioEditPromptsRequestSerializer,
         responses={
             200: ScenarioPromptsUpdateResponseSerializer,
             400: ScenarioErrorResponseSerializer,
             404: ScenarioErrorResponseSerializer,
             500: ScenarioErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     def put(self, request, scenario_id, *args, **kwargs):
         """
@@ -883,13 +872,7 @@ class EditScenarioPromptsView(APIView):
                 deleted=False,
             )
 
-            # Validate the data
-            serializer = ScenarioEditPromptsRequestSerializer(data=request.data)
-
-            if not serializer.is_valid():
-                return self.gm.bad_request(serializer.errors)
-
-            validated_data = serializer.validated_data
+            validated_data = request.validated_data
             prompts = validated_data["prompts"]
 
             # # Update the simulator agent prompt
@@ -934,17 +917,18 @@ class AddScenarioRowsView(APIView):
         super().__init__(**kwargs)
         self.gm = GeneralMethods()
 
-    @swagger_auto_schema(
+    @validated_request(
+        request_serializer=ScenarioAddRowsRequestSerializer,
         tags=["Scenarios"],
         operation_summary="Add rows to scenario",
         operation_description="Adds new rows to a scenario's dataset via Temporal workflow. Returns 202 Accepted.",
-        request_body=ScenarioAddRowsRequestSerializer,
         responses={
             202: ScenarioAddRowsResponseSerializer,
             400: ScenarioErrorResponseSerializer,
             404: ScenarioErrorResponseSerializer,
             500: ScenarioErrorResponseSerializer,
         },
+        reject_unknown_fields=True,
     )
     def post(self, request, scenario_id, *args, **kwargs):
         """
@@ -976,13 +960,7 @@ class AddScenarioRowsView(APIView):
                     "Scenario does not have an associated dataset."
                 )
 
-            # Validate the input data
-            serializer = ScenarioAddRowsRequestSerializer(data=request.data)
-
-            if not serializer.is_valid():
-                return self.gm.bad_request(serializer.errors)
-
-            validated_data = serializer.validated_data
+            validated_data = request.validated_data
             num_rows = validated_data["num_rows"]
             description = validated_data.get("description", "")
 

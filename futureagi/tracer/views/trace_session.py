@@ -1387,53 +1387,16 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
             "userId"
         )
 
-        # Support user_id injected as a structural filter (the cross-project
-        # user detail page prepends one). Extract the raw user_id string from
-        # either query_params or filters, strip it from the filter list, then
-        # resolve it to a set of EndUser UUIDs and pass an end_user_id IN(...)
-        # synthetic filter instead (the CH `spans` table keys users via the
-        # UUID column `end_user_id`, not the string `user_id`).
-        user_id_raw: Optional[str] = user_id_qp or None
-        _remaining: List[Dict] = []
-        for _f in filters:
-            _col, _cfg = FilterEngine._normalize_filter_params(_f)
-            _col_type = _cfg.get("col_type", "NORMAL")
-            if _col == "user_id" and _col_type == "NORMAL":
-                _val = _cfg.get("filter_value")
-                if isinstance(_val, list):
-                    _val = _val[0] if _val else None
-                if _val and not user_id_raw:
-                    user_id_raw = _val
-                continue
-            _remaining.append(_f)
-        filters = _remaining
 
-        # Resolve the raw user_id to a list of end_user UUIDs and inject as
-        # a synthetic end_user_id IN(...) filter. Scope by org (and project
-        # if we're in project mode).
-        if user_id_raw:
-            _eu_qs = EndUser.objects.filter(
-                user_id=user_id_raw,
-                organization=org,
-                deleted=False,
-            )
-            if not org_scope and project_id:
-                _eu_qs = _eu_qs.filter(project_id=project_id)
-            _ids = [str(u) for u in _eu_qs.values_list("id", flat=True)]
-            if not _ids:
-                _ids = ["00000000-0000-0000-0000-000000000000"]
+        if user_id_qp:
             filters.append(
                 {
-                    # Use the SYSTEM_METRIC "user" alias — the CH filter
-                    # builder maps it to `end_user_id` via
-                    # `SYSTEM_METRIC_MAP["user"]`. NORMAL col_type is
-                    # rejected by `_build_condition`.
-                    "column_id": "user",
+                    "column_id": "user_id",
                     "filter_config": {
                         "col_type": "SYSTEM_METRIC",
                         "filter_type": "text",
-                        "filter_op": "in",
-                        "filter_value": _ids,
+                        "filter_op": "equals",
+                        "filter_value": user_id_qp,
                     },
                 }
             )

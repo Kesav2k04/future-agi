@@ -4751,45 +4751,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         # col_type that the CH filter builder handles specially.
         if org is None:
             org = getattr(request, "organization", None) or request.user.organization
-        _resolved: List[Dict] = []
-        for _f in filters:
-            _col, _cfg = FilterEngine._normalize_filter_params(_f)
-            _col_type = _cfg.get("col_type", "NORMAL")
-            if _col == "user_id" and _col_type == "NORMAL":
-                _val = _cfg.get("filter_value")
-                _vals = _val if isinstance(_val, list) else [_val]
-                _vals = [v for v in _vals if v]
-                if not _vals:
-                    _resolved.append(_f)
-                    continue
-                _eu_qs = EndUser.objects.filter(
-                    user_id__in=_vals,
-                    organization=org,
-                    deleted=False,
-                )
-                if not org_scope and project_id:
-                    _eu_qs = _eu_qs.filter(project_id=project_id)
-                _ids = [str(u) for u in _eu_qs.values_list("id", flat=True)]
-                if not _ids:
-                    _ids = ["00000000-0000-0000-0000-000000000000"]
-                _resolved.append(
-                    {
-                        # Use the SYSTEM_METRIC "user" alias so the CH filter
-                        # builder maps to `end_user_id` and wraps in the
-                        # standard `trace_id IN (...)` subquery (with
-                        # project scoping) for trace-list mode.
-                        "column_id": "user",
-                        "filter_config": {
-                            "col_type": "SYSTEM_METRIC",
-                            "filter_type": "text",
-                            "filter_op": "in",
-                            "filter_value": _ids,
-                        },
-                    }
-                )
-                continue
-            _resolved.append(_f)
-        filters = _resolved
 
         # Get eval config IDs. Project mode uses a CH dict-lookup (fast);
         # org mode uses a PG scan because the CH dict-lookup takes a single

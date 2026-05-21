@@ -1105,6 +1105,7 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
             {
               columnId: "user_id",
               filterConfig: {
+                colType: "SYSTEM_METRIC",
                 filterType: "text",
                 filterOp: "equals",
                 filterValue: userIdForUserMode,

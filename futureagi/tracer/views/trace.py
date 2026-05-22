@@ -1634,6 +1634,13 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                     .annotate(_attrs=Coalesce("span_attributes", "eval_attributes"))
                     .values("_attrs")[:1]
                 ),
+                user_id=Subquery(
+                    ObservationSpan.objects.filter(
+                        trace_id=OuterRef("id"), end_user__isnull=False
+                    )
+                    .order_by("start_time")
+                    .values("end_user__user_id")[:1]
+                ),
                 start_time=Coalesce(
                     Subquery(
                         ObservationSpan.objects.filter(
@@ -1904,6 +1911,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                     "trace_name": trace.trace_name or "",
                     "start_time": trace.start_time,
                     "status": trace.status,
+                    "user_id": trace.user_id,
                 }
 
                 # Add eval metrics from annotated fields
@@ -5006,6 +5014,19 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             row["metadata_map"] = content.get("metadata_map", {})
             row["trace_tags"] = content.get("trace_tags", [])
 
+        # Resolve user_id for this page of traces via PG
+        user_id_map = {}
+        if trace_ids:
+            _eu_rows = (
+                ObservationSpan.objects.filter(
+                    trace_id__in=trace_ids, end_user__isnull=False
+                )
+                .order_by("trace_id", "start_time")
+                .distinct("trace_id")
+                .values_list("trace_id", "end_user__user_id")
+            )
+            user_id_map = {str(tid): uid for tid, uid in _eu_rows}
+
         # Phase 2: Eval scores
         eval_map = {}
         if trace_ids and eval_config_ids:
@@ -5128,6 +5149,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                 "model": row.get("model"),
                 "provider": row.get("provider"),
                 "tags": row.get("trace_tags") or [],
+                "user_id": user_id_map.get(trace_id),
             }
 
             # Add eval metrics
@@ -5570,6 +5592,19 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             trace_ids, annotation_label_ids, label_types
         )
 
+        # Resolve user_id for this page of traces via PG
+        user_id_map = {}
+        if trace_ids:
+            _eu_rows = (
+                ObservationSpan.objects.filter(
+                    trace_id__in=trace_ids, end_user__isnull=False
+                )
+                .order_by("trace_id", "start_time")
+                .distinct("trace_id")
+                .values_list("trace_id", "end_user__user_id")
+            )
+            user_id_map = {str(tid): uid for tid, uid in _eu_rows}
+
         # Build column config
         column_config = get_default_trace_config()
         column_config = update_column_config_based_on_eval_config(
@@ -5604,6 +5639,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                     else row.get("trace_session_id")
                 ),
                 "tags": row.get("trace_tags") or [],
+                "user_id": user_id_map.get(trace_id),
             }
 
             # Add eval metrics matching PG format

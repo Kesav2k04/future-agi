@@ -19,9 +19,16 @@ import { useDebounce } from "src/hooks/use-debounce";
 import axios, { endpoints } from "src/utils/axios";
 import DeleteConfirmation from "./DeleteConfirmation";
 
-// Server-driven statuses — poll the list while any row sits in one of these.
-const POLL_STATUSES = new Set(["pending", "running"]);
 const POLL_INTERVAL_MS = 5000;
+
+// Continuous tasks stay in "running" forever — only poll their pending → running flip.
+const shouldPollRow = (row) => {
+  const status = row?.status?.toLowerCase?.();
+  const runType = row?.run_type?.toLowerCase?.();
+  if (status === "pending") return true;
+  if (status === "running") return runType === "historical";
+  return false;
+};
 
 // ── Status Config ──
 
@@ -309,9 +316,7 @@ const TaskListView = ({
     keepPreviousData: true,
     structuralSharing: false,
     refetchInterval: (query) =>
-      (query?.state?.data?.table || []).some((t) =>
-        POLL_STATUSES.has(t?.status?.toLowerCase?.()),
-      )
+      (query?.state?.data?.table || []).some(shouldPollRow)
         ? POLL_INTERVAL_MS
         : false,
     refetchIntervalInBackground: false,

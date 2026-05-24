@@ -52,7 +52,10 @@ def _build_monitor_graph_ch_builder(monitor):
         except CustomEvalConfig.DoesNotExist:
             pass
 
-    return MonitorMetricsQueryBuilder(
+    # v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=MONITOR_METRICS
+    from tracer.services.clickhouse.v2.dispatch import get_query_builder_class
+    BuilderCls = get_query_builder_class("MONITOR_METRICS")
+    return BuilderCls(
         project_id=str(monitor.project_id),
         filters=monitor.filters,
         eval_config_id=eval_config_id,

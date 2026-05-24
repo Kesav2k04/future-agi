@@ -564,7 +564,12 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                 trace_config["organization_id"] = str(request.workspace.organization_id)
                 trace_config["workspace_id"] = str(request.workspace.id)
 
-                builder = DashboardQueryBuilder(trace_config)
+                # v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=DASHBOARD
+                from tracer.services.clickhouse.v2.dispatch import (
+                    get_query_builder_class,
+                )
+                _DashCls = get_query_builder_class("DASHBOARD")
+                builder = _DashCls(trace_config)
                 query_timeout = self._get_trace_query_timeout_ms(trace_config)
                 for sql, params, metric_info in builder.build_all_queries():
                     metric_info["source"] = "traces"
@@ -2818,7 +2823,12 @@ class DashboardWidgetViewSet(BaseModelViewSetMixin, ModelViewSet):
                     return self._gm.bad_request(
                         "Some project_ids are invalid or not in this workspace"
                     )
-            builder = DashboardQueryBuilder(trace_config)
+            # v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=DASHBOARD
+            from tracer.services.clickhouse.v2.dispatch import (
+                get_query_builder_class,
+            )
+            _DashCls = get_query_builder_class("DASHBOARD")
+            builder = _DashCls(trace_config)
             query_timeout = self._get_trace_query_timeout_ms(trace_config)
             for sql, params, metric_info in builder.build_all_queries():
                 metric_info["source"] = "traces"

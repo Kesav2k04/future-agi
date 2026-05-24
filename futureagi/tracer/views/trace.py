@@ -5256,8 +5256,14 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         mode), the builder is constructed with `project_ids=...` and the
         view falls back to a PG-side EvalLogger lookup scoped to those
         projects (the CH dict-lookup path requires a single project_id).
+
+        Builder class resolved via v1↔v2 dispatch — set
+        CH25_QUERY_TYPES_V2_PRIMARY=TRACE_LIST to flip to CH 25.3.
         """
         from tracer.services.clickhouse.query_builders import TraceListQueryBuilder
+        from tracer.services.clickhouse.v2.dispatch import get_query_builder_class
+
+        BuilderCls = get_query_builder_class("TRACE_LIST")  # noqa: N806
 
         org_scope = bool(org_project_ids)
         filters = list(validated_data.get("filters", []) or [])
@@ -5320,7 +5326,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         annotation_label_ids = [str(l.id) for l in annotation_labels]
         label_types = {str(l.id): l.type for l in annotation_labels}
 
-        builder = TraceListQueryBuilder(
+        builder = BuilderCls(
             project_id=None if org_scope else str(project_id),
             project_ids=[str(p) for p in org_project_ids] if org_scope else None,
             filters=filters,
@@ -5553,11 +5559,19 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
     def _list_voice_calls_clickhouse(
         self, request, project_id, validated_data, remove_simulation_calls, analytics
     ):
-        """List voice calls using ClickHouse backend."""
+        """List voice calls using ClickHouse backend.
+
+        Builder classes resolved via v1↔v2 dispatch — flip with
+        CH25_QUERY_TYPES_V2_PRIMARY=VOICE_CALL_LIST,TRACE_LIST.
+        """
         from tracer.services.clickhouse.query_builders import VoiceCallListQueryBuilder
         from tracer.services.clickhouse.query_builders.trace_list import (
             TraceListQueryBuilder,
         )
+        from tracer.services.clickhouse.v2.dispatch import get_query_builder_class
+
+        VoiceBuilderCls = get_query_builder_class("VOICE_CALL_LIST")  # noqa: N806
+        TraceBuilderCls = get_query_builder_class("TRACE_LIST")        # noqa: N806
 
         filters = validated_data.get("filters", [])
         page = validated_data.get("page", 1)
@@ -5593,7 +5607,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             remove_simulation_calls
         ).lower() not in ("false", "0", "")
 
-        builder = VoiceCallListQueryBuilder(
+        builder = VoiceBuilderCls(
             project_id=str(project_id),
             filters=filters,
             page_number=page_number,
@@ -5831,8 +5845,14 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
     def _list_traces_clickhouse(
         self, request, project_version_id, analytics, query_params
     ):
-        """List traces using ClickHouse backend."""
+        """List traces using ClickHouse backend.
+
+        v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=TRACE_LIST.
+        """
         from tracer.services.clickhouse.query_builders import TraceListQueryBuilder
+        from tracer.services.clickhouse.v2.dispatch import get_query_builder_class
+
+        BuilderCls = get_query_builder_class("TRACE_LIST")  # noqa: N806
 
         filters = query_params["filters"]
         sort_params = query_params["sort_params"]
@@ -5874,7 +5894,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         annotation_label_ids = [str(l.id) for l in annotation_labels]
         label_types = {str(l.id): l.type for l in annotation_labels}
 
-        builder = TraceListQueryBuilder(
+        builder = BuilderCls(
             project_id=project_id,
             filters=filters,
             page_number=page_number,

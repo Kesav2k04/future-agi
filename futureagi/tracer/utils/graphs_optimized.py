@@ -160,7 +160,12 @@ def get_eval_graph_data(
                     choices = custom_eval_config.eval_template.choices or []
 
                 ch_start, ch_end = parse_time_filters(filters)
-                builder = EvalMetricsQueryBuilder(
+                # v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=EVAL_METRICS
+                from tracer.services.clickhouse.v2.dispatch import (
+                    get_query_builder_class,
+                )
+                EvalBuilderCls = get_query_builder_class("EVAL_METRICS")  # noqa: N806
+                builder = EvalBuilderCls(
                     project_id=str(ch_project_id),
                     custom_eval_config_id=str(custom_eval_config_id),
                     start_date=ch_start,

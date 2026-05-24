@@ -1545,7 +1545,11 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         with `project_ids=...` and the session list spans all projects in
         the org.
         """
+        # v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=SESSION_LIST
         from tracer.services.clickhouse.query_builders import SessionListQueryBuilder
+        from tracer.services.clickhouse.v2.dispatch import get_query_builder_class
+
+        BuilderCls = get_query_builder_class("SESSION_LIST")  # noqa: N806
 
         org_scope = bool(org_project_ids)
         filters = list(validated_data.get("filters", []) or [])
@@ -1567,7 +1571,7 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                 }
             )
 
-        builder = SessionListQueryBuilder(
+        builder = BuilderCls(
             project_id=None if org_scope else str(project_id),
             project_ids=[str(p) for p in org_project_ids] if org_scope else None,
             filters=filters,

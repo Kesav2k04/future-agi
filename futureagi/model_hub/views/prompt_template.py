@@ -3082,16 +3082,29 @@ class PromptTemplateViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
     def versions(self, request, pk=None):
         try:
             template = self.get_object()
-            versions = PromptTemplate.objects.filter(root_template=template).order_by(
-                "-created_at"
+            versions = (
+                PromptVersion.objects.filter(
+                    original_template=template,
+                    original_template__organization=getattr(
+                        request, "organization", None
+                    )
+                    or request.user.organization,
+                    deleted=False,
+                )
+                .annotate(
+                    version_number=Cast(Substr("template_version", 2), IntegerField())
+                )
+                .order_by("-version_number", "-created_at")
             )
 
             page = self.paginate_queryset(versions)
+            serializer = PromptHistoryExecutionSerializer(
+                page if page is not None else versions,
+                many=True,
+            )
             if page is not None:
-                serializer = self.get_serializer(page, many=True)
                 return self.paginator.get_paginated_response(serializer.data)
 
-            serializer = self.get_serializer(versions, many=True)
             return self._gm.success_response(serializer.data)
         except Exception as e:
             logger.exception(f"Error in versions method: {e}")
@@ -3111,14 +3124,24 @@ class PromptTemplateViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
         validated_data = serializer.validated_data
 
         try:
-            version_obj = PromptVersion.objects.get(
-                original_template=template,
-                template_version=validated_data.get("version_name"),
-            )
+            with transaction.atomic():
+                version_obj = PromptVersion.objects.select_for_update().get(
+                    original_template=template,
+                    template_version=validated_data.get("version_name"),
+                    deleted=False,
+                )
 
-            version_obj.is_default = True
-            version_obj.updated_at = timezone.now()
-            version_obj.save(update_fields=["is_default", "updated_at"])
+                now = timezone.now()
+                PromptVersion.objects.filter(
+                    original_template=template,
+                    deleted=False,
+                ).exclude(id=version_obj.id).update(
+                    is_default=False,
+                    updated_at=now,
+                )
+                version_obj.is_default = True
+                version_obj.updated_at = now
+                version_obj.save(update_fields=["is_default", "updated_at"])
 
             return self._gm.success_response(
                 PromptHistoryExecutionSerializer(version_obj).data
@@ -3177,12 +3200,36 @@ class PromptTemplateViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
             version_obj.commit_message = validated_data.get("message")
             version_obj.is_draft = validated_data.get("is_draft", False)
 
+            now = timezone.now()
             if validated_data.get("set_default"):
-                version_obj.is_default = True
-            version_obj.updated_at = timezone.now()
-            version_obj.save(
-                update_fields=["is_default", "commit_message", "updated_at", "is_draft"]
-            )
+                with transaction.atomic():
+                    PromptVersion.objects.filter(
+                        original_template=template,
+                        deleted=False,
+                    ).exclude(id=version_obj.id).update(
+                        is_default=False,
+                        updated_at=now,
+                    )
+                    version_obj.is_default = True
+                    version_obj.updated_at = now
+                    version_obj.save(
+                        update_fields=[
+                            "is_default",
+                            "commit_message",
+                            "updated_at",
+                            "is_draft",
+                        ]
+                    )
+            else:
+                version_obj.updated_at = now
+                version_obj.save(
+                    update_fields=[
+                        "is_default",
+                        "commit_message",
+                        "updated_at",
+                        "is_draft",
+                    ]
+                )
 
             if request.headers.get("X-Api-Key") is not None:
                 properties = get_mixpanel_properties(
@@ -3469,23 +3516,26 @@ class PromptTemplateViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
             )
 
             # Get the template configuration
-            prompt_config = latest_version.prompt_config_snapshot or {}
+            prompt_config_snapshot = latest_version.prompt_config_snapshot or {}
+            prompt_config = (
+                prompt_config_snapshot
+                if isinstance(prompt_config_snapshot, list)
+                else [prompt_config_snapshot]
+            )
             variable_names = template.variable_names or {}
-            evaluation_configs = template.evaluation_configs or {}
+            evaluation_configs = latest_version.evaluation_configs or {}
             is_run = True
             name = template.name
+            first_prompt_config = (
+                prompt_config[0]
+                if prompt_config and isinstance(prompt_config[0], dict)
+                else {}
+            )
+            first_configuration = first_prompt_config.get("configuration", {})
 
             # Get model configuration from prompt_config
-            model = (
-                prompt_config[0]["configuration"].get("model", "gpt-4")
-                if prompt_config
-                else "gpt-4"
-            )
-            temperature = (
-                prompt_config[0]["configuration"].get("temperature", 0.7)
-                if prompt_config
-                else 0.7
-            )
+            model = first_configuration.get("model", "gpt-4")
+            temperature = first_configuration.get("temperature", 0.7)
 
             # Define available language options and their corresponding code templates
             code_templates = {

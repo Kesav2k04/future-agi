@@ -22,12 +22,15 @@ __pycache__/
 
 # Virtual environments
 .venv/
+.venv*/
 **/.venv*/
 venv/
+**/venv/
 env/
 
 # UV cache
 .uv-cache/
+**/.uv-cache/
 
 # Testing and coverage (generated at runtime)
 .pytest_cache/

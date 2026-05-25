@@ -8879,6 +8879,278 @@ export const datasetEvalJourneys = [
     },
   },
   {
+    id: "PROMPT-API-006",
+    title:
+      "Legacy prompt template list, versions, default, SDK, and cleanup lifecycle",
+    tags: ["prompts", "legacy", "mutating", "data-roundtrip", "db-audit"],
+    async run({
+      client,
+      cleanup,
+      runId,
+      evidence,
+      organizationId,
+      workspaceId,
+    }) {
+      requireMutations();
+      const suffix = runId.replace(/[^a-z0-9]/gi, "").slice(0, 18);
+      const promptName = `api journey legacy prompt ${suffix}`;
+      const v1Text = `Legacy v1 says hello to {{name}} from ${runId}`;
+      const v2Text = `Legacy v2 says hello to {{name}} from ${runId}`;
+
+      const created = await client.post(
+        apiPath("/model-hub/prompt-templates/create-draft/"),
+        {
+          name: promptName,
+          variable_names: { name: ["Ada", "Grace"] },
+          metadata: { source: "api-journey", run_id: runId, version: "v1" },
+          prompt_config: [promptConfig("You are concise.", v1Text)],
+        },
+      );
+      const promptId =
+        created?.id || created?.root_template || created?.rootTemplate;
+      assert(isUuid(promptId), "Legacy prompt create did not return a UUID id.");
+      cleanup.defer("delete legacy API journey prompt", () =>
+        deletePromptTemplateIfPresent(client, promptId),
+      );
+
+      const listed = asArray(
+        await client.get(apiPath("/model-hub/prompt-templates/"), {
+          query: { search: promptName, page: 1, limit: 10 },
+        }),
+      );
+      assert(
+        listed.some((row) => row?.id === promptId),
+        "Legacy prompt list/search did not include the created prompt.",
+      );
+
+      const detail = await client.get(
+        apiPath("/model-hub/prompt-templates/{id}/", { id: promptId }),
+      );
+      assert(
+        detail?.name === promptName &&
+          detail?.version === "v1" &&
+          JSON.stringify(detail?.prompt_config || []).includes(v1Text),
+        `Legacy prompt detail did not return v1 draft state: ${JSON.stringify(
+          detail,
+        )}.`,
+      );
+
+      const nextVersionBeforeDraft = await client.get(
+        apiPath("/model-hub/prompt-templates/{id}/get-next-version/", {
+          id: promptId,
+        }),
+      );
+      assert(
+        nextVersionBeforeDraft?.next_version === "v2",
+        `Expected next prompt version v2, got ${JSON.stringify(
+          nextVersionBeforeDraft,
+        )}.`,
+      );
+
+      const createdDrafts = payloadArray(
+        await client.post(
+          apiPath("/model-hub/prompt-templates/{id}/add-new-draft/", {
+            id: promptId,
+          }),
+          {
+            new_prompts: [
+              {
+                variable_names: { name: ["Ada", "Grace"] },
+                evaluation_configs: [],
+                metadata: {
+                  source: "api-journey",
+                  run_id: runId,
+                  version: "v2",
+                },
+                prompt_config: [
+                  promptConfig("You are a sharper concise assistant.", v2Text),
+                ],
+              },
+            ],
+          },
+        ),
+        "result",
+      );
+      assert(
+        createdDrafts.some((row) => row?.template_version === "v2"),
+        `add-new-draft did not create v2: ${JSON.stringify(createdDrafts)}.`,
+      );
+
+      await client.post(
+        apiPath("/model-hub/prompt-templates/{id}/run_template/", {
+          id: promptId,
+        }),
+        {
+          name: promptName,
+          version: "v2",
+          is_run: false,
+          variable_names: { name: ["Ada", "Grace"] },
+          placeholders: {},
+          evaluation_configs: [],
+          prompt_config: [
+            promptConfig("You are a sharper concise assistant.", v2Text),
+          ],
+        },
+      );
+
+      const versions = asArray(
+        await client.get(
+          apiPath("/model-hub/prompt-templates/{id}/versions/", {
+            id: promptId,
+          }),
+          { query: { page: 1, limit: 10 } },
+        ),
+      );
+      const versionNames = versions.map((row) => row?.template_version);
+      assert(
+        versionNames.includes("v1") && versionNames.includes("v2"),
+        `Legacy prompt versions endpoint did not return v1/v2: ${JSON.stringify(
+          versions,
+        )}.`,
+      );
+      assert(
+        versions.find((row) => row?.template_version === "v2")
+          ?.prompt_config_snapshot?.messages?.[1]?.content?.[0]?.text === v2Text,
+        "Legacy prompt versions endpoint did not return the saved v2 content.",
+      );
+
+      const comparison = await client.post(
+        apiPath("/model-hub/prompt-templates/{id}/compare-versions/", {
+          id: promptId,
+        }),
+        { versions: ["v1", "v2"] },
+      );
+      assert(
+        payloadArray(comparison?.data, "data").length === 2 ||
+          payloadArray(comparison, "data").length === 2,
+        `Legacy prompt compare-versions did not return both versions: ${JSON.stringify(
+          comparison,
+        )}.`,
+      );
+
+      await client.post(
+        apiPath("/model-hub/prompt-templates/{id}/commit/", { id: promptId }),
+        {
+          version_name: "v1",
+          message: `API journey v1 commit ${runId}`,
+          is_draft: false,
+          set_default: true,
+        },
+      );
+      await client.post(
+        apiPath("/model-hub/prompt-templates/{id}/set_default/", {
+          id: promptId,
+        }),
+        { version_name: "v2" },
+      );
+      const defaultV2 = await client.get(
+        apiPath("/model-hub/prompt-templates/get-template-by-name/"),
+        { query: { name: promptName } },
+      );
+      assert(
+        defaultV2?.version === "v2" && defaultV2?.is_default === true,
+        `set_default did not make v2 the unique default lookup: ${JSON.stringify(
+          defaultV2,
+        )}.`,
+      );
+      await client.post(
+        apiPath("/model-hub/prompt-templates/{id}/commit/", { id: promptId }),
+        {
+          version_name: "v2",
+          message: `API journey v2 commit ${runId}`,
+          is_draft: false,
+          set_default: true,
+        },
+      );
+      const defaultAfterCommit = await client.get(
+        apiPath("/model-hub/prompt-templates/get-template-by-name/"),
+        { query: { name: promptName } },
+      );
+      assert(
+        defaultAfterCommit?.version === "v2" &&
+          defaultAfterCommit?.is_default === true,
+        `commit set_default did not keep v2 as default: ${JSON.stringify(
+          defaultAfterCommit,
+        )}.`,
+      );
+      const explicitV1 = await client.get(
+        apiPath("/model-hub/prompt-templates/get-template-by-name/"),
+        { query: { name: promptName, version: "v1" } },
+      );
+      assert(
+        explicitV1?.version === "v1",
+        "get-template-by-name with explicit version did not return v1.",
+      );
+
+      const runStatus = await client.get(
+        apiPath("/model-hub/prompt-templates/{id}/get-run-status/", {
+          id: promptId,
+        }),
+        { query: { template_version: "v2" } },
+      );
+      assert(
+        runStatus?.executions_result?.template_version === "v2" &&
+          Array.isArray(runStatus.executions_result.output),
+        `get-run-status did not return v2 status payload: ${JSON.stringify(
+          runStatus,
+        )}.`,
+      );
+
+      const sdkCode = await client.get(
+        apiPath("/model-hub/prompt-templates/{id}/get-sdk-code/{language}/", {
+          id: promptId,
+          language: "python",
+        }),
+      );
+      assert(
+        typeof sdkCode?.python === "string" &&
+          sdkCode.python.includes(`/model-hub/prompt-templates/${promptId}`) &&
+          sdkCode.python.includes("YOUR_API_KEY") &&
+          !/[0-9a-f]{32}/i.test(sdkCode.python),
+        "Legacy prompt SDK code did not return placeholder-only Python snippet.",
+      );
+
+      const activeAudit = await loadPromptTemplateVersionDbAudit({
+        promptId,
+        organizationId,
+        workspaceId,
+      });
+      assertPromptTemplateVersionDbAudit(activeAudit, {
+        promptId,
+        organizationId,
+        workspaceId,
+        expectedDeleted: false,
+        expectedDefaultVersion: "v2",
+      });
+
+      await deletePromptTemplateIfPresent(client, promptId);
+      const deletedAudit = await loadPromptTemplateVersionDbAudit({
+        promptId,
+        organizationId,
+        workspaceId,
+      });
+      assertPromptTemplateVersionDbAudit(deletedAudit, {
+        promptId,
+        organizationId,
+        workspaceId,
+        expectedDeleted: true,
+        expectedDefaultVersion: "v2",
+      });
+
+      evidence.push({
+        prompt_id: promptId,
+        prompt_name: promptName,
+        versions: versionNames,
+        default_version: defaultAfterCommit.version,
+        run_status_version: runStatus.executions_result.template_version,
+        sdk_code_keys: Object.keys(sdkCode),
+        active_default_version_count: activeAudit.active_default_version_count,
+        deleted_versions_without_deleted_at_count:
+          deletedAudit.deleted_versions_without_deleted_at_count,
+      });
+    },
+  },
+  {
     id: "PROMPT-API-003",
     title:
       "Prompt Workbench folder list/search, prompt assignment, and soft-delete lifecycle",
@@ -22171,6 +22443,157 @@ function assertPromptWorkbenchDbAudit(
       "Active prompt had no active versions.",
     );
   }
+}
+
+async function loadPromptTemplateVersionDbAudit({
+  promptId,
+  organizationId,
+  workspaceId,
+}) {
+  assert(isUuid(promptId), "promptId must be a UUID for DB audit.");
+  assert(isUuid(organizationId), "organizationId must be a UUID for DB audit.");
+  if (workspaceId)
+    assert(isUuid(workspaceId), "workspaceId must be a UUID for DB audit.");
+  const sql = `
+WITH requested AS (
+  SELECT ${sqlUuid(promptId)}::uuid AS prompt_id
+),
+prompt AS (
+  SELECT
+    id,
+    name,
+    organization_id,
+    workspace_id,
+    deleted,
+    deleted_at
+  FROM model_hub_prompttemplate
+  WHERE id = (SELECT prompt_id FROM requested)
+),
+versions AS (
+  SELECT
+    id,
+    original_template_id,
+    template_version,
+    is_draft,
+    is_default,
+    deleted,
+    deleted_at,
+    prompt_config_snapshot
+  FROM model_hub_promptversion
+  WHERE original_template_id = (SELECT prompt_id FROM requested)
+)
+SELECT json_build_object(
+  'prompt_id', (SELECT id::text FROM prompt),
+  'prompt_name', (SELECT name FROM prompt),
+  'prompt_organization_id', (SELECT organization_id::text FROM prompt),
+  'prompt_workspace_id', (SELECT workspace_id::text FROM prompt),
+  'prompt_deleted', (SELECT deleted FROM prompt),
+  'prompt_deleted_at_set', (SELECT deleted_at IS NOT NULL FROM prompt),
+  'version_count', (SELECT count(*) FROM versions),
+  'active_version_count', (SELECT count(*) FROM versions WHERE deleted = false),
+  'deleted_version_count', (SELECT count(*) FROM versions WHERE deleted = true),
+  'active_default_version_count', (
+    SELECT count(*) FROM versions WHERE deleted = false AND is_default = true
+  ),
+  'deleted_versions_without_deleted_at_count', (
+    SELECT count(*) FROM versions WHERE deleted = true AND deleted_at IS NULL
+  ),
+  'active_default_versions', (
+    SELECT COALESCE(json_agg(template_version ORDER BY template_version), '[]'::json)
+    FROM versions
+    WHERE deleted = false AND is_default = true
+  ),
+  'all_default_versions', (
+    SELECT COALESCE(json_agg(template_version ORDER BY template_version), '[]'::json)
+    FROM versions
+    WHERE is_default = true
+  ),
+  'versions', (
+    SELECT COALESCE(
+      json_agg(
+        json_build_object(
+          'id', id::text,
+          'template_version', template_version,
+          'is_draft', is_draft,
+          'is_default', is_default,
+          'deleted', deleted,
+          'deleted_at_set', deleted_at IS NOT NULL,
+          'prompt_config_snapshot', prompt_config_snapshot
+        )
+        ORDER BY template_version
+      ),
+      '[]'::json
+    )
+    FROM versions
+  )
+)
+FROM requested;
+`;
+  return runPostgresJson(sql);
+}
+
+function assertPromptTemplateVersionDbAudit(
+  audit,
+  {
+    promptId,
+    organizationId,
+    workspaceId,
+    expectedDeleted,
+    expectedDefaultVersion,
+  },
+) {
+  assert(audit?.prompt_id === promptId, "Prompt DB audit id mismatch.");
+  assert(
+    audit.prompt_organization_id === organizationId,
+    "Prompt DB audit organization mismatch.",
+  );
+  if (workspaceId) {
+    assert(
+      audit.prompt_workspace_id === workspaceId,
+      "Prompt DB audit workspace mismatch.",
+    );
+  }
+  assert(Number(audit.version_count) >= 2, "Prompt DB audit found too few versions.");
+  const allDefaultVersions = payloadArray(
+    audit.all_default_versions,
+    "all_default_versions",
+  );
+  assert(
+    allDefaultVersions.length === 1 &&
+      allDefaultVersions[0] === expectedDefaultVersion,
+    `Prompt DB default version should be unique ${expectedDefaultVersion}: ${JSON.stringify(
+      audit,
+    )}.`,
+  );
+
+  if (expectedDeleted) {
+    assert(audit.prompt_deleted === true, "Prompt should be soft-deleted.");
+    assert(audit.prompt_deleted_at_set === true, "Deleted prompt missing deleted_at.");
+    assert(
+      Number(audit.active_version_count) === 0,
+      "Deleted prompt still had active versions.",
+    );
+    assert(
+      Number(audit.deleted_version_count) === Number(audit.version_count),
+      "Deleted prompt did not soft-delete all versions.",
+    );
+    assert(
+      Number(audit.deleted_versions_without_deleted_at_count) === 0,
+      "Deleted prompt versions were missing deleted_at.",
+    );
+    return;
+  }
+
+  assert(audit.prompt_deleted === false, "Prompt should still be active.");
+  assert(
+    Number(audit.active_default_version_count) === 1,
+    "Active prompt should have exactly one active default version.",
+  );
+  assert(
+    payloadArray(audit.active_default_versions, "active_default_versions")[0] ===
+      expectedDefaultVersion,
+    "Active prompt default version mismatch.",
+  );
 }
 
 async function loadPromptEvalConfigDbAudit({

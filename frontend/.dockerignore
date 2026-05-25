@@ -103,3 +103,5 @@ __pycache__/
 **/.ruff_cache/
 .mypy_cache/
 **/.mypy_cache/
+.uv-cache/
+**/.uv-cache/

@@ -100,6 +100,10 @@ out.out
 pre.out
 celerybeat-schedule
 
+# Local pitch/demo seed commands
+tfc/management/commands/seed_refund_demo*.py
+tfc/management/commands/seed_refund_evals.py
+
 # Large data directories
 minio_data/
 model_serving/

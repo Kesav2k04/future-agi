@@ -222,6 +222,10 @@ planning/
 scratch/
 ee/
 
+# Local pitch/demo seed commands
+futureagi/tfc/management/commands/seed_refund_demo*.py
+futureagi/tfc/management/commands/seed_refund_evals.py
+
 # Puppeteer / e2e test screenshots — local debugging only.
 frontend/scripts/.artifacts/
 

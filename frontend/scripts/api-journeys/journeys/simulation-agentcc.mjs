@@ -2257,10 +2257,47 @@ export const simulationAgentccJourneys = [
       "routing-policies",
       "mutating",
       "data-roundtrip",
+      "db-audit",
     ],
-    async run({ client, cleanup, runId, evidence }) {
+    async run({ client, cleanup, runId, evidence, organizationId }) {
       requireMutations();
       const name = `api_journey_routing_${runId.replace(/[^a-z0-9]/gi, "_")}`;
+
+      const originalActiveConfig = await client.get(
+        apiPath("/agentcc/org-configs/active/"),
+      );
+      assert(
+        originalActiveConfig?.id && originalActiveConfig?.is_active === true,
+        "AgentCC org config active endpoint did not return an active baseline config.",
+      );
+      const beforeConfigIds = new Set(
+        collectionRows(await client.get(apiPath("/agentcc/org-configs/")))
+          .map((config) => config?.id)
+          .filter(Boolean),
+      );
+      const restoreOrgConfig = createAgentccOrgConfigRestorer({
+        client,
+        beforeConfigIds,
+        originalActiveConfigId: originalActiveConfig.id,
+      });
+      cleanup.defer(
+        "restore AgentCC routing-policy org config versions",
+        restoreOrgConfig,
+      );
+
+      const invalidCreate = await expectApiError(
+        () =>
+          client.post(apiPath("/agentcc/routing-policies/"), {
+            name: `${name}_invalid`,
+            config: ["not", "an", "object"],
+          }),
+        [400],
+        "Gateway routing policy create accepted a non-object config.",
+      );
+      assert(
+        errorText(invalidCreate).toLowerCase().includes("config"),
+        "Routing policy invalid config guard did not mention config.",
+      );
 
       const created = await client.post(apiPath("/agentcc/routing-policies/"), {
         name,
@@ -2287,6 +2324,94 @@ export const simulationAgentccJourneys = [
         created.version >= 1,
         "Gateway routing policy did not get a version.",
       );
+      assert(
+        created.created_by,
+        "Gateway routing policy create did not return created_by.",
+      );
+
+      let dbAudit = await loadAgentccRoutingPolicyDbAudit({
+        policyIds: [created.id],
+        organizationId,
+        policyName: name,
+        createdConfigIds: [],
+      });
+      assert(
+        dbAudit.policy_count === 1 &&
+          dbAudit.active_policy_count === 1 &&
+          dbAudit.policy_versions.includes(created.version),
+        "Routing policy DB audit did not find the created active policy.",
+      );
+
+      const detail = await client.get(
+        apiPath("/agentcc/routing-policies/{id}/", { id: created.id }),
+      );
+      assert(
+        detail?.id === created.id &&
+          detail.name === name &&
+          detail.config?.rules?.[0]?.route_to?.model === "gpt-4o-mini",
+        "Gateway routing policy detail did not return the created policy/config.",
+      );
+
+      const updateGuard = await expectApiError(
+        () =>
+          client.patch(
+            apiPath("/agentcc/routing-policies/{id}/", { id: created.id }),
+            { description: "patch should be rejected" },
+          ),
+        [400],
+        "Gateway routing policy PATCH unexpectedly mutated a versioned policy.",
+      );
+      assert(
+        errorText(updateGuard).toLowerCase().includes("versioned"),
+        "Routing policy PATCH guard did not explain versioned policy behavior.",
+      );
+
+      const secondVersion = await client.post(
+        apiPath("/agentcc/routing-policies/"),
+        {
+          name,
+          description: "Second temporary routing policy version.",
+          config: {
+            rules: [
+              {
+                when: { provider: "openai" },
+                route_to: { provider: "openai", model: "gpt-4.1-mini" },
+              },
+            ],
+          },
+          is_active: true,
+        },
+      );
+      assert(
+        secondVersion?.id &&
+          secondVersion.id !== created.id &&
+          secondVersion.version === created.version + 1 &&
+          secondVersion.is_active === true,
+        "Gateway routing policy create did not create the next active version.",
+      );
+      cleanup.defer("delete API journey routing policy v2", () =>
+        ignoreNotFound(() =>
+          client.delete(
+            apiPath("/agentcc/routing-policies/{id}/", {
+              id: secondVersion.id,
+            }),
+          ),
+        ),
+      );
+
+      const afterVersionList = asArray(
+        await client.get(apiPath("/agentcc/routing-policies/")),
+      );
+      const firstVersionListRow = afterVersionList.find(
+        (policy) => policy.id === created.id,
+      );
+      assert(
+        firstVersionListRow?.is_active === false &&
+          afterVersionList.some(
+            (policy) => policy.id === secondVersion.id && policy.is_active,
+          ),
+        "Gateway routing policy version create did not deactivate the older version.",
+      );
 
       const activated = await client.post(
         apiPath("/agentcc/routing-policies/{id}/activate/", { id: created.id }),
@@ -2306,21 +2431,69 @@ export const simulationAgentccJourneys = [
         activePolicies.some((policy) => policy.id === created.id),
         "Gateway routing policy was not visible in active-only list.",
       );
+      assert(
+        !activePolicies.some((policy) => policy.id === secondVersion.id),
+        "Gateway routing policy active-only list still included the deactivated version.",
+      );
+
+      const syncResult = await client.post(
+        apiPath("/agentcc/routing-policies/sync/"),
+        {},
+      );
+      assert(
+        syncResult?.synced === true &&
+          typeof syncResult.gateway_synced === "boolean",
+        "Gateway routing policy manual sync did not return sync flags.",
+      );
 
       await client.delete(
         apiPath("/agentcc/routing-policies/{id}/", { id: created.id }),
+      );
+      await client.delete(
+        apiPath("/agentcc/routing-policies/{id}/", { id: secondVersion.id }),
       );
       const listed = asArray(
         await client.get(apiPath("/agentcc/routing-policies/")),
       );
       assert(
-        !listed.some((policy) => policy.id === created.id),
+        !listed.some(
+          (policy) =>
+            policy.id === created.id || policy.id === secondVersion.id,
+        ),
         "Deleted gateway routing policy was still visible in list.",
+      );
+
+      const restoreEvidence = await restoreOrgConfig();
+      dbAudit = await loadAgentccRoutingPolicyDbAudit({
+        policyIds: [created.id, secondVersion.id],
+        organizationId,
+        policyName: name,
+        createdConfigIds: restoreEvidence.deleted_config_ids,
+      });
+      assert(
+        dbAudit.policy_count === 2 &&
+          dbAudit.deleted_policy_count === 2 &&
+          dbAudit.deleted_at_count === 2 &&
+          dbAudit.active_policy_count === 0,
+        "Routing policy DB audit did not show both versions soft-deleted.",
+      );
+      assert(
+        dbAudit.active_config_policy_present === false &&
+          dbAudit.created_config_deleted_count ===
+            restoreEvidence.deleted_config_ids.length,
+        "Routing policy OrgConfig audit did not show restored active config and deleted disposable versions.",
       );
 
       evidence.push({
         routing_policy_id: created.id,
+        routing_policy_v2_id: secondVersion.id,
         routing_policy_name: name,
+        invalid_create_status: invalidCreate.status,
+        update_guard_status: updateGuard.status,
+        sync_gateway_synced: syncResult.gateway_synced,
+        deleted_at_count: dbAudit.deleted_at_count,
+        restored_org_config_id: restoreEvidence.original_config_id,
+        deleted_config_versions: restoreEvidence.deleted_config_versions,
       });
     },
   },
@@ -4078,6 +4251,82 @@ SELECT COALESCE((
   WHERE id = ${sqlUuid(blocklistId)}
     AND organization_id = ${sqlUuid(organizationId)}
 ), '{}'::json);
+`;
+  return runPostgresJson(sql);
+}
+
+async function loadAgentccRoutingPolicyDbAudit({
+  policyIds,
+  organizationId,
+  policyName,
+  createdConfigIds,
+}) {
+  const sql = `
+WITH selected_policy_ids AS (
+  SELECT unnest(${sqlUuidArray(policyIds)}) AS id
+),
+selected_policies AS (
+  SELECT p.*
+  FROM agentcc_routing_policy p
+  JOIN selected_policy_ids ids ON ids.id = p.id
+  WHERE p.organization_id = ${sqlUuid(organizationId)}
+),
+created_config_ids AS (
+  SELECT unnest(${sqlUuidArray(createdConfigIds)}) AS id
+),
+active_config AS (
+  SELECT id, routing
+  FROM agentcc_org_config
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND deleted = false
+    AND is_active = true
+  LIMIT 1
+),
+created_configs AS (
+  SELECT c.id, c.version, c.deleted, c.is_active
+  FROM agentcc_org_config c
+  JOIN created_config_ids ids ON ids.id = c.id
+  WHERE c.organization_id = ${sqlUuid(organizationId)}
+)
+SELECT json_build_object(
+  'policy_count', (SELECT count(*) FROM selected_policies),
+  'active_policy_count', (
+    SELECT count(*)
+    FROM selected_policies
+    WHERE deleted = false AND is_active = true
+  ),
+  'deleted_policy_count', (
+    SELECT count(*)
+    FROM selected_policies
+    WHERE deleted = true
+  ),
+  'deleted_at_count', (
+    SELECT count(*)
+    FROM selected_policies
+    WHERE deleted_at IS NOT NULL
+  ),
+  'policy_versions', (
+    SELECT COALESCE(json_agg(version ORDER BY version), '[]'::json)
+    FROM selected_policies
+  ),
+  'policy_configs', (
+    SELECT COALESCE(json_agg(config ORDER BY version), '[]'::json)
+    FROM selected_policies
+  ),
+  'active_config_policy_present',
+    COALESCE((SELECT routing->'policies' ? ${sqlString(policyName)} FROM active_config), false),
+  'created_config_count', (SELECT count(*) FROM created_configs),
+  'created_config_deleted_count', (
+    SELECT count(*)
+    FROM created_configs
+    WHERE deleted = true
+  ),
+  'created_config_active_count', (
+    SELECT count(*)
+    FROM created_configs
+    WHERE is_active = true
+  )
+);
 `;
   return runPostgresJson(sql);
 }

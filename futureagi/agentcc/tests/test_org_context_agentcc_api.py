@@ -8,6 +8,7 @@ from agentcc.models.blocklist import AgentccBlocklist
 from agentcc.models.custom_property import AgentccCustomPropertySchema
 from agentcc.models.email_alert import AgentccEmailAlert
 from agentcc.models.org_config import AgentccOrgConfig
+from agentcc.models.routing_policy import AgentccRoutingPolicy
 from agentcc.models.session import AgentccSession
 from agentcc.models.webhook import AgentccWebhook
 from conftest import WorkspaceAwareAPIClient
@@ -164,6 +165,41 @@ class TestAgentccRequestOrganizationContext:
         blocklist = AgentccBlocklist.all_objects.get(id=blocklist_id)
         assert blocklist.deleted is True
         assert blocklist.deleted_at is not None
+
+    def test_routing_policy_create_uses_active_request_organization(
+        self, user, secondary_org_context, secondary_org_client
+    ):
+        org_b, _ = secondary_org_context
+
+        response = secondary_org_client.post(
+            "/agentcc/routing-policies/",
+            {"name": "secondary_policy", "config": {"strategy": "latency"}},
+            format="json",
+        )
+
+        assert response.status_code == 200, response.json()
+        policy = AgentccRoutingPolicy.no_workspace_objects.get(name="secondary_policy")
+        assert policy.organization_id == org_b.id
+        assert policy.organization_id != user.organization_id
+        assert policy.created_by_id == user.id
+
+    def test_routing_policy_delete_stamps_deleted_at(self, secondary_org_client):
+        create_response = secondary_org_client.post(
+            "/agentcc/routing-policies/",
+            {"name": "secondary_policy_delete_stamp", "config": {"strategy": "cost"}},
+            format="json",
+        )
+        assert create_response.status_code == 200, create_response.json()
+        policy_id = create_response.json()["result"]["id"]
+
+        response = secondary_org_client.delete(
+            f"/agentcc/routing-policies/{policy_id}/"
+        )
+
+        assert response.status_code == 200, response.json()
+        policy = AgentccRoutingPolicy.all_objects.get(id=policy_id)
+        assert policy.deleted is True
+        assert policy.deleted_at is not None
 
     def test_email_alert_create_uses_active_request_organization(
         self, user, secondary_org_context, secondary_org_client

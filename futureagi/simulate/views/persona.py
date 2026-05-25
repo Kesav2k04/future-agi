@@ -3,6 +3,7 @@ from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
@@ -25,6 +26,36 @@ from tfc.utils.general_methods import GeneralMethods
 from tfc.utils.pagination import ExtendedPageNumberPagination
 
 logger = structlog.get_logger(__name__)
+
+
+def accessible_persona_queryset(request):
+    """Return personas visible from the active organization/workspace context."""
+    user = request.user
+    organization = getattr(request, "organization", None) or user.organization
+
+    workspace = getattr(request, "workspace", None)
+    if not workspace and user:
+        workspace = getattr(user, "workspace", None)
+
+    queryset = Persona.no_workspace_objects.all()
+    if workspace and organization:
+        return queryset.filter(
+            Q(persona_type=Persona.PersonaType.SYSTEM)
+            | Q(
+                persona_type=Persona.PersonaType.WORKSPACE,
+                organization=organization,
+                workspace=workspace,
+            )
+        )
+    if organization:
+        return queryset.filter(
+            Q(persona_type=Persona.PersonaType.SYSTEM)
+            | Q(
+                persona_type=Persona.PersonaType.WORKSPACE,
+                organization=organization,
+            )
+        )
+    return queryset.filter(persona_type=Persona.PersonaType.SYSTEM)
 
 
 class PersonaViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
@@ -72,43 +103,7 @@ class PersonaViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
         - type: 'prebuilt' (system) or 'custom' (workspace)
         - search: Search in name, description, keywords
         """
-        user = self.request.user
-        organization = getattr(self.request, "organization", None) or user.organization
-
-        # Get workspace from request (set by auth middleware) or user
-        workspace = getattr(self.request, "workspace", None)
-        if not workspace and user:
-            workspace = getattr(user, "workspace", None)
-
-        # Start with base queryset - use no_workspace_objects to bypass automatic workspace filtering
-        # so we can implement our own custom logic below
-        queryset = Persona.no_workspace_objects.all()
-
-        # Filter to show:
-        # 1. System-level personas (no organization/workspace)
-        # 2. Workspace-level personas in the current workspace/organization
-        if workspace and organization:
-            # Show system personas + workspace personas matching org and workspace
-            queryset = queryset.filter(
-                Q(persona_type=Persona.PersonaType.SYSTEM)
-                | Q(
-                    persona_type=Persona.PersonaType.WORKSPACE,
-                    organization=organization,
-                    workspace=workspace,
-                )
-            )
-        elif organization:
-            # If no workspace context, show system personas + org personas (any workspace or no workspace)
-            queryset = queryset.filter(
-                Q(persona_type=Persona.PersonaType.SYSTEM)
-                | Q(
-                    persona_type=Persona.PersonaType.WORKSPACE,
-                    organization=organization,
-                )
-            )
-        else:
-            # If no organization context, only show system personas
-            queryset = queryset.filter(persona_type=Persona.PersonaType.SYSTEM)
+        queryset = accessible_persona_queryset(self.request)
 
         # Apply type filter (prebuilt/custom)
         persona_type_param = self.request.query_params.get("type", None)
@@ -133,7 +128,7 @@ class PersonaViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
             if simulation_type_param not in [
                 choice[0] for choice in Persona.SimulationTypeChoices.choices
             ]:
-                return self._gm.bad_request("Invalid simulation type")
+                raise ValidationError({"simulation_type": "Invalid simulation type"})
 
             queryset = queryset.filter(simulation_type=simulation_type_param)
 
@@ -193,7 +188,10 @@ class PersonaViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """Create a new workspace-level persona"""
         # Get the persona name from request
-        persona_name = request.data.get("name", "").strip()
+        raw_persona_name = request.data.get("name", "")
+        persona_name = (
+            raw_persona_name.strip() if isinstance(raw_persona_name, str) else ""
+        )
 
         # Get workspace from request (set by auth middleware) or user
         workspace = getattr(request, "workspace", None)
@@ -255,6 +253,37 @@ class PersonaViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
                 "System-level personas cannot be modified"
             )
 
+        raw_persona_name = request.data.get("name", "")
+        persona_name = (
+            raw_persona_name.strip() if isinstance(raw_persona_name, str) else ""
+        )
+        workspace = getattr(request, "workspace", None)
+        if not workspace and hasattr(request.user, "workspace"):
+            workspace = request.user.workspace
+        if persona_name and persona_name.lower() != instance.name.lower():
+            system_persona_exists = Persona.no_workspace_objects.filter(
+                name__iexact=persona_name, persona_type=Persona.PersonaType.SYSTEM
+            ).exists()
+            if system_persona_exists:
+                return self._gm.bad_request(
+                    "A system persona with this name already exists. Please choose a different name."
+                )
+
+            if workspace:
+                workspace_persona_exists = (
+                    Persona.no_workspace_objects.filter(
+                        name__iexact=persona_name,
+                        workspace=workspace,
+                        persona_type=Persona.PersonaType.WORKSPACE,
+                    )
+                    .exclude(id=instance.id)
+                    .exists()
+                )
+                if workspace_persona_exists:
+                    return self._gm.bad_request(
+                        "A persona with this name already exists in your workspace."
+                    )
+
         partial = kwargs.pop("partial", False)
         serializer = PersonaSerializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -291,8 +320,7 @@ class PersonaViewSet(BaseModelViewSetMixin, viewsets.ModelViewSet):
                 "System-level personas cannot be deleted"
             )
 
-        instance.deleted = True
-        instance.save()
+        instance.delete()
 
         return self._gm.success_response(
             {"message": "Persona deleted successfully"},
@@ -458,9 +486,10 @@ class PersonaDuplicateView(APIView):
     )
     def post(self, request, persona_id):
         """Duplicate a persona by ID"""
-        try:
-            source_persona = Persona.no_workspace_objects.get(id=persona_id)
-        except Persona.DoesNotExist:
+        source_persona = accessible_persona_queryset(request).filter(
+            id=persona_id
+        ).first()
+        if not source_persona:
             return self._gm.bad_request("Persona not found")
 
         organization = (

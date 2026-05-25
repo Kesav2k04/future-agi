@@ -6,6 +6,7 @@ import {
   apiPath,
   asArray,
   assert,
+  currentUserId,
   isUuid,
   requireMutations,
   skip,
@@ -17,11 +18,114 @@ export const simulationAgentccJourneys = [
   {
     id: "SIM-API-001",
     title:
-      "Simulation persona create, search, update, retrieve, and delete lifecycle",
+      "Simulation persona create, duplicate, search, update, retrieve, and delete lifecycle",
     tags: ["simulation", "personas", "mutating", "data-roundtrip"],
-    async run({ client, cleanup, runId, evidence }) {
+    async run({
+      client,
+      cleanup,
+      runId,
+      evidence,
+      organizationId,
+      workspaceId,
+      user,
+    }) {
       requireMutations();
       const name = `api journey persona ${runId}`;
+      let hardCleaned = false;
+      cleanup.defer("hard-delete API journey persona rows", () =>
+        hardCleaned
+          ? null
+          : deleteSimulationPersonaFixturesDb({ namePrefix: name, organizationId }),
+      );
+
+      const fieldOptions = await client.get(
+        apiPath("/simulate/api/personas/field-options/"),
+      );
+      assert(
+        asArray(fieldOptions.gender_choices).some(
+          (choice) => choice.value === "male",
+        ) &&
+          asArray(fieldOptions.language_choices).some(
+            (choice) => choice.value === "English",
+          ),
+        "Persona field-options did not expose expected gender/language choices.",
+      );
+
+      const invalidListSimulationType = await expectApiError(
+        () =>
+          client.get(apiPath("/simulate/api/personas/"), {
+            query: { simulation_type: "fax" },
+          }),
+        [400],
+        "Persona list accepted an invalid simulation_type filter.",
+      );
+      assert(
+        errorText(invalidListSimulationType).includes("simulation_type"),
+        "Persona invalid list filter error did not mention simulation_type.",
+      );
+
+      const invalidGender = await expectApiError(
+        () =>
+          client.post(apiPath("/simulate/api/personas/"), {
+            name: `${name} invalid gender`,
+            description: "Invalid persona should be rejected.",
+            gender: ["robot"],
+            language: ["English"],
+            simulation_type: "voice",
+          }),
+        [400],
+        "Persona create accepted an invalid gender choice.",
+      );
+      const invalidNullName = await expectApiError(
+        () =>
+          client.post(apiPath("/simulate/api/personas/"), {
+            name: null,
+            description: "Invalid persona should be rejected.",
+            gender: ["male"],
+            language: ["English"],
+            simulation_type: "voice",
+          }),
+        [400],
+        "Persona create accepted a null name.",
+      );
+      const invalidSimulationType = await expectApiError(
+        () =>
+          client.post(apiPath("/simulate/api/personas/"), {
+            name: `${name} invalid simulation`,
+            description: "Invalid persona should be rejected.",
+            gender: ["male"],
+            language: ["English"],
+            simulation_type: "fax",
+          }),
+        [400],
+        "Persona create accepted an invalid simulation_type.",
+      );
+      const invalidMultilingual = await expectApiError(
+        () =>
+          client.post(apiPath("/simulate/api/personas/"), {
+            name: `${name} invalid multilingual`,
+            description: "Invalid persona should be rejected.",
+            gender: ["male"],
+            multilingual: true,
+            language: [],
+            simulation_type: "voice",
+          }),
+        [400],
+        "Persona create accepted multilingual=true without languages.",
+      );
+      const invalidCustomProperties = await expectApiError(
+        () =>
+          client.post(apiPath("/simulate/api/personas/"), {
+            name: `${name} invalid custom properties`,
+            description: "Invalid persona should be rejected.",
+            gender: ["male"],
+            language: ["English"],
+            custom_properties: { "": "missing key" },
+            simulation_type: "voice",
+          }),
+        [400],
+        "Persona create accepted an empty custom property key.",
+      );
 
       const created = await client.post(apiPath("/simulate/api/personas/"), {
         name,
@@ -51,15 +155,182 @@ export const simulationAgentccJourneys = [
           ),
         ),
       );
+      assert(
+        created.name === name &&
+          created.simulation_type === "voice" &&
+          asArray(created.occupation).includes("Engineer") &&
+          asArray(created.languages).includes("English") &&
+          created.metadata?.source === "api-journey",
+        "Persona create response did not preserve canonical fields.",
+      );
+
+      let dbAudit = await loadSimulationPersonaDbAudit({
+        personaIds: [created.id],
+        organizationId,
+      });
+      const createdAudit = collectionRows(dbAudit.personas).find(
+        (persona) => persona.id === created.id,
+      );
+      assert(
+        createdAudit?.organization_id === organizationId &&
+          createdAudit?.workspace_id === workspaceId &&
+          createdAudit?.deleted === false &&
+          createdAudit?.deleted_at_set === false &&
+          createdAudit?.metadata?.source === "api-journey",
+        "Persona DB audit did not show active workspace-owned row.",
+      );
 
       const searched = asArray(
         await client.get(apiPath("/simulate/api/personas/"), {
-          query: { search: name, page_size: 10 },
+          query: {
+            search: name,
+            page_size: 10,
+            type: "custom",
+            simulation_type: "voice",
+          },
         }),
       );
       assert(
         searched.some((persona) => persona.id === created.id),
-        "Created persona was not visible through list/search.",
+        "Created persona was not visible through custom voice list/search.",
+      );
+
+      const workspacePersonas = asArray(
+        await client.get(apiPath("/simulate/api/personas/workspace/")),
+      );
+      assert(
+        workspacePersonas.some((persona) => persona.id === created.id),
+        "Created persona was not visible through workspace persona list.",
+      );
+
+      const duplicateCreate = await expectApiError(
+        () =>
+          client.post(apiPath("/simulate/api/personas/"), {
+            name,
+            description: "Duplicate persona should be rejected.",
+            gender: ["male"],
+            language: ["English"],
+            simulation_type: "voice",
+          }),
+        [400],
+        "Persona create accepted a duplicate active workspace name.",
+      );
+      assert(
+        errorText(duplicateCreate).toLowerCase().includes("exists"),
+        "Persona duplicate create error did not mention existing name.",
+      );
+
+      const unknownDuplicateField = await expectApiError(
+        () =>
+          client.post(
+            apiPath("/simulate/api/personas/duplicate/{persona_id}/", {
+              persona_id: created.id,
+            }),
+            { name: `${name} unknown field copy`, legacy_extra: "reject me" },
+          ),
+        [400],
+        "Persona duplicate accepted an unknown request field.",
+      );
+      assert(
+        errorText(unknownDuplicateField).includes("legacy_extra"),
+        "Persona duplicate unknown-field error did not mention legacy_extra.",
+      );
+
+      const duplicateName = `${name} duplicate`;
+      const duplicated = await client.post(
+        apiPath("/simulate/api/personas/duplicate/{persona_id}/", {
+          persona_id: created.id,
+        }),
+        { name: duplicateName },
+      );
+      assert(
+        duplicated?.id &&
+          duplicated.id !== created.id &&
+          duplicated.name === duplicateName &&
+          duplicated.metadata?.source === "api-journey",
+        "Persona custom duplicate route did not create a copied persona.",
+      );
+      cleanup.defer("delete API journey duplicated persona", () =>
+        ignoreNotFound(() =>
+          client.delete(
+            apiPath("/simulate/api/personas/{id}/", { id: duplicated.id }),
+          ),
+        ),
+      );
+
+      const duplicateDuplicateName = await expectApiError(
+        () =>
+          client.post(
+            apiPath("/simulate/api/personas/duplicate/{persona_id}/", {
+              persona_id: created.id,
+            }),
+            { name: duplicateName },
+          ),
+        [400],
+        "Persona duplicate accepted a duplicate target name.",
+      );
+      assert(
+        errorText(duplicateDuplicateName).toLowerCase().includes("exists"),
+        "Persona duplicate-name error did not mention existing name.",
+      );
+
+      const viewsetDuplicateName = `${name} viewset duplicate`;
+      const viewsetDuplicated = await client.post(
+        apiPath("/simulate/api/personas/{id}/duplicate/", { id: created.id }),
+        { name: viewsetDuplicateName },
+      );
+      assert(
+        viewsetDuplicated?.id &&
+          viewsetDuplicated.id !== created.id &&
+          viewsetDuplicated.name === viewsetDuplicateName,
+        "Persona viewset duplicate route did not create a copied persona.",
+      );
+      cleanup.defer("delete API journey viewset duplicated persona", () =>
+        ignoreNotFound(() =>
+          client.delete(
+            apiPath("/simulate/api/personas/{id}/", {
+              id: viewsetDuplicated.id,
+            }),
+          ),
+        ),
+      );
+
+      const duplicatePatch = await expectApiError(
+        () =>
+          client.patch(
+            apiPath("/simulate/api/personas/{id}/", { id: created.id }),
+            { name: viewsetDuplicateName },
+          ),
+        [400],
+        "Persona update accepted a duplicate active workspace name.",
+      );
+      assert(
+        errorText(duplicatePatch).toLowerCase().includes("exists"),
+        "Persona duplicate update error did not mention existing name.",
+      );
+
+      const userId = currentUserId(user);
+      assert(userId, "Persona journey requires current user id for DB fixture.");
+      const otherWorkspaceFixture =
+        await insertOtherWorkspaceSimulationPersonaFixtureDb({
+          namePrefix: name,
+          organizationId,
+          userId,
+        });
+      const crossWorkspaceDuplicate = await expectApiError(
+        () =>
+          client.post(
+            apiPath("/simulate/api/personas/duplicate/{persona_id}/", {
+              persona_id: otherWorkspaceFixture.persona_id,
+            }),
+            { name: `${name} cross workspace copy` },
+          ),
+        [400, 404],
+        "Persona custom duplicate route copied an inaccessible workspace persona.",
+      );
+      assert(
+        errorText(crossWorkspaceDuplicate).toLowerCase().includes("not found"),
+        "Persona cross-workspace duplicate error did not fail closed as not found.",
       );
 
       const updated = await client.patch(
@@ -67,6 +338,8 @@ export const simulationAgentccJourneys = [
         {
           description: "Updated temporary persona for API journey regression.",
           keywords: ["api-journey", "updated"],
+          language: ["English", "Hindi"],
+          custom_properties: { source: "api-journey", updated: "true" },
         },
       );
       assert(
@@ -77,14 +350,30 @@ export const simulationAgentccJourneys = [
         asArray(updated.keywords).includes("updated"),
         "Persona update did not persist keywords.",
       );
+      assert(
+        asArray(updated.languages).includes("Hindi") &&
+          updated.metadata?.updated === "true",
+        "Persona update did not persist language/custom_properties aliases.",
+      );
 
       const detail = await client.get(
         apiPath("/simulate/api/personas/{id}/", { id: created.id }),
       );
       assert(detail?.id === created.id, "Persona detail returned wrong id.");
+      assert(
+        detail.metadata?.updated === "true" &&
+          asArray(detail.languages).includes("Hindi"),
+        "Persona detail did not read back updated metadata/languages.",
+      );
 
       await client.delete(
         apiPath("/simulate/api/personas/{id}/", { id: created.id }),
+      );
+      await client.delete(
+        apiPath("/simulate/api/personas/{id}/", { id: duplicated.id }),
+      );
+      await client.delete(
+        apiPath("/simulate/api/personas/{id}/", { id: viewsetDuplicated.id }),
       );
       const afterDelete = asArray(
         await client.get(apiPath("/simulate/api/personas/"), {
@@ -96,7 +385,51 @@ export const simulationAgentccJourneys = [
         "Deleted persona was still visible through list/search.",
       );
 
-      evidence.push({ persona_id: created.id, persona_name: name });
+      dbAudit = await loadSimulationPersonaDbAudit({
+        personaIds: [created.id, duplicated.id, viewsetDuplicated.id],
+        organizationId,
+      });
+      assert(
+        Number(dbAudit.active_count) === 0 &&
+          Number(dbAudit.deleted_at_count) === 3,
+        "Persona DB audit did not show deleted_at on all disposable personas.",
+      );
+
+      const hardCleanup = await deleteSimulationPersonaFixturesDb({
+        namePrefix: name,
+        organizationId,
+      });
+      hardCleaned = true;
+      assert(
+        Number(hardCleanup.remaining_persona_count) === 0 &&
+          Number(hardCleanup.remaining_workspace_count) === 0,
+        "Persona hard cleanup left disposable rows behind.",
+      );
+
+      evidence.push({
+        persona_id: created.id,
+        persona_name: name,
+        duplicate_persona_id: duplicated.id,
+        viewset_duplicate_persona_id: viewsetDuplicated.id,
+        invalid_gender_status: invalidGender.status,
+        invalid_null_name_status: invalidNullName.status,
+        invalid_simulation_type_status: invalidSimulationType.status,
+        invalid_list_simulation_type_status: invalidListSimulationType.status,
+        invalid_multilingual_status: invalidMultilingual.status,
+        invalid_custom_properties_status: invalidCustomProperties.status,
+        duplicate_create_status: duplicateCreate.status,
+        duplicate_unknown_field_status: unknownDuplicateField.status,
+        duplicate_name_status: duplicateDuplicateName.status,
+        duplicate_patch_status: duplicatePatch.status,
+        cross_workspace_duplicate_status: crossWorkspaceDuplicate.status,
+        deleted_at_count: Number(dbAudit.deleted_at_count),
+        hard_cleanup_deleted_persona_count: Number(
+          hardCleanup.deleted_persona_count,
+        ),
+        hard_cleanup_remaining_persona_count: Number(
+          hardCleanup.remaining_persona_count,
+        ),
+      });
     },
   },
   {
@@ -5100,6 +5433,223 @@ function findSdkCredentialLiterals(sdkCode) {
     }
   }
   return findings;
+}
+
+async function loadSimulationPersonaDbAudit({ personaIds, organizationId }) {
+  const sql = `
+WITH selected_ids AS (
+  SELECT unnest(${sqlUuidArray(personaIds)}) AS id
+),
+selected_personas AS (
+  SELECT p.*
+  FROM simulate_personas p
+  JOIN selected_ids ids ON ids.id = p.id
+  WHERE p.organization_id = ${sqlUuid(organizationId)}
+)
+SELECT json_build_object(
+  'personas', (
+    SELECT COALESCE(json_agg(json_build_object(
+      'id', id::text,
+      'name', name,
+      'persona_type', persona_type,
+      'organization_id', organization_id::text,
+      'workspace_id', workspace_id::text,
+      'deleted', deleted,
+      'deleted_at_set', deleted_at IS NOT NULL,
+      'occupation', occupation,
+      'languages', languages,
+      'metadata', metadata,
+      'simulation_type', simulation_type
+    ) ORDER BY created_at), '[]'::json)
+    FROM selected_personas
+  ),
+  'selected_count', (SELECT count(*) FROM selected_personas),
+  'active_count', (
+    SELECT count(*) FROM selected_personas WHERE deleted = false
+  ),
+  'deleted_at_count', (
+    SELECT count(*) FROM selected_personas WHERE deleted = true AND deleted_at IS NOT NULL
+  )
+);
+`;
+  return runPostgresJson(sql);
+}
+
+async function insertOtherWorkspaceSimulationPersonaFixtureDb({
+  namePrefix,
+  organizationId,
+  userId,
+}) {
+  const workspaceId = randomUUID();
+  const personaId = randomUUID();
+  const workspaceName = `${namePrefix} other workspace`;
+  const personaName = `${namePrefix} other workspace source`;
+  const sql = `
+WITH inserted_workspace AS (
+  INSERT INTO accounts_workspace (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    display_name,
+    description,
+    is_active,
+    is_default,
+    created_by_id,
+    organization_id
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(workspaceId)},
+    ${sqlString(workspaceName)},
+    ${sqlString(workspaceName)},
+    ${sqlString("Temporary workspace for API journey persona scoping.")},
+    true,
+    false,
+    ${sqlUuid(userId)},
+    ${sqlUuid(organizationId)}
+  )
+  RETURNING id, name
+),
+inserted_persona AS (
+  INSERT INTO simulate_personas (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    persona_type,
+    persona_id,
+    name,
+    description,
+    gender,
+    age_group,
+    occupation,
+    location,
+    personality,
+    communication_style,
+    multilingual,
+    languages,
+    accent,
+    conversation_speed,
+    background_sound,
+    finished_speaking_sensitivity,
+    interrupt_sensitivity,
+    keywords,
+    metadata,
+    additional_instruction,
+    is_default,
+    organization_id,
+    workspace_id,
+    simulation_type,
+    punctuation,
+    slang_usage,
+    typos_frequency,
+    regional_mix,
+    emoji_usage,
+    tone,
+    verbosity
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(personaId)},
+    'workspace',
+    0,
+    ${sqlString(personaName)},
+    ${sqlString("Cross-workspace persona source for API journey regression.")},
+    ${sqlJson(["male"])},
+    ${sqlJson(["25-32"])},
+    ${sqlJson(["Engineer"])},
+    ${sqlJson(["United States"])},
+    ${sqlJson(["Friendly and cooperative"])},
+    ${sqlJson(["Direct and concise"])},
+    false,
+    ${sqlJson(["English"])},
+    ${sqlJson(["american"])},
+    ${sqlJson(["1.0"])},
+    false,
+    ${sqlJson(["5"])},
+    ${sqlJson(["5"])},
+    ${sqlJson(["api-journey"])},
+    ${sqlJson({ source: "api-journey-other-workspace" })},
+    ${sqlString("Should not be duplicable from another workspace.")},
+    false,
+    ${sqlUuid(organizationId)},
+    ${sqlUuid(workspaceId)},
+    'voice',
+    'clean',
+    'light',
+    'rare',
+    'light',
+    'light',
+    'casual',
+    'balanced'
+  )
+  RETURNING id, name, workspace_id
+)
+SELECT json_build_object(
+  'workspace_id', (SELECT id::text FROM inserted_workspace),
+  'workspace_name', (SELECT name FROM inserted_workspace),
+  'persona_id', (SELECT id::text FROM inserted_persona),
+  'persona_name', (SELECT name FROM inserted_persona)
+);
+`;
+  return runPostgresJson(sql);
+}
+
+async function deleteSimulationPersonaFixturesDb({
+  namePrefix,
+  organizationId,
+}) {
+  const sql = `
+WITH target_personas AS (
+  SELECT id
+  FROM simulate_personas
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND name LIKE ${sqlString(`${namePrefix}%`)}
+),
+deleted_personas AS (
+  DELETE FROM simulate_personas p
+  USING target_personas target
+  WHERE p.id = target.id
+  RETURNING p.id
+),
+target_workspaces AS (
+  SELECT id
+  FROM accounts_workspace
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND name LIKE ${sqlString(`${namePrefix} other workspace%`)}
+),
+deleted_workspaces AS (
+  DELETE FROM accounts_workspace w
+  USING target_workspaces target
+  WHERE w.id = target.id
+  RETURNING w.id
+)
+SELECT json_build_object(
+  'deleted_persona_count', (SELECT count(*) FROM deleted_personas),
+  'remaining_persona_count', (
+    SELECT count(*)
+    FROM target_personas
+    WHERE id NOT IN (SELECT id FROM deleted_personas)
+  ),
+  'deleted_workspace_count', (SELECT count(*) FROM deleted_workspaces),
+  'remaining_workspace_count', (
+    SELECT count(*)
+    FROM target_workspaces
+    WHERE id NOT IN (SELECT id FROM deleted_workspaces)
+  )
+);
+`;
+  return runPostgresJson(sql);
 }
 
 function assertProviderCredentialSecretMasked(payload, rawKey) {

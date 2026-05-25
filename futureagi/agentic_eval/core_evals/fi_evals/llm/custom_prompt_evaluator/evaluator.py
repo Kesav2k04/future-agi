@@ -7,6 +7,7 @@ import jinja2
 from jinja2 import Environment
 
 from agentic_eval.core.llm.llm import LLM
+from agentic_eval.core.utils.jinja_utils import nest_dotted_value
 from agentic_eval.core.utils.json_utils import extract_dict_from_string
 from agentic_eval.core.utils.llm_payloads import detect_and_build_media_blocks
 from agentic_eval.core.utils.model_config import ModelConfigs
@@ -22,7 +23,6 @@ from agentic_eval.core_evals.fi_evals.eval_type import LlmEvalTypeId
 # values let huge transcripts/raw_logs flow in fully, at the cost of higher
 # TPM/cost per eval. Tuned for the 200K-window judge models. See TH-4905.
 _MAX_CONTEXT_CHARS = 200000
-
 
 class CustomPromptEvaluator(LLM):
     """
@@ -250,6 +250,12 @@ class CustomPromptEvaluator(LLM):
                     prompt_to_render = prompt_to_render.replace(
                         "{{ " + stripped + " }}", replacement
                     )
+                elif "." in stripped and stripped in safe_context:
+                    # Jinja parses dots as nested access; numeric segments
+                    # become list indices.
+                    parts = stripped.split(".")
+                    value = safe_context.pop(stripped)
+                    nest_dotted_value(safe_context, parts, value)
 
             # In Jinja mode, parse JSON strings to native objects right
             # before rendering so {% for %} loops work correctly.

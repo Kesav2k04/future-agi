@@ -233,7 +233,7 @@ def _yaml_to_template_fields(eval_def):
         if "rule_prompt" not in config and eval_def.get("criteria"):
             config["rule_prompt"] = eval_def["criteria"]
         if is_oss():
-            config.setdefault("eval_type_id", "CustomPromptEvaluator")
+            config["eval_type_id"] = "CustomPromptEvaluator"
         else:
             config.setdefault("eval_type_id", "AgentEvaluator")
 

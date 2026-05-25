@@ -193,7 +193,9 @@ export const annotationQueueJourneys = [
         : await findAnnotationLabelByName(client, labelName);
       assert(label?.id, "Could not resolve created queue label by name.");
       cleanup.defer("delete queue create label", () =>
-        client.delete(apiPath("/model-hub/annotations-labels/{id}/", { id: label.id })),
+        client.delete(
+          apiPath("/model-hub/annotations-labels/{id}/", { id: label.id }),
+        ),
       );
 
       let requiredLabelDenied = false;
@@ -227,7 +229,10 @@ export const annotationQueueJourneys = [
       const detail = await client.get(
         apiPath("/model-hub/annotation-queues/{id}/", { id: queue.id }),
       );
-      assert(detail?.id === queue.id, "Queue detail did not reload created queue.");
+      assert(
+        detail?.id === queue.id,
+        "Queue detail did not reload created queue.",
+      );
       assert(
         detail.name === queueName &&
           detail.description ===
@@ -408,7 +413,15 @@ export const annotationQueueJourneys = [
     id: "AQ-API-003",
     title: "Bulk assignment updates assigned-to-me list and DB state",
     tags: ["annotation", "mutating", "assignment", "db-audit"],
-    async run({ client, cleanup, user, runId, organizationId, workspaceId, evidence }) {
+    async run({
+      client,
+      cleanup,
+      user,
+      runId,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
       requireMutations();
       const userId = assertCurrentUserResolved(user);
       const sample = await resolveTraceAndSpanSample(client);
@@ -419,10 +432,17 @@ export const annotationQueueJourneys = [
         sample.projectId,
         evidence,
       );
-      await ensureExplicitQueueMember(client, queue, userId, cleanup, evidence, {
-        reason: "assignment coverage",
-        roles: ["manager", "reviewer", "annotator"],
-      });
+      await ensureExplicitQueueMember(
+        client,
+        queue,
+        userId,
+        cleanup,
+        evidence,
+        {
+          reason: "assignment coverage",
+          roles: ["manager", "reviewer", "annotator"],
+        },
+      );
 
       const itemPayloads = [
         {
@@ -448,7 +468,10 @@ export const annotationQueueJourneys = [
           queuePath("/model-hub/annotation-queues/{queue_id}/items/", queue.id),
           payload,
         );
-        assert(created?.id, "Assignment journey queue item create returned no id.");
+        assert(
+          created?.id,
+          "Assignment journey queue item create returned no id.",
+        );
         createdItems.push({ ...created, expected: payload });
         cleanup.defer(`delete assignment queue item ${created.id}`, () =>
           deleteQueueItemIfPresent(client, queue.id, created.id),
@@ -638,7 +661,15 @@ export const annotationQueueJourneys = [
     title:
       "Discussion comment, wide emoji reaction, resolve, and reopen lifecycle",
     tags: ["annotation", "mutating", "comments", "db-audit"],
-    async run({ client, cleanup, user, runId, organizationId, workspaceId, evidence }) {
+    async run({
+      client,
+      cleanup,
+      user,
+      runId,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
       requireMutations();
       const userId = assertCurrentUserResolved(user);
       const sample = await resolveTraceAndSpanSample(client);
@@ -649,9 +680,16 @@ export const annotationQueueJourneys = [
         sample.projectId,
         evidence,
       );
-      await ensureExplicitQueueMember(client, queue, userId, cleanup, evidence, {
-        reason: "discussion mention coverage",
-      });
+      await ensureExplicitQueueMember(
+        client,
+        queue,
+        userId,
+        cleanup,
+        evidence,
+        {
+          reason: "discussion mention coverage",
+        },
+      );
       const beforeItems = asArray(
         await client.get(
           queuePath("/model-hub/annotation-queues/{queue_id}/items/", queue.id),
@@ -950,7 +988,14 @@ export const annotationQueueJourneys = [
     id: "AQ-API-029",
     title: "Queue member multi-role update persists and restores",
     tags: ["annotation", "mutating", "members", "db-audit"],
-    async run({ client, cleanup, user, organizationId, workspaceId, evidence }) {
+    async run({
+      client,
+      cleanup,
+      user,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
       requireMutations();
       const userId = assertCurrentUserResolved(user);
       const queue = await resolveMemberRoleQueue(client, evidence);
@@ -1471,9 +1516,286 @@ export const annotationQueueJourneys = [
     },
   },
   {
+    id: "AQ-API-031",
+    title:
+      "Annotation history, raw scores, value history, and item notes reload",
+    tags: ["annotation", "mutating", "history", "db-audit"],
+    async run({
+      client,
+      cleanup,
+      user,
+      runId,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
+      requireMutations();
+      const userId = assertCurrentUserResolved(user);
+      const sample = await resolveTraceAndSpanSample(client);
+      const namePrefix = `api journey history ${runId}`;
+      const queueName = `${namePrefix} queue`;
+      const labelName = `${namePrefix} text label`;
+      cleanup.defer("hard-delete annotation history DB fixtures", () =>
+        deleteQueueCreateFixturesDb(namePrefix),
+      );
+
+      const labelResponse = await client.post(
+        apiPath("/model-hub/annotations-labels/"),
+        {
+          name: labelName,
+          type: "text",
+          description: "Disposable label for annotation history coverage.",
+          settings: {
+            placeholder: "History coverage",
+            min_length: 0,
+            max_length: 500,
+          },
+          allow_notes: true,
+        },
+      );
+      const label = labelResponse?.id
+        ? labelResponse
+        : await findAnnotationLabelByName(client, labelName);
+      assert(label?.id, "Could not resolve created history label.");
+      cleanup.defer("delete annotation history label", () =>
+        deleteAnnotationLabelIfPresent(client, label.id),
+      );
+
+      let queue;
+      let queueCreateMode = "api";
+      try {
+        queue = await client.post(apiPath("/model-hub/annotation-queues/"), {
+          name: queueName,
+          description: "Disposable queue for annotation history coverage.",
+          instructions: "Submit repeated values and verify history readback.",
+          annotations_required: 1,
+          reservation_timeout_minutes: 30,
+          requires_review: false,
+          auto_assign: false,
+        });
+      } catch (error) {
+        if (error.status !== 402) throw error;
+        queueCreateMode = "db_seeded_after_create_entitlement";
+        evidence.push({
+          create_entitlement_status: error.status,
+          create_entitlement_body: error.body,
+        });
+        queue = await insertAnnotationQueueCreateFixtureDb({
+          queueName,
+          organizationId,
+          workspaceId,
+          userId,
+        });
+      }
+      assert(queue?.id, "Annotation history queue create returned no id.");
+      cleanup.defer("hard-delete annotation history queue", () =>
+        hardDeleteQueueIfPresent(client, queue.id, queueName),
+      );
+
+      await restoreQueueStatusIfNeeded(client, queue.id, "active");
+
+      await client.post(
+        apiPath("/model-hub/annotation-queues/{id}/add-label/", {
+          id: queue.id,
+        }),
+        { label_id: label.id, required: false },
+      );
+
+      const item = await client.post(
+        queuePath("/model-hub/annotation-queues/{queue_id}/items/", queue.id),
+        {
+          source_type: "trace",
+          source_id: sample.traceId,
+          status: "pending",
+          priority: 3,
+          order: 7301,
+          metadata: { api_journey: runId, stage: "history" },
+        },
+      );
+      assert(item?.id, "Annotation history queue item create returned no id.");
+      cleanup.defer("delete annotation history queue item", () =>
+        deleteQueueItemIfPresent(client, queue.id, item.id),
+      );
+
+      const values = [
+        { text: `history first ${runId}` },
+        { text: `history second ${runId}` },
+        { text: `history final ${runId}` },
+      ];
+      const labelNotes = [
+        `history label note one ${runId}`,
+        `history label note two ${runId}`,
+        `history label note final ${runId}`,
+      ];
+      const itemNotes = [
+        `history item note one ${runId}`,
+        `history item note two ${runId}`,
+        `history item note final ${runId}`,
+      ];
+
+      for (let index = 0; index < values.length; index += 1) {
+        const submitted = await client.post(
+          queuePath(
+            "/model-hub/annotation-queues/{queue_id}/items/{id}/annotations/submit/",
+            queue.id,
+            { id: item.id },
+          ),
+          {
+            annotations: [
+              {
+                label_id: label.id,
+                value: values[index],
+                notes: labelNotes[index],
+              },
+            ],
+            item_notes: itemNotes[index],
+          },
+        );
+        assert(
+          Number(submitted.submitted) === 1,
+          `History submit ${index + 1} did not save one score: ${JSON.stringify(
+            submitted,
+          )}.`,
+        );
+      }
+
+      const completed = await client.post(
+        queuePath(
+          "/model-hub/annotation-queues/{queue_id}/items/{id}/complete/",
+          queue.id,
+          { id: item.id },
+        ),
+        { exclude: [item.id] },
+      );
+      assert(
+        completed.completed_item_id === item.id,
+        `Complete response did not echo item id: ${JSON.stringify(completed)}.`,
+      );
+
+      const history = asArray(
+        await client.get(
+          queuePath(
+            "/model-hub/annotation-queues/{queue_id}/items/{id}/annotations/",
+            queue.id,
+            { id: item.id },
+          ),
+        ),
+      );
+      assert(
+        history.length === 1,
+        `History returned ${history.length} scores.`,
+      );
+      const rawScore = history[0];
+      assert(
+        String(rawScore.label_id) === String(label.id) &&
+          String(rawScore.annotator) === String(userId) &&
+          sameJsonValue(rawScore.value, values[2]) &&
+          rawScore.notes === labelNotes[2] &&
+          rawScore.score_source === "human",
+        `Raw score history had wrong current value: ${JSON.stringify(rawScore)}.`,
+      );
+      assert(
+        sameJsonValue(
+          asArray(rawScore.value_history).map((entry) => entry.value),
+          [values[0], values[1]],
+        ) && asArray(rawScore.value_history).every((entry) => entry.at),
+        `Raw score value_history did not preserve previous values with timestamps: ${JSON.stringify(
+          rawScore.value_history,
+        )}.`,
+      );
+
+      const detail = await client.get(
+        queuePath(
+          "/model-hub/annotation-queues/{queue_id}/items/{id}/annotate-detail/",
+          queue.id,
+          { id: item.id },
+        ),
+        { query: { include_completed: true, include_all_annotations: true } },
+      );
+      assert(
+        detail.item?.status === "completed" &&
+          String(detail.existing_notes || "") === itemNotes[2],
+        `Annotate detail did not reload completed item notes: ${JSON.stringify(
+          detail,
+        )}.`,
+      );
+      const detailScore = asArray(detail.annotations).find(
+        (score) => String(score.id) === String(rawScore.id),
+      );
+      assert(
+        detailScore &&
+          sameJsonValue(detailScore.value, values[2]) &&
+          sameJsonValue(
+            asArray(detailScore.value_history).map((entry) => entry.value),
+            [values[0], values[1]],
+          ),
+        `Annotate detail did not reload raw score history: ${JSON.stringify(
+          detail.annotations,
+        )}.`,
+      );
+
+      const completedItems = asArray(
+        await client.get(
+          queuePath("/model-hub/annotation-queues/{queue_id}/items/", queue.id),
+          { query: { status: "completed", limit: 100 } },
+        ),
+      );
+      assert(
+        completedItems.some((row) => String(row.id) === String(item.id)),
+        `Completed item list did not expose completed history item: ${JSON.stringify(
+          completedItems,
+        )}.`,
+      );
+
+      const dbAudit = await loadAnnotationHistoryDbAudit({
+        queueId: queue.id,
+        itemId: item.id,
+        labelId: label.id,
+        scoreId: rawScore.id,
+        userId,
+      });
+      assert(
+        String(dbAudit.queue?.organization_id) === String(organizationId) &&
+          String(dbAudit.queue?.workspace_id) === String(workspaceId) &&
+          String(dbAudit.item?.status) === "completed",
+        `Annotation history DB scope/status mismatch: ${JSON.stringify(dbAudit)}.`,
+      );
+      assert(
+        Number(dbAudit.score_count) === 1 &&
+          sameJsonValue(dbAudit.score?.value, values[2]) &&
+          sameJsonValue(
+            asArray(dbAudit.score?.value_history).map((entry) => entry.value),
+            [values[0], values[1]],
+          ) &&
+          dbAudit.score?.notes === labelNotes[2] &&
+          dbAudit.item_note?.notes === itemNotes[2],
+        `Annotation history DB value mismatch: ${JSON.stringify(dbAudit)}.`,
+      );
+
+      evidence.push({
+        queue_create_mode: queueCreateMode,
+        queue_id: queue.id,
+        item_id: item.id,
+        label_id: label.id,
+        score_id: rawScore.id,
+        history_rows: history.length,
+        value_history_count: asArray(rawScore.value_history).length,
+        final_item_status: dbAudit.item?.status,
+        final_item_note: dbAudit.item_note?.notes,
+      });
+    },
+  },
+  {
     id: "AQ-API-020",
     title: "Voice call trace add to queue explicit and filter-mode readback",
-    tags: ["annotation", "observe", "voice", "mutating", "add-items", "data-roundtrip"],
+    tags: [
+      "annotation",
+      "observe",
+      "voice",
+      "mutating",
+      "add-items",
+      "data-roundtrip",
+    ],
     async run({ client, cleanup, evidence }) {
       requireMutations();
       const voice = await resolveObserveVoiceCallSource(client, evidence);
@@ -1636,7 +1958,8 @@ export const annotationQueueJourneys = [
           (item) =>
             String(item.id) === String(filterItemId) &&
             item.source_type === "trace" &&
-            String(item.source_preview?.project_id) === String(voice.project.id),
+            String(item.source_preview?.project_id) ===
+              String(voice.project.id),
         ),
         "Voice trace filter-mode item was not visible through source_type-filtered list.",
       );
@@ -1659,7 +1982,14 @@ export const annotationQueueJourneys = [
   {
     id: "AQ-API-021",
     title: "Observe trace, span, and session filter-mode add parity",
-    tags: ["annotation", "observe", "mutating", "add-items", "filter-mode", "data-roundtrip"],
+    tags: [
+      "annotation",
+      "observe",
+      "mutating",
+      "add-items",
+      "filter-mode",
+      "data-roundtrip",
+    ],
     async run({ client, cleanup, evidence }) {
       requireMutations();
       const sample = await resolveTraceAndSpanSample(client);
@@ -1686,7 +2016,11 @@ export const annotationQueueJourneys = [
           sourceType: "trace_session",
           sourceId: session.sessionId,
           projectId: session.project.id,
-          filter: canonicalTextFilter("session_id", "equals", session.sessionId),
+          filter: canonicalTextFilter(
+            "session_id",
+            "equals",
+            session.sessionId,
+          ),
           listSourceTypes: ["trace_session"],
         },
       ];
@@ -1716,7 +2050,8 @@ export const annotationQueueJourneys = [
           payload,
         );
         assert(
-          Number(added?.added) === 1 && Number(added?.total_matching || 0) === 1,
+          Number(added?.added) === 1 &&
+            Number(added?.total_matching || 0) === 1,
           `${spec.key} filter-mode add returned unexpected result: ${JSON.stringify(
             added,
           )}.`,
@@ -1757,7 +2092,10 @@ export const annotationQueueJourneys = [
 
         const listedItems = asArray(
           await client.get(
-            queuePath("/model-hub/annotation-queues/{queue_id}/items/", queue.id),
+            queuePath(
+              "/model-hub/annotation-queues/{queue_id}/items/",
+              queue.id,
+            ),
             {
               query: {
                 limit: 100,
@@ -1811,30 +2149,45 @@ export const annotationQueueJourneys = [
   },
   {
     id: "AQ-API-022",
-    title: "Import annotations writes scoped scores and updates without duplicates",
+    title:
+      "Import annotations writes scoped scores and updates without duplicates",
     tags: ["annotation", "mutating", "import", "scores", "data-roundtrip"],
-    async run({ client, cleanup, runId, user, organizationId, workspaceId, evidence }) {
+    async run({
+      client,
+      cleanup,
+      runId,
+      user,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
       requireMutations();
       const userId = assertCurrentUserResolved(user);
       const sample = await resolveTraceAndSpanSample(client);
       const labelName = `api journey import text ${runId}`;
-      const label = await client.post(apiPath("/model-hub/annotations-labels/"), {
-        name: labelName,
-        type: "text",
-        description: "Disposable label for queue import journey.",
-        settings: {
-          placeholder: "Queue import journey",
-          min_length: 0,
-          max_length: 500,
+      const label = await client.post(
+        apiPath("/model-hub/annotations-labels/"),
+        {
+          name: labelName,
+          type: "text",
+          description: "Disposable label for queue import journey.",
+          settings: {
+            placeholder: "Queue import journey",
+            min_length: 0,
+            max_length: 500,
+          },
+          allow_notes: true,
         },
-        allow_notes: true,
-      });
+      );
       const createdLabel = label?.id
         ? label
         : label?.label?.id
           ? label.label
           : await findAnnotationLabelByName(client, labelName);
-      assert(createdLabel?.id, "Import journey label create did not return id.");
+      assert(
+        createdLabel?.id,
+        "Import journey label create did not return id.",
+      );
       cleanup.defer("delete import journey label", () =>
         deleteAnnotationLabelIfPresent(client, createdLabel.id),
       );
@@ -2069,8 +2422,22 @@ export const annotationQueueJourneys = [
   {
     id: "AQ-API-023",
     title: "Default queue source lookup and direct score annotation round-trip",
-    tags: ["annotation", "mutating", "default-queue", "scores", "data-roundtrip"],
-    async run({ client, cleanup, runId, user, organizationId, workspaceId, evidence }) {
+    tags: [
+      "annotation",
+      "mutating",
+      "default-queue",
+      "scores",
+      "data-roundtrip",
+    ],
+    async run({
+      client,
+      cleanup,
+      runId,
+      user,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
       requireMutations();
       const userId = assertCurrentUserResolved(user);
       const seedSample = await resolveTraceAndSpanSample(client);
@@ -2086,23 +2453,30 @@ export const annotationQueueJourneys = [
       assert(defaultQueue?.id, "Default queue lookup did not return queue id.");
 
       const labelName = `api journey default queue direct ${runId}`;
-      const label = await client.post(apiPath("/model-hub/annotations-labels/"), {
-        name: labelName,
-        type: "text",
-        description: "Disposable label for default queue direct score journey.",
-        settings: {
-          placeholder: "Default queue direct score journey",
-          min_length: 0,
-          max_length: 500,
+      const label = await client.post(
+        apiPath("/model-hub/annotations-labels/"),
+        {
+          name: labelName,
+          type: "text",
+          description:
+            "Disposable label for default queue direct score journey.",
+          settings: {
+            placeholder: "Default queue direct score journey",
+            min_length: 0,
+            max_length: 500,
+          },
+          allow_notes: true,
         },
-        allow_notes: true,
-      });
+      );
       const createdLabel = label?.id
         ? label
         : label?.label?.id
           ? label.label
           : await findAnnotationLabelByName(client, labelName);
-      assert(createdLabel?.id, "Default queue journey label create did not return id.");
+      assert(
+        createdLabel?.id,
+        "Default queue journey label create did not return id.",
+      );
       cleanup.defer("delete default queue direct label", () =>
         deleteAnnotationLabelIfPresent(client, createdLabel.id),
       );
@@ -2179,7 +2553,10 @@ export const annotationQueueJourneys = [
       );
       const createdScore = createdScores[0];
       const queueItemId = createdScore.queue_item || createdScore.queue_item_id;
-      assert(queueItemId, "Default queue direct score did not attach to a queue item.");
+      assert(
+        queueItemId,
+        "Default queue direct score did not attach to a queue item.",
+      );
       assert(
         createdScore.source_type === "trace" &&
           String(createdScore.source_id) === String(sample.traceId) &&
@@ -2211,7 +2588,10 @@ export const annotationQueueJourneys = [
         "Default queue item did not preserve trace source identity.",
       );
       assert(
-        sameJsonValue(afterEntry.existing_scores?.[createdLabel.id], scoreValue),
+        sameJsonValue(
+          afterEntry.existing_scores?.[createdLabel.id],
+          scoreValue,
+        ),
         "Default queue source lookup did not prefill the saved direct score value.",
       );
       assert(
@@ -2355,9 +2735,8 @@ export const annotationQueueJourneys = [
         progress_skipped: progress.skipped,
         analytics_total: analytics.total,
         analytics_status_breakdown: analytics.status_breakdown,
-        analytics_label_count: Object.keys(
-          analytics.label_distribution || {},
-        ).length,
+        analytics_label_count: Object.keys(analytics.label_distribution || {})
+          .length,
         agreement_status: agreementStatus,
         agreement_overall: expectedAgreement?.overall_agreement ?? null,
         organization_id: organizationId,
@@ -2534,7 +2913,14 @@ export const annotationQueueJourneys = [
     id: "AQ-API-027",
     title: "Queue full update preserves settings and bindings in database",
     tags: ["annotation", "mutating", "queue", "db-audit"],
-    async run({ client, cleanup, runId, organizationId, workspaceId, evidence }) {
+    async run({
+      client,
+      cleanup,
+      runId,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
       requireMutations();
       const queue = await resolveManagerQueue(client, evidence);
       const originalPayload = buildQueuePutPayload(queue);
@@ -2618,7 +3004,14 @@ export const annotationQueueJourneys = [
     id: "AQ-API-028",
     title: "Queue item direct create, full update, partial update, and cleanup",
     tags: ["annotation", "mutating", "items", "db-audit"],
-    async run({ client, cleanup, runId, organizationId, workspaceId, evidence }) {
+    async run({
+      client,
+      cleanup,
+      runId,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
       requireMutations();
       const sample = await resolveTraceAndSpanSample(client);
       const queue = await resolveManagerQueueWithoutSource(
@@ -2874,7 +3267,14 @@ export const annotationQueueJourneys = [
     id: "AQ-API-007",
     title: "Automation rule CRUD and preview uses canonical filter shape",
     tags: ["annotation", "mutating", "automation", "db-audit"],
-    async run({ client, cleanup, runId, evidence, organizationId, workspaceId }) {
+    async run({
+      client,
+      cleanup,
+      runId,
+      evidence,
+      organizationId,
+      workspaceId,
+    }) {
       requireMutations();
       const queue = await resolveManagerQueue(client, evidence);
       const rule = await client.post(
@@ -5846,18 +6246,24 @@ async function ensureExplicitQueueMember(
   )
     ? originalAnnotatorIds
     : [...originalAnnotatorIds, userId];
-  await client.patch(apiPath("/model-hub/annotation-queues/{id}/", { id: queue.id }), {
-    annotator_ids: patchedAnnotatorIds,
-    annotator_roles: {
-      ...originalRoles,
-      [String(userId)]: roles,
+  await client.patch(
+    apiPath("/model-hub/annotation-queues/{id}/", { id: queue.id }),
+    {
+      annotator_ids: patchedAnnotatorIds,
+      annotator_roles: {
+        ...originalRoles,
+        [String(userId)]: roles,
+      },
     },
-  });
+  );
   cleanup.defer("restore explicit queue membership", () =>
-    client.patch(apiPath("/model-hub/annotation-queues/{id}/", { id: queue.id }), {
-      annotator_ids: originalAnnotatorIds,
-      annotator_roles: originalRoles,
-    }),
+    client.patch(
+      apiPath("/model-hub/annotation-queues/{id}/", { id: queue.id }),
+      {
+        annotator_ids: originalAnnotatorIds,
+        annotator_roles: originalRoles,
+      },
+    ),
   );
   evidence.push({
     explicit_queue_membership: currentMember ? "roles-updated" : "added",
@@ -5867,7 +6273,9 @@ async function ensureExplicitQueueMember(
     roles,
     reason,
   });
-  return client.get(apiPath("/model-hub/annotation-queues/{id}/", { id: queue.id }));
+  return client.get(
+    apiPath("/model-hub/annotation-queues/{id}/", { id: queue.id }),
+  );
 }
 
 function buildQueueAnnotatorRoleMap(annotators) {
@@ -5889,10 +6297,13 @@ function findQueueAnnotator(queueDetail, userId) {
 }
 
 async function restoreQueueAnnotators(client, queueId, annotatorIds, roles) {
-  return client.patch(apiPath("/model-hub/annotation-queues/{id}/", { id: queueId }), {
-    annotator_ids: annotatorIds,
-    annotator_roles: roles,
-  });
+  return client.patch(
+    apiPath("/model-hub/annotation-queues/{id}/", { id: queueId }),
+    {
+      annotator_ids: annotatorIds,
+      annotator_roles: roles,
+    },
+  );
 }
 
 async function resolveManagerQueueWithoutSource(
@@ -6227,7 +6638,12 @@ async function resolveStatusTransitionQueue(client, evidence) {
   return queue;
 }
 
-async function resolveMetricsQueue(client, organizationId, workspaceId, evidence) {
+async function resolveMetricsQueue(
+  client,
+  organizationId,
+  workspaceId,
+  evidence,
+) {
   const configuredQueueId = process.env.ANNOTATION_METRICS_QUEUE_ID;
   if (configuredQueueId) {
     const queue = await client.get(
@@ -6905,7 +7321,9 @@ function assertDiscussionDbState(dbAudit, expected) {
     `Discussion thread deleted flag mismatch: ${JSON.stringify(thread)}.`,
   );
 
-  const byId = new Map(comments.map((comment) => [String(comment.id), comment]));
+  const byId = new Map(
+    comments.map((comment) => [String(comment.id), comment]),
+  );
   const root = byId.get(String(expected.rootCommentId));
   const reply = byId.get(String(expected.replyCommentId));
   const resolve = expected.resolveCommentId
@@ -6914,7 +7332,10 @@ function assertDiscussionDbState(dbAudit, expected) {
   const reopen = expected.reopenCommentId
     ? byId.get(String(expected.reopenCommentId))
     : comments.find((comment) => comment.action === "reopen");
-  assert(root && reply && resolve && reopen, "Discussion DB audit missed rows.");
+  assert(
+    root && reply && resolve && reopen,
+    "Discussion DB audit missed rows.",
+  );
   for (const comment of [root, reply, resolve, reopen]) {
     assert(
       String(comment.queue_item_id) === String(expected.queueItemId) &&
@@ -6944,7 +7365,9 @@ function assertDiscussionDbState(dbAudit, expected) {
     ? root.reactions[expected.emoji]
     : [];
   assert(
-    reactionUserIds.some((userId) => String(userId) === String(expected.userId)),
+    reactionUserIds.some(
+      (userId) => String(userId) === String(expected.userId),
+    ),
     `Discussion reaction not persisted: ${JSON.stringify(root.reactions)}.`,
   );
 }
@@ -7467,6 +7890,94 @@ SELECT coalesce(
   return audit;
 }
 
+async function loadAnnotationHistoryDbAudit({
+  queueId,
+  itemId,
+  labelId,
+  scoreId,
+  userId,
+}) {
+  const sql = `
+WITH queue AS (
+  SELECT
+    id::text,
+    organization_id::text,
+    workspace_id::text,
+    status,
+    deleted
+  FROM model_hub_annotationqueue
+  WHERE id = ${sqlUuid(queueId, "queueId")}
+),
+item AS (
+  SELECT
+    id::text,
+    queue_id::text,
+    organization_id::text,
+    workspace_id::text,
+    status,
+    source_type,
+    trace_id::text,
+    deleted
+  FROM model_hub_queueitem
+  WHERE id = ${sqlUuid(itemId, "itemId")}
+),
+score_rows AS (
+  SELECT
+    id::text,
+    source_type,
+    trace_id::text,
+    label_id::text,
+    annotator_id::text,
+    queue_item_id::text,
+    organization_id::text,
+    workspace_id::text,
+    value,
+    value_history,
+    score_source,
+    notes,
+    deleted
+  FROM model_hub_score
+  WHERE
+    id = ${sqlUuid(scoreId, "scoreId")}
+    AND queue_item_id = ${sqlUuid(itemId, "itemId")}
+    AND label_id = ${sqlUuid(labelId, "labelId")}
+    AND annotator_id = ${sqlUuid(userId, "userId")}
+    AND deleted = false
+),
+item_note AS (
+  SELECT
+    id::text,
+    queue_item_id::text,
+    annotator_id::text,
+    organization_id::text,
+    workspace_id::text,
+    notes,
+    deleted
+  FROM model_hub_queueitemnote
+  WHERE
+    queue_item_id = ${sqlUuid(itemId, "itemId")}
+    AND annotator_id = ${sqlUuid(userId, "userId")}
+    AND deleted = false
+  ORDER BY updated_at DESC
+  LIMIT 1
+)
+SELECT json_build_object(
+  'queue', coalesce((SELECT row_to_json(queue) FROM queue), '{}'::json),
+  'item', coalesce((SELECT row_to_json(item) FROM item), '{}'::json),
+  'score', coalesce((SELECT row_to_json(score_rows) FROM score_rows), '{}'::json),
+  'item_note', coalesce((SELECT row_to_json(item_note) FROM item_note), '{}'::json),
+  'score_count', (SELECT count(*)::int FROM score_rows),
+  'active_item_note_count', (SELECT count(*)::int FROM item_note)
+)::text;
+`;
+  const audit = await runPostgresJson(sql);
+  assert(
+    Number(audit?.score_count || 0) > 0,
+    `Score ${scoreId} was not found in annotation history DB audit.`,
+  );
+  return audit;
+}
+
 async function deleteQueueCreateFixturesDb(namePrefix) {
   const sql = `
 WITH matching_queues AS (
@@ -7474,6 +7985,30 @@ WITH matching_queues AS (
 ),
 matching_labels AS (
   SELECT id FROM model_hub_annotationslabels WHERE name LIKE ${sqlString(`${namePrefix}%`)}
+),
+matching_queue_items AS (
+  SELECT id FROM model_hub_queueitem WHERE queue_id IN (SELECT id FROM matching_queues)
+),
+deleted_scores AS (
+  DELETE FROM model_hub_score
+  WHERE queue_item_id IN (SELECT id FROM matching_queue_items)
+     OR label_id IN (SELECT id FROM matching_labels)
+  RETURNING id
+),
+deleted_item_notes AS (
+  DELETE FROM model_hub_queueitemnote
+  WHERE queue_item_id IN (SELECT id FROM matching_queue_items)
+  RETURNING id
+),
+deleted_queue_item_assignments AS (
+  DELETE FROM model_hub_queueitemassignment
+  WHERE queue_item_id IN (SELECT id FROM matching_queue_items)
+  RETURNING id
+),
+deleted_queue_items AS (
+  DELETE FROM model_hub_queueitem
+  WHERE id IN (SELECT id FROM matching_queue_items)
+  RETURNING id
 ),
 deleted_queue_labels AS (
   DELETE FROM model_hub_annotationqueuelabel
@@ -7502,6 +8037,10 @@ deleted_workspaces AS (
   RETURNING id
 )
 SELECT json_build_object(
+  'deleted_scores', (SELECT count(*) FROM deleted_scores),
+  'deleted_item_notes', (SELECT count(*) FROM deleted_item_notes),
+  'deleted_queue_item_assignments', (SELECT count(*) FROM deleted_queue_item_assignments),
+  'deleted_queue_items', (SELECT count(*) FROM deleted_queue_items),
   'deleted_queue_labels', (SELECT count(*) FROM deleted_queue_labels),
   'deleted_queue_members', (SELECT count(*) FROM deleted_queue_members),
   'deleted_queues', (SELECT count(*) FROM deleted_queues),
@@ -7636,7 +8175,9 @@ function expectedProgressFromDb(dbAudit, userId) {
       in_review: userInReview,
       skipped: Number(userStatusCounts.get("skipped") || 0),
       progress_pct:
-        userItems.length > 0 ? round1((userCompleted / userItems.length) * 100) : 0,
+        userItems.length > 0
+          ? round1((userCompleted / userItems.length) * 100)
+          : 0,
     },
   };
 }
@@ -7666,7 +8207,9 @@ function expectedAnalyticsFromDb(dbAudit) {
       statusBreakdown.needs_changes += 1;
     } else if (item.status === "in_progress") {
       statusBreakdown.in_review += 1;
-    } else if (Object.prototype.hasOwnProperty.call(statusBreakdown, item.status)) {
+    } else if (
+      Object.prototype.hasOwnProperty.call(statusBreakdown, item.status)
+    ) {
       statusBreakdown[item.status] += 1;
     } else {
       statusBreakdown.pending += 1;
@@ -7697,11 +8240,12 @@ function expectedAnalyticsFromDb(dbAudit) {
       user_id: annotatorId,
       name: rows[0]?.annotator_name || null,
       completed: rows.length,
-      last_active: rows
-        .map((row) => row.created_at)
-        .filter(Boolean)
-        .sort()
-        .at(-1) || null,
+      last_active:
+        rows
+          .map((row) => row.created_at)
+          .filter(Boolean)
+          .sort()
+          .at(-1) || null,
     }))
     .sort(
       (left, right) =>
@@ -7771,7 +8315,9 @@ function expectedAgreementFromDb(dbAudit) {
     for (const entries of itemLabelMap.values()) {
       if (entries[0]?.label_id !== labelIdValue || entries.length < 2) continue;
       totalCount += 1;
-      const values = entries.map((entry) => normalizeAgreementValue(entry.value));
+      const values = entries.map((entry) =>
+        normalizeAgreementValue(entry.value),
+      );
       if (new Set(values).size === 1) {
         agreeCount += 1;
       } else {
@@ -7819,7 +8365,10 @@ function assertExportFieldsCatalogMatches(payload, dbAudit) {
   const fields = asArray(payload.fields);
   const defaultMapping = asArray(payload.default_mapping);
   assert(fields.length > 0, "Export fields returned no fields.");
-  assert(defaultMapping.length > 0, "Export fields returned no default_mapping.");
+  assert(
+    defaultMapping.length > 0,
+    "Export fields returned no default_mapping.",
+  );
 
   const fieldsById = new Map(fields.map((field) => [String(field.id), field]));
   assert(
@@ -7827,7 +8376,9 @@ function assertExportFieldsCatalogMatches(payload, dbAudit) {
     "Export fields contained duplicate field ids.",
   );
   const columnKeys = fields.map((field) =>
-    String(field.column || "").trim().toLowerCase(),
+    String(field.column || "")
+      .trim()
+      .toLowerCase(),
   );
   assert(
     new Set(columnKeys).size === columnKeys.length,
@@ -7844,8 +8395,14 @@ function assertExportFieldsCatalogMatches(payload, dbAudit) {
     "Export fields default_mapping did not match fields marked default=true.",
   );
   for (const mapping of defaultMapping) {
-    assert(fieldsById.has(String(mapping.field)), `Default mapping field ${mapping.field} missing.`);
-    assert(mapping.enabled === true, "Default mapping must mark fields enabled.");
+    assert(
+      fieldsById.has(String(mapping.field)),
+      `Default mapping field ${mapping.field} missing.`,
+    );
+    assert(
+      mapping.enabled === true,
+      "Default mapping must mark fields enabled.",
+    );
     assert(
       typeof mapping.column === "string" && mapping.column.length > 0,
       "Default mapping column must be a non-empty string.",
@@ -7866,7 +8423,10 @@ function assertExportFieldsCatalogMatches(payload, dbAudit) {
     "item_notes",
   ];
   for (const fieldId of requiredBaseFields) {
-    assert(fieldsById.has(fieldId), `Export fields missing base field ${fieldId}.`);
+    assert(
+      fieldsById.has(fieldId),
+      `Export fields missing base field ${fieldId}.`,
+    );
   }
 
   const annotationsRequired = Math.max(
@@ -8076,7 +8636,10 @@ function assertAnalyticsMatches(actual, expected) {
     `Analytics total_completed expected ${expected.throughput.total_completed}, saw ${actual.throughput?.total_completed}.`,
   );
   assert(
-    nearlyEqual(actual.throughput?.avg_per_day, expected.throughput.avg_per_day),
+    nearlyEqual(
+      actual.throughput?.avg_per_day,
+      expected.throughput.avg_per_day,
+    ),
     `Analytics avg_per_day expected ${expected.throughput.avg_per_day}, saw ${actual.throughput?.avg_per_day}.`,
   );
   assertJsonEqual(
@@ -8115,7 +8678,10 @@ function assertAgreementMatches(actual, expected) {
         actualLabel.agreement_pct,
         expectedLabel.agreement_pct,
       ) &&
-        nullableNearlyEqual(actualLabel.cohens_kappa, expectedLabel.cohens_kappa),
+        nullableNearlyEqual(
+          actualLabel.cohens_kappa,
+          expectedLabel.cohens_kappa,
+        ),
       `Agreement label ${labelIdValue} metrics expected ${JSON.stringify(
         expectedLabel,
       )}, saw ${JSON.stringify(actualLabel)}.`,
@@ -8140,7 +8706,13 @@ function assertAgreementMatches(actual, expected) {
   );
 }
 
-function assertMetricRowsMatch(actualRows, expectedRows, keySpec, numericFields, label) {
+function assertMetricRowsMatch(
+  actualRows,
+  expectedRows,
+  keySpec,
+  numericFields,
+  label,
+) {
   const keyFn =
     typeof keySpec === "function" ? keySpec : (row) => String(row?.[keySpec]);
   const actualByKey = new Map(actualRows.map((row) => [keyFn(row), row]));
@@ -8167,7 +8739,11 @@ function assertMetricRowsMatch(actualRows, expectedRows, keySpec, numericFields,
 function assertLabelDistributionMatches(actual, expected) {
   const actualKeys = Object.keys(actual).sort();
   const expectedKeys = Object.keys(expected).sort();
-  assertJsonEqual(actualKeys, expectedKeys, "Analytics label_distribution labels");
+  assertJsonEqual(
+    actualKeys,
+    expectedKeys,
+    "Analytics label_distribution labels",
+  );
   for (const labelIdValue of expectedKeys) {
     assert(
       actual[labelIdValue]?.name === expected[labelIdValue].name &&
@@ -8222,7 +8798,10 @@ function groupBy(rows, keyFn) {
 
 function countComparableItemLabels(scores) {
   return Array.from(
-    groupBy(asArray(scores), (score) => `${score.queue_item_id}::${score.label_id}`),
+    groupBy(
+      asArray(scores),
+      (score) => `${score.queue_item_id}::${score.label_id}`,
+    ),
   ).filter(([, rows]) => rows.length >= 2).length;
 }
 
@@ -8305,7 +8884,10 @@ function normalizeAgreementValue(value) {
       ])
       .sort(([left], [right]) => left.localeCompare(right));
     return `[${entries
-      .map(([key, entryValue]) => `(${pythonRepr(key)}, ${pythonRepr(entryValue)})`)
+      .map(
+        ([key, entryValue]) =>
+          `(${pythonRepr(key)}, ${pythonRepr(entryValue)})`,
+      )
       .join(", ")}]`;
   }
   if (typeof value === "boolean") return value ? "True" : "False";
@@ -8324,7 +8906,9 @@ function pythonRepr(value) {
   if (Array.isArray(value)) return `[${value.map(pythonRepr).join(", ")}]`;
   if (typeof value === "object") {
     return `{${Object.entries(value)
-      .map(([key, entryValue]) => `${pythonRepr(key)}: ${pythonRepr(entryValue)}`)
+      .map(
+        ([key, entryValue]) => `${pythonRepr(key)}: ${pythonRepr(entryValue)}`,
+      )
       .join(", ")}}`;
   }
   return String(value);
@@ -8343,7 +8927,12 @@ function nearlyEqual(left, right, epsilon = 0.0001) {
 }
 
 function nullableNearlyEqual(left, right, epsilon = 0.0001) {
-  if (left === null || left === undefined || right === null || right === undefined) {
+  if (
+    left === null ||
+    left === undefined ||
+    right === null ||
+    right === undefined
+  ) {
     return left === right;
   }
   return nearlyEqual(left, right, epsilon);
@@ -8361,7 +8950,12 @@ async function findQueueEntryForSource(client, queueId, sourceType, sourceId) {
   return entries.find((entry) => String(entry?.queue?.id) === String(queueId));
 }
 
-async function findDefaultQueueEntryForSource(client, queueId, sourceType, sourceId) {
+async function findDefaultQueueEntryForSource(
+  client,
+  queueId,
+  sourceType,
+  sourceId,
+) {
   const entries = asArray(
     await client.get(apiPath("/model-hub/annotation-queues/for-source/"), {
       query: {
@@ -8393,7 +8987,11 @@ async function resolveDefaultQueueForDirectTraceAnnotation(
   );
 
   for (const candidate of queues) {
-    if (!candidate?.id || candidate.status !== "active" || !candidate.is_default) {
+    if (
+      !candidate?.id ||
+      candidate.status !== "active" ||
+      !candidate.is_default
+    ) {
       continue;
     }
     const detail = await client.get(
@@ -8511,7 +9109,12 @@ async function firstTraceSourceForDefaultQueue(
   return fallback;
 }
 
-async function resolveDefaultQueueTraceSource(client, queueId, seedSample, evidence) {
+async function resolveDefaultQueueTraceSource(
+  client,
+  queueId,
+  seedSample,
+  evidence,
+) {
   const candidates = [];
   const seen = new Set();
   const pushCandidate = (candidate) => {
@@ -8687,9 +9290,12 @@ async function resolveObserveVoiceCallSource(client, evidence) {
     for (const call of baseRows) {
       const traceId = call.trace_id;
       if (!traceId) continue;
-      const detail = await client.get(apiPath("/tracer/trace/voice_call_detail/"), {
-        query: { trace_id: traceId },
-      });
+      const detail = await client.get(
+        apiPath("/tracer/trace/voice_call_detail/"),
+        {
+          query: { trace_id: traceId },
+        },
+      );
       const rootSpan = findVoiceRootConversationSpan(detail?.observation_span);
       if (!rootSpan?.id) continue;
 
@@ -8718,7 +9324,8 @@ function findVoiceRootConversationSpan(spans) {
   const rows = asArray(spans);
   return (
     rows.find(
-      (span) => !span?.parent_span_id && span?.observation_type === "conversation",
+      (span) =>
+        !span?.parent_span_id && span?.observation_type === "conversation",
     ) ||
     rows.find((span) => !span?.parent_span_id) ||
     rows[0]

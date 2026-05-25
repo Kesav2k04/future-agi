@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import process from "node:process";
 import { promisify } from "node:util";
@@ -94,6 +95,225 @@ export const annotationQueueJourneys = [
         progress_total: progress.total,
         export_field_count: asArray(exportFields.fields).length,
         agreement_status: agreementStatus,
+      });
+    },
+  },
+  {
+    id: "AQ-API-030",
+    title:
+      "Queue create entitlement gate, workspace scope, labels, and creator roles",
+    tags: ["annotation", "mutating", "db-audit", "create"],
+    async run({
+      client,
+      cleanup,
+      user,
+      runId,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
+      requireMutations();
+      const userId = assertCurrentUserResolved(user);
+      const namePrefix = `api journey queue create ${runId}`;
+      const queueName = `${namePrefix} main`;
+      const labelName = `${namePrefix} label`;
+
+      const missingNameStatus = await expectHttpStatus(
+        () =>
+          client.post(apiPath("/model-hub/annotation-queues/"), {
+            description: "Missing name validation coverage.",
+          }),
+        400,
+      );
+
+      const otherLabelFixture = await insertOtherWorkspaceQueueLabelFixtureDb({
+        namePrefix,
+        organizationId,
+        userId,
+      });
+      cleanup.defer("delete other-workspace queue label fixture", () =>
+        deleteQueueCreateFixturesDb(namePrefix),
+      );
+      const crossWorkspaceLabelStatus = await expectHttpStatus(
+        () =>
+          client.post(apiPath("/model-hub/annotation-queues/"), {
+            name: `${namePrefix} cross workspace label`,
+            label_ids: [otherLabelFixture.label_id],
+          }),
+        400,
+      );
+
+      let queue;
+      let createMode = "api";
+      try {
+        queue = await client.post(apiPath("/model-hub/annotation-queues/"), {
+          name: queueName,
+          description: "Disposable queue for API journey create coverage.",
+          instructions: "Verify labels and creator roles.",
+          annotations_required: 1,
+          reservation_timeout_minutes: 45,
+          requires_review: false,
+          auto_assign: false,
+        });
+      } catch (error) {
+        if (error.status !== 402) throw error;
+        createMode = "db_seeded_after_create_entitlement";
+        evidence.push({
+          create_entitlement_status: error.status,
+          create_entitlement_body: error.body,
+        });
+        queue = await insertAnnotationQueueCreateFixtureDb({
+          queueName,
+          organizationId,
+          workspaceId,
+          userId,
+        });
+      }
+      assert(queue?.id, "Queue create/seed did not produce a queue id.");
+      cleanup.defer("hard-delete queue create fixture", () =>
+        hardDeleteQueueIfPresent(client, queue.id, queueName),
+      );
+
+      const labelResponse = await client.post(
+        apiPath("/model-hub/annotations-labels/"),
+        {
+          name: labelName,
+          type: "text",
+          description: "Disposable label for queue create coverage.",
+          settings: {
+            placeholder: "Queue create coverage",
+            min_length: 0,
+            max_length: 500,
+          },
+          allow_notes: true,
+        },
+      );
+      const label = labelResponse?.id
+        ? labelResponse
+        : await findAnnotationLabelByName(client, labelName);
+      assert(label?.id, "Could not resolve created queue label by name.");
+      cleanup.defer("delete queue create label", () =>
+        client.delete(apiPath("/model-hub/annotations-labels/{id}/", { id: label.id })),
+      );
+
+      let requiredLabelDenied = false;
+      let addedLabel;
+      try {
+        addedLabel = await client.post(
+          apiPath("/model-hub/annotation-queues/{id}/add-label/", {
+            id: queue.id,
+          }),
+          { label_id: label.id, required: true },
+        );
+      } catch (error) {
+        if (error.status !== 402) throw error;
+        requiredLabelDenied = true;
+        evidence.push({
+          required_label_entitlement_status: error.status,
+          required_label_entitlement_body: error.body,
+        });
+        addedLabel = await client.post(
+          apiPath("/model-hub/annotation-queues/{id}/add-label/", {
+            id: queue.id,
+          }),
+          { label_id: label.id, required: false },
+        );
+      }
+      assert(
+        addedLabel?.label?.id === label.id,
+        "Add-label response did not return the created label.",
+      );
+
+      const detail = await client.get(
+        apiPath("/model-hub/annotation-queues/{id}/", { id: queue.id }),
+      );
+      assert(detail?.id === queue.id, "Queue detail did not reload created queue.");
+      assert(
+        detail.name === queueName &&
+          detail.description ===
+            "Disposable queue for API journey create coverage." &&
+          detail.instructions === "Verify labels and creator roles.",
+        `Queue detail did not preserve create fields: ${JSON.stringify(detail)}.`,
+      );
+      const creator = findQueueAnnotator(detail, userId);
+      assert(
+        creator &&
+          creator.role === "manager" &&
+          sameJsonValue(asArray(creator.roles), [
+            "manager",
+            "reviewer",
+            "annotator",
+          ]),
+        `Queue detail did not expose creator full roles: ${JSON.stringify(creator)}.`,
+      );
+      assert(
+        asArray(detail.viewer_roles).includes("manager") &&
+          asArray(detail.viewer_roles).includes("reviewer") &&
+          asArray(detail.viewer_roles).includes("annotator"),
+        `Queue detail viewer_roles did not include full creator access: ${JSON.stringify(
+          detail.viewer_roles,
+        )}.`,
+      );
+      assert(
+        asArray(detail.labels).some(
+          (queueLabel) => String(queueLabel.label_id) === String(label.id),
+        ),
+        "Queue detail did not include the attached label.",
+      );
+
+      const searched = asArray(
+        await client.get(apiPath("/model-hub/annotation-queues/"), {
+          query: { search: queueName, include_counts: true },
+        }),
+      );
+      const searchedQueue = searched.find((row) => row.id === queue.id);
+      assert(
+        searchedQueue &&
+          Number(searchedQueue.label_count || 0) >= 1 &&
+          Number(searchedQueue.annotator_count || 0) >= 1,
+        `Queue list/search did not include counts for the created queue: ${JSON.stringify(
+          searched,
+        )}.`,
+      );
+
+      const dbAudit = await loadQueueCreateDbAudit({
+        queueId: queue.id,
+        userId,
+        labelId: label.id,
+      });
+      assert(
+        String(dbAudit.organization_id) === String(organizationId) &&
+          String(dbAudit.workspace_id) === String(workspaceId),
+        `Queue DB scope mismatch: ${JSON.stringify(dbAudit)}.`,
+      );
+      assert(
+        dbAudit.creator_member?.role === "manager" &&
+          sameJsonValue(asArray(dbAudit.creator_member?.roles), [
+            "manager",
+            "reviewer",
+            "annotator",
+          ]),
+        `Creator DB membership mismatch: ${JSON.stringify(dbAudit)}.`,
+      );
+      assert(
+        Number(dbAudit.active_label_count) === 1 &&
+          Number(dbAudit.label_binding_count) === 1 &&
+          Number(dbAudit.active_member_count) === 1,
+        `Queue DB label/member counts mismatch: ${JSON.stringify(dbAudit)}.`,
+      );
+
+      evidence.push({
+        queue_create_mode: createMode,
+        queue_id: queue.id,
+        queue_name: queueName,
+        label_id: label.id,
+        missing_name_status: missingNameStatus,
+        cross_workspace_label_status: crossWorkspaceLabelStatus,
+        required_label_denied: requiredLabelDenied,
+        active_label_count: dbAudit.active_label_count,
+        active_member_count: dbAudit.active_member_count,
+        creator_roles: dbAudit.creator_member?.roles,
+        workspace_id: dbAudit.workspace_id,
       });
     },
   },
@@ -5773,7 +5993,7 @@ async function resolveMemberRoleQueue(client, evidence) {
     );
     const roles = asArray(detail.viewer_roles);
     if (!roles.includes("manager")) continue;
-    if (Boolean(detail.auto_assign)) continue;
+    if (detail.auto_assign) continue;
     const queueItems = asArray(
       await client.get(
         queuePath("/model-hub/annotation-queues/{queue_id}/items/", detail.id),
@@ -6995,6 +7215,303 @@ async function restoreQueueStatusIfNeeded(client, queueId, expectedStatus) {
   );
 }
 
+async function insertAnnotationQueueCreateFixtureDb({
+  queueName,
+  organizationId,
+  workspaceId,
+  userId,
+}) {
+  const queueId = randomUUID();
+  const memberId = randomUUID();
+  const roles = ["manager", "reviewer", "annotator"];
+  const sql = `
+WITH inserted_queue AS (
+  INSERT INTO model_hub_annotationqueue (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    description,
+    instructions,
+    status,
+    assignment_strategy,
+    annotations_required,
+    reservation_timeout_minutes,
+    requires_review,
+    created_by_id,
+    organization_id,
+    workspace_id,
+    project_id,
+    is_default,
+    dataset_id,
+    agent_definition_id,
+    auto_assign
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(queueId, "queueId")},
+    ${sqlString(queueName)},
+    ${sqlString("Disposable queue for API journey create coverage.")},
+    ${sqlString("Verify labels and creator roles.")},
+    'active',
+    'manual',
+    1,
+    45,
+    false,
+    ${sqlUuid(userId, "userId")},
+    ${sqlUuid(organizationId, "organizationId")},
+    ${sqlUuid(workspaceId, "workspaceId")},
+    NULL,
+    false,
+    NULL,
+    NULL,
+    false
+  )
+  RETURNING id::text, name, status
+),
+inserted_member AS (
+  INSERT INTO model_hub_annotationqueueannotator (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    role,
+    roles,
+    queue_id,
+    user_id
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(memberId, "memberId")},
+    'manager',
+    ${sqlJson(roles)},
+    ${sqlUuid(queueId, "queueId")},
+    ${sqlUuid(userId, "userId")}
+  )
+  RETURNING id::text, role, roles
+)
+SELECT json_build_object(
+  'id', (SELECT id FROM inserted_queue),
+  'name', (SELECT name FROM inserted_queue),
+  'status', (SELECT status FROM inserted_queue),
+  'seeded_member_id', (SELECT id FROM inserted_member)
+)::text;
+`;
+  return runPostgresJson(sql);
+}
+
+async function insertOtherWorkspaceQueueLabelFixtureDb({
+  namePrefix,
+  organizationId,
+  userId,
+}) {
+  const workspaceId = randomUUID();
+  const labelId = randomUUID();
+  const workspaceName = `${namePrefix} other label workspace`;
+  const labelName = `${namePrefix} other workspace label`;
+  const sql = `
+WITH inserted_workspace AS (
+  INSERT INTO accounts_workspace (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    display_name,
+    description,
+    is_active,
+    is_default,
+    created_by_id,
+    organization_id
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(workspaceId, "workspaceId")},
+    ${sqlString(workspaceName)},
+    ${sqlString(workspaceName)},
+    ${sqlString("Temporary workspace for annotation queue create coverage.")},
+    true,
+    false,
+    ${sqlUuid(userId, "userId")},
+    ${sqlUuid(organizationId, "organizationId")}
+  )
+  RETURNING id::text, name
+),
+inserted_label AS (
+  INSERT INTO model_hub_annotationslabels (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    type,
+    settings,
+    organization_id,
+    description,
+    project_id,
+    workspace_id,
+    metadata,
+    allow_notes
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(labelId, "labelId")},
+    ${sqlString(labelName)},
+    'text',
+    '{}'::jsonb,
+    ${sqlUuid(organizationId, "organizationId")},
+    ${sqlString("Other-workspace label for queue create validation.")},
+    NULL,
+    ${sqlUuid(workspaceId, "workspaceId")},
+    '{}'::jsonb,
+    false
+  )
+  RETURNING id::text, name, workspace_id::text
+)
+SELECT json_build_object(
+  'workspace_id', (SELECT id FROM inserted_workspace),
+  'workspace_name', (SELECT name FROM inserted_workspace),
+  'label_id', (SELECT id FROM inserted_label),
+  'label_name', (SELECT name FROM inserted_label),
+  'label_workspace_id', (SELECT workspace_id FROM inserted_label)
+)::text;
+`;
+  return runPostgresJson(sql);
+}
+
+async function loadQueueCreateDbAudit({ queueId, userId, labelId }) {
+  const sql = `
+WITH queue AS (
+  SELECT
+    q.id::text AS id,
+    q.name,
+    q.description,
+    q.instructions,
+    q.status,
+    q.organization_id::text AS organization_id,
+    q.workspace_id::text AS workspace_id,
+    q.created_by_id::text AS created_by_id,
+    q.deleted,
+    (
+      SELECT count(*)::int
+      FROM model_hub_annotationqueuelabel ql
+      WHERE ql.queue_id = q.id AND ql.deleted = false
+    ) AS active_label_count,
+    (
+      SELECT count(*)::int
+      FROM model_hub_annotationqueueannotator qa
+      WHERE qa.queue_id = q.id AND qa.deleted = false
+    ) AS active_member_count
+  FROM model_hub_annotationqueue q
+  WHERE q.id = ${sqlUuid(queueId, "queueId")}
+),
+creator_member AS (
+  SELECT id::text, role, roles, deleted
+  FROM model_hub_annotationqueueannotator
+  WHERE
+    queue_id = ${sqlUuid(queueId, "queueId")}
+    AND user_id = ${sqlUuid(userId, "userId")}
+    AND deleted = false
+  ORDER BY updated_at DESC
+  LIMIT 1
+),
+label_binding AS (
+  SELECT count(*)::int AS binding_count
+  FROM model_hub_annotationqueuelabel
+  WHERE
+    queue_id = ${sqlUuid(queueId, "queueId")}
+    AND label_id = ${sqlUuid(labelId, "labelId")}
+    AND deleted = false
+)
+SELECT coalesce(
+  (
+    SELECT json_build_object(
+      'id', queue.id,
+      'name', queue.name,
+      'description', queue.description,
+      'instructions', queue.instructions,
+      'status', queue.status,
+      'organization_id', queue.organization_id,
+      'workspace_id', queue.workspace_id,
+      'created_by_id', queue.created_by_id,
+      'deleted', queue.deleted,
+      'active_label_count', queue.active_label_count,
+      'active_member_count', queue.active_member_count,
+      'label_binding_count', (SELECT binding_count FROM label_binding),
+      'creator_member', coalesce((SELECT row_to_json(creator_member) FROM creator_member), '{}'::json)
+    )
+    FROM queue
+  ),
+  '{}'::json
+)::text;
+`;
+  const audit = await runPostgresJson(sql);
+  assert(audit?.id, `Queue ${queueId} was not found in create DB audit.`);
+  return audit;
+}
+
+async function deleteQueueCreateFixturesDb(namePrefix) {
+  const sql = `
+WITH matching_queues AS (
+  SELECT id FROM model_hub_annotationqueue WHERE name LIKE ${sqlString(`${namePrefix}%`)}
+),
+matching_labels AS (
+  SELECT id FROM model_hub_annotationslabels WHERE name LIKE ${sqlString(`${namePrefix}%`)}
+),
+deleted_queue_labels AS (
+  DELETE FROM model_hub_annotationqueuelabel
+  WHERE queue_id IN (SELECT id FROM matching_queues)
+     OR label_id IN (SELECT id FROM matching_labels)
+  RETURNING id
+),
+deleted_queue_members AS (
+  DELETE FROM model_hub_annotationqueueannotator
+  WHERE queue_id IN (SELECT id FROM matching_queues)
+  RETURNING id
+),
+deleted_queues AS (
+  DELETE FROM model_hub_annotationqueue
+  WHERE id IN (SELECT id FROM matching_queues)
+  RETURNING id
+),
+deleted_labels AS (
+  DELETE FROM model_hub_annotationslabels
+  WHERE id IN (SELECT id FROM matching_labels)
+  RETURNING id
+),
+deleted_workspaces AS (
+  DELETE FROM accounts_workspace
+  WHERE name LIKE ${sqlString(`${namePrefix}% other label workspace%`)}
+  RETURNING id
+)
+SELECT json_build_object(
+  'deleted_queue_labels', (SELECT count(*) FROM deleted_queue_labels),
+  'deleted_queue_members', (SELECT count(*) FROM deleted_queue_members),
+  'deleted_queues', (SELECT count(*) FROM deleted_queues),
+  'deleted_labels', (SELECT count(*) FROM deleted_labels),
+  'deleted_workspaces', (SELECT count(*) FROM deleted_workspaces)
+)::text;
+`;
+  return runPostgresJson(sql);
+}
+
 async function runPostgresJson(sql) {
   const container = process.env.API_JOURNEY_DB_CONTAINER || "ws2-postgres";
   const user = process.env.API_JOURNEY_DB_USER || "user";
@@ -7012,6 +7529,14 @@ async function runPostgresJson(sql) {
 function sqlUuid(value, label) {
   assert(isUuid(value), `${label} must be a UUID for DB audit SQL.`);
   return `'${value}'::uuid`;
+}
+
+function sqlString(value) {
+  return `'${String(value ?? "").replaceAll("'", "''")}'`;
+}
+
+function sqlJson(value) {
+  return `${sqlString(JSON.stringify(value ?? null))}::jsonb`;
 }
 
 function expectedProgressFromDb(dbAudit, userId) {
@@ -8566,7 +9091,7 @@ function revisedReviewAnnotationValue(label, originalValue, runId) {
   const type = String(label?.type || "").toLowerCase();
   const settings = label?.settings || {};
   if (type.includes("text")) return `review revised ${runId}`;
-  if (type.includes("thumb")) return !Boolean(originalValue);
+  if (type.includes("thumb")) return !originalValue;
   if (type.includes("numeric") || type.includes("number")) {
     const max = Number.isFinite(Number(settings.max))
       ? Number(settings.max)

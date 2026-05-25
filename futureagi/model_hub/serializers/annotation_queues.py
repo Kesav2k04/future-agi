@@ -2,10 +2,12 @@ import json
 import uuid
 
 from django.db import transaction
+from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.fields import empty
 
 from accounts.models.user import User
+from accounts.models.workspace import WorkspaceMembership
 from model_hub.models.annotation_queues import (
     SOURCE_TYPE_FK_MAP,
     AnnotationQueue,
@@ -188,6 +190,97 @@ class AnnotationQueueSerializer(serializers.ModelSerializer):
             normalized[str(user_id)] = role_list
         return normalized
 
+    def _request_org_workspace(self):
+        request = self.context.get("request")
+        if not request:
+            return None, None
+        organization = getattr(request, "organization", None) or getattr(
+            getattr(request, "user", None),
+            "organization",
+            None,
+        )
+        return organization, getattr(request, "workspace", None)
+
+    def _workspace_visibility_q(self, organization, workspace):
+        if not workspace:
+            return Q()
+        if getattr(workspace, "is_default", False):
+            return (
+                Q(workspace=workspace)
+                | Q(workspace__is_default=True, workspace__organization=organization)
+                | Q(workspace__isnull=True, organization=organization)
+            )
+        return Q(workspace=workspace) | Q(
+            workspace__isnull=True,
+            organization=organization,
+        )
+
+    def _visible_label_queryset(self, label_ids):
+        organization, workspace = self._request_org_workspace()
+        queryset = AnnotationsLabels.all_objects.filter(
+            id__in=label_ids,
+            deleted=False,
+        )
+        if organization:
+            queryset = queryset.filter(organization=organization)
+        if workspace:
+            queryset = queryset.filter(
+                self._workspace_visibility_q(organization, workspace)
+            )
+        return queryset
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        organization, workspace = self._request_org_workspace()
+
+        label_ids = attrs.get("label_ids") or []
+        if label_ids:
+            requested = {str(label_id) for label_id in label_ids}
+            visible = {
+                str(label_id)
+                for label_id in self._visible_label_queryset(label_ids).values_list(
+                    "id",
+                    flat=True,
+                )
+            }
+            if requested - visible:
+                raise serializers.ValidationError(
+                    {
+                        "label_ids": "One or more labels are missing or not accessible from this workspace."
+                    }
+                )
+
+        annotator_ids = attrs.get("annotator_ids") or []
+        if annotator_ids:
+            requested = {str(annotator_id) for annotator_id in annotator_ids}
+            if workspace:
+                visible = {
+                    str(user_id)
+                    for user_id in WorkspaceMembership.no_workspace_objects.filter(
+                        workspace=workspace,
+                        is_active=True,
+                        user_id__in=annotator_ids,
+                        user__is_active=True,
+                    ).values_list("user_id", flat=True)
+                }
+            else:
+                users = User.objects.filter(
+                    id__in=annotator_ids,
+                    is_active=True,
+                )
+                if organization:
+                    users = users.filter(organization=organization)
+                visible = {str(user_id) for user_id in users.values_list("id", flat=True)}
+
+            if requested - visible:
+                raise serializers.ValidationError(
+                    {
+                        "annotator_ids": "One or more annotators are not active members of this workspace."
+                    }
+                )
+
+        return attrs
+
     def _viewer_membership(self, obj, user):
         if not user:
             return None
@@ -234,7 +327,7 @@ class AnnotationQueueSerializer(serializers.ModelSerializer):
 
         to_add = incoming - existing
         if to_add:
-            labels = AnnotationsLabels.objects.filter(id__in=to_add, deleted=False)
+            labels = self._visible_label_queryset(to_add)
             # Count remaining (non-removed) labels for correct ordering
             remaining_count = queue.queue_labels.filter(deleted=False).count()
             AnnotationQueueLabel.objects.bulk_create(

@@ -2975,6 +2975,7 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
     def perform_create(self, serializer):
         serializer.save(
             organization=self.request.organization,
+            workspace=getattr(self.request, "workspace", None),
             created_by=self.request.user,
         )
 

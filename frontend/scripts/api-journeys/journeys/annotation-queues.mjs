@@ -3175,6 +3175,298 @@ export const annotationQueueJourneys = [
     },
   },
   {
+    id: "MUR-API-005",
+    title: "Multi-user queue create respects queue pricing limits",
+    tags: ["annotation", "mutating", "multi-user", "limits", "db-audit"],
+    async run({
+      apiBase,
+      client,
+      cleanup,
+      evidence,
+      organizationId,
+      runId,
+      user,
+      workspaceId,
+    }) {
+      requireMutations();
+      const backendContainer = await requireBackendContainerForJourney();
+      const creatorId = assertCurrentUserResolved(user);
+      const altToken = process.env.API_JOURNEY_ALT_ACCESS_TOKEN || "";
+      if (!altToken) {
+        skip(
+          "Set API_JOURNEY_ALT_ACCESS_TOKEN for a second workspace member to run multi-user queue limit coverage.",
+        );
+      }
+      const altClient = createApiClient({
+        apiBase,
+        accessToken: altToken,
+        organizationId,
+        workspaceId,
+      });
+      const altUser = await altClient.get(apiPath("/accounts/user-info/"));
+      const altUserId = currentUserId(altUser);
+      assert(altUserId, "Queue limit alternate user id could not be resolved.");
+      if (String(altUserId) === String(creatorId)) {
+        skip("Alternate token resolved to the creator user.");
+      }
+
+      const namePrefix = `api journey multi user limit ${runId}`;
+      let temporaryOverrideId = "";
+      cleanup.defer("clear temporary queue limit entitlement override", () =>
+        clearTemporaryQueueLimitOverride({
+          backendContainer,
+          organizationId,
+          overrideId: temporaryOverrideId,
+        }),
+      );
+      cleanup.defer("hard-delete multi-user limit DB fixtures", () =>
+        deleteQueueCreateFixturesDb(namePrefix),
+      );
+
+      const before = await loadQueueLimitDbAudit({
+        organizationId,
+        workspaceId,
+        namePrefix,
+      });
+      const pricingMode = await loadBackendQueuePricingMode(backendContainer);
+      const payloadFor = (name) => ({
+        name,
+        description: "Disposable queue for multi-user queue limit coverage.",
+        instructions: "Verify pricing limits do not leave member residue.",
+        annotations_required: 1,
+        reservation_timeout_minutes: 30,
+        requires_review: false,
+        auto_assign: false,
+        annotator_ids: [creatorId, altUserId],
+        annotator_roles: {
+          [String(creatorId)]: ["manager", "reviewer", "annotator"],
+          [String(altUserId)]: ["annotator"],
+        },
+      });
+
+      const capacityQueueName = `${namePrefix} capacity holder`;
+      const blockedQueueName = `${namePrefix} blocked`;
+      const retryQueueName = `${namePrefix} retry`;
+
+      if (pricingMode.is_oss) {
+        const firstQueue = await client.post(
+          apiPath("/model-hub/annotation-queues/"),
+          payloadFor(capacityQueueName),
+        );
+        const secondQueue = await client.post(
+          apiPath("/model-hub/annotation-queues/"),
+          payloadFor(blockedQueueName),
+        );
+        assert(firstQueue?.id && secondQueue?.id, "OSS queue creates returned no id.");
+        assertQueueDetailRoles(
+          firstQueue,
+          {
+            [creatorId]: ["manager", "reviewer", "annotator"],
+            [altUserId]: ["annotator"],
+          },
+          "OSS first create response",
+        );
+        assertQueueDetailRoles(
+          secondQueue,
+          {
+            [creatorId]: ["manager", "reviewer", "annotator"],
+            [altUserId]: ["annotator"],
+          },
+          "OSS second create response",
+        );
+
+        const afterOssCreates = await loadQueueLimitDbAudit({
+          organizationId,
+          workspaceId,
+          namePrefix,
+        });
+        assertQueueCountDelta(before, afterOssCreates, 2, "OSS multi-user creates");
+        assert(
+          Number(afterOssCreates.matching_active_member_count) === 4,
+          `OSS multi-user creates did not persist four memberships: ${JSON.stringify(
+            afterOssCreates,
+          )}.`,
+        );
+
+        await hardDeleteQueueIfPresent(client, firstQueue.id, capacityQueueName);
+        await hardDeleteQueueIfPresent(client, secondQueue.id, blockedQueueName);
+        const finalAudit = await loadQueueLimitDbAudit({
+          organizationId,
+          workspaceId,
+          namePrefix,
+        });
+        assertQueueCountDelta(before, finalAudit, 0, "OSS multi-user cleanup");
+
+        evidence.push({
+          backend_container: backendContainer,
+          pricing_mode: pricingMode.mode,
+          is_oss: pricingMode.is_oss,
+          first_queue_id: firstQueue.id,
+          second_queue_id: secondQueue.id,
+          before_org_active_count: before.org_active_count,
+          after_create_org_active_count: afterOssCreates.org_active_count,
+          final_org_active_count: finalAudit.org_active_count,
+          final_matching_total_count: finalAudit.matching_total_count,
+        });
+        return;
+      }
+
+      const temporaryLimit = Number(before.org_active_count) + 1;
+      const override = await setTemporaryQueueLimitOverride({
+        backendContainer,
+        organizationId,
+        limit: temporaryLimit,
+      });
+      assert(
+        override?.limit === temporaryLimit && override?.override_id,
+        `Temporary queue limit override did not return expected data: ${JSON.stringify(
+          override,
+        )}.`,
+      );
+      temporaryOverrideId = override.override_id;
+
+      const capacityQueue = await client.post(
+        apiPath("/model-hub/annotation-queues/"),
+        payloadFor(capacityQueueName),
+      );
+      assert(capacityQueue?.id, "Capacity queue create returned no id.");
+      assertQueueDetailRoles(
+        capacityQueue,
+        {
+          [creatorId]: ["manager", "reviewer", "annotator"],
+          [altUserId]: ["annotator"],
+        },
+        "capacity create response",
+      );
+
+      const afterCapacityCreate = await loadQueueLimitDbAudit({
+        organizationId,
+        workspaceId,
+        namePrefix,
+      });
+      assertQueueCountDelta(
+        before,
+        afterCapacityCreate,
+        1,
+        "multi-user capacity create",
+      );
+      assert(
+        Number(afterCapacityCreate.matching_active_member_count) === 2,
+        `Capacity queue did not create exactly two active memberships: ${JSON.stringify(
+          afterCapacityCreate,
+        )}.`,
+      );
+
+      const blocked = await expectHttpError(
+        () =>
+          client.post(
+            apiPath("/model-hub/annotation-queues/"),
+            payloadFor(blockedQueueName),
+          ),
+        402,
+        "ENTITLEMENT_LIMIT",
+      );
+      const afterBlockedCreate = await loadQueueLimitDbAudit({
+        organizationId,
+        workspaceId,
+        namePrefix,
+      });
+      assert(
+        Number(afterBlockedCreate.matching_active_count) === 1 &&
+          Number(afterBlockedCreate.matching_total_count) === 1 &&
+          Number(afterBlockedCreate.matching_active_member_count) === 2,
+        `Blocked multi-user create left unexpected queue/member rows: ${JSON.stringify(
+          afterBlockedCreate,
+        )}.`,
+      );
+
+      await hardDeleteQueueIfPresent(
+        client,
+        capacityQueue.id,
+        capacityQueueName,
+      );
+      const afterCapacityDelete = await loadQueueLimitDbAudit({
+        organizationId,
+        workspaceId,
+        namePrefix,
+      });
+      assertQueueCountDelta(
+        before,
+        afterCapacityDelete,
+        0,
+        "multi-user capacity hard delete",
+      );
+
+      const retryQueue = await client.post(
+        apiPath("/model-hub/annotation-queues/"),
+        payloadFor(retryQueueName),
+      );
+      assert(retryQueue?.id, "Retry queue create returned no id.");
+      const retryDetail = await client.get(
+        apiPath("/model-hub/annotation-queues/{id}/", {
+          id: retryQueue.id,
+        }),
+      );
+      assertQueueDetailRoles(
+        retryDetail,
+        {
+          [creatorId]: ["manager", "reviewer", "annotator"],
+          [altUserId]: ["annotator"],
+        },
+        "retry queue detail",
+      );
+
+      const afterRetryCreate = await loadQueueLimitDbAudit({
+        organizationId,
+        workspaceId,
+        namePrefix,
+      });
+      assertQueueCountDelta(
+        before,
+        afterRetryCreate,
+        1,
+        "multi-user retry create",
+      );
+      assert(
+        Number(afterRetryCreate.matching_active_member_count) === 2,
+        `Retry queue did not create exactly two active memberships: ${JSON.stringify(
+          afterRetryCreate,
+        )}.`,
+      );
+
+      await hardDeleteQueueIfPresent(client, retryQueue.id, retryQueueName);
+      const finalAudit = await loadQueueLimitDbAudit({
+        organizationId,
+        workspaceId,
+        namePrefix,
+      });
+      assertQueueCountDelta(before, finalAudit, 0, "multi-user final cleanup");
+
+      const clearOverride = await clearTemporaryQueueLimitOverride({
+        backendContainer,
+        organizationId,
+        overrideId: temporaryOverrideId,
+      });
+      temporaryOverrideId = "";
+      evidence.push({
+        backend_container: backendContainer,
+        pricing_mode: pricingMode.mode,
+        is_oss: pricingMode.is_oss,
+        override_id: override.override_id,
+        override_plan: override.plan,
+        temporary_limit: temporaryLimit,
+        before_org_active_count: before.org_active_count,
+        capacity_queue_id: capacityQueue.id,
+        blocked_status: blocked.status,
+        blocked_error: blocked.body,
+        retry_queue_id: retryQueue.id,
+        final_org_active_count: finalAudit.org_active_count,
+        final_matching_total_count: finalAudit.matching_total_count,
+        clear_override_deleted: clearOverride.deleted,
+      });
+    },
+  },
+  {
     id: "AQ-API-031",
     title:
       "Annotation history, raw scores, value history, and item notes reload",
@@ -9595,6 +9887,20 @@ SELECT json_build_object(
     (SELECT count(*)::int FROM matching WHERE deleted = false),
   'matching_total_count',
     (SELECT count(*)::int FROM matching),
+  'matching_active_member_count',
+    (
+      SELECT count(*)::int
+      FROM model_hub_annotationqueueannotator member
+      WHERE
+        member.deleted = false
+        AND member.queue_id IN (SELECT id::uuid FROM matching WHERE deleted = false)
+    ),
+  'matching_total_member_count',
+    (
+      SELECT count(*)::int
+      FROM model_hub_annotationqueueannotator member
+      WHERE member.queue_id IN (SELECT id::uuid FROM matching)
+    ),
   'matching_names',
     coalesce((SELECT json_agg(name ORDER BY name) FROM matching), '[]'::json)
 )::text;
@@ -9628,6 +9934,23 @@ function assertQueueCountDelta(before, current, expectedDelta, label) {
       before,
     )}, current=${JSON.stringify(current)}, expected_delta=${expectedDelta}.`,
   );
+}
+
+function assertQueueDetailRoles(detail, expectedRolesByUserId, label) {
+  const annotators = asArray(detail?.annotators);
+  for (const [userId, expectedRoles] of Object.entries(expectedRolesByUserId)) {
+    const member = annotators.find(
+      (annotator) => String(annotator.user_id) === String(userId),
+    );
+    assert(
+      sameJsonValue(asArray(member?.roles), expectedRoles),
+      `${label} exposed wrong roles for ${userId}: ${JSON.stringify({
+        expectedRoles,
+        member,
+        detail,
+      })}.`,
+    );
+  }
 }
 
 async function loadAnnotationHistoryDbAudit({
@@ -10145,6 +10468,140 @@ async function runBackendManageCommand(container, commandName, args = []) {
       ).slice(0, 2000)}`,
     );
   }
+}
+
+async function runBackendShellScript(container, script) {
+  const command = [
+    "cd /app/backend",
+    `UV_PROJECT_ENVIRONMENT=/tmp/ws2-pytest-venv UV_LINK_MODE=copy uv run python manage.py shell -c ${shellQuote(
+      script,
+    )}`,
+  ].join(" && ");
+  try {
+    return await execFileAsync("docker", ["exec", container, "sh", "-lc", command], {
+      maxBuffer: 20 * 1024 * 1024,
+    });
+  } catch (error) {
+    throw new Error(
+      `Backend shell script failed: ${String(
+        error.stderr || error.stdout || error.message,
+      ).slice(0, 2000)}`,
+    );
+  }
+}
+
+async function runBackendShellJson(container, script) {
+  const marker = "API_JOURNEY_JSON=";
+  const { stdout } = await runBackendShellScript(container, script);
+  const line = String(stdout || "")
+    .split(/\r?\n/)
+    .find((candidate) => candidate.startsWith(marker));
+  assert(line, `Backend shell script returned no ${marker} line: ${stdout}`);
+  return JSON.parse(line.slice(marker.length));
+}
+
+async function loadBackendQueuePricingMode(backendContainer) {
+  const script = `
+import json
+
+from tfc.ee_gating import is_oss
+
+mode = "unknown"
+try:
+    from ee.usage.deployment import DeploymentMode
+
+    mode = DeploymentMode.get_mode()
+except Exception as exc:
+    mode = f"unknown:{type(exc).__name__}"
+print("API_JOURNEY_JSON=" + json.dumps({"is_oss": is_oss(), "mode": mode}))
+`;
+  return runBackendShellJson(backendContainer, script);
+}
+
+async function setTemporaryQueueLimitOverride({
+  backendContainer,
+  organizationId,
+  limit,
+}) {
+  const script = `
+import json
+
+from ee.usage.models.usage import OrganizationSubscription, PlanEntitlement
+from ee.usage.services.entitlements import Entitlements
+from model_hub.models.annotation_queues import AnnotationQueue
+
+org_id = ${JSON.stringify(organizationId)}
+feature = "queues"
+limit = ${Number(limit)}
+existing_active = list(
+    PlanEntitlement.objects.filter(
+        organization_id=org_id,
+        feature=feature,
+    ).values("id", "plan", "value_int", "value_bool")
+)
+if existing_active:
+    raise RuntimeError(f"Active queue entitlement override already exists: {existing_active}")
+plan = (
+    OrganizationSubscription.objects.filter(organization_id=org_id)
+    .values_list("plan", flat=True)
+    .first()
+    or "free"
+)
+override, created = PlanEntitlement.all_objects.update_or_create(
+    organization_id=org_id,
+    feature=feature,
+    plan=plan,
+    defaults={
+        "value_int": limit,
+        "value_bool": None,
+        "deleted": False,
+        "deleted_at": None,
+    },
+)
+Entitlements.invalidate_cache(org_id, feature)
+current_count = AnnotationQueue.no_workspace_objects.filter(
+    organization_id=org_id,
+).count()
+print(
+    "API_JOURNEY_JSON="
+    + json.dumps(
+        {
+            "override_id": str(override.id),
+            "created": created,
+            "plan": plan,
+            "limit": limit,
+            "current_count": current_count,
+        }
+    )
+)
+`;
+  return runBackendShellJson(backendContainer, script);
+}
+
+async function clearTemporaryQueueLimitOverride({
+  backendContainer,
+  organizationId,
+  overrideId,
+}) {
+  if (!overrideId) return { deleted: 0, skipped: true };
+  const script = `
+import json
+
+from ee.usage.models.usage import PlanEntitlement
+from ee.usage.services.entitlements import Entitlements
+
+org_id = ${JSON.stringify(organizationId)}
+override_id = ${JSON.stringify(overrideId)}
+feature = "queues"
+deleted, _ = PlanEntitlement.all_objects.filter(
+    id=override_id,
+    organization_id=org_id,
+    feature=feature,
+).delete()
+Entitlements.invalidate_cache(org_id, feature)
+print("API_JOURNEY_JSON=" + json.dumps({"deleted": deleted}))
+`;
+  return runBackendShellJson(backendContainer, script);
 }
 
 function parseAnnotationQueueRoleBackfillSummary(output) {

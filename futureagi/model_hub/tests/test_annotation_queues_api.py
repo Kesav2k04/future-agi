@@ -465,6 +465,50 @@ class TestCreateQueue:
         assert resp.data["error"]["detail"]["limit"] == 3
         assert not AnnotationQueue.objects.filter(name="Denied Queue").exists()
 
+    def test_plan_limit_blocks_multi_user_create_without_member_rows(
+        self, auth_client, organization, workspace, user
+    ):
+        annotator = create_workspace_member_user(organization, workspace)
+
+        with (
+            patch("tfc.ee_gating.is_oss", return_value=False),
+            patch(
+                "tfc.ee_gating.check_ee_can_create",
+                side_effect=FeatureUnavailable(
+                    EEResource.ANNOTATION_QUEUES.value,
+                    detail="You've reached the 1 annotation queues limit",
+                    code="ENTITLEMENT_LIMIT",
+                    metadata={
+                        "resource": EEResource.ANNOTATION_QUEUES.value,
+                        "current_usage": 1,
+                        "limit": 1,
+                    },
+                ),
+            ),
+        ):
+            resp = create_queue(
+                auth_client,
+                name="Denied Multi User Queue",
+                annotator_ids=[str(user.id), str(annotator.id)],
+                annotator_roles={
+                    str(user.id): [
+                        AnnotatorRole.MANAGER.value,
+                        AnnotatorRole.REVIEWER.value,
+                        AnnotatorRole.ANNOTATOR.value,
+                    ],
+                    str(annotator.id): [AnnotatorRole.ANNOTATOR.value],
+                },
+            )
+
+        assert resp.status_code == status.HTTP_402_PAYMENT_REQUIRED
+        assert resp.data["error"]["code"] == "ENTITLEMENT_LIMIT"
+        assert not AnnotationQueue.objects.filter(
+            name="Denied Multi User Queue"
+        ).exists()
+        assert not AnnotationQueueAnnotator.objects.filter(
+            queue__name="Denied Multi User Queue"
+        ).exists()
+
     def test_create_limit_message_explains_other_workspace_queues(
         self, auth_client, organization, user, workspace
     ):

@@ -5219,6 +5219,206 @@ export const appCoreJourneys = [
     },
   },
   {
+    id: "CORE-API-018",
+    title:
+      "Falcon file upload multipart validation, MinIO storage, text extraction, DB audit, and cleanup",
+    tags: [
+      "core",
+      "falcon",
+      "files",
+      "upload",
+      "mutating",
+      "data-integrity",
+      "workspace-scope",
+    ],
+    async run({
+      apiBase,
+      tokens,
+      organizationId,
+      workspaceId,
+      user,
+      cleanup,
+      runId,
+      evidence,
+    }) {
+      requireMutations();
+      const userId = currentUserId(user);
+      assert(isUuid(userId), "Falcon file upload journey requires user id.");
+      assert(
+        isUuid(organizationId),
+        "Falcon file upload journey requires organization context.",
+      );
+      assert(
+        isUuid(workspaceId),
+        "Falcon file upload journey requires workspace context.",
+      );
+      assert(tokens?.access, "Falcon file upload journey requires an access token.");
+
+      const suffix = runId.replace(/[^a-z0-9]/gi, "-").toLowerCase();
+      const marker = `api-journey-falcon-file-${suffix}`;
+      let hardCleaned = false;
+
+      await hardDeleteFalconFileFixturesDb({ marker, organizationId });
+      cleanup.defer("hard-delete Falcon file fixture", () =>
+        hardCleaned
+          ? null
+          : hardDeleteFalconFileFixturesDb({ marker, organizationId }),
+      );
+
+      const missingFile = await expectApiError(
+        () =>
+          multipartAppCoreRequest({
+            apiBase,
+            accessToken: tokens.access,
+            organizationId,
+            workspaceId,
+            method: "POST",
+            pathName: apiPath("/falcon-ai/files/upload/"),
+          }),
+        [400],
+        "Falcon file upload accepted a missing file.",
+      );
+      const unsupportedFile = await expectApiError(
+        () =>
+          multipartAppCoreRequest({
+            apiBase,
+            accessToken: tokens.access,
+            organizationId,
+            workspaceId,
+            method: "POST",
+            pathName: apiPath("/falcon-ai/files/upload/"),
+            files: [
+              {
+                fieldName: "file",
+                fileName: `${marker}-payload.bin`,
+                content: "plain bytes",
+                contentType: "application/octet-stream",
+              },
+            ],
+          }),
+        [400],
+        "Falcon file upload accepted an unsupported binary file.",
+      );
+      const dangerousFile = await expectApiError(
+        () =>
+          multipartAppCoreRequest({
+            apiBase,
+            accessToken: tokens.access,
+            organizationId,
+            workspaceId,
+            method: "POST",
+            pathName: apiPath("/falcon-ai/files/upload/"),
+            files: [
+              {
+                fieldName: "file",
+                fileName: `${marker}-script.txt`,
+                content: "#!/bin/sh\necho unsafe\n",
+                contentType: "text/plain",
+              },
+            ],
+          }),
+        [400],
+        "Falcon file upload accepted a script signature.",
+      );
+
+      const textUpload = await multipartAppCoreRequest({
+        apiBase,
+        accessToken: tokens.access,
+        organizationId,
+        workspaceId,
+        method: "POST",
+        pathName: apiPath("/falcon-ai/files/upload/"),
+        files: [
+          {
+            fieldName: "file",
+            fileName: `${marker}?notes.txt`,
+            content: `Falcon upload text ${suffix}`,
+            contentType: "text/plain",
+          },
+        ],
+      });
+      assert(
+        isUuid(textUpload?.id) &&
+          textUpload.name === `${marker}_notes.txt` &&
+          textUpload.content_type === "text/plain" &&
+          textUpload.size === `Falcon upload text ${suffix}`.length,
+        `Falcon text upload response mismatch: ${JSON.stringify(textUpload)}`,
+      );
+
+      const jsonUpload = await multipartAppCoreRequest({
+        apiBase,
+        accessToken: tokens.access,
+        organizationId,
+        workspaceId,
+        method: "POST",
+        pathName: apiPath("/falcon-ai/files/upload/"),
+        files: [
+          {
+            fieldName: "file",
+            fileName: `${marker}-data.json`,
+            content: JSON.stringify({ marker, ok: true }),
+            contentType: "application/octet-stream",
+          },
+        ],
+      });
+      assert(
+        isUuid(jsonUpload?.id) &&
+          jsonUpload.name === `${marker}-data.json` &&
+          jsonUpload.content_type === "application/json",
+        `Falcon JSON upload response mismatch: ${JSON.stringify(jsonUpload)}`,
+      );
+
+      const dbAudit = await loadFalconFileDbAudit({
+        fileIds: [textUpload.id, jsonUpload.id],
+        organizationId,
+        workspaceId,
+        userId,
+        marker,
+      });
+      assert(
+        dbAudit.file_count === 2 &&
+          dbAudit.active_workspace_file_count === 2 &&
+          dbAudit.user_file_count === 2 &&
+          dbAudit.text_content_match_count === 2 &&
+          dbAudit.storage_key_count === 2,
+        `Falcon file upload DB audit mismatch: ${JSON.stringify(dbAudit)}`,
+      );
+      assert(
+        dbAudit.sanitized_name_count === 1 &&
+          dbAudit.json_content_type_count === 1,
+        `Falcon file upload DB audit did not capture sanitized/json rows: ${JSON.stringify(dbAudit)}`,
+      );
+
+      await assertFalconMinioObjectsExist(dbAudit.storage_keys);
+
+      const cleanupAudit = await hardDeleteFalconFileFixturesDb({
+        marker,
+        organizationId,
+      });
+      hardCleaned = true;
+      assert(
+        cleanupAudit.remaining_file_count === 0,
+        `Falcon file upload hard cleanup left DB rows behind: ${JSON.stringify(cleanupAudit)}`,
+      );
+      await assertFalconMinioObjectsAbsent(dbAudit.storage_keys);
+
+      evidence.push({
+        text_file_id: textUpload.id,
+        json_file_id: jsonUpload.id,
+        sanitized_name: textUpload.name,
+        missing_file_status: missingFile.status,
+        unsupported_file_status: unsupportedFile.status,
+        dangerous_file_status: dangerousFile.status,
+        file_count: dbAudit.file_count,
+        sanitized_name_count: dbAudit.sanitized_name_count,
+        json_content_type_count: dbAudit.json_content_type_count,
+        text_content_match_count: dbAudit.text_content_match_count,
+        cleanup_remaining_file_count: cleanupAudit.remaining_file_count,
+        storage_object_count: dbAudit.storage_keys.length,
+      });
+    },
+  },
+  {
     id: "CORE-API-002",
     title:
       "Developer secret key create, masked list, disable, enable, and delete lifecycle",
@@ -8671,6 +8871,191 @@ SELECT json_build_object(
 );
 `;
   return runPostgresJson(sql);
+}
+
+async function loadFalconFileDbAudit({
+  fileIds,
+  organizationId,
+  workspaceId,
+  userId,
+  marker,
+}) {
+  const sql = `
+WITH requested_files AS (
+  SELECT unnest(${sqlUuidArray(fileIds)}) AS file_id
+),
+file_rows AS (
+  SELECT file.*
+  FROM falcon_ai_falconfile file
+  JOIN requested_files requested
+    ON file.id = requested.file_id
+  WHERE file.organization_id = ${sqlUuid(organizationId)}
+    AND file.name LIKE ${sqlTextLiteral(`${marker}%`)}
+)
+SELECT json_build_object(
+  'file_count', (SELECT count(*) FROM file_rows),
+  'active_workspace_file_count',
+    (SELECT count(*) FROM file_rows WHERE workspace_id = ${sqlUuid(workspaceId)}),
+  'user_file_count',
+    (SELECT count(*) FROM file_rows WHERE user_id = ${sqlUuid(userId)}),
+  'text_content_match_count',
+    (SELECT count(*) FROM file_rows WHERE text_content LIKE '%Falcon upload text%' OR text_content LIKE '%"ok":true%'),
+  'sanitized_name_count',
+    (SELECT count(*) FROM file_rows WHERE name LIKE ${sqlTextLiteral(`${marker}_notes.txt`)}),
+  'json_content_type_count',
+    (SELECT count(*) FROM file_rows WHERE content_type = 'application/json'),
+  'storage_key_count',
+    (SELECT count(*) FROM file_rows WHERE storage_key LIKE 'falcon-ai/%'),
+  'storage_keys',
+    COALESCE((SELECT json_agg(storage_key ORDER BY created_at) FROM file_rows), '[]'::json)
+);
+`;
+  return runPostgresJson(sql);
+}
+
+async function hardDeleteFalconFileFixturesDb({
+  marker,
+  organizationId,
+}) {
+  const sql = `
+WITH target_files AS (
+  SELECT id, storage_key
+  FROM falcon_ai_falconfile
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND name LIKE ${sqlTextLiteral(`${marker}%`)}
+),
+deleted_files AS (
+  DELETE FROM falcon_ai_falconfile file
+  USING target_files target
+  WHERE file.id = target.id
+  RETURNING file.id
+)
+SELECT json_build_object(
+  'deleted_file_count', (SELECT count(*) FROM deleted_files),
+  'remaining_file_count',
+    (SELECT count(*) FROM target_files) - (SELECT count(*) FROM deleted_files),
+  'storage_keys',
+    COALESCE((SELECT json_agg(storage_key) FROM target_files), '[]'::json)
+);
+`;
+  const audit = await runPostgresJson(sql);
+  await removeFalconMinioObjects(audit.storage_keys || []);
+  return audit;
+}
+
+async function multipartAppCoreRequest({
+  apiBase,
+  accessToken,
+  organizationId,
+  workspaceId,
+  method,
+  pathName,
+  fields = {},
+  files = [],
+}) {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === undefined || value === null) continue;
+    form.append(key, String(value));
+  }
+  for (const file of files) {
+    form.append(
+      file.fieldName || "file",
+      new Blob([file.content], { type: file.contentType || "text/plain" }),
+      file.fileName,
+    );
+  }
+
+  const response = await fetch(new URL(pathName, apiBase), {
+    method,
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(organizationId ? { "X-Organization-Id": organizationId } : {}),
+      ...(workspaceId ? { "X-Workspace-Id": workspaceId } : {}),
+    },
+    body: form,
+  });
+  const body = await parseAppCoreResponseBody(response);
+  if (!response.ok) {
+    const error = new Error(
+      `${method} ${pathName} failed with HTTP ${response.status}: ${formatAppCoreBody(
+        body,
+      )}`,
+    );
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+  if (body && typeof body === "object" && body.status === false) {
+    throw new Error(
+      `${method} ${pathName} returned status:false: ${formatAppCoreBody(body)}`,
+    );
+  }
+  return body?.result ?? body?.results ?? body;
+}
+
+async function parseAppCoreResponseBody(response) {
+  const text = await response.text();
+  if (!text) return null;
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function formatAppCoreBody(body) {
+  if (typeof body === "string") return body.slice(0, 1000);
+  return JSON.stringify(body).slice(0, 1000);
+}
+
+async function assertFalconMinioObjectsExist(storageKeys) {
+  for (const storageKey of storageKeys || []) {
+    await runFalconMinioCommand(["stat", falconMinioTarget(storageKey)]);
+  }
+}
+
+async function assertFalconMinioObjectsAbsent(storageKeys) {
+  for (const storageKey of storageKeys || []) {
+    try {
+      await runFalconMinioCommand(["stat", falconMinioTarget(storageKey)]);
+    } catch {
+      continue;
+    }
+    throw new Error(`Falcon MinIO object still exists after cleanup: ${storageKey}`);
+  }
+}
+
+async function removeFalconMinioObjects(storageKeys) {
+  const targets = (storageKeys || []).map((storageKey) =>
+    falconMinioTarget(storageKey),
+  );
+  if (!targets.length) return;
+  await runFalconMinioCommand(["rm", "--force", ...targets]);
+}
+
+async function runFalconMinioCommand(args) {
+  const container = process.env.API_JOURNEY_MINIO_CONTAINER || "futureagi-ws2-minio-1";
+  const command = [
+    'mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null',
+    `mc ${args.map((arg) => shellQuote(arg)).join(" ")}`,
+  ].join(" && ");
+  await execFileAsync("docker", ["exec", container, "sh", "-lc", command], {
+    maxBuffer: 5 * 1024 * 1024,
+  });
+}
+
+function falconMinioTarget(storageKey) {
+  const bucket = process.env.API_JOURNEY_MINIO_BUCKET || "fi-content";
+  return `local/${bucket}/${storageKey}`;
 }
 
 async function loadGetStartedFirstChecksDbAudit({

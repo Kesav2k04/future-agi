@@ -15,11 +15,13 @@ from tfc.utils.error_codes import get_error_message
 from tfc.utils.general_methods import GeneralMethods
 from tfc.utils.parse_errors import parse_serialized_errors
 from tracer.models.observation_span import ObservationSpan
+from tracer.models.project import Project
 from tracer.models.trace import Trace
 from tracer.serializers.dataset import (
     AddToExistingDatasetObserveSerializer,
     AddToNewDatasetObserveSerializer,
 )
+from tracer.services.clickhouse.v2 import get_reader
 from tracer.tasks import CHUNK_SIZE, process_spans_chunk_task
 try:
     from ee.usage.utils.usage_entries import check_if_dataset_creation_is_allowed
@@ -78,6 +80,14 @@ class DatasetView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                         .first()
                     )
                 elif span_ids:
+                    # KEEP-PG: tenancy-anchored project derivation. The
+                    # PG variant is one query (single JOIN through
+                    # ``project__organization=org``); replacing with
+                    # CHSpanReader.get() would cost a CH round-trip
+                    # PLUS a PG ``Project.objects.filter(id=..,
+                    # organization=).exists()`` round-trip — same blast
+                    # radius, more code, no perf win. Spans table is
+                    # only used here to resolve the project FK.
                     project = (
                         ObservationSpan.objects.filter(
                             id__in=span_ids, project__organization=org
@@ -89,11 +99,36 @@ class DatasetView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
             if not project:
                 raise ValueError("Project id cannot be null")
 
+            # Tenant scope: validate the resolved project belongs to the
+            # caller's org BEFORE issuing any CH read. Spans in CH carry
+            # only project_id (no org_id JOIN), so the PG ``project__
+            # organization=org`` predicate the legacy ORM filters used
+            # MUST be replicated as an explicit pre-flight check here —
+            # otherwise a malicious caller can pass a foreign project
+            # UUID and reader.list_by_project would happily return that
+            # other org's spans. This matches the P1 fix landed in
+            # commit e80a7176d for separate_evals.py.
+            if not Project.objects.filter(id=project, organization=org).exists():
+                return self._gm.bad_request(get_error_message("PROJECT_NOT_FOUND"))
+
+            # Build span_ids list for create_new_cells. Each branch
+            # below is either a pure CH read (project_id-scoped) or a
+            # CH25-TODO deferral when the reader lacks exclusion API.
+            span_id_list: list[str] = []
             if select_all:
+                # CH25-TODO(list_by_project_exclude): both select_all
+                # branches use ``.exclude(trace_id__in=…)`` /
+                # ``.exclude(id__in=…)``. CHSpanReader has no exclusion
+                # API; adding ad-hoc CH SQL inline would violate Rule 1.
+                # Propose: ``list_by_project(..., exclude_trace_ids=None,
+                # exclude_ids=None) -> list[CHSpan]`` (or a sibling
+                # ``ids_by_project_exclude``). Until that lands, keep
+                # the PG queryset so the select_all-with-exclusion
+                # semantics stay exact and don't risk silent row loss
+                # from a Python-side filter on a partially-fetched set.
                 if trace_ids is not None:
                     observation_spans = ObservationSpan.objects.filter(
-                        project__organization=getattr(request, "organization", None)
-                        or request.user.organization,
+                        project__organization=org,
                         parent_span_id__isnull=True,
                         project_id=project,
                     ).exclude(
@@ -101,41 +136,77 @@ class DatasetView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                     )
                 elif span_ids is not None:
                     observation_spans = ObservationSpan.objects.filter(
-                        project__organization=getattr(request, "organization", None)
-                        or request.user.organization,
+                        project__organization=org,
                         project_id=project,
                     ).exclude(
                         id__in=span_ids,
                     )
+                else:
+                    observation_spans = ObservationSpan.objects.none()
+                span_id_list = [str(sid) for sid in observation_spans.values_list("id", flat=True)]
 
             elif trace_ids and len(trace_ids) > 0:
-                observation_spans = ObservationSpan.objects.filter(
-                    project_id=project,
-                    project__organization=getattr(request, "organization", None)
-                    or request.user.organization,
-                    trace_id__in=trace_ids,
-                    parent_span_id__isnull=True,
+                # Pre-validate trace_ids via PG so foreign-org / foreign-
+                # project ids are dropped BEFORE the CH read — without
+                # this, ``reader.list_by_trace_ids`` would happily fetch
+                # foreign-org spans into process memory and we'd drop
+                # them only at the Python ``project_id`` filter (defense
+                # in depth still works, but loading foreign rows even
+                # transiently is the codex P1 concern). The PG lookup
+                # is one indexed SELECT.
+                #
+                # CH: legacy ORM additionally constrained
+                # ``parent_span_id__isnull=True`` (root spans only). CH
+                # stores parent_span_id as non-nullable String — root
+                # spans have empty string, so a Python ``not span
+                # .parent_span_id`` filter is the equivalent test.
+                validated_trace_ids = list(
+                    Trace.objects.filter(
+                        id__in=trace_ids,
+                        project_id=project,
+                        project__organization=org,
+                    ).values_list("id", flat=True)
                 )
+                if not validated_trace_ids:
+                    span_id_list = []
+                else:
+                    with get_reader() as reader:
+                        ch_spans = reader.list_by_trace_ids(
+                            [str(t) for t in validated_trace_ids]
+                        )
+                    span_id_list = [s.id for s in ch_spans if not s.parent_span_id]
             elif span_ids and len(span_ids) > 0:
-                observation_spans = ObservationSpan.objects.filter(
-                    project_id=project,
-                    project__organization=getattr(request, "organization", None)
-                    or request.user.organization,
-                    id__in=span_ids,
+                # Pre-validate span_ids via PG (project + org JOIN) so
+                # only same-project / same-org ids reach the CH reader.
+                # Codex P1 (mid-views-chunk review).
+                validated_span_ids = list(
+                    ObservationSpan.objects.filter(
+                        id__in=span_ids,
+                        project_id=project,
+                        project__organization=org,
+                    ).values_list("id", flat=True)
                 )
+                if not validated_span_ids:
+                    span_id_list = []
+                else:
+                    with get_reader() as reader:
+                        ch_spans = reader.list_by_ids(
+                            [str(s) for s in validated_span_ids]
+                        )
+                    span_id_list = [s.id for s in ch_spans]
             else:
                 raise ValueError("No trace or span ids provided")
 
             # Creating Dataset
             dataset = create_new_dataset(
                 new_dataset_name,
-                getattr(request, "organization", None) or request.user.organization,
+                org,
                 str(request.user.id),
             )
             column_span_mapping = create_new_columns(dataset, mapping_config)
 
             # Submit batch tasks asynchronously - returns nothing
-            create_new_cells(observation_spans, dataset, column_span_mapping)
+            create_new_cells(span_id_list, dataset, column_span_mapping)
 
             return self._gm.success_response(
                 {
@@ -170,22 +241,40 @@ class DatasetView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
             select_all = serializer.validated_data.get("select_all", False)
             project = serializer.validated_data.get("project")
 
+            org = (
+                getattr(request, "organization", None) or request.user.organization
+            )
             try:
                 dataset = Dataset.objects.get(
                     id=dataset_id,
-                    organization=getattr(request, "organization", None)
-                    or request.user.organization,
+                    organization=org,
                     deleted=False,
                 )
             except Dataset.DoesNotExist:
                 logger.exception(f"Dataset with id {dataset_id} does not exist.")
                 return self._gm.bad_request(get_error_message("DATASET_NOT_FOUND"))
 
+            # Tenant scope: if project is client-supplied, validate it
+            # against the caller's org before any CH read. ``select_all``
+            # paths use project explicitly; trace_ids / span_ids paths
+            # below pre-validate via PG ``Trace`` / ``ObservationSpan``
+            # filters that JOIN through ``project__organization=org``.
+            if project and not Project.objects.filter(
+                id=project, organization=org
+            ).exists():
+                return self._gm.bad_request(get_error_message("PROJECT_NOT_FOUND"))
+
+            span_id_list: list[str] = []
             if select_all:
+                # CH25-TODO(list_by_project_exclude): same exclusion-API
+                # gap as add_to_new_dataset. The reader has no
+                # ``.exclude()`` equivalent and Rule 1 forbids ad-hoc
+                # CH SQL. Defer until ``list_by_project(...,
+                # exclude_trace_ids=, exclude_ids=)`` (or
+                # ``ids_by_project_exclude``) lands.
                 if trace_ids is not None:
                     observation_spans = ObservationSpan.objects.filter(
-                        project__organization=getattr(request, "organization", None)
-                        or request.user.organization,
+                        project__organization=org,
                         parent_span_id__isnull=True,
                         project_id=project,
                     ).exclude(
@@ -193,25 +282,61 @@ class DatasetView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                     )
                 elif span_ids is not None:
                     observation_spans = ObservationSpan.objects.filter(
-                        project__organization=getattr(request, "organization", None)
-                        or request.user.organization,
+                        project__organization=org,
                         project_id=project,
                     ).exclude(
                         id__in=span_ids,
                     )
+                else:
+                    observation_spans = ObservationSpan.objects.none()
+                span_id_list = [str(sid) for sid in observation_spans.values_list("id", flat=True)]
+
             elif trace_ids and len(trace_ids) > 0:
-                observation_spans = ObservationSpan.objects.filter(
-                    trace_id__in=trace_ids,
-                    project__organization=getattr(request, "organization", None)
-                    or request.user.organization,
-                    parent_span_id__isnull=True,
+                # Org-scope pre-validate via PG (no project_id supplied
+                # in this branch — the trace_id list itself is the
+                # tenancy anchor). PG ``Trace`` JOINs through
+                # ``project__organization=org``; only the surviving
+                # trace_ids hit CH.
+                validated_trace_ids = list(
+                    Trace.objects.filter(
+                        id__in=trace_ids, project__organization=org
+                    ).values_list("id", flat=True)
                 )
+                if not validated_trace_ids:
+                    span_id_list = []
+                else:
+                    with get_reader() as reader:
+                        ch_spans = reader.list_by_trace_ids(
+                            [str(t) for t in validated_trace_ids]
+                        )
+                    # parent_span_id__isnull=True in PG; CH stores it as
+                    # non-nullable String so root spans have an empty
+                    # value. ``not s.parent_span_id`` is the equivalent
+                    # truthy test.
+                    span_id_list = [s.id for s in ch_spans if not s.parent_span_id]
             elif span_ids and len(span_ids) > 0:
+                # KEEP-PG: this branch was a single ORM lookup that
+                # served BOTH as the row accessor and as the tenancy
+                # gate (``project__organization=org`` JOIN). Migrating
+                # in isolation would either (a) replace the row read
+                # with CH + bolt a PG ``ObservationSpan.objects.filter
+                # (id__in=, project__organization=org)`` round-trip back
+                # on for tenancy — net negative, no perf win, more code
+                # paths — or (b) use ``reader.list_by_ids`` with a
+                # Python ``s.org_id == str(org.id)`` filter, trusting
+                # CH's denormalized ``org_id`` column.
+                # CH25-TODO(span_id_org_validate_pure_ch): option (b)
+                # is the right end state; add a benchmark + a
+                # ``reader.list_by_ids(..., org_id=)`` overload so the
+                # org filter happens in the CH WHERE clause instead of
+                # in Python over the full result set.
                 observation_spans = ObservationSpan.objects.filter(
-                    id__in=span_ids,
-                    project__organization=getattr(request, "organization", None)
-                    or request.user.organization,
+                    id__in=span_ids, project__organization=org
                 )
+                span_id_list = [
+                    str(sid)
+                    for sid in observation_spans.values_list("id", flat=True)
+                ]
             else:
                 raise ValueError("No trace or span ids provided")
 
@@ -253,7 +378,7 @@ class DatasetView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                     )
 
             # Submit batch tasks asynchronously - returns nothing
-            create_new_cells(observation_spans, dataset, columns_to_span_fields)
+            create_new_cells(span_id_list, dataset, columns_to_span_fields)
 
             return self._gm.success_response(
                 {
@@ -385,18 +510,31 @@ def _submit_or_run_sync(batch, dataset_id, column_span_mapping_data):
         )
 
 
-def create_new_cells(observation_spans, dataset, column_span_mapping):
+def create_new_cells(span_ids, dataset, column_span_mapping):
+    """Submit Celery/Temporal batches of span ids for cell processing.
 
-    # Use count() to avoid loading the QuerySet
-    spans_count = observation_spans.count()
-    if spans_count == 0:
+    CH25 migration (D-027): callers used to pass an
+    ``ObservationSpan.objects.filter(...)`` queryset; the body relied on
+    ``.count()`` + ``.values_list("id", flat=True).iterator()``. Spans
+    now live in ClickHouse — the caller materializes ids via the CH
+    reader (or via a PG pre-validation step for the select_all + exclude
+    paths that need exclusion semantics) and hands a plain
+    ``list[str]`` to this function.
+
+    Args:
+        span_ids: iterable of span id strings (uuid). The caller is
+            responsible for tenant scoping (we no longer apply
+            ``project__organization=org`` here — the function trusts the
+            list it received).
+        dataset: ``Dataset`` model instance.
+        column_span_mapping: list of ``{column, span_field}`` dicts.
+    """
+    span_ids_list = [str(sid) for sid in span_ids or []]
+    if len(span_ids_list) == 0:
         raise ValueError("No observation spans provided")
 
     if len(column_span_mapping) == 0:
         raise ValueError("No column span mapping provided")
-
-    # Fetch only IDs without loading full objects
-    span_ids = list(observation_spans.values_list("id", flat=True))
 
     # Prepare serializable column mapping
     # Send both column_id and column_name for fallback
@@ -411,11 +549,11 @@ def create_new_cells(observation_spans, dataset, column_span_mapping):
 
     # Split into batches
     batch_size = CHUNK_SIZE
-    total_batches = (len(span_ids) + batch_size - 1) // batch_size
-    batch = []
+    total_batches = (len(span_ids_list) + batch_size - 1) // batch_size
+    batch: list[str] = []
 
-    for span_id in observation_spans.values_list("id", flat=True).iterator():
-        batch.append(str(span_id))
+    for span_id in span_ids_list:
+        batch.append(span_id)
 
         if len(batch) >= CHUNK_SIZE:
             _submit_or_run_sync(batch, str(dataset.id), column_span_mapping_data)
@@ -426,7 +564,9 @@ def create_new_cells(observation_spans, dataset, column_span_mapping):
         _submit_or_run_sync(batch, str(dataset.id), column_span_mapping_data)
 
     logger.info(
-        f"dataset_creation_tasks_submitted: dataset_id={dataset.id}, total_spans={len(span_ids)}, total_batches={total_batches}, batch_size={batch_size}"
+        f"dataset_creation_tasks_submitted: dataset_id={dataset.id}, "
+        f"total_spans={len(span_ids_list)}, total_batches={total_batches}, "
+        f"batch_size={batch_size}"
     )
 
     # Returns nothing - tasks run independently in background

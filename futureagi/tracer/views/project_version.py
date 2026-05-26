@@ -205,6 +205,25 @@ class ProjectVersionView(BaseModelViewSetMixin, ModelViewSet):
             )
             result = {}
 
+            # CH25-TODO(per_project_version_metric_aggregate): this
+            # site is the ``update_project_version_winner`` rollup. The
+            # ObservationSpan-outer + EvalLogger-inner OuterRef pattern
+            # is genuinely cross-store (spans→CH, EvalLogger→PG); the
+            # existing ``per_trace_aggregate`` returns sums and doesn't
+            # carry the root-span-only ``parent_span_id__isnull=True``
+            # condition that ``avg_latency_ms`` needs. Defer until the
+            # reader gains a method shaped like:
+            #   per_project_version_metric_aggregate(
+            #       project_id, *, project_version_ids: list[str] | None = None
+            #   ) -> dict[pvid, {
+            #       avg_latency_ms_root, avg_cost, count
+            #   }]
+            # …that returns per-project_version system-metric rollups
+            # in one CH query. The downstream EvalLogger Subquery+
+            # OuterRef stays in PG (Option B per the wave-2 task
+            # description): we'd zip the CH rollup dict by
+            # project_version_id with the PG EvalLogger results in
+            # Python before computing the weighted ``sum``.
             # Build the base query with all necessary annotations
             base_query = (
                 ObservationSpan.objects.filter(project=project)
@@ -474,6 +493,15 @@ class ProjectVersionView(BaseModelViewSetMixin, ModelViewSet):
             except Project.DoesNotExist:
                 return self._gm.bad_request(get_error_message("PROJECT_NOT_FOUND"))
 
+            # CH25-TODO(per_project_version_metric_aggregate): same
+            # outer-ObservationSpan + inner-EvalLogger Subquery pattern
+            # as the winner rollup above, plus an Avg + Concat over
+            # ``project_version__*`` fields (which are PG-only joins).
+            # Defer until ``per_project_version_metric_aggregate``
+            # lands; the export path can then assemble the CSV row by
+            # zipping the CH metric dict with a PG ``ProjectVersion
+            # .objects.filter(id__in=).values("name","version","avg_
+            # eval_score")`` lookup.
             # Build the base query with all necessary annotations
             base_query = ObservationSpan.objects.filter(project=project)
 
@@ -1205,6 +1233,20 @@ class ProjectVersionView(BaseModelViewSetMixin, ModelViewSet):
                     }
                 )
 
+            # CH25-TODO(run_insights_aggregate+stddev): the two sites
+            # below are a tied pair that feed the same outlier
+            # detection. The aggregate needs ``StdDev`` (sample/
+            # population), which ``per_trace_aggregate`` does not
+            # compute — recomputing it Python-side from sums loses
+            # population-vs-sample correctness. The outlier scan then
+            # needs ``parent_span_id``, ``latency_ms``, ``total_tokens``,
+            # ``cost`` per span. Defer until either:
+            #   - ``trace_aggregate_with_stddev(trace_ids, *, parent_only=True)``
+            #     -> {avg_latency, avg_cost, latency_stddev, cost_stddev, count, avg_tokens}
+            #   - …or ``list_by_trace_ids`` is rich enough to do the
+            #     full outlier scan in Python without round-tripping
+            #     the whole project. The PG StdDev clause is correct
+            #     today; deferring keeps insight accuracy.
             # System Metrics - Optimize with aggregation
             spans_metrics = ObservationSpan.objects.filter(
                 trace_id__in=trace_ids,
@@ -1233,7 +1275,10 @@ class ProjectVersionView(BaseModelViewSetMixin, ModelViewSet):
                 ),
             )
 
-            # Get spans for outlier detection with fewer fields
+            # Get spans for outlier detection with fewer fields. See
+            # the paired CH25-TODO above — this scan is tied to the
+            # stddev numbers, so we defer them together to keep the
+            # outlier-detection statistics consistent.
             spans = ObservationSpan.objects.filter(
                 trace_id__in=trace_ids,
                 project=project_version.project,
@@ -1459,6 +1504,16 @@ class ProjectVersionView(BaseModelViewSetMixin, ModelViewSet):
                 project_config, annotation_labels
             )
 
+            # CH25-TODO(per_project_version_metric_aggregate): the
+            # ``list_runs`` rollup is the same Subquery+OuterRef
+            # cross-store pattern (ObservationSpan-outer, EvalLogger-
+            # inner) with an extra ``project_version__deleted`` PG
+            # filter that CH cannot evaluate (project_version live in
+            # PG). Defer until ``per_project_version_metric_aggregate``
+            # lands; the project_version-deleted gate can then run as
+            # a PG ``ProjectVersion.objects.filter(deleted=False).
+            # values_list("id")`` pre-step that narrows the
+            # ``project_version_ids`` arg passed to CH.
             # Build the base query with system metrics
             base_query = (
                 ObservationSpan.objects.filter(

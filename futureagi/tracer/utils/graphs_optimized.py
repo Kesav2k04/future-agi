@@ -270,6 +270,15 @@ def get_eval_graph_data(
                 custom_eval_config.name, start_date, end_date, interval
             )
 
+        # CH25-TODO(cross-store-join; EvalLogger stays PG): this is a
+        # Django subquery used as the inner `observation_span__in=` filter
+        # of an EvalLogger query. EvalLogger lives in PG; materializing
+        # the span-id list from CH would force ObservationSpan.objects.
+        # filter(id__in=<list-from-CH>) cycles per project (potentially
+        # millions of rows) just to feed the EvalLogger query. The CH
+        # primary EvalMetricsQueryBuilder dispatch at L142-186 already
+        # avoids this PG path when CH dispatch is enabled. Defer until
+        # EvalLogger itself migrates.
         span_subquery = ObservationSpan.objects.filter(project_id=project_id).values(
             "id"
         )
@@ -563,6 +572,29 @@ def get_all_system_metrics(
             "tokens": {"metric_name": "tokens", "data": [...]},
             "cost": {"metric_name": "cost", "data": [...]}
         }
+
+    CH25-TODO(semantic-mismatch-prevents-1-line-migration): the new
+    time_bucket_aggregate reader returns the right output shape
+    ({bucket, span_count, tokens, cost, latency_ms}) but with TWO
+    silent semantic drifts versus this PG helper:
+      (1) buckets on `start_time` (CH spans column) whereas the PG
+          .annotate(time_bucket=Trunc("created_at")) uses created_at.
+          For just-completed spans these are usually within seconds,
+          but for backfilled or replayed spans they can diverge.
+      (2) emits `cost = sum(cost)` whereas this PG path returns
+          `cost_value = Avg("cost")` per bucket. Cost-per-bucket vs
+          total-cost-per-bucket — semantically different.
+    The sibling helper get_system_metric_graph_data (L908) already
+    dispatches to TimeSeriesQueryBuilder which uses `avg(cost)` and
+    `start_time`-bucketing, so it shares drift (1) with the CH primary
+    path and is the source of truth for that behaviour today.
+    A safe migration of THIS helper needs either:
+      (a) a `time_bucket_aggregate(...,  cost_agg="avg"|"sum",
+          bucket_field="start_time"|"created_at")` reader signature,
+      (b) accepting the drift and writing a product decision doc that
+          replays both paths through `start_time` + `avg(cost)` (the
+          existing CH primary semantics).
+    Defer.
     """
     # Parse time filters
     start_date, end_date = parse_time_filters(filters)
@@ -960,6 +992,17 @@ def get_system_metric_data(
     # Build base queryset using subqueries - NO ID MATERIALIZATION
     # This is the key optimization: we filter using EXISTS/IN with subqueries
     # instead of evaluating IDs into memory
+    #
+    # CH25-TODO(PG-fallback-stays-PG): all three branches below
+    # (trace/span/charts) sit downstream of the CH dispatch at L911-987
+    # which uses TimeSeriesQueryBuilder. The Django subquery
+    # `trace_id__in=trace_ids_queryset.values("id")` / `id__in=
+    # span_ids_queryset.values("id")` is a memory-efficient pattern that
+    # depends on Django's query compiler — switching to CH here would
+    # require materializing the id list (loss of the "NO ID
+    # MATERIALIZATION" optimization called out in the inline comment).
+    # CH primary path covers the optimized case; this PG fallback is the
+    # safety net.
 
     if observe_type == "trace":
         # For trace-level filtering, use trace_ids_queryset as a subquery

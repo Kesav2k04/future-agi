@@ -4167,6 +4167,7 @@ export const appCoreJourneys = [
       let createEntitlementStatus = null;
       let duplicateCreate = null;
       let invalidCreate = null;
+      let otherWorkspace = null;
 
       await hardDeleteFalconConnectorFixturesDb({
         namePrefix,
@@ -4460,6 +4461,17 @@ export const appCoreJourneys = [
         "Falcon connector DB tool seed did not persist discovered tools.",
       );
 
+      otherWorkspace = await seedOtherWorkspaceFalconConnectorDb({
+        namePrefix,
+        organizationId,
+        userId,
+      });
+      assert(
+        isUuid(otherWorkspace?.workspace_id) &&
+          isUuid(otherWorkspace?.connector_id),
+        "Falcon connector other-workspace DB seed did not return ids.",
+      );
+
       const toolUpdate = await client.patch(
         apiPath("/falcon-ai/mcp-connectors/{connector_id}/tools/", {
           connector_id: created.id,
@@ -4479,6 +4491,82 @@ export const appCoreJourneys = [
         toolUpdate,
         rotatedSecret,
         "Falcon connector tools update",
+      );
+
+      const listAfterOtherWorkspace = asArray(
+        await client.get(apiPath("/falcon-ai/mcp-connectors/")),
+      );
+      assert(
+        !listAfterOtherWorkspace.some(
+          (connector) => connector.id === otherWorkspace.connector_id,
+        ),
+        "Falcon connector list leaked a same-org other-workspace connector.",
+      );
+
+      const otherWorkspaceDetail = await expectApiError(
+        () =>
+          client.get(
+            apiPath("/falcon-ai/mcp-connectors/{connector_id}/", {
+              connector_id: otherWorkspace.connector_id,
+            }),
+          ),
+        [404],
+        "Falcon connector detail leaked a same-org other-workspace connector.",
+      );
+      const otherWorkspacePatch = await expectApiError(
+        () =>
+          client.patch(
+            apiPath("/falcon-ai/mcp-connectors/{connector_id}/", {
+              connector_id: otherWorkspace.connector_id,
+            }),
+            { name: `${namePrefix}_other_workspace_mutated` },
+          ),
+        [404],
+        "Falcon connector PATCH mutated a same-org other-workspace connector.",
+      );
+      const otherWorkspaceTools = await expectApiError(
+        () =>
+          client.patch(
+            apiPath("/falcon-ai/mcp-connectors/{connector_id}/tools/", {
+              connector_id: otherWorkspace.connector_id,
+            }),
+            { enabled_tool_names: [otherWorkspace.tool_name] },
+          ),
+        [404],
+        "Falcon connector tools PATCH mutated a same-org other-workspace connector.",
+      );
+      const otherWorkspaceDiscover = await expectApiError(
+        () =>
+          client.post(
+            apiPath("/falcon-ai/mcp-connectors/{connector_id}/discover/", {
+              connector_id: otherWorkspace.connector_id,
+            }),
+            {},
+          ),
+        [404],
+        "Falcon connector discover reached a same-org other-workspace connector.",
+      );
+      const otherWorkspaceTest = await expectApiError(
+        () =>
+          client.post(
+            apiPath("/falcon-ai/mcp-connectors/{connector_id}/test/", {
+              connector_id: otherWorkspace.connector_id,
+            }),
+            {},
+          ),
+        [404],
+        "Falcon connector test reached a same-org other-workspace connector.",
+      );
+      const otherWorkspaceAuthenticate = await expectApiError(
+        () =>
+          client.post(
+            apiPath("/falcon-ai/mcp-connectors/{connector_id}/authenticate/", {
+              connector_id: otherWorkspace.connector_id,
+            }),
+            {},
+          ),
+        [404],
+        "Falcon connector authenticate reached a same-org other-workspace connector.",
       );
 
       const missingDetail = await expectApiError(
@@ -4532,7 +4620,8 @@ export const appCoreJourneys = [
       });
       hardCleaned = true;
       assert(
-        Number(cleanupAudit.remaining_connector_count) === 0,
+        Number(cleanupAudit.remaining_connector_count) === 0 &&
+          Number(cleanupAudit.remaining_workspace_count) === 0,
         `Falcon connector hard cleanup left disposable rows behind: ${JSON.stringify(cleanupAudit)}`,
       );
 
@@ -4545,6 +4634,14 @@ export const appCoreJourneys = [
         invalid_create_status: invalidCreate.status,
         unknown_tool_status: unknownToolError.status,
         missing_detail_status: missingDetail.status,
+        other_workspace_id: otherWorkspace.workspace_id,
+        other_workspace_connector_id: otherWorkspace.connector_id,
+        other_workspace_detail_status: otherWorkspaceDetail.status,
+        other_workspace_patch_status: otherWorkspacePatch.status,
+        other_workspace_tools_status: otherWorkspaceTools.status,
+        other_workspace_discover_status: otherWorkspaceDiscover.status,
+        other_workspace_test_status: otherWorkspaceTest.status,
+        other_workspace_authenticate_status: otherWorkspaceAuthenticate.status,
         discovered_tool_count: seededToolsAudit.discovered_tool_count,
         enabled_tool_names: toolUpdate.enabled_tool_names,
         encrypted_secret_stored: dbAudit.auth_value_is_encrypted,
@@ -4554,6 +4651,8 @@ export const appCoreJourneys = [
         deleted_at_set: dbAudit.deleted_at_set,
         cleanup_remaining_connector_count:
           cleanupAudit.remaining_connector_count,
+        cleanup_remaining_workspace_count:
+          cleanupAudit.remaining_workspace_count,
       });
     },
   },
@@ -8757,6 +8856,127 @@ SELECT json_build_object(
   return runPostgresJson(sql);
 }
 
+async function seedOtherWorkspaceFalconConnectorDb({
+  namePrefix,
+  organizationId,
+  userId,
+}) {
+  const workspaceId = randomUUID();
+  const connectorId = randomUUID();
+  const toolName = `${namePrefix}_other_workspace_tool`;
+  const workspaceName = `${namePrefix}_other_workspace`;
+  const connectorName = `${namePrefix}_other_workspace_connector`;
+  const sql = `
+WITH inserted_workspace AS (
+  INSERT INTO accounts_workspace (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    display_name,
+    description,
+    is_active,
+    is_default,
+    created_by_id,
+    organization_id
+  )
+  VALUES (
+    NOW(),
+    NOW(),
+    false,
+    NULL,
+    ${sqlUuid(workspaceId)},
+    ${sqlTextLiteral(workspaceName)},
+    ${sqlTextLiteral(workspaceName)},
+    ${sqlTextLiteral("Temporary workspace for Falcon connector API journey.")},
+    true,
+    false,
+    ${sqlUuid(userId)},
+    ${sqlUuid(organizationId)}
+  )
+  RETURNING id, name
+),
+inserted_connector AS (
+  INSERT INTO falcon_ai_mcpconnector (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    server_url,
+    transport,
+    auth_type,
+    auth_header_name,
+    auth_header_value,
+    is_active,
+    is_verified,
+    discovered_tools,
+    enabled_tool_names,
+    last_discovery_at,
+    last_error,
+    created_by_id,
+    organization_id,
+    workspace_id,
+    oauth_client_id,
+    oauth_client_secret,
+    oauth_server_metadata,
+    oauth_access_token,
+    oauth_refresh_token,
+    oauth_token_expires_at,
+    oauth_code_verifier,
+    oauth_state
+  )
+  SELECT
+    NOW(),
+    NOW(),
+    false,
+    NULL,
+    ${sqlUuid(connectorId)},
+    ${sqlTextLiteral(connectorName)},
+    'https://example.com/futureagi-api-journey-other-workspace-mcp',
+    'streamable_http',
+    'none',
+    'Authorization',
+    '',
+    true,
+    true,
+    ${sqlJson([
+      {
+        name: toolName,
+        description: "Temporary other-workspace Falcon connector tool.",
+      },
+    ])},
+    '[]'::jsonb,
+    NOW(),
+    '',
+    ${sqlUuid(userId)},
+    ${sqlUuid(organizationId)},
+    id,
+    '',
+    '',
+    '{}'::jsonb,
+    '',
+    '',
+    NULL,
+    '',
+    ''
+  FROM inserted_workspace
+  RETURNING id, workspace_id, name
+)
+SELECT json_build_object(
+  'workspace_id', (SELECT workspace_id::text FROM inserted_connector LIMIT 1),
+  'workspace_name', (SELECT name FROM inserted_workspace LIMIT 1),
+  'connector_id', (SELECT id::text FROM inserted_connector LIMIT 1),
+  'connector_name', (SELECT name FROM inserted_connector LIMIT 1),
+  'tool_name', ${sqlTextLiteral(toolName)}
+);
+`;
+  return runPostgresJson(sql);
+}
+
 async function hardDeleteFalconConnectorFixturesDb({
   namePrefix,
   organizationId,
@@ -8779,11 +8999,27 @@ deleted_connectors AS (
   USING target_connectors target
   WHERE connector.id = target.id
   RETURNING connector.id
+),
+target_workspaces AS (
+  SELECT workspace.id
+  FROM accounts_workspace workspace
+  JOIN requested r
+    ON workspace.organization_id = r.organization_id
+   AND workspace.name LIKE ${sqlTextLiteral(`${namePrefix}%other_workspace%`)}
+),
+deleted_workspaces AS (
+  DELETE FROM accounts_workspace workspace
+  USING target_workspaces target
+  WHERE workspace.id = target.id
+  RETURNING workspace.id
 )
 SELECT json_build_object(
   'deleted_connector_count', (SELECT count(*) FROM deleted_connectors),
   'remaining_connector_count',
-    (SELECT count(*) FROM target_connectors) - (SELECT count(*) FROM deleted_connectors)
+    (SELECT count(*) FROM target_connectors) - (SELECT count(*) FROM deleted_connectors),
+  'deleted_workspace_count', (SELECT count(*) FROM deleted_workspaces),
+  'remaining_workspace_count',
+    (SELECT count(*) FROM target_workspaces) - (SELECT count(*) FROM deleted_workspaces)
 );
 `;
   return runPostgresJson(sql);

@@ -785,6 +785,437 @@ class CHSpanReader:
         # caller's responsibility; this helper stays narrow.
         return out
 
+    # ─── Wave-3 reader extensions (commit 2f7d55e14 follow-up) ────────────────
+
+    def time_bucket_aggregate_with_filters(
+        self,
+        *,
+        interval: str,
+        since: datetime,
+        until: datetime,
+        project_id: Optional[str] = None,
+        trace_ids: Optional[list[str]] = None,
+        observation_type: Optional[list[str] | str] = None,
+        session_id: Optional[str] = None,
+        status_filter: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """Bucketed aggregation with the full eval-task filter shape PLUS
+        error_count. Equivalent to:
+            .filter(<filters>, start_time__range=(since, until))
+                .annotate(bucket=TruncHour/Day/Week/Month("start_time"))
+                .values("bucket")
+                .annotate(span_count=Count, error_count=Count(filter=Q(status="error")),
+                          tokens=Sum, cost=Sum, latency_ms=Avg)
+                .order_by("bucket")
+
+        Used by monitor.py / monitor_graphs.py time-window metrics where
+        a stratified status filter is needed (ERROR_FREE_SESSION_RATES,
+        per-provider error rates).
+        """
+        bucket_fn = {
+            "hour":  "toStartOfHour", "day":   "toStartOfDay",
+            "week":  "toMonday",      "month": "toStartOfMonth",
+        }.get(interval)
+        if bucket_fn is None:
+            raise ValueError(
+                f"interval={interval!r} not in {{'hour','day','week','month'}}"
+            )
+        where = ["is_deleted = 0", "start_time >= %(since)s", "start_time <  %(until)s"]
+        params: dict[str, Any] = {"since": since, "until": until}
+        if project_id:
+            where.append("project_id = %(pid)s")
+            params["pid"] = project_id
+        if trace_ids is not None:
+            if len(trace_ids) == 0:
+                return []
+            where.append("trace_id IN %(tids)s")
+            params["tids"] = tuple(trace_ids)
+        if observation_type:
+            if isinstance(observation_type, (list, tuple, set)):
+                where.append("observation_type IN %(otypes)s")
+                params["otypes"] = tuple(observation_type)
+            else:
+                where.append("observation_type = %(otype)s")
+                params["otype"] = observation_type
+        if session_id:
+            where.append("trace_session_id = %(sid)s")
+            params["sid"] = session_id
+        if status_filter:
+            where.append("status = %(stat)s")
+            params["stat"] = status_filter
+        rows = self._client.query(
+            f"SELECT {bucket_fn}(start_time) AS bucket, "
+            "count() AS span_count, "
+            "countIf(lower(status) = 'error') AS error_count, "
+            "sum(total_tokens) AS tokens, sum(cost) AS cost, "
+            "avg(latency_ms) AS latency_ms "
+            f"FROM spans FINAL WHERE {' AND '.join(where)} "
+            f"GROUP BY {bucket_fn}(start_time) "
+            f"ORDER BY {bucket_fn}(start_time)",
+            parameters=params,
+        ).result_rows
+        return [
+            {
+                "bucket": bucket,
+                "span_count": int(n or 0),
+                "error_count": int(errs or 0),
+                "tokens": int(toks or 0),
+                "cost": float(c or 0.0),
+                "latency_ms": float(lat or 0.0),
+            }
+            for (bucket, n, errs, toks, c, lat) in rows
+        ]
+
+    def aggregate_window_with_filters(
+        self,
+        *,
+        since: datetime,
+        until: datetime,
+        project_id: Optional[str] = None,
+        trace_ids: Optional[list[str]] = None,
+        observation_type: Optional[list[str] | str] = None,
+        session_id: Optional[str] = None,
+        status_filter: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Single-bucket variant of time_bucket_aggregate_with_filters. Used
+        by monitor._get_metric_value paths that want one window-wide number.
+        """
+        where = ["is_deleted = 0", "start_time >= %(since)s", "start_time <  %(until)s"]
+        params: dict[str, Any] = {"since": since, "until": until}
+        if project_id:
+            where.append("project_id = %(pid)s")
+            params["pid"] = project_id
+        if trace_ids is not None:
+            if len(trace_ids) == 0:
+                return {"span_count": 0, "error_count": 0, "tokens": 0,
+                        "cost": 0.0, "latency_ms": 0.0}
+            where.append("trace_id IN %(tids)s")
+            params["tids"] = tuple(trace_ids)
+        if observation_type:
+            if isinstance(observation_type, (list, tuple, set)):
+                where.append("observation_type IN %(otypes)s")
+                params["otypes"] = tuple(observation_type)
+            else:
+                where.append("observation_type = %(otype)s")
+                params["otype"] = observation_type
+        if session_id:
+            where.append("trace_session_id = %(sid)s")
+            params["sid"] = session_id
+        if status_filter:
+            where.append("status = %(stat)s")
+            params["stat"] = status_filter
+        rows = self._client.query(
+            "SELECT count() AS n, countIf(lower(status) = 'error') AS errs, "
+            "sum(total_tokens) AS toks, sum(cost) AS cost, "
+            "avg(latency_ms) AS lat "
+            f"FROM spans FINAL WHERE {' AND '.join(where)}",
+            parameters=params,
+        ).result_rows
+        n, errs, toks, c, lat = rows[0] if rows else (0, 0, 0, 0.0, 0.0)
+        return {
+            "span_count": int(n or 0),
+            "error_count": int(errs or 0),
+            "tokens": int(toks or 0),
+            "cost": float(c or 0.0),
+            "latency_ms": float(lat or 0.0),
+        }
+
+    def list_root_spans_by_trace_ids(
+        self,
+        trace_ids: list[str],
+        *,
+        observation_type: Optional[str] = None,
+    ) -> dict[str, CHSpan]:
+        """For each trace_id, return the root span (parent_span_id = '').
+        Picks the earliest by (start_time, id) on ties. Returns a dict so
+        callers can do O(1) trace_id → root_span lookups without zipping
+        result orders to input orders.
+
+        Replaces patterns like:
+            ObservationSpan.objects.filter(trace_id__in=, parent_span_id="",
+                                            deleted=False)
+                .order_by("trace_id", "start_time").distinct("trace_id")
+
+        Used by model_hub/services/bulk_selection.py for per-trace root
+        lookups + annotation_queues.py default-queue resolution.
+        """
+        if not trace_ids:
+            return {}
+        where = [
+            "is_deleted = 0", "trace_id IN %(tids)s", "parent_span_id = ''",
+        ]
+        params: dict[str, Any] = {"tids": tuple(trace_ids)}
+        if observation_type:
+            where.append("observation_type = %(otype)s")
+            params["otype"] = observation_type
+        # Single CH query; ORDER BY trace_id, start_time, id; then dedupe by
+        # trace_id in Python keeping the first per trace_id (= earliest).
+        rows = self._client.query(
+            f"SELECT {_SELECT_SQL} FROM spans FINAL "
+            f"WHERE {' AND '.join(where)} "
+            "ORDER BY trace_id, start_time, id",
+            parameters=params,
+        ).result_rows
+        result: dict[str, CHSpan] = {}
+        for r in rows:
+            span = _row_to_chspan(r)
+            if span.trace_id not in result:
+                result[span.trace_id] = span
+        return result
+
+    def aggregate_by_session_ids(
+        self,
+        session_ids: list[str],
+        *,
+        project_id: Optional[str] = None,
+    ) -> dict[str, dict[str, Any]]:
+        """Per-session rollup across many sessions in one CH query.
+
+        Replaces .filter(trace__session_id__in=session_ids)
+                  .values("trace__session_id")
+                  .annotate(Count, Sum(tokens), Sum(cost), distinct trace_count,
+                            Min(start_time), Max(end_time))
+        """
+        if not session_ids:
+            return {}
+        where = [
+            "is_deleted = 0", "trace_session_id IN %(sids)s",
+        ]
+        params: dict[str, Any] = {"sids": tuple(session_ids)}
+        if project_id:
+            where.append("project_id = %(pid)s")
+            params["pid"] = project_id
+        rows = self._client.query(
+            "SELECT toString(trace_session_id) AS sid, "
+            "count() AS span_count, "
+            "uniqExact(trace_id) AS traces_count, "
+            "sum(total_tokens) AS tokens, sum(cost) AS cost, "
+            "min(start_time) AS start_time, max(end_time) AS end_time "
+            f"FROM spans FINAL WHERE {' AND '.join(where)} "
+            "GROUP BY toString(trace_session_id)",
+            parameters=params,
+        ).result_rows
+        return {
+            sid: {
+                "span_count": int(sc or 0),
+                "traces_count": int(tc or 0),
+                "tokens": int(toks or 0),
+                "cost": float(c or 0.0),
+                "start_time": st,
+                "end_time": et,
+            }
+            for (sid, sc, tc, toks, c, st, et) in rows
+        }
+
+    def has_root_spans_of_type(
+        self, project_id: str, observation_type: str
+    ) -> bool:
+        """Equivalent to:
+            ObservationSpan.objects.filter(project_id=, observation_type=,
+                                            parent_span_id__isnull=True,
+                                            deleted=False).exists()
+
+        Used for has_voice_traces / has_<type>_traces gate checks.
+        """
+        rows = self._client.query(
+            "SELECT 1 FROM spans FINAL "
+            "WHERE is_deleted = 0 AND project_id = %(pid)s "
+            "  AND observation_type = %(otype)s "
+            "  AND parent_span_id = '' "
+            "LIMIT 1",
+            parameters={"pid": project_id, "otype": observation_type},
+        ).result_rows
+        return bool(rows)
+
+    def per_project_version_metric_aggregate(
+        self,
+        project_version_ids: list[str],
+        *,
+        observation_type: Optional[str] = None,
+    ) -> dict[str, dict[str, Any]]:
+        """Per-project-version rollups across many versions in one query.
+
+        Replaces patterns in tracer/views/project_version.py that do:
+            .filter(project_version_id__in=).values("project_version_id")
+            .annotate(avg_latency_root=Avg(...), avg_cost=Avg(...),
+                      total_tokens=Sum(...), span_count=Count(...))
+
+        For root-only metrics (e.g. average root-span latency), pass
+        observation_type=None and the caller filters parent_span_id='';
+        we expose both `avg_latency_root` (parent_span_id='') and overall
+        `avg_latency` so callers pick which they need.
+        """
+        if not project_version_ids:
+            return {}
+        where = ["is_deleted = 0", "project_version_id IN %(pvids)s"]
+        params: dict[str, Any] = {"pvids": tuple(project_version_ids)}
+        if observation_type:
+            where.append("observation_type = %(otype)s")
+            params["otype"] = observation_type
+        rows = self._client.query(
+            "SELECT toString(project_version_id) AS pvid, "
+            "count() AS span_count, "
+            "uniqExact(trace_id) AS trace_count, "
+            "avgIf(latency_ms, parent_span_id = '') AS avg_latency_root, "
+            "avg(latency_ms) AS avg_latency, "
+            "avg(cost) AS avg_cost, "
+            "sum(total_tokens) AS total_tokens, "
+            "sum(cost) AS total_cost "
+            f"FROM spans FINAL WHERE {' AND '.join(where)} "
+            "GROUP BY toString(project_version_id)",
+            parameters=params,
+        ).result_rows
+        return {
+            pvid: {
+                "span_count": int(sc or 0),
+                "trace_count": int(tc or 0),
+                "avg_latency_root": float(alr) if alr is not None else None,
+                "avg_latency": float(al) if al is not None else None,
+                "avg_cost": float(ac) if ac is not None else None,
+                "total_tokens": int(tt or 0),
+                "total_cost": float(tc2 or 0.0),
+            }
+            for (pvid, sc, tc, alr, al, ac, tt, tc2) in rows
+        }
+
+    def trace_aggregate_with_stddev(
+        self,
+        trace_ids: list[str],
+        *,
+        parent_only: bool = True,
+    ) -> dict[str, dict[str, Any]]:
+        """Per-trace aggregate including stddev(latency_ms), used by
+        project_version.py outlier-detection paths. `parent_only` restricts
+        to root spans (matches the legacy ORM call's
+        parent_span_id__isnull=True scoping).
+
+        Equivalent to:
+            .filter(trace_id__in=[, parent_span_id__isnull=parent_only]).values("trace_id")
+            .annotate(latency=Avg, latency_stddev=StdDev, cost=Sum, count=Count)
+        """
+        if not trace_ids:
+            return {}
+        where = ["is_deleted = 0", "trace_id IN %(tids)s"]
+        params: dict[str, Any] = {"tids": tuple(trace_ids)}
+        if parent_only:
+            where.append("parent_span_id = ''")
+        rows = self._client.query(
+            "SELECT toString(trace_id) AS tid, "
+            "count() AS span_count, "
+            "avg(latency_ms) AS avg_latency_ms, "
+            "stddevSamp(latency_ms) AS stddev_latency_ms, "
+            "sum(cost) AS cost, sum(total_tokens) AS tokens "
+            f"FROM spans FINAL WHERE {' AND '.join(where)} "
+            "GROUP BY toString(trace_id)",
+            parameters=params,
+        ).result_rows
+        return {
+            tid: {
+                "span_count": int(sc or 0),
+                "avg_latency_ms": float(al) if al is not None else None,
+                "stddev_latency_ms": float(sd) if sd is not None else None,
+                "cost": float(c or 0.0),
+                "tokens": int(t or 0),
+            }
+            for (tid, sc, al, sd, c, t) in rows
+        }
+
+    def prev_next_span_by_start_time(
+        self,
+        *,
+        project_id: str,
+        span_id: str,
+        project_version_id: Optional[str] = None,
+        observation_type: Optional[str] = None,
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Return (prev_span_id, next_span_id) by start_time ordering within
+        the project (and optionally project_version + observation_type) scope.
+        None for boundary cases.
+
+        Replaces the row-walking pattern in
+        tracer/views/observation_span.py::get_trace_id_by_index_spans_as_*.
+        """
+        # First, look up the focal span's start_time + id.
+        anchor_rows = self._client.query(
+            "SELECT start_time, id FROM spans FINAL "
+            "WHERE id = %(sid)s AND is_deleted = 0 LIMIT 1",
+            parameters={"sid": span_id},
+        ).result_rows
+        if not anchor_rows:
+            return (None, None)
+        anchor_st, anchor_id = anchor_rows[0]
+        where_base = ["is_deleted = 0", "project_id = %(pid)s"]
+        params: dict[str, Any] = {"pid": project_id, "anchor_st": anchor_st,
+                                  "anchor_id": anchor_id}
+        if project_version_id:
+            where_base.append("project_version_id = %(pvid)s")
+            params["pvid"] = project_version_id
+        if observation_type:
+            where_base.append("observation_type = %(otype)s")
+            params["otype"] = observation_type
+        base = " AND ".join(where_base)
+        prev = self._client.query(
+            f"SELECT id FROM spans FINAL WHERE {base} "
+            "  AND (start_time, id) < (%(anchor_st)s, %(anchor_id)s) "
+            "ORDER BY start_time DESC, id DESC LIMIT 1",
+            parameters=params,
+        ).result_rows
+        nxt = self._client.query(
+            f"SELECT id FROM spans FINAL WHERE {base} "
+            "  AND (start_time, id) > (%(anchor_st)s, %(anchor_id)s) "
+            "ORDER BY start_time ASC, id ASC LIMIT 1",
+            parameters=params,
+        ).result_rows
+        return (
+            prev[0][0] if prev else None,
+            nxt[0][0] if nxt else None,
+        )
+
+    def prev_next_trace_by_start_time(
+        self,
+        *,
+        project_id: str,
+        trace_id: str,
+        project_version_id: Optional[str] = None,
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Return (prev_trace_id, next_trace_id) ordered by the trace's
+        root-span start_time. Mirrors prev_next_span_by_start_time but at
+        the trace level. Used by experiment-mode trace navigation.
+        """
+        anchor_rows = self._client.query(
+            "SELECT min(start_time) AS st FROM spans FINAL "
+            "WHERE trace_id = %(tid)s AND is_deleted = 0 AND parent_span_id = ''",
+            parameters={"tid": trace_id},
+        ).result_rows
+        if not anchor_rows or anchor_rows[0][0] is None:
+            return (None, None)
+        anchor_st = anchor_rows[0][0]
+        where_base = [
+            "is_deleted = 0", "project_id = %(pid)s", "parent_span_id = ''",
+        ]
+        params: dict[str, Any] = {"pid": project_id, "anchor_st": anchor_st,
+                                  "anchor_tid": trace_id}
+        if project_version_id:
+            where_base.append("project_version_id = %(pvid)s")
+            params["pvid"] = project_version_id
+        base = " AND ".join(where_base)
+        prev = self._client.query(
+            f"SELECT toString(trace_id) FROM spans FINAL WHERE {base} "
+            "  AND (start_time, trace_id) < (%(anchor_st)s, toUUID(%(anchor_tid)s)) "
+            "ORDER BY start_time DESC, trace_id DESC LIMIT 1",
+            parameters=params,
+        ).result_rows
+        nxt = self._client.query(
+            f"SELECT toString(trace_id) FROM spans FINAL WHERE {base} "
+            "  AND (start_time, trace_id) > (%(anchor_st)s, toUUID(%(anchor_tid)s)) "
+            "ORDER BY start_time ASC, trace_id ASC LIMIT 1",
+            parameters=params,
+        ).result_rows
+        return (
+            prev[0][0] if prev else None,
+            nxt[0][0] if nxt else None,
+        )
+
     # ─── Aggregations ────────────────────────────────────────────────────────
     def trace_aggregate(self, trace_id: str) -> dict[str, Any]:
         """Computes the same aggregate the eval runner needs for trace-level

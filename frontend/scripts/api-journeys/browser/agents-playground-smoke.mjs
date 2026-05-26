@@ -24,6 +24,12 @@ async function main() {
   const graphName = `browser agent ${marker}`;
   const sourceNodeName = `browser_source_${marker}`.slice(0, 80);
   const targetNodeName = `browser_target_${marker}`.slice(0, 80);
+  const executionInputValue = `browser execution input ${auth.runId}`;
+  const executionOutputValue = `browser execution output ${auth.runId}`;
+  const graphExecutionId = randomUUID();
+  const nodeExecutionId = randomUUID();
+  const inputDataId = randomUUID();
+  const outputDataId = randomUUID();
   const graphNames = [graphName];
   const promptNames = [sourceNodeName, targetNodeName];
   let graphId = null;
@@ -254,6 +260,88 @@ async function main() {
       await waitForNoVisibleText(page, "Invalid Date");
       await waitForNoVisibleText(page, "undefined", { exact: true });
 
+      logStep("seed execution fixture");
+      const inputPort = findPort(setup.sourceNode, {
+        direction: "input",
+        displayName: "topic",
+      });
+      const outputPort = findPort(setup.sourceNode, {
+        direction: "output",
+        displayName: "response",
+      });
+      assert(inputPort?.id, "Source node did not expose topic input.");
+      assert(outputPort?.id, "Source node did not expose response output.");
+
+      const seedAudit = await seedAgentExecutionFixture({
+        graphExecutionId,
+        nodeExecutionId,
+        inputDataId,
+        outputDataId,
+        graphVersionId: setup.draftVersionId,
+        nodeId: setup.sourceNode.id,
+        inputPortId: inputPort.id,
+        outputPortId: outputPort.id,
+        inputValue: executionInputValue,
+        outputValue: executionOutputValue,
+      });
+      assert(
+        seedAudit.graph_execution_visible === 1 &&
+          seedAudit.node_execution_visible === 1 &&
+          seedAudit.execution_data_visible === 2,
+        "Seeded browser execution fixture was not DB-visible.",
+      );
+      evidence.seeded_execution = {
+        graph_execution_id: graphExecutionId,
+        node_execution_id: nodeExecutionId,
+        input_port_id: inputPort.id,
+        output_port_id: outputPort.id,
+        seed_audit: seedAudit,
+      };
+
+      logStep("reload populated executions");
+      const populatedExecutionsResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(`/agent-playground/graphs/${graphId}/executions/`) &&
+          response.status() < 400,
+        { timeout: 60000 },
+      );
+      const executionDetailResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              `/agent-playground/graphs/${graphId}/executions/${graphExecutionId}/`,
+            ) && response.status() < 400,
+        { timeout: 60000 },
+      );
+      const nodeExecutionDetailResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              `/agent-playground/executions/${graphExecutionId}/nodes/${nodeExecutionId}/`,
+            ) && response.status() < 400,
+        { timeout: 60000 },
+      );
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await populatedExecutionsResponse;
+      await executionDetailResponse;
+      await nodeExecutionDetailResponse;
+
+      await waitForNoVisibleText(page, "No executions yet", { exact: true });
+      await waitForVisibleText(page, "Success", { exact: true });
+      await waitForVisibleText(page, "Agent flow results", { exact: true });
+      await waitForVisibleText(page, "Output", { exact: true });
+      await waitForVisibleText(page, executionOutputValue);
+      await waitForNoVisibleText(page, "Invalid Date");
+      await waitForNoVisibleText(page, "undefined", { exact: true });
+
+      await clickVisibleLabelText(page, "Show inputs");
+      await waitForVisibleText(page, "Input", { exact: true });
+      await waitForVisibleText(page, executionInputValue);
+
       logStep("capture screenshot");
       await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true });
       evidence.screenshot = SCREENSHOT_PATH;
@@ -287,8 +375,20 @@ async function main() {
 
     const postDeleteAudit = await loadAgentGraphDbAudit({ graphId });
     assertAgentGraphPostDeleteAudit(postDeleteAudit);
+    const executionPostDeleteAudit = await loadAgentExecutionDbAudit({
+      graphId,
+      graphExecutionId,
+      nodeExecutionId,
+    });
+    assert(
+      executionPostDeleteAudit.graph_execution_visible === 0 &&
+        executionPostDeleteAudit.node_execution_visible === 0 &&
+        executionPostDeleteAudit.execution_data_visible === 0,
+      "Public graph delete left browser execution rows visible.",
+    );
     evidence.public_delete_status = publicDeleteStatus;
     evidence.post_delete_audit = postDeleteAudit;
+    evidence.execution_post_delete_audit = executionPostDeleteAudit;
 
     cleanupAudit = await hardDeleteAgentGraph({
       graphId,
@@ -447,6 +547,14 @@ async function createDisposableAgentGraph({
   );
 
   return { graphId, draftVersionId, sourceNode, targetNode };
+}
+
+function findPort(node, { direction, displayName }) {
+  return (node.ports || []).find(
+    (port) =>
+      port.direction === direction &&
+      (displayName ? port.display_name === displayName : true),
+  );
 }
 
 async function installRuntimeConfig(page, auth) {
@@ -668,6 +776,52 @@ async function clickVisibleText(page, text, { exact = false } = {}) {
   );
 }
 
+async function clickVisibleLabelText(page, text) {
+  await page.waitForFunction(
+    (expectedText) => {
+      const isVisible = (element) => {
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return (
+          style.visibility !== "hidden" &&
+          style.display !== "none" &&
+          rect.width > 0 &&
+          rect.height > 0
+        );
+      };
+      return Array.from(document.querySelectorAll("label")).some(
+        (element) =>
+          isVisible(element) &&
+          String(element.textContent || "")
+            .trim()
+            .includes(expectedText),
+      );
+    },
+    { timeout: 30000 },
+    text,
+  );
+  await page.evaluate((expectedText) => {
+    const isVisible = (element) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return (
+        style.visibility !== "hidden" &&
+        style.display !== "none" &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    };
+    const element = Array.from(document.querySelectorAll("label")).find(
+      (candidate) =>
+        isVisible(candidate) &&
+        String(candidate.textContent || "")
+          .trim()
+          .includes(expectedText),
+    );
+    element.click();
+  }, text);
+}
+
 async function expectApiError(fn, expectedStatuses, message) {
   try {
     await fn();
@@ -826,6 +980,123 @@ function assertAgentGraphPostDeleteAudit(audit) {
     audit.graph_dataset_visible === 0,
     "Deleted agent graph dataset link remained visible.",
   );
+}
+
+async function seedAgentExecutionFixture({
+  graphExecutionId,
+  nodeExecutionId,
+  inputDataId,
+  outputDataId,
+  graphVersionId,
+  nodeId,
+  inputPortId,
+  outputPortId,
+  inputValue,
+  outputValue,
+}) {
+  const sql = `
+INSERT INTO agent_playground_graph_execution (
+  id, graph_version_id, status, input_payload, output_payload,
+  started_at, completed_at, created_at, updated_at, deleted
+) VALUES (
+  ${sqlUuid(graphExecutionId)},
+  ${sqlUuid(graphVersionId)},
+  'success',
+  jsonb_build_object('topic', ${sqlTextLiteral(inputValue)}),
+  jsonb_build_object('response', ${sqlTextLiteral(outputValue)}),
+  now() - interval '7 seconds',
+  now(),
+  now(),
+  now(),
+  false
+);
+
+INSERT INTO agent_playground_node_execution (
+  id, graph_execution_id, node_id, status,
+  started_at, completed_at, created_at, updated_at, deleted
+) VALUES (
+  ${sqlUuid(nodeExecutionId)},
+  ${sqlUuid(graphExecutionId)},
+  ${sqlUuid(nodeId)},
+  'success',
+  now() - interval '7 seconds',
+  now(),
+  now(),
+  now(),
+  false
+);
+
+INSERT INTO agent_playground_execution_data (
+  id, node_execution_id, node_id, port_id, payload,
+  validation_errors, is_valid, created_at, updated_at, deleted
+) VALUES
+  (
+    ${sqlUuid(inputDataId)},
+    ${sqlUuid(nodeExecutionId)},
+    ${sqlUuid(nodeId)},
+    ${sqlUuid(inputPortId)},
+    to_jsonb(${sqlTextLiteral(inputValue)}::text),
+    NULL,
+    true,
+    now(),
+    now(),
+    false
+  ),
+  (
+    ${sqlUuid(outputDataId)},
+    ${sqlUuid(nodeExecutionId)},
+    ${sqlUuid(nodeId)},
+    ${sqlUuid(outputPortId)},
+    to_jsonb(${sqlTextLiteral(outputValue)}::text),
+    NULL,
+    true,
+    now(),
+    now(),
+    false
+  );
+
+${agentExecutionAuditSql({ graphExecutionId, nodeExecutionId })}
+`;
+  return runPostgresJson(sql);
+}
+
+async function loadAgentExecutionDbAudit({
+  graphId,
+  graphExecutionId,
+  nodeExecutionId,
+}) {
+  const sql = `
+SELECT json_build_object(
+  'graph_visible', (
+    SELECT count(*) FROM agent_playground_graph
+    WHERE id = ${sqlUuid(graphId)} AND deleted = false
+  ),
+  ${agentExecutionAuditFields({ graphExecutionId, nodeExecutionId })}
+);
+`;
+  return runPostgresJson(sql);
+}
+
+function agentExecutionAuditSql({ graphExecutionId, nodeExecutionId }) {
+  return `SELECT json_build_object(
+  ${agentExecutionAuditFields({ graphExecutionId, nodeExecutionId })}
+);`;
+}
+
+function agentExecutionAuditFields({ graphExecutionId, nodeExecutionId }) {
+  return `
+  'graph_execution_visible', (
+    SELECT count(*) FROM agent_playground_graph_execution
+    WHERE id = ${sqlUuid(graphExecutionId)} AND deleted = false
+  ),
+  'node_execution_visible', (
+    SELECT count(*) FROM agent_playground_node_execution
+    WHERE id = ${sqlUuid(nodeExecutionId)} AND deleted = false
+  ),
+  'execution_data_visible', (
+    SELECT count(*) FROM agent_playground_execution_data
+    WHERE node_execution_id = ${sqlUuid(nodeExecutionId)} AND deleted = false
+  )`;
 }
 
 async function hardDeleteAgentGraph({

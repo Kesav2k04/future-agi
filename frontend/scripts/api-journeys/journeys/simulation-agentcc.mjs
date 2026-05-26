@@ -3571,6 +3571,277 @@ export const simulationAgentccJourneys = [
     },
   },
   {
+    id: "SIM-API-010",
+    title: "Simulation cancellation status readback and cleanup",
+    tags: [
+      "simulation",
+      "run-tests",
+      "test-executions",
+      "call-executions",
+      "cancellation",
+      "mutating",
+      "data-roundtrip",
+      "db-audit",
+    ],
+    async run({
+      client,
+      cleanup,
+      runId,
+      evidence,
+      organizationId,
+      workspaceId,
+      user,
+    }) {
+      requireMutations();
+      const userId = currentUserId(user);
+      assert(userId, "Simulation cancellation journey requires current user id.");
+
+      const seed = await selectSimulationRunTestSeed(client);
+      if (!seed) {
+        skip(
+          "No completed text simulation seed with an agent definition and version was available.",
+        );
+      }
+
+      const name = `api journey sim cancel ${runId}`;
+      let hardCleanedRuns = false;
+      let hardCleanedScenarios = false;
+      cleanup.defer("hard-delete API journey cancellation scenario rows", () =>
+        hardCleanedScenarios
+          ? null
+          : deleteSimulationScenarioFixturesDb({ namePrefix: name, organizationId }),
+      );
+      cleanup.defer("hard-delete API journey cancellation run rows", () =>
+        hardCleanedRuns
+          ? null
+          : hardDeleteSimulationRunActionFixturesDb({
+              namePrefix: name,
+              organizationId,
+            }),
+      );
+
+      await hardDeleteSimulationRunActionFixturesDb({
+        namePrefix: name,
+        organizationId,
+      });
+      await deleteSimulationScenarioFixturesDb({ namePrefix: name, organizationId });
+
+      const scenarioFixture = await seedSimulationScenarioFixturesDb({
+        namePrefix: name,
+        organizationId,
+        workspaceId,
+        userId,
+      });
+      const scenarioId = scenarioFixture.scenario_id;
+      assert(
+        isUuid(scenarioId),
+        "Cancellation scenario DB fixture did not return a scenario id.",
+      );
+
+      const created = await client.post(
+        apiPath("/simulate/run-tests/create/"),
+        {
+          name: `${name} run`,
+          description:
+            "Temporary run test for cancellation status readback coverage.",
+          agent_definition_id: seed.agentDefinitionId,
+          agent_version: seed.agentVersionId,
+          scenario_ids: [scenarioId],
+          enable_tool_evaluation: false,
+        },
+      );
+      assert(isUuid(created?.id), "Run-test create did not return a UUID id.");
+
+      const chatExecution = await client.post(
+        apiPath("/simulate/run-tests/{run_test_id}/chat-execute/", {
+          run_test_id: created.id,
+        }),
+        {},
+      );
+      const testExecutionId = firstUuid(chatExecution.execution_id);
+      assert(
+        testExecutionId,
+        "Chat execute did not return a test execution id.",
+      );
+
+      const batch = await client.post(
+        apiPath(
+          "/simulate/test-executions/{test_execution_id}/chat/call-executions/batch/",
+          { test_execution_id: testExecutionId },
+        ),
+        {},
+      );
+      const callExecutionIds = asArray(batch.call_execution_ids).filter(isUuid);
+      assert(
+        callExecutionIds.length > 0,
+        "Chat call-execution batch did not create any call executions.",
+      );
+
+      const statusBeforeCancel = await client.get(
+        apiPath("/simulate/run-tests/{run_test_id}/status/", {
+          run_test_id: created.id,
+        }),
+      );
+      assert(
+        statusBeforeCancel.execution_id === testExecutionId &&
+          statusBeforeCancel.status === "pending",
+        "Run-test status before cancel did not reflect the pending execution.",
+      );
+      assert(
+        statusBeforeCancel.total_calls === callExecutionIds.length,
+        "Run-test status before cancel did not count the disposable calls.",
+      );
+
+      const pendingCalls = await client.get(
+        apiPath("/simulate/run-tests/{run_test_id}/call-executions/", {
+          run_test_id: created.id,
+        }),
+        { query: { status: "pending", limit: 20, page: 1 } },
+      );
+      const pendingCallIds = collectionRows(pendingCalls)
+        .map((row) => row?.id)
+        .filter(isUuid);
+      assert(
+        callExecutionIds.every((id) => pendingCallIds.includes(id)),
+        "Run-test call-execution readback did not include all pending calls.",
+      );
+
+      const cancelled = await client.post(
+        apiPath("/simulate/test-executions/{test_execution_id}/cancel/", {
+          test_execution_id: testExecutionId,
+        }),
+        {},
+      );
+      assert(
+        cancelled.success === true &&
+          cancelled.test_execution_id === testExecutionId,
+        "Test-execution cancel did not return success for the disposable execution.",
+      );
+
+      const statusAfterCancel = await client.get(
+        apiPath("/simulate/run-tests/{run_test_id}/status/", {
+          run_test_id: created.id,
+        }),
+      );
+      assert(
+        statusAfterCancel.execution_id === testExecutionId &&
+          statusAfterCancel.status === "cancelled",
+        "Run-test status after cancel did not reflect the cancelled execution.",
+      );
+
+      const cancelledCalls = await client.get(
+        apiPath("/simulate/run-tests/{run_test_id}/call-executions/", {
+          run_test_id: created.id,
+        }),
+        { query: { status: "cancelled", limit: 20, page: 1 } },
+      );
+      const cancelledCallIds = collectionRows(cancelledCalls)
+        .map((row) => row?.id)
+        .filter(isUuid);
+      assert(
+        callExecutionIds.every((id) => cancelledCallIds.includes(id)),
+        "Run-test call-execution readback did not include all cancelled calls.",
+      );
+
+      const callDetail = await client.get(
+        apiPath("/simulate/call-executions/{call_execution_id}/", {
+          call_execution_id: callExecutionIds[0],
+        }),
+      );
+      assert(
+        callDetail?.id === callExecutionIds[0] &&
+          callDetail.status === "cancelled",
+        "Call detail after cancel did not return the cancelled call.",
+      );
+      assert(
+        callDetail.ended_reason === "Cancelled by user",
+        "Call detail after cancel did not preserve the cancellation reason.",
+      );
+
+      const dbAudit = await loadSimulationCancellationDbAudit({
+        runTestId: created.id,
+        testExecutionId,
+        callExecutionIds,
+        organizationId,
+        workspaceId,
+      });
+      assert(
+        dbAudit.workspace_matches === true &&
+          dbAudit.test_execution_status === "cancelled" &&
+          dbAudit.test_execution_completed_at_set === true &&
+          dbAudit.test_execution_picked_up === false &&
+          Number(dbAudit.target_call_count) === callExecutionIds.length &&
+          Number(dbAudit.cancelled_call_count) === callExecutionIds.length &&
+          Number(dbAudit.active_call_count) === 0 &&
+          Number(dbAudit.active_create_call_count) === 0,
+        `Cancellation DB audit did not match expected terminal state: ${JSON.stringify(
+          dbAudit,
+        )}`,
+      );
+
+      for (const callExecutionId of callExecutionIds) {
+        await ignoreNotFound(() =>
+          client.delete(
+            apiPath("/simulate/call-executions/{call_execution_id}/delete/", {
+              call_execution_id: callExecutionId,
+            }),
+          ),
+        );
+      }
+      await ignoreNotFound(() =>
+        client.delete(
+          apiPath("/simulate/test-executions/{test_execution_id}/delete/", {
+            test_execution_id: testExecutionId,
+          }),
+        ),
+      );
+      await ignoreNotFound(() =>
+        client.delete(
+          apiPath("/simulate/run-tests/{run_test_id}/delete/", {
+            run_test_id: created.id,
+          }),
+        ),
+      );
+
+      const hardCleanup = await hardDeleteSimulationRunActionFixturesDb({
+        namePrefix: name,
+        organizationId,
+      });
+      hardCleanedRuns = true;
+      const scenarioCleanup = await deleteSimulationScenarioFixturesDb({
+        namePrefix: name,
+        organizationId,
+      });
+      hardCleanedScenarios = true;
+      assert(
+        Number(hardCleanup.remaining_run_test_count) === 0 &&
+          Number(hardCleanup.remaining_test_execution_count) === 0 &&
+          Number(hardCleanup.remaining_call_execution_count) === 0 &&
+          Number(scenarioCleanup.remaining_scenario_count) === 0,
+        `Cancellation cleanup left disposable artifacts: ${JSON.stringify({
+          hardCleanup,
+          scenarioCleanup,
+        })}`,
+      );
+
+      evidence.push({
+        seed_run_test_id: seed.runTestId,
+        seed_agent_definition_id: seed.agentDefinitionId,
+        run_test_id: created.id,
+        scenario_id: scenarioId,
+        test_execution_id: testExecutionId,
+        call_execution_count: callExecutionIds.length,
+        status_before_cancel: statusBeforeCancel.status,
+        status_after_cancel: statusAfterCancel.status,
+        cancelled_call_count: Number(dbAudit.cancelled_call_count),
+        active_call_count: Number(dbAudit.active_call_count),
+        db_audit: dbAudit,
+        hard_cleanup: hardCleanup,
+        scenario_cleanup: scenarioCleanup,
+      });
+    },
+  },
+  {
     id: "AGENTCC-API-001",
     title:
       "Gateway blocklist create, add words, remove words, update, and delete lifecycle",
@@ -8708,6 +8979,102 @@ SELECT json_build_object(
     SELECT count(*)
     FROM simulate_call_execution_snapshot
     WHERE call_execution_id IN (SELECT id FROM target_call)
+  )
+);
+`;
+  return runPostgresJson(sql);
+}
+
+async function loadSimulationCancellationDbAudit({
+  runTestId,
+  testExecutionId,
+  callExecutionIds,
+  organizationId,
+  workspaceId,
+}) {
+  const sql = `
+WITH target_run AS (
+  SELECT *
+  FROM simulate_run_test
+  WHERE id = ${sqlUuid(runTestId)}
+    AND organization_id = ${sqlUuid(organizationId)}
+),
+target_execution AS (
+  SELECT *
+  FROM simulate_test_execution
+  WHERE id = ${sqlUuid(testExecutionId)}
+    AND run_test_id IN (SELECT id FROM target_run)
+),
+target_calls AS (
+  SELECT *
+  FROM simulate_call_execution
+  WHERE test_execution_id IN (SELECT id FROM target_execution)
+),
+target_create_calls AS (
+  SELECT *
+  FROM simulate_createcallexecution
+  WHERE call_execution_id IN (SELECT id FROM target_calls)
+),
+call_status_counts AS (
+  SELECT status, count(*) AS count
+  FROM target_calls
+  GROUP BY status
+),
+create_call_status_counts AS (
+  SELECT status, count(*) AS count
+  FROM target_create_calls
+  GROUP BY status
+)
+SELECT json_build_object(
+  'run_test_id', (SELECT id::text FROM target_run),
+  'workspace_matches', (
+    SELECT workspace_id = ${sqlUuid(workspaceId)}
+    FROM target_run
+  ),
+  'test_execution_status', (SELECT status FROM target_execution),
+  'test_execution_completed_at_set', (
+    SELECT completed_at IS NOT NULL FROM target_execution
+  ),
+  'test_execution_picked_up', (
+    SELECT picked_up_by_executor FROM target_execution
+  ),
+  'target_call_count', (
+    SELECT count(*)
+    FROM target_calls
+    WHERE id = ANY(${sqlUuidArray(callExecutionIds)})
+  ),
+  'call_count', (SELECT count(*) FROM target_calls),
+  'cancelled_call_count', (
+    SELECT count(*)
+    FROM target_calls
+    WHERE status = 'cancelled'
+  ),
+  'active_call_count', (
+    SELECT count(*)
+    FROM target_calls
+    WHERE status IN ('pending', 'queued', 'ongoing')
+  ),
+  'call_status_counts', (
+    SELECT COALESCE(json_object_agg(status, count), '{}'::json)
+    FROM call_status_counts
+  ),
+  'ended_reason_counts', (
+    SELECT COALESCE(json_object_agg(COALESCE(ended_reason, ''), count), '{}'::json)
+    FROM (
+      SELECT ended_reason, count(*) AS count
+      FROM target_calls
+      GROUP BY ended_reason
+    ) reason_counts
+  ),
+  'create_call_count', (SELECT count(*) FROM target_create_calls),
+  'active_create_call_count', (
+    SELECT count(*)
+    FROM target_create_calls
+    WHERE status IN ('pending', 'registered', 'ongoing')
+  ),
+  'create_call_status_counts', (
+    SELECT COALESCE(json_object_agg(status, count), '{}'::json)
+    FROM create_call_status_counts
   )
 );
 `;

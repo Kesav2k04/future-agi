@@ -899,7 +899,7 @@ class TestExecutionStatusView(APIView):
             get_object_or_404(
                 RunTest, id=run_test_id, organization=user_organization, deleted=False
             )
-            test_executor = TestExecutor()
+            test_executor = TestExecutor(initialize_voice_service=False)
 
             # Get test execution status
             result = test_executor.get_test_status(run_test_id)
@@ -979,7 +979,11 @@ class TestExecutionCancelView(APIView):
                 result = self._cancel_with_temporal(test_execution)
             else:
                 # Cancel using legacy test executor (Celery)
-                test_executor = TestExecutor()
+                test_executor = TestExecutor(
+                    initialize_voice_service=self._needs_voice_service_for_cancel(
+                        test_execution
+                    )
+                )
                 result = test_executor.cancel_test(
                     run_test_id=run_test_id, test_execution_id=test_execution_id
                 )
@@ -1055,10 +1059,24 @@ class TestExecutionCancelView(APIView):
             logger.exception(f"Failed to cancel Temporal workflow: {str(e)}")
             return self._cancel_via_db(test_execution_id)
 
+    def _needs_voice_service_for_cancel(self, test_execution) -> bool:
+        return (
+            CallExecution.objects.filter(test_execution=test_execution)
+            .exclude(service_provider_call_id__isnull=True)
+            .exclude(service_provider_call_id="")
+            .exists()
+        )
+
     def _cancel_via_db(self, test_execution_id: str) -> dict:
         """Fallback: cancel test execution directly in DB when Temporal is unavailable."""
         try:
-            test_executor = TestExecutor()
+            needs_voice_service = (
+                CallExecution.objects.filter(test_execution_id=test_execution_id)
+                .exclude(service_provider_call_id__isnull=True)
+                .exclude(service_provider_call_id="")
+                .exists()
+            )
+            test_executor = TestExecutor(initialize_voice_service=needs_voice_service)
             return test_executor.cancel_test(test_execution_id=test_execution_id)
         except Exception as e:
             logger.exception(f"DB fallback cancellation also failed: {str(e)}")
@@ -1093,7 +1111,7 @@ class AllActiveTestsView(APIView):
 
             if not user_organization:
                 return _gm.not_found("Organization not found for the user.")
-            test_executor = TestExecutor()
+            test_executor = TestExecutor(initialize_voice_service=False)
 
             # Get all active tests
             active_tests = test_executor.get_all_active_tests()
@@ -1792,7 +1810,9 @@ class RunTestCallExecutionsView(APIView):
                 if item_type == "call_execution":
                     call_exec = call_executions_dict.get(str(item_id))
                     if call_exec:
-                        serializer = CallExecutionDetailSerializer(call_exec)
+                        serializer = CallExecutionDetailSerializer(
+                            call_exec, context={"detail_mode": False}
+                        )
                         call_data = serializer.data
                         call_data["is_snapshot"] = False
                         # Remove rerun_snapshots since we're flattening
@@ -1805,7 +1825,9 @@ class RunTestCallExecutionsView(APIView):
                     if snapshot:
                         # Get the original call execution for context
                         original_call_exec = snapshot.call_execution
-                        serializer = CallExecutionDetailSerializer(original_call_exec)
+                        serializer = CallExecutionDetailSerializer(
+                            original_call_exec, context={"detail_mode": False}
+                        )
                         original_data = serializer.data
 
                         # Convert snapshot to call execution format

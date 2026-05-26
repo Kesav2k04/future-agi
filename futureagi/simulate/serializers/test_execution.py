@@ -392,6 +392,13 @@ class CallExecutionDetailSerializer(serializers.ModelSerializer):
         if not self.context.get("detail_mode", True):
             return {}
 
+        simulation_call_type = getattr(obj, "simulation_call_type", None)
+        if (
+            simulation_call_type == CallExecution.SimulationCallType.TEXT
+            or self._is_chat_simulation(obj)
+        ):
+            return {}
+
         provider_payload = None
         if hasattr(obj, "provider_call_data") and isinstance(
             obj.provider_call_data, dict

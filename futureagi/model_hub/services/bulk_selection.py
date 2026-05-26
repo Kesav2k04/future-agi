@@ -247,6 +247,21 @@ def _validate_user_scoped_filters(filters, user):
             )
 
 
+def _project_matches_workspace(project, workspace):
+    if workspace is None:
+        return True
+    project_workspace_id = getattr(project, "workspace_id", None)
+    if project_workspace_id == getattr(workspace, "id", None):
+        return True
+    return project_workspace_id is None and getattr(workspace, "is_default", False)
+
+
+def _trace_project_workspace_filter(workspace):
+    if getattr(workspace, "is_default", False):
+        return Q(project__workspace=workspace) | Q(project__workspace__isnull=True)
+    return Q(project__workspace=workspace)
+
+
 def _build_trace_base_queryset(project_id, organization, workspace=None):
     """Return org/workspace/project-scoped base Trace queryset.
 
@@ -331,7 +346,7 @@ def _build_trace_base_queryset(project_id, organization, workspace=None):
     )
 
     if workspace is not None:
-        qs = qs.filter(project__workspace=workspace)
+        qs = qs.filter(_trace_project_workspace_filter(workspace))
 
     return qs
 
@@ -714,9 +729,7 @@ def resolve_filtered_trace_ids(
     # Verify project exists + is in org before we try either backend. Keeps
     # the 404 contract consistent with the enumerated path.
     project = Project.objects.get(id=project_id, organization=organization)
-    if workspace is not None and getattr(project, "workspace_id", None) != getattr(
-        workspace, "id", None
-    ):
+    if not _project_matches_workspace(project, workspace):
         return ResolveResult(ids=[], total_matching=0, truncated=False)
 
     # Dispatch to ClickHouse when available so filter semantics
@@ -842,7 +855,7 @@ def _build_span_base_queryset(project_id, organization, workspace=None):
     )
 
     if workspace is not None:
-        qs = qs.filter(project__workspace=workspace)
+        qs = qs.filter(_trace_project_workspace_filter(workspace))
 
     return qs
 
@@ -1073,7 +1086,7 @@ def _build_session_base_queryset(project_id, organization, workspace=None):
 
     qs = TraceSession.objects.filter(project_id=project.id)
     if workspace is not None:
-        qs = qs.filter(project__workspace=workspace)
+        qs = qs.filter(_trace_project_workspace_filter(workspace))
     return qs
 
 

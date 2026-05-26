@@ -11154,6 +11154,11 @@ function expectedAnalyticsFromDb(dbAudit) {
       Number.isFinite(Date.parse(item.updated_at)) &&
       Date.parse(item.updated_at) >= thirtyDaysAgo,
   );
+  const completedItemIds = new Set(
+    items
+      .filter((item) => item.status === "completed")
+      .map((item) => String(item.id)),
+  );
   const dailyCounts = new Map();
   for (const item of completedInWindow) {
     const date = new Date(item.updated_at).toISOString().slice(0, 10);
@@ -11166,17 +11171,24 @@ function expectedAnalyticsFromDb(dbAudit) {
       (score) => String(score.annotator_id),
     ),
   )
-    .map(([annotatorId, rows]) => ({
-      user_id: annotatorId,
-      name: rows[0]?.annotator_name || null,
-      completed: rows.length,
-      last_active:
+    .map(([annotatorId, rows]) => {
+      const completedQueueItemIds = new Set(
         rows
-          .map((row) => row.created_at)
-          .filter(Boolean)
-          .sort()
-          .at(-1) || null,
-    }))
+          .filter((row) => completedItemIds.has(String(row.queue_item_id)))
+          .map((row) => String(row.queue_item_id)),
+      );
+      return {
+        user_id: annotatorId,
+        name: rows[0]?.annotator_name || null,
+        completed: completedQueueItemIds.size,
+        last_active:
+          rows
+            .map((row) => row.created_at)
+            .filter(Boolean)
+            .sort()
+            .at(-1) || null,
+      };
+    })
     .sort(
       (left, right) =>
         right.completed - left.completed ||
@@ -12228,12 +12240,24 @@ async function resolveObserveVoiceCallSource(client, evidence) {
       );
       const rootSpan = findVoiceRootConversationSpan(detail?.observation_span);
       if (!rootSpan?.id) continue;
+      if (!isTerminalTraceRootSpan(rootSpan)) {
+        evidence.push({
+          endpoint: "annotation queue voice source skipped",
+          project_id: project.id,
+          trace_id: traceId,
+          root_span_id: rootSpan.id,
+          root_span_status: rootSpan.status || null,
+          reason: "trace in progress",
+        });
+        continue;
+      }
 
       evidence.push({
         endpoint: "annotation queue voice source search",
         project_id: project.id,
         trace_id: traceId,
         root_span_id: rootSpan.id,
+        root_span_status: rootSpan.status || null,
         voice_rows: baseRows.length,
       });
       return {
@@ -12260,6 +12284,10 @@ function findVoiceRootConversationSpan(spans) {
     rows.find((span) => !span?.parent_span_id) ||
     rows[0]
   );
+}
+
+function isTerminalTraceRootSpan(span) {
+  return ["OK", "ERROR"].includes(String(span?.status || "").toUpperCase());
 }
 
 async function resolveObserveSessionSource(client, evidence) {

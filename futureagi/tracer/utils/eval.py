@@ -180,26 +180,42 @@ def build_trace_context(trace, *, anchor_span_id: str | None = None) -> dict:
     to empty values rather than raising; the eval continues without the
     optional context fields.
     """
-    from django.db.models import Count, Q, Sum
-
-    from tracer.models.observation_span import ObservationSpan
-
     try:
-        # CH25-TODO: trace-level aggregate. Migrate via v2 query builder (eval_metrics) + shadow runner — see tracer/services/clickhouse/v2/shadow.py.
-        _agg = ObservationSpan.objects.filter(
-            trace=trace, deleted=False
-        ).aggregate(
-            span_count=Count("id"),
-            error_count=Count("id", filter=Q(status="ERROR")),
-            total_tokens=Sum("total_tokens"),
-            total_latency_ms=Sum("latency_ms"),
-        )
-        _spans = list(
-            # CH25-TODO: trace span listing. Use v2 SpanListQueryBuilder once ported (target query type: SPAN_LIST).
-            ObservationSpan.objects.filter(trace=trace, deleted=False)
-            .order_by("start_time")
-            .values("id", "name", "observation_type", "status", "parent_span_id")[:200]
-        )
+        # Read from CH 25.3 (was ObservationSpan.objects.filter(trace=trace,
+        # deleted=False).aggregate(...) + .order_by("start_time").values(...)).
+        # CHSpanReader.list_by_trace already filters is_deleted=0 and orders
+        # by start_time, id; we aggregate in Python so we can preserve the
+        # Count(filter=Q(status='ERROR')) shape without a new reader method.
+        # Per-trace span count is bounded (UI/agent already caps display at
+        # 200) so a single pass over the rows is cheap.
+        from tracer.services.clickhouse.v2 import get_reader
+
+        trace_id = getattr(trace, "id", None)
+        if trace_id is None:
+            _agg, _spans = {}, []
+        else:
+            with get_reader() as reader:
+                _ch_spans = reader.list_by_trace(str(trace_id))
+            _span_count = len(_ch_spans)
+            _error_count = sum(1 for s in _ch_spans if s.status == "ERROR")
+            _total_tokens = sum((s.total_tokens or 0) for s in _ch_spans)
+            _total_latency = sum((s.latency_ms or 0) for s in _ch_spans)
+            _agg = {
+                "span_count": _span_count,
+                "error_count": _error_count,
+                "total_tokens": _total_tokens,
+                "total_latency_ms": _total_latency,
+            }
+            _spans = [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "observation_type": s.observation_type,
+                    "status": s.status,
+                    "parent_span_id": s.parent_span_id or None,
+                }
+                for s in _ch_spans[:200]
+            ]
     except Exception:
         _agg, _spans = {}, []
 
@@ -242,70 +258,86 @@ def build_session_context(session) -> dict | None:
     if session is None:
         return None
     try:
-        from django.db.models import Count, Max, Min, Q, Sum
-
-        from tracer.models.observation_span import ObservationSpan
         from tracer.models.trace import Trace
+        from tracer.services.clickhouse.v2 import get_reader
 
         trace_qs = Trace.objects.filter(session=session, deleted=False)
-        # CH25-TODO: trace-level aggregate. Migrate via v2 query builder (eval_metrics) + shadow runner — see tracer/services/clickhouse/v2/shadow.py.
-        sess_agg = ObservationSpan.objects.filter(
-            trace__in=trace_qs, deleted=False
-        ).aggregate(
-            total_spans=Count("id"),
-            error_count=Count("id", filter=Q(status="ERROR")),
-            total_tokens=Sum("total_tokens"),
-            total_cost=Sum("cost"),
-            start_time=Min("start_time"),
-            end_time=Max("end_time"),
-        )
-
         # Cap at 100 traces for the in-prompt summary; the agent uses
         # explore_trace for deeper drill-down.
         traces_page = list(trace_qs.order_by("created_at")[:100])
         trace_ids = [t.id for t in traces_page]
-        per_trace = {
-            row["trace_id"]: row
-            for row in (
-                # CH25-TODO: aggregate/listing over trace_id set. Migrate via v2 query builder + shadow runner — see tracer/services/clickhouse/v2/shadow.py.
-                ObservationSpan.objects.filter(
-                    trace_id__in=trace_ids, deleted=False
-                )
-                .values("trace_id")
-                .annotate(
-                    span_count=Count("id"),
-                    error_count=Count("id", filter=Q(status="ERROR")),
-                    total_tokens=Sum("total_tokens"),
-                    total_latency=Sum("latency_ms"),
-                )
-            )
-        }
-        # Inline span metadata per trace so the agent has concrete span
-        # ids in its context and can call span_detail directly. Cap 50 per
-        # trace to bound payload size.
+
+        # Read from CH 25.3 (was three separate ObservationSpan.objects
+        # queries: session aggregate, per-trace aggregate, per-trace span
+        # listing). We fetch the full span set scoped to the page of
+        # traces once and aggregate / bucket in Python. Soft-deleted spans
+        # are already filtered (CHSpanReader.list_by_trace_ids filters
+        # is_deleted=0; trace soft-delete cascades to spans, see
+        # _soft_delete_trace_tree in tracer/views/trace.py). The session
+        # aggregate uses the same row set so it stays consistent with the
+        # trace_ids cap.
+        if trace_ids:
+            with get_reader() as reader:
+                _ch_spans = reader.list_by_trace_ids([str(tid) for tid in trace_ids])
+        else:
+            _ch_spans = []
+
+        _start_time = None
+        _end_time = None
+        _total_spans = 0
+        _error_count = 0
+        _total_tokens = 0
+        _total_cost = 0.0
+        per_trace: dict = {}
         spans_by_trace: dict = {}
-        for s in (
-            # CH25-TODO: aggregate/listing over trace_id set. Migrate via v2 query builder + shadow runner — see tracer/services/clickhouse/v2/shadow.py.
-            ObservationSpan.objects.filter(
-                trace_id__in=trace_ids, deleted=False
+        for s in _ch_spans:
+            _total_spans += 1
+            if s.status == "ERROR":
+                _error_count += 1
+            _total_tokens += s.total_tokens or 0
+            _total_cost += float(s.cost or 0.0)
+            if s.start_time and (_start_time is None or s.start_time < _start_time):
+                _start_time = s.start_time
+            if s.end_time and (_end_time is None or s.end_time > _end_time):
+                _end_time = s.end_time
+
+            agg = per_trace.setdefault(
+                s.trace_id,
+                {
+                    "trace_id": s.trace_id,
+                    "span_count": 0,
+                    "error_count": 0,
+                    "total_tokens": 0,
+                    "total_latency": 0,
+                },
             )
-            .order_by("start_time")
-            .values("id", "trace_id", "name", "observation_type", "status", "parent_span_id")
-        ):
-            bucket = spans_by_trace.setdefault(s["trace_id"], [])
+            agg["span_count"] += 1
+            if s.status == "ERROR":
+                agg["error_count"] += 1
+            agg["total_tokens"] += s.total_tokens or 0
+            agg["total_latency"] += s.latency_ms or 0
+
+            bucket = spans_by_trace.setdefault(s.trace_id, [])
             if len(bucket) >= 50:
                 continue
             bucket.append(
                 {
-                    "id": str(s["id"]),
-                    "name": s.get("name"),
-                    "observation_type": s.get("observation_type"),
-                    "status": s.get("status"),
-                    "parent_span_id": (
-                        str(s["parent_span_id"]) if s.get("parent_span_id") else None
-                    ),
+                    "id": str(s.id),
+                    "name": s.name,
+                    "observation_type": s.observation_type,
+                    "status": s.status,
+                    "parent_span_id": str(s.parent_span_id) if s.parent_span_id else None,
                 }
             )
+
+        sess_agg = {
+            "total_spans": _total_spans,
+            "error_count": _error_count,
+            "total_tokens": _total_tokens,
+            "total_cost": _total_cost,
+            "start_time": _start_time,
+            "end_time": _end_time,
+        }
 
         trace_summaries = []
         for t in traces_page:
@@ -314,9 +346,13 @@ def build_session_context(session) -> dict | None:
             t_id = getattr(t, "id", None)
             if t_id is None:
                 continue
+            # CH returns trace_id as a string, but Trace.id is a UUID — look
+            # up per_trace / spans_by_trace by the stringified id so the join
+            # works regardless of source type.
+            t_id_key = str(t_id)
             t_created = getattr(t, "created_at", None)
             t_error = getattr(t, "error", None)
-            agg = per_trace.get(t_id, {})
+            agg = per_trace.get(t_id_key, {})
             err_count = agg.get("error_count") or 0
             trace_summaries.append(
                 {
@@ -328,7 +364,7 @@ def build_session_context(session) -> dict | None:
                     "total_tokens": agg.get("total_tokens") or 0,
                     "total_latency_ms": agg.get("total_latency") or 0,
                     "has_error": bool(t_error or err_count > 0),
-                    "spans": spans_by_trace.get(t_id, []),
+                    "spans": spans_by_trace.get(t_id_key, []),
                 }
             )
 
@@ -2160,7 +2196,14 @@ def _resolve_session_path(trace_session: TraceSession, path: str):
         from django.db.models.functions import Coalesce
 
         root_start = (
-            # CH25-TODO: aggregate/listing over trace_id set. Migrate via v2 query builder + shadow runner — see tracer/services/clickhouse/v2/shadow.py.
+            # CH25-TODO(needs: root-span-per-trace fetch): this is a
+            # Django Subquery correlated against the outer Trace.id; the
+            # CHSpanReader API as of 2026-05-26 has no equivalent. To
+            # migrate we would need a reader method that takes a list
+            # of trace_ids and returns {trace_id: earliest_root_start},
+            # e.g. earliest_root_span_by_trace_ids(trace_ids). Deferred
+            # per ch25 chunk Rule 1 (no new reader methods without a
+            # request).
             ObservationSpan.objects.filter(
                 trace_id=OuterRef("id"), parent_span_id__isnull=True
             )

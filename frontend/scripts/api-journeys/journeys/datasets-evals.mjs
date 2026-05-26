@@ -1511,6 +1511,157 @@ export const datasetEvalJourneys = [
     },
   },
   {
+    id: "DPE-API-031",
+    title:
+      "Manual dataset create, list/table readback, download, and delete lifecycle",
+    tags: [
+      "dataset",
+      "manual-create",
+      "mutating",
+      "data-roundtrip",
+      "db-audit",
+    ],
+    async run({
+      client,
+      cleanup,
+      runId,
+      evidence,
+      organizationId,
+      workspaceId,
+    }) {
+      requireMutations();
+      const datasetName = `api manual dataset ${runId}`;
+      let datasetId;
+      let deletedDataset = false;
+      try {
+        const created = await client.post(
+          apiPath("/model-hub/develops/create-dataset-manually/"),
+          {
+            dataset_name: datasetName,
+            number_of_rows: 2,
+            number_of_columns: 2,
+          },
+        );
+        datasetId = created?.dataset_id;
+      } catch (error) {
+        if (error?.status !== 429) throw error;
+        evidence.push({
+          dataset_creation: "plan-limited",
+          status: error.status,
+        });
+        skip("Manual dataset creation is plan-limited for this org/workspace.");
+      }
+
+      assert(datasetId, "Manual dataset create did not return dataset_id.");
+      cleanup.defer("delete API journey manual dataset", () =>
+        deletedDataset
+          ? Promise.resolve()
+          : client.delete(apiPath("/model-hub/develops/delete_dataset/"), {
+              body: { dataset_ids: [datasetId] },
+              okStatuses: [200, 404],
+            }),
+      );
+
+      const listPayload = await client.get(
+        apiPath("/model-hub/develops/get-datasets/"),
+        { query: { page: 0, page_size: 100 } },
+      );
+      const listedDataset = asArray(listPayload).find(
+        (row) => row?.id === datasetId,
+      );
+      assert(
+        listedDataset?.name === datasetName,
+        "Manual dataset was not visible in get-datasets readback.",
+      );
+
+      const table = await getDatasetTable(client, datasetId);
+      const rows = asArray(table.table);
+      const columns = asArray(table.column_config);
+      assert(rows.length === 2, "Manual dataset table did not return 2 rows.");
+      assert(
+        columns.length === 2,
+        "Manual dataset table did not return 2 columns.",
+      );
+      assert(
+        columns.every((column) => column?.name?.startsWith("Column ")),
+        "Manual dataset columns did not use expected generated names.",
+      );
+
+      const downloaded = await client.get(
+        apiPath("/model-hub/develops/{dataset_id}/download_dataset/", {
+          dataset_id: datasetId,
+        }),
+      );
+      assert(
+        String(downloaded).includes("Column 1") &&
+          String(downloaded).includes("Column 2"),
+        "Manual dataset download did not include generated columns.",
+      );
+
+      const activeAudit = await loadManualDatasetCreateDbAudit({
+        datasetId,
+        organizationId,
+        workspaceId,
+        expectedName: datasetName,
+      });
+      assertManualDatasetAudit(activeAudit, {
+        expectedDeleted: false,
+        expectedRows: 2,
+        expectedColumns: 2,
+        expectedCells: 4,
+      });
+      if (workspaceId) {
+        assert(
+          activeAudit.workspace_id === workspaceId,
+          "Manual dataset DB audit workspace mismatch.",
+        );
+      }
+
+      await client.delete(apiPath("/model-hub/develops/delete_dataset/"), {
+        body: { dataset_ids: [datasetId] },
+      });
+      deletedDataset = true;
+
+      const afterDeleteList = asArray(
+        await client.get(apiPath("/model-hub/develops/get-datasets/"), {
+          query: { page: 0, page_size: 100 },
+        }),
+      );
+      assert(
+        !afterDeleteList.some((row) => row?.id === datasetId),
+        "Deleted manual dataset was still visible in active list.",
+      );
+
+      const deletedAudit = await loadManualDatasetCreateDbAudit({
+        datasetId,
+        organizationId,
+        workspaceId,
+        expectedName: datasetName,
+      });
+      assertManualDatasetAudit(deletedAudit, {
+        expectedDeleted: true,
+        expectedRows: 2,
+        expectedColumns: 2,
+        expectedCells: 4,
+      });
+      if (workspaceId) {
+        assert(
+          deletedAudit.workspace_id === workspaceId,
+          "Deleted manual dataset DB audit workspace mismatch.",
+        );
+      }
+
+      evidence.push({
+        dataset_id: datasetId,
+        dataset_name: datasetName,
+        rows: Number(activeAudit.row_count),
+        columns: Number(activeAudit.column_count),
+        cells: Number(activeAudit.cell_count),
+        deleted_at_set: deletedAudit.deleted_at_set,
+      });
+    },
+  },
+  {
     id: "DPE-API-016",
     title: "Dataset advanced row/column readbacks and cleanup audit",
     tags: ["dataset", "develop", "mutating", "data-roundtrip", "db-audit"],
@@ -23361,6 +23512,106 @@ async function getDatasetTable(client, datasetId, query = {}) {
         ...query,
       },
     },
+  );
+}
+
+async function loadManualDatasetCreateDbAudit({
+  datasetId,
+  organizationId,
+  workspaceId,
+  expectedName,
+}) {
+  assert(isUuid(datasetId), "datasetId must be a UUID for DB audit.");
+  assert(isUuid(organizationId), "organizationId must be a UUID for DB audit.");
+  if (workspaceId)
+    assert(isUuid(workspaceId), "workspaceId must be a UUID for DB audit.");
+  assert(typeof expectedName === "string", "expectedName must be a string.");
+  const sql = `
+WITH dataset_row AS (
+  SELECT id, name, organization_id, workspace_id, source, deleted, deleted_at,
+         column_order, column_config
+  FROM model_hub_dataset
+  WHERE id = ${sqlUuid(datasetId)}
+    AND organization_id = ${sqlUuid(organizationId)}
+    AND name = ${sqlText(expectedName)}
+)
+SELECT json_build_object(
+  'dataset_id', d.id::text,
+  'dataset_name', d.name,
+  'organization_id', d.organization_id::text,
+  'workspace_id', d.workspace_id::text,
+  'source', d.source,
+  'deleted', d.deleted,
+  'deleted_at_set', d.deleted_at IS NOT NULL,
+  'row_count', (
+    SELECT count(*) FROM model_hub_row r
+    WHERE r.dataset_id = d.id AND r.deleted = false
+  ),
+  'column_count', (
+    SELECT count(*) FROM model_hub_column c
+    WHERE c.dataset_id = d.id AND c.deleted = false
+  ),
+  'cell_count', (
+    SELECT count(*) FROM model_hub_cell cell
+    WHERE cell.dataset_id = d.id AND cell.deleted = false
+  ),
+  'column_order_count', COALESCE(cardinality(d.column_order), 0),
+  'column_config_count', (
+    SELECT count(*) FROM jsonb_object_keys(COALESCE(d.column_config, '{}'::jsonb))
+  ),
+  'generated_column_names', (
+    SELECT jsonb_agg(c.name ORDER BY c.name)
+    FROM model_hub_column c
+    WHERE c.dataset_id = d.id AND c.deleted = false
+  )
+)
+FROM dataset_row d;
+`;
+  return runPostgresJson(sql);
+}
+
+function assertManualDatasetAudit(
+  audit,
+  { expectedDeleted, expectedRows, expectedColumns, expectedCells },
+) {
+  assert(audit?.dataset_id, "Manual dataset DB audit did not find dataset.");
+  assert(
+    audit.source === "build",
+    "Manual dataset DB audit source was not build.",
+  );
+  assert(
+    audit.deleted === expectedDeleted,
+    "Manual dataset DB audit deleted state mismatch.",
+  );
+  if (expectedDeleted) {
+    assert(
+      audit.deleted_at_set === true,
+      "Deleted manual dataset did not set deleted_at.",
+    );
+  }
+  assert(
+    Number(audit.row_count) === expectedRows,
+    "Manual dataset DB audit row count mismatch.",
+  );
+  assert(
+    Number(audit.column_count) === expectedColumns,
+    "Manual dataset DB audit column count mismatch.",
+  );
+  assert(
+    Number(audit.cell_count) === expectedCells,
+    "Manual dataset DB audit cell count mismatch.",
+  );
+  assert(
+    Number(audit.column_order_count) === expectedColumns,
+    "Manual dataset DB audit column_order count mismatch.",
+  );
+  assert(
+    Number(audit.column_config_count) === expectedColumns,
+    "Manual dataset DB audit column_config count mismatch.",
+  );
+  assert(
+    asArray(audit.generated_column_names).join(",") === "Column 1,Column 2",
+    "Manual dataset DB audit generated column names mismatch.",
   );
 }
 

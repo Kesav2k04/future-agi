@@ -24,6 +24,8 @@ async function main() {
   const graphName = `browser agent ${marker}`;
   const sourceNodeName = `browser_source_${marker}`.slice(0, 80);
   const targetNodeName = `browser_target_${marker}`.slice(0, 80);
+  const variableInitialValue = `browser variable initial ${auth.runId}`;
+  const variableUpdatedValue = `browser variable updated ${auth.runId}`;
   const executionInputValue = `browser execution input ${auth.runId}`;
   const executionOutputValue = `browser execution output ${auth.runId}`;
   const graphExecutionId = randomUUID();
@@ -44,6 +46,14 @@ async function main() {
       targetNodeName,
     });
     graphId = setup.graphId;
+
+    const variableSetup = await seedGraphVariable({
+      auth,
+      graphId,
+      versionId: setup.draftVersionId,
+      columnName: "topic",
+      value: variableInitialValue,
+    });
 
     const preDeleteAudit = await loadAgentGraphDbAudit({ graphId });
     assertAgentGraphPreDeleteAudit(preDeleteAudit, {
@@ -79,6 +89,7 @@ async function main() {
     const apiFailures = [];
     const pageErrors = [];
     const unexpectedMutations = [];
+    const expectedMutations = [];
     const agentRequests = [];
     const evidence = {
       graph_id: graphId,
@@ -87,6 +98,7 @@ async function main() {
       target_node_id: setup.targetNode.id,
       graph_name: graphName,
       search_result_count: graphRows.length,
+      variable_setup: variableSetup,
       pre_delete_audit: preDeleteAudit,
     };
 
@@ -124,6 +136,15 @@ async function main() {
       if (!isAgentPlaygroundApiUrl(url)) return;
       agentRequests.push(`${request.method()} ${new URL(url).pathname}`);
       if (["POST", "PATCH", "PUT", "DELETE"].includes(request.method())) {
+        if (
+          request.method() === "PUT" &&
+          url.includes(
+            `/agent-playground/graphs/${graphId}/dataset/cells/${variableSetup.cell_id}/`,
+          )
+        ) {
+          expectedMutations.push(`${request.method()} ${url}`);
+          return;
+        }
         unexpectedMutations.push(`${request.method()} ${url}`);
       }
     });
@@ -215,6 +236,59 @@ async function main() {
       await waitForVisibleText(page, sourceNodeName, { exact: true });
       await waitForVisibleText(page, targetNodeName, { exact: true });
       await waitForSelectorWithSize(page, ".react-flow");
+
+      logStep("edit global variable drawer");
+      const graphDatasetResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(`/agent-playground/graphs/${graphId}/dataset/`) &&
+          response.status() < 400,
+        { timeout: 60000 },
+      );
+      await clickVisibleText(page, "Add input variables", { exact: true });
+      await graphDatasetResponse;
+      await waitForVisibleText(page, "Variables", { exact: true });
+      await waitForVisibleText(
+        page,
+        "Define values for your prompt variables",
+        {
+          exact: true,
+        },
+      );
+      await waitForVisibleText(page, "{{topic}}", { exact: true });
+      await waitForInputValue(page, variableInitialValue);
+
+      await replaceInputValue(page, variableInitialValue, variableUpdatedValue);
+      await waitForEnabledButton(page, "Save");
+      const variableUpdateResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              `/agent-playground/graphs/${graphId}/dataset/cells/${variableSetup.cell_id}/`,
+            ) && response.status() < 400,
+        { timeout: 60000 },
+      );
+      await clickVisibleText(page, "Save", { exact: true });
+      await variableUpdateResponse;
+      await waitForVisibleText(page, "Variables saved successfully");
+
+      const variableReadback = await loadGraphVariable({
+        auth,
+        graphId,
+        versionId: setup.draftVersionId,
+        columnName: "topic",
+      });
+      assert(
+        variableReadback.value === variableUpdatedValue,
+        "Browser variable drawer save did not persist the topic value.",
+      );
+      evidence.variable_drawer = {
+        ...variableReadback,
+        initial_value: variableInitialValue,
+        updated_value: variableUpdatedValue,
+      };
 
       logStep("open changelog");
       const versionsResponse = page.waitForResponse(
@@ -354,8 +428,13 @@ async function main() {
       assert(pageErrors.length === 0, `Page errors: ${pageErrors.join("; ")}`);
       assert(
         unexpectedMutations.length === 0,
-        `Read-only agent playground smoke fired mutations: ${unexpectedMutations.join("; ")}`,
+        `Agent playground smoke fired unexpected mutations: ${unexpectedMutations.join("; ")}`,
       );
+      assert(
+        expectedMutations.length === 1,
+        `Expected one browser variable update mutation, saw ${expectedMutations.length}.`,
+      );
+      evidence.expected_mutation_count = expectedMutations.length;
     } finally {
       await browser.close();
     }
@@ -549,6 +628,72 @@ async function createDisposableAgentGraph({
   return { graphId, draftVersionId, sourceNode, targetNode };
 }
 
+async function seedGraphVariable({
+  auth,
+  graphId,
+  versionId,
+  columnName,
+  value,
+}) {
+  const variable = await loadGraphVariable({
+    auth,
+    graphId,
+    versionId,
+    columnName,
+  });
+  await auth.client.put(
+    apiPath("/agent-playground/graphs/{graph_id}/dataset/cells/{cell_id}/", {
+      graph_id: graphId,
+      cell_id: variable.cell_id,
+    }),
+    { value },
+  );
+  const readback = await loadGraphVariable({
+    auth,
+    graphId,
+    versionId,
+    columnName,
+  });
+  assert(
+    readback.value === value,
+    "Graph variable seed did not persist the requested value.",
+  );
+  return {
+    ...readback,
+    initial_value: value,
+  };
+}
+
+async function loadGraphVariable({ auth, graphId, versionId, columnName }) {
+  const dataset = await auth.client.get(
+    apiPath("/agent-playground/graphs/{graph_id}/dataset/", {
+      graph_id: graphId,
+    }),
+    { query: { version_id: versionId, page: 1, page_size: 10 } },
+  );
+  const column = (dataset.columns || []).find(
+    (item) => item.name === columnName,
+  );
+  assert(column?.id, `Graph dataset did not expose ${columnName} column.`);
+  const row = (dataset.rows || [])[0];
+  assert(row?.id, "Graph dataset did not expose a minimum variable row.");
+  const cell = (row.cells || []).find(
+    (item) => getCellColumnId(item) === column.id,
+  );
+  assert(cell?.id, `Graph dataset did not expose a ${columnName} cell.`);
+  return {
+    dataset_id: dataset.dataset_id,
+    column_id: column.id,
+    row_id: row.id,
+    cell_id: cell.id,
+    value: cell.value,
+  };
+}
+
+function getCellColumnId(cell) {
+  return cell?.columnId || cell?.column_id;
+}
+
 function findPort(node, { direction, displayName }) {
   return (node.ports || []).find(
     (port) =>
@@ -646,6 +791,50 @@ async function waitForInputPlaceholder(page, placeholder, timeout = 30000) {
       ),
     { timeout },
     placeholder,
+  );
+}
+
+async function waitForInputValue(page, value, timeout = 30000) {
+  await page.waitForFunction(
+    (expectedValue) =>
+      Array.from(document.querySelectorAll("input")).some(
+        (input) => input.value === expectedValue,
+      ),
+    { timeout },
+    value,
+  );
+}
+
+async function replaceInputValue(page, currentValue, nextValue) {
+  await waitForInputValue(page, currentValue);
+  await page.evaluate(
+    ({ currentValue: expectedValue, nextValue: replacementValue }) => {
+      const input = Array.from(document.querySelectorAll("input")).find(
+        (candidate) => candidate.value === expectedValue,
+      );
+      if (!input) throw new Error("Input value not found.");
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      valueSetter.call(input, replacementValue);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    },
+    { currentValue, nextValue },
+  );
+  await waitForInputValue(page, nextValue);
+}
+
+async function waitForEnabledButton(page, text, timeout = 30000) {
+  await page.waitForFunction(
+    (expectedText) =>
+      Array.from(document.querySelectorAll("button")).some((button) => {
+        if (button.disabled) return false;
+        return String(button.textContent || "").trim() === expectedText;
+      }),
+    { timeout },
+    text,
   );
 }
 

@@ -16,7 +16,9 @@ function deriveVariablesFromDataset(dataset) {
   const row = dataset.rows?.[0] || null;
   const variables = {};
   for (const col of dataset.columns) {
-    const cell = row?.cells?.find((c) => c.columnId === col.id);
+    const cell = row?.cells?.find(
+      (c) => (c.columnId || c.column_id) === col.id,
+    );
     const val = cell?.value;
     if (val != null && val !== "") {
       variables[col.name] = val;

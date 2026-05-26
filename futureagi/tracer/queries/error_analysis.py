@@ -244,37 +244,37 @@ class TraceErrorAnalysisDB:
             return []
 
     def get_tool_usage_patterns(self, project_id, cutoff_date) -> list[dict]:
-        """CH25-DEFERRED — needs a new CHSpanReader aggregate method.
+        """Tool spans per project with per-name aggregates.
 
-        Pattern (Django values+annotate, project-scoped, time-windowed):
-            ObservationSpan.filter(trace__project_id=, trace__created_at__gte=,
-                                   observation_type="tool")
-              .values("name").annotate(usage_count=Count("id"),
-                                       error_count=Count(filter=Q(status=ERROR)),
-                                       avg_latency=Avg("latency_ms"))
-              .order_by("-usage_count")
+        Was: ObservationSpan.filter(trace__project_id=, trace__created_at__gte=,
+                                    observation_type="tool")
+               .values("name").annotate(usage_count=Count("id"),
+                                        error_count=Count(filter=Q(status=ERROR)),
+                                        avg_latency=Avg("latency_ms"))
+               .order_by("-usage_count")
 
-        Blockers for a clean CH mapping:
-          • `trace__created_at__gte` is a PG-side field — CH spans carry
-            start_time but not the parent Trace.created_at. Either two-store
-            (PG → trace_ids in window → CH list_by_trace_ids) or extend
-            the reader with a project + start_time window aggregate.
-          • The values+annotate(Count, Count(filter=...), Avg) shape is
-            new: needs e.g. CHSpanReader.per_project_group_by_name(
-                project_id, observation_type, since=..., aggregates=...)
-            (returning [{name, usage_count, error_count, avg_latency}, ...]).
+        CH path: ``CHSpanReader.per_project_group_by_name`` pushes the
+        Count/Count(filter)/Avg shape into CH directly. Returns rows with
+        ``{name, usage_count, error_count, avg_latency, total_cost}``.
 
-        CH25-TODO: see method-level docstring for the named reader
-        extension required. Currently no production callers — raising
-        NotImplementedError so
-        the gap surfaces loudly if a future caller wires this up before
-        the reader method lands.
+        Semantic note: the original used ``trace__created_at__gte`` (the
+        parent Trace's PG ingest timestamp). The CH path filters on
+        ``start_time >= since`` (the span's start timestamp). The two are
+        usually within ingest-pipeline ms of each other, but they are not
+        identical. Acceptable for the recent-window usage pattern this
+        method serves; flagged for callers who need exact PG parity.
+
+        Consumer (``ee/agenthub/traceerroragent/memory.py:72``) wraps the
+        return in ``list(tool_patterns)`` and assigns directly to the
+        ``tool_patterns`` key of the rollup dict, so list[dict] is the
+        expected shape.
         """
-        raise NotImplementedError(
-            "get_tool_usage_patterns: pending CHSpanReader aggregate extension "
-            "(per_project_group_by_name with time-window filter). Tracked in "
-            "the CH25 ORM migration PR."
-        )
+        with get_reader() as reader:
+            return reader.per_project_group_by_name(
+                project_id=str(project_id),
+                observation_type="tool",
+                since=cutoff_date,
+            )
 
     def get_error_category_aggregates(self, project_id, cutoff_date) -> QuerySet:
         try:
@@ -521,57 +521,61 @@ class TraceErrorAnalysisDB:
             return ErrorPattern.objects.none()
 
     def get_retrieval_patterns(self, project_id) -> list[dict]:
-        """CH25-DEFERRED — needs a new CHSpanReader aggregate method.
+        """Retriever spans per project with per-name aggregates.
 
-        Pattern (project-scoped values+annotate over the full retriever
-        span set, unbounded by time):
-            ObservationSpan.filter(trace__project_id=,
-                                   observation_type="retriever")
-              .values("name").annotate(usage_count=Count("id"),
-                                       avg_latency=Avg("latency_ms"))
-              .order_by("-usage_count")
+        Was: ObservationSpan.filter(trace__project_id=,
+                                    observation_type="retriever")
+               .values("name").annotate(usage_count=Count("id"),
+                                        avg_latency=Avg("latency_ms"))
+               .order_by("-usage_count")
 
-        Why we don't load all retriever spans into Python: the project-wide
-        retriever set is unbounded. CHSpanReader.list_by_project exists but
-        was designed for bounded fetches (delete cascades, single-version
-        queries). A new per_project_group_by_name(project_id,
-        observation_type, aggregates=...) is the correct shape.
+        CH path: ``CHSpanReader.per_project_group_by_name`` returns the
+        same group-by-name aggregate shape. No time filter — the original
+        Django query was unbounded, so we pass ``since=None``.
 
-        CH25-TODO: see method-level docstring for the named reader
-        extension required. Currently no production callers — raising
-        NotImplementedError so
-        a future caller surfaces the gap rather than silently slow-loading
-        the entire project's retriever span set.
+        Consumer (``ee/agenthub/traceerroragent/memory.py:373``) wraps the
+        return in ``list(retrieval_spans)`` and exposes it under the
+        ``retrieval_patterns`` key. Returned dicts include
+        ``error_count`` and ``total_cost`` (extra keys from the reader)
+        which the consumer ignores; harmless additions.
         """
-        raise NotImplementedError(
-            "get_retrieval_patterns: pending CHSpanReader aggregate extension "
-            "(per_project_group_by_name). Tracked in the CH25 ORM migration PR."
-        )
+        with get_reader() as reader:
+            return reader.per_project_group_by_name(
+                project_id=str(project_id),
+                observation_type="retriever",
+            )
 
     def get_chunk_usage_patterns(self, project_id) -> list[dict]:
-        """CH25-DEFERRED — needs a typed-JSON path predicate.
+        """CH25-DEFERRED — needs a typed-JSON path predicate (NOT unlocked by wave-3).
 
         Pattern: ObservationSpan.filter(trace__project_id=,
                                         metadata__chunks__isnull=False)
                    .values("name").annotate(usage_count=Count("id"))
                    .order_by("-usage_count")
 
-        The JSON-path filter `metadata__chunks__isnull=False` has no clean
-        mapping in the current CHSpanReader — `metadata` is the typed JSON
-        column on the CH side, but the reader has no JSON-path filter API.
-        Loading every span in the project and parsing metadata in Python
-        is unbounded-by-design.
+        Why wave-3 ``per_project_group_by_name`` does NOT unlock this:
+          • The blocker is the JSON-path filter
+            ``metadata__chunks__isnull=False``, not the aggregate shape.
+          • ``per_project_group_by_name`` accepts ``observation_type`` /
+            ``status_filter`` only; there is still no reader API for a
+            metadata-key existence predicate.
 
         Defer until either:
-          (a) the reader gains a `metadata_has_key(...)` filter, OR
+          (a) the reader gains a ``metadata_has_key(...)`` /
+              ``metadata_path_exists(...)`` filter (the right place for
+              typed-JSON path predicates — companion to wave-3
+              ``per_project_group_by_name``), OR
           (b) the chunk-usage feature is rebuilt against a dedicated
               metric or rollup view.
 
-        Currently no production callers — raising NotImplementedError.
+        Currently no production callers — raising NotImplementedError so
+        a future caller surfaces the gap rather than silently scanning
+        the project's full span set in Python.
         """
         raise NotImplementedError(
             "get_chunk_usage_patterns: pending CHSpanReader JSON-path filter "
-            "(metadata.chunks IS NOT NULL). Tracked in the CH25 ORM migration PR."
+            "(metadata.chunks IS NOT NULL). Wave-3 per_project_group_by_name "
+            "does NOT unlock this — see method docstring."
         )
 
     def save_memory_data(

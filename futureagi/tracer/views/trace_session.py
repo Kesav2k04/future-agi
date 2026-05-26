@@ -60,6 +60,7 @@ from tracer.models.observation_span import (
 )
 from tracer.models.project import Project, ProjectSourceChoices
 from tracer.models.trace import Trace
+from tracer.services.clickhouse.query_builders.base import NIL_UUID
 
 session_logger = structlog.get_logger(__name__)
 from tracer.models.trace_session import TraceSession
@@ -688,6 +689,7 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                 WHERE trace_id IN %(trace_ids)s
                   AND custom_eval_config_id IN %(config_ids)s
                   AND _peerdb_is_deleted = 0
+                  AND (deleted = 0 OR deleted IS NULL)
                   AND output_str != 'ERROR'
                   AND (error = 0 OR error IS NULL)
                 GROUP BY trace_id, custom_eval_config_id
@@ -818,6 +820,7 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                     WHERE project_id = %(project_id)s
                       AND _peerdb_is_deleted = 0
                       AND trace_session_id IS NOT NULL
+                      AND trace_session_id != toUUID('{NIL_UUID}')
                       AND (parent_span_id IS NULL OR parent_span_id = '')
                     GROUP BY trace_session_id
                 )
@@ -833,12 +836,16 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                 search_clause = (
                     f"AND toString({ch_column}) ILIKE %(search)s" if search else ""
                 )
+                nil_uuid_clause = (
+                    f"AND {ch_column} != toUUID('{NIL_UUID}')" if is_uuid else ""
+                )
                 query = f"""
                 SELECT DISTINCT {select_expr} AS val
                 FROM spans
                 WHERE project_id = %(project_id)s
                   AND _peerdb_is_deleted = 0
                   AND {ch_column} IS NOT NULL
+                  {nil_uuid_clause}
                   AND (parent_span_id IS NULL OR parent_span_id = '')
                   {search_clause}
                 ORDER BY val
@@ -1554,15 +1561,48 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         page_size = validated_data["page_size"]
         user_id_qp = validated_data.get("user_id")
 
-        if user_id_qp:
+        # Support user_id injected as a structural filter (the cross-project
+        # user detail page prepends one). Extract the raw user_id string from
+        # either query_params or filters, strip it from the filter list, then
+        # resolve it to a set of EndUser UUIDs and pass an end_user_id IN(...)
+        # synthetic filter instead (the CH `spans` table keys users via the
+        # UUID column `end_user_id`, not the string `user_id`).
+        user_id_raw = user_id_qp or None
+        _remaining = []
+        for _f in filters:
+            _col, _cfg = FilterEngine._normalize_filter_params(_f)
+            _col_type = _cfg.get("col_type", "NORMAL")
+            if _col == "user_id" and _col_type == "NORMAL":
+                _val = _cfg.get("filter_value")
+                if isinstance(_val, list):
+                    _val = _val[0] if _val else None
+                if _val and not user_id_raw:
+                    user_id_raw = _val
+                continue
+            _remaining.append(_f)
+        filters = _remaining
+
+        # Resolve the raw user_id to a list of end_user UUIDs and inject as
+        # a synthetic end_user_id IN(...) filter. Scope by org (and project
+        # if we're in project mode).
+        if user_id_raw:
+            _eu_qs = EndUser.objects.filter(
+                user_id=user_id_raw,
+                organization=org,
+                deleted=False,
+            )
+            if not org_scope and project_id:
+                _eu_qs = _eu_qs.filter(project_id=project_id)
+            _ids = [str(u) for u in _eu_qs.values_list("id", flat=True)]
+            if not _ids:
+                _ids = [NIL_UUID]
             filters.append(
                 {
-                    "column_id": "user_id",
+                    "column_id": "end_user_id",
                     "filter_config": {
-                        "col_type": "SYSTEM_METRIC",
                         "filter_type": "text",
-                        "filter_op": "equals",
-                        "filter_value": user_id_qp,
+                        "filter_op": "in",
+                        "filter_value": _ids,
                     },
                 }
             )

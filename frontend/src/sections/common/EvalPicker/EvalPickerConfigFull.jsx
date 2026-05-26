@@ -42,12 +42,10 @@ import {
   useCreateEvalVersion,
 } from "src/sections/evals/hooks/useEvalVersions";
 import InstructionEditor from "src/sections/evals/components/InstructionEditor";
-import { extractJinjaVariables } from "src/utils/jinjaVariables";
 import LLMPromptEditor from "src/sections/evals/components/LLMPromptEditor";
 import CodeEvalEditor from "src/sections/evals/components/CodeEvalEditor";
 import OutputTypeConfig from "src/sections/evals/components/OutputTypeConfig";
 import FewShotExamples from "src/sections/evals/components/FewShotExamples";
-import CompositeDetailPanel from "src/sections/evals/components/CompositeDetailPanel";
 import { useCompositeDetail } from "src/sections/evals/hooks/useCompositeEval";
 import { useCompositeChildrenUnionKeys } from "src/sections/evals/hooks/useCompositeChildrenKeys";
 import DatasetTestMode from "src/sections/evals/components/DatasetTestMode";
@@ -72,6 +70,7 @@ import { format } from "date-fns";
 import {
   buildEvalTemplateConfig,
   buildCompositeSourceModeProps,
+  buildDataInjection,
   contextOptionsForRowType,
   extractCodeEvaluateParams,
   getSourceModeVariables,
@@ -852,24 +851,7 @@ const EvalPickerConfigFull = ({ evalData, onBack, onSave, isSaving }) => {
       onFiltersChange(localFilterForm.getValues("filters") || []);
     }
 
-    // Build a data_injection config from context options.
-    const dataInjection = (() => {
-      if (
-        contextOptions.length === 0 ||
-        (contextOptions.length === 1 && contextOptions[0] === "variables_only")
-      ) {
-        return { variables_only: true };
-      }
-      const flags = {};
-      if (contextOptions.includes("dataset_row")) flags.full_row = true;
-      if (contextOptions.includes("span_context")) flags.span_context = true;
-      if (contextOptions.includes("trace_context")) flags.trace_context = true;
-      if (contextOptions.includes("session_context"))
-        flags.session_context = true;
-      if (contextOptions.includes("call_context")) flags.call_context = true;
-      if (contextOptions.includes("full_row")) flags.full_row = true;
-      return Object.keys(flags).length > 0 ? flags : { full_row: true };
-    })();
+    const dataInjection = buildDataInjection(contextOptions);
     const tools = build_tools_payload(connectorIds);
 
     const templateType =
@@ -1140,7 +1122,7 @@ const EvalPickerConfigFull = ({ evalData, onBack, onSave, isSaving }) => {
 
       {/* ── Eval Name ── */}
       <Box sx={{ py: 1.5, flexShrink: 0 }}>
-        <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
           Name<span style={{ color: "#d32f2f" }}>*</span>
         </Typography>
         <TextField
@@ -1158,14 +1140,13 @@ const EvalPickerConfigFull = ({ evalData, onBack, onSave, isSaving }) => {
             setEvalName(raw);
             setIsDirty(true);
           }}
-          inputProps={{ maxLength: 50 }}
-          error={!isEditMode && evalName.length >= 50}
+          error={!isEditMode && evalName.length >= 51}
           helperText={
             isEditMode
               ? undefined
-              : evalName.length >= 50
+              : evalName.length >= 51
                 ? "Name can't be longer than 50 characters"
-                : `Use lowercase letters, numbers, hyphens (-) and underscores (_) only. ${evalName.length}/50`
+                : `Lowercase letters, numbers, hyphens and underscores only · ${evalName.length}/50`
           }
           FormHelperTextProps={{ sx: { fontSize: "11px", mt: 0.25, mx: 0 } }}
           sx={{ "& .MuiInputBase-root": { fontSize: "13px", height: 34 } }}
@@ -1414,6 +1395,7 @@ const EvalPickerConfigFull = ({ evalData, onBack, onSave, isSaving }) => {
                     setContextOptions(v);
                     setIsDirty(true);
                   }}
+                  hideDatasetContextToggle={source === "task"}
                 />
               )}
 
@@ -1445,6 +1427,7 @@ const EvalPickerConfigFull = ({ evalData, onBack, onSave, isSaving }) => {
                     datasetColumns={datasetColumns}
                     datasetJsonSchemas={datasetJsonSchemas}
                     disabled={isInstructionsReadOnly}
+                    modelSelectorDisabled={false}
                   />
                   <FewShotExamples
                     selectedDatasets={fewShotExamples}
@@ -1483,19 +1466,38 @@ const EvalPickerConfigFull = ({ evalData, onBack, onSave, isSaving }) => {
               {/* Output Type (not applicable to composites) */}
               {isComposite ? null : evalType === "code" ? (
                 <Box>
-                  <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                     Scoring
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mb: 1.5, display: "block" }}
+                  >
+                    Code evaluator returns a score between 0 and 1. Set a pass
+                    threshold below.
+                  </Typography>
+                  <Typography variant="subtitle2"  sx={{ mb: 0.5,color:"text.primary" }}>
+                    Pass Threshold
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mb: 1, display: "block" }}
+                  >
+                    Scores at or above this threshold are considered a pass.
                   </Typography>
                   <Box
                     sx={{
                       display: "flex",
                       alignItems: "center",
                       gap: 2,
+                      px: 1,
                     }}
                   >
                     <Typography variant="caption">0</Typography>
                     <Slider
-                      value={passThreshold * 100}
+                      value={Math.round(passThreshold * 100)}
                       onChange={(_, val) => {
                         setPassThreshold(val / 100);
                         setIsDirty(true);
@@ -1761,58 +1763,54 @@ const EvalPickerConfigFull = ({ evalData, onBack, onSave, isSaving }) => {
                     model={model}
                     functionParamsSchema={functionParamsSchema}
                     configParamsDesc={configParamsDesc}
+                    codeParams={codeParams}
+                    onCodeParamsChange={setCodeParams}
                   />
                 )}
 
-                {source !== "composite" &&
-                  visibleCodeParamEntries.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography
-                        variant="body2"
-                        fontWeight={600}
-                        sx={{ mb: 1 }}
-                      >
-                        Parameters
-                      </Typography>
-                      {visibleCodeParamEntries.map(([key, schema]) => (
-                        <TextField
-                          key={key}
-                          fullWidth
-                          size="small"
-                          type={
+                {source !== "composite" && visibleCodeParamEntries.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Parameters
+                    </Typography>
+                    {visibleCodeParamEntries.map(([key, schema]) => (
+                      <TextField
+                        key={key}
+                        fullWidth
+                        size="small"
+                        type={
+                          schema?.type === "integer" || schema?.type === "number"
+                            ? "number"
+                            : "text"
+                        }
+                        label={key}
+                        value={codeParams[key] ?? ""}
+                        onChange={(e) => {
+                          // BE's `type: number` schema rejects strings; coerce here.
+                          const raw = e.target.value;
+                          const isNumeric =
                             schema?.type === "integer" ||
-                            schema?.type === "number"
-                              ? "number"
-                              : "text"
+                            schema?.type === "number";
+                          let next = raw;
+                          if (isNumeric && raw !== "") {
+                            const n = Number(raw);
+                            if (!Number.isNaN(n)) next = n;
                           }
-                          label={key}
-                          value={codeParams[key] ?? ""}
-                          onChange={(e) => {
-                            // BE's `type: number` schema rejects strings; coerce here.
-                            const raw = e.target.value;
-                            const isNumeric =
-                              schema?.type === "integer" ||
-                              schema?.type === "number";
-                            let next = raw;
-                            if (isNumeric && raw !== "") {
-                              const n = Number(raw);
-                              if (!Number.isNaN(n)) next = n;
-                            }
-                            handleCodeParamChange(key, next);
-                          }}
-                          helperText={
-                            configParamsDesc?.[key] || schema?.description || ""
-                          }
-                          placeholder={
-                            schema?.nullable
-                              ? "optional"
-                              : String(schema?.default ?? "")
-                          }
-                          sx={{ mb: 1 }}
-                        />
-                      ))}
-                    </Box>
-                  )}
+                          handleCodeParamChange(key, next);
+                        }}
+                        helperText={
+                          configParamsDesc?.[key] || schema?.description || ""
+                        }
+                        placeholder={
+                          schema?.nullable
+                            ? "optional"
+                            : String(schema?.default ?? "")
+                        }
+                        sx={{ mb: 1 }}
+                      />
+                    ))}
+                  </Box>
+                )}
               </Box>
             </Box>
           }

@@ -26,12 +26,7 @@ from tfc.utils.api_contracts import validated_request
 from tfc.utils.error_codes import get_error_message
 from tfc.utils.general_methods import GeneralMethods
 from tfc.utils.parse_errors import parse_serialized_errors
-
-try:
-    from ee.usage.models.usage import APICallStatusChoices, APICallTypeChoices
-except ImportError:
-    APICallStatusChoices = None
-    APICallTypeChoices = None
+from tfc.constants.api_calls import APICallStatusChoices, APICallTypeChoices
 try:
     from ee.usage.utils.usage_entries import log_and_deduct_cost_for_resource_request
 except ImportError:
@@ -68,21 +63,22 @@ class CreateEmptyDatasetView(APIView):
             except Exception as validation_err:
                 return self._gm.bad_request(str(validation_err.detail[0]))
 
-            call_log_row_entry = log_and_deduct_cost_for_resource_request(
-                organization=organization,
-                api_call_type=APICallTypeChoices.DATASET_ADD.value,
-                workspace=request.workspace,
-            )
-            if (
-                call_log_row_entry is None
-                or call_log_row_entry.status
-                == APICallStatusChoices.RESOURCE_LIMIT.value
-            ):
-                return self._gm.too_many_requests(
-                    get_error_message("DATASET_CREATE_LIMIT_REACHED")
+            if log_and_deduct_cost_for_resource_request is not None:
+                call_log_row_entry = log_and_deduct_cost_for_resource_request(
+                    organization=organization,
+                    api_call_type=APICallTypeChoices.DATASET_ADD.value,
+                    workspace=request.workspace,
                 )
-            call_log_row_entry.status = APICallStatusChoices.SUCCESS.value
-            call_log_row_entry.save()
+                if (
+                    call_log_row_entry is None
+                    or call_log_row_entry.status
+                    == APICallStatusChoices.RESOURCE_LIMIT.value
+                ):
+                    return self._gm.too_many_requests(
+                        get_error_message("DATASET_CREATE_LIMIT_REACHED")
+                    )
+                call_log_row_entry.status = APICallStatusChoices.SUCCESS.value
+                call_log_row_entry.save()
 
             dataset_id = uuid.uuid4()
 

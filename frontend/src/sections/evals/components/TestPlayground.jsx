@@ -630,6 +630,8 @@ const TestPlayground = React.forwardRef(
       templateFormat = "mustache",
       functionParamsSchema = null,
       configParamsDesc = null,
+      codeParams: controlledCodeParams = null,
+      onCodeParamsChange,
       code = "",
       codeLanguage = "python",
       isSystemEval = false,
@@ -801,15 +803,21 @@ const TestPlayground = React.forwardRef(
     }, []);
 
     // Schema-defined params for code evals (from function_params_schema)
-    const [codeParams, setCodeParams] = useState({});
+    const [internalCodeParams, setInternalCodeParams] = useState({});
+    const codeParams =
+      controlledCodeParams && typeof controlledCodeParams === "object"
+        ? controlledCodeParams
+        : internalCodeParams;
     const codeParamsRef = useRef(codeParams);
     useEffect(() => {
       codeParamsRef.current = codeParams;
     }, [codeParams]);
 
     const handleCodeParamChange = useCallback((key, value) => {
-      setCodeParams((prev) => ({ ...prev, [key]: value }));
-    }, []);
+      const next = { ...codeParamsRef.current, [key]: value };
+      setInternalCodeParams(next);
+      onCodeParamsChange?.(next);
+    }, [onCodeParamsChange]);
 
     const visibleFunctionParamEntries = React.useMemo(() => {
       if (!functionParamsSchema) return [];
@@ -1620,7 +1628,7 @@ const TestPlayground = React.forwardRef(
                                 fontWeight: 600,
                                 fontFamily: "'IBM Plex Sans', sans-serif",
                                 color: isSelected
-                                  ? "common.white"
+                                  ? "primary.contrastText"
                                   : isDefault
                                     ? "info.main"
                                     : "text.primary",
@@ -1866,6 +1874,8 @@ TestPlayground.propTypes = {
   model: PropTypes.string,
   functionParamsSchema: PropTypes.object,
   configParamsDesc: PropTypes.object,
+  codeParams: PropTypes.object,
+  onCodeParamsChange: PropTypes.func,
   code: PropTypes.string,
   codeLanguage: PropTypes.string,
   onReadyChange: PropTypes.func,

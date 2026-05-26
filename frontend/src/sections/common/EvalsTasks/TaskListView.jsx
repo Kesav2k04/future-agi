@@ -17,6 +17,7 @@ import FormSearchField from "src/components/FormSearchField/FormSearchField";
 import { DataTable, DataTablePagination } from "src/components/data-table";
 import { useDebounce } from "src/hooks/use-debounce";
 import axios, { endpoints } from "src/utils/axios";
+import { enqueueSnackbar } from "src/components/snackbar";
 import DeleteConfirmation from "./DeleteConfirmation";
 
 // ── Status Config ──
@@ -219,10 +220,19 @@ const buildFilterChips = (filtersApplied) => {
     filtersApplied.spanAttributesFilters;
   if (spanAttributeFilters?.length) {
     spanAttributeFilters.forEach((f) => {
-      const key = f.key || f.field || f.name;
-      const op = f.operator || f.op || "=";
-      const val = f.value ?? "";
-      chips.push(`${key} ${op} ${val}`);
+      const key = f.columnId || f.column_id;
+      if (!key) return;
+      const op =
+        f.filterConfig?.filterOp || f.filter_config?.filter_op || "equals";
+      const rawVal =
+        f.filterConfig?.filterValue ?? f.filter_config?.filter_value;
+      const val = Array.isArray(rawVal) ? rawVal.join(", ") : (rawVal ?? "");
+      const isValuelessOp = op === "is_null" || op === "is_not_null";
+      chips.push(
+        isValuelessOp
+          ? `${key} ${op.replace(/_/g, " ")}`
+          : `${key} ${op} ${val}`,
+      );
     });
   }
   if (filtersApplied.project_id) {
@@ -349,7 +359,14 @@ const TaskListView = ({
   const { mutate: resumeTask } = useMutation({
     mutationFn: (taskId) =>
       axios.post(endpoints.project.resumeEvalTask(taskId)),
+    meta: { errorHandled: true },
     onSuccess: () => refetch(),
+    onError: () => {
+      refetch();
+      enqueueSnackbar("Failed to resume task. It may have already finished.", {
+        variant: "error",
+      });
+    },
   });
 
   // Delete mutation

@@ -3,15 +3,12 @@ import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
 import {
   Badge,
-  Box,
   Button,
   MenuItem,
   Popover,
   Stack,
-  Typography,
 } from "@mui/material";
 import {
-  format,
   startOfToday,
   startOfTomorrow,
   startOfYesterday,
@@ -56,10 +53,6 @@ const ObserveToolbar = ({
   onSaveView,
   isFilterOpen,
   onFilterToggle,
-  filters,
-  setFilters,
-  filterDefinition,
-  defaultFilter,
   onApplyExtraFilters,
   // Filter fields override (for sessions/users)
   filterFields,
@@ -93,7 +86,6 @@ const ObserveToolbar = ({
   hiddenGroupByOptions,
   onGroupByChange,
   // Grid
-  rowCount,
   // Compare
   onCompareToggle,
   isCompareActive,
@@ -121,10 +113,6 @@ const ObserveToolbar = ({
   // Spans view — swaps "Trace Name" filter label to "Span Name"
   isSpansView = false,
 }) => {
-  const isTraces = mode === "traces";
-  const showAddEvals =
-    typeof onAddEvals === "function" &&
-    (mode === "traces" || mode === "sessions");
   const [displayAnchor, setDisplayAnchor] = useState(null);
   const filterButtonRef = useRef(null);
   const [filterButtonEl, setFilterButtonEl] = useState(null);

@@ -2,7 +2,9 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   IconButton,
+  InputAdornment,
   Table,
   TableBody,
   TableCell,
@@ -491,6 +493,7 @@ const EvalPickerList = ({ onSelectEval }) => {
     items,
     total,
     isLoading,
+    isSearching,
     searchQuery,
     setSearchQuery,
     page,
@@ -593,8 +596,23 @@ const EvalPickerList = ({ onSelectEval }) => {
               setPage(0);
               setExpandedEvalId(null);
             }}
+            InputProps={
+              isSearching && searchQuery.trim()
+                ? {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <CircularProgress
+                          size={14}
+                          thickness={5}
+                          aria-label="Searching evaluations"
+                        />
+                      </InputAdornment>
+                    ),
+                  }
+                : undefined
+            }
           />
-          {!lockedFilters && (
+
             <Button
               size="small"
               variant="outlined"
@@ -611,12 +629,12 @@ const EvalPickerList = ({ onSelectEval }) => {
             >
               Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
             </Button>
-          )}
+
         </Box>
       </Box>
 
       {/* Quick tag filters */}
-      {!lockedFilters && (
+
         <Box
           sx={{
             display: "flex",
@@ -687,7 +705,6 @@ const EvalPickerList = ({ onSelectEval }) => {
             />
           ) : null}
         </Box>
-      )}
 
       {/* Scrollable Table */}
       <TableContainer sx={{ flex: 1, overflow: "auto", minHeight: 0 }}>
@@ -933,6 +950,7 @@ const EvalPickerList = ({ onSelectEval }) => {
         open={Boolean(filterAnchorEl)}
         onClose={() => setFilterAnchorEl(null)}
         currentFilters={filters}
+        lockedFilters={lockedFilters}
         onApply={(newFilters) => {
           setFilters(newFilters);
           setPage(0);

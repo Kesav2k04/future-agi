@@ -10,6 +10,7 @@ within the same eval, never across different evals.
 
 import hashlib
 import re
+from datetime import timedelta
 from typing import List, Optional, Tuple
 
 import structlog
@@ -33,6 +34,10 @@ logger = structlog.get_logger(__name__)
 CENTROIDS_TABLE = "cluster_centroids"  # shared with scanner — different family values
 COSINE_THRESHOLD = 0.45
 
+# Only cluster recent eval failures — old results aren't actionable and
+# bound the per-run work unit.
+_CLUSTER_WINDOW_DAYS = 60
+
 
 # ---------------------------------------------------------------------------
 # Fetch unclustered failing eval results
@@ -48,6 +53,7 @@ def get_unclustered_eval_results(
 
     "Failed" = output_bool is False OR output_float < 1.0.
     Skips rows with null eval_explanation (deterministic evals without reasoning).
+    Only the last _CLUSTER_WINDOW_DAYS of results are considered.
 
     ``limit`` bounds the returned batch (oldest-first). The caller drains a
     large backlog over successive bounded runs so a single clustering
@@ -71,6 +77,7 @@ def get_unclustered_eval_results(
             trace__project_id=project_id,
             target_type="span",
             custom_eval_config__isnull=False,
+            created_at__gte=timezone.now() - timedelta(days=_CLUSTER_WINDOW_DAYS),
         )
         .filter(
             Q(output_bool=False) | Q(output_float__lt=1.0),

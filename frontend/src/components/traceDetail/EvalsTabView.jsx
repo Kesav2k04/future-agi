@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { Box, Typography } from "@mui/material";
+import { Box, Chip, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import Markdown from "react-markdown";
 import Iconify from "src/components/iconify";
@@ -60,6 +60,10 @@ export function collectAllEvalsFromEntry(entry) {
         spanId: s.id || spanId,
         spanName: s.name || "unnamed",
         spanType: s.observation_type || "unknown",
+        // Trace API writes "ERROR" into `result` instead of a dedicated error
+        // field (voice API uses `error: true`). Unify both into `error` so the
+        // shared EvalTableRow renderer only checks one signal.
+        error: ev?.error === true || ev?.result === "ERROR",
       });
     }
     if (e?.children?.length) {
@@ -101,11 +105,18 @@ const EvalTableRow = ({
   onFixWithFalcon,
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const sc = scoreColor(ev.score);
+  const hasError = ev?.error === true;
+  const sc = hasError
+    ? {
+        bg: (theme) => alpha(theme.palette.error.main, 0.08),
+        text: "error.main",
+      }
+    : scoreColor(ev.score);
   const evalName = ev.eval_name || ev.eval_config_id || "Eval";
   const explanation = ev.explanation || ev.eval_explanation;
-  const scoreLabel =
-    ev.score_label != null
+  const scoreLabel = hasError
+    ? "Error"
+    : ev.score_label != null
       ? ev.score_label
       : ev.score != null
         ? `${ev.score}%`
@@ -180,23 +191,40 @@ const EvalTableRow = ({
           {evalName}
         </Typography>
 
-        {/* Score with colored bg */}
-        <Box sx={{ width: "15%" }}>
-          <Typography
-            sx={{
-              display: "inline-block",
-              fontSize: 11.5,
-              fontWeight: 600,
-              color: sc.text,
-              bgcolor: sc.bg,
-              px: 0.75,
-              py: 0.15,
-              borderRadius: "3px",
-              minWidth: 36,
-            }}
-          >
-            {scoreLabel}
-          </Typography>
+        {/* Score — choices render as violet chips, else a colored badge */}
+        <Box sx={{ width: "15%", display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+          {ev.score_items?.length ? (
+            ev.score_items.map((item, i) => (
+              <Chip
+                key={i}
+                label={item}
+                size="small"
+                variant="outlined"
+                sx={{
+                  borderRadius: "4px",
+                  borderColor: "purple.500",
+                  color: "purple.500",
+                  typography: "s3",
+                }}
+              />
+            ))
+          ) : (
+            <Typography
+              sx={{
+                display: "inline-block",
+                fontSize: 11.5,
+                fontWeight: "fontWeightSemiBold",
+                color: sc.text,
+                bgcolor: sc.bg,
+                px: 0.75,
+                py: 0.15,
+                borderRadius: "3px",
+                minWidth: 36,
+              }}
+            >
+              {scoreLabel}
+            </Typography>
+          )}
         </Box>
 
         {/* Span name — hidden for single-call views (voice drawer) */}
@@ -561,34 +589,46 @@ const EvalsTabView = ({
           />
         </Box>
         <Box
-          onClick={() =>
-            enqueueSnackbar("Add Evals — coming soon", { variant: "info" })
-          }
           sx={{
             display: "inline-flex",
             alignItems: "center",
             gap: 0.5,
             px: 1,
             py: 0.35,
-            border: "1px solid",
+            border: "1px dashed",
             borderColor: "divider",
             borderRadius: "4px",
-            cursor: "pointer",
             bgcolor: "background.paper",
             flexShrink: 0,
-            "&:hover": { bgcolor: "action.hover" },
+            opacity: 0.7,
           }}
         >
           <Iconify
             icon="mdi:plus-circle-outline"
             width={13}
-            color="text.secondary"
+            color="text.disabled"
           />
           <Typography
-            sx={{ fontSize: 11, fontWeight: 500, color: "text.secondary" }}
+            sx={{ fontSize: 11, fontWeight: 500, color: "text.disabled" }}
           >
             Add Evals
           </Typography>
+          <Box
+            sx={{
+              px: 0.6,
+              py: 0.1,
+              borderRadius: "3px",
+              bgcolor: (theme) => alpha(theme.palette.success.main, 0.16),
+              color: "success.dark",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: 0.2,
+              lineHeight: 1.5,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Coming soon
+          </Box>
         </Box>
       </Box>
 

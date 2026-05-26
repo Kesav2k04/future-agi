@@ -85,11 +85,7 @@ from tfc.utils.api_contracts import validated_request
 from tfc.utils.functions import get_eval_stats
 from tfc.utils.general_methods import GeneralMethods
 from tfc.utils.parse_errors import parse_serialized_errors
-try:
-    from ee.usage.models.usage import APICallStatusChoices, APICallTypeChoices
-except ImportError:
-    APICallStatusChoices = None
-    APICallTypeChoices = None
+from tfc.constants.api_calls import APICallStatusChoices, APICallTypeChoices
 try:
     from ee.usage.utils.usage_entries import count_tiktoken_tokens, log_and_deduct_cost_for_api_request, refund_cost_for_api_call
 except ImportError:
@@ -355,7 +351,7 @@ def _get_cell_value_with_json_path(cell, json_path):
 
     # Try to parse the cell value as JSON and extract the path
     parsed_json, is_valid = parse_json_safely(cell.value)
-    if is_valid and parsed_json:
+    if is_valid:
         return resolve_json_path(parsed_json, json_path)
 
     # If not valid JSON, return the original value
@@ -1097,9 +1093,12 @@ class EvaluationRunner:
                 mapping_error,
                 config_error,
                 eval_instance,
+                partial_input_warning,
             ) = self._run_evaluation(row, mappings, config)
             # Format response first so we can access the formatted data
-            response = self._format_response(eval_result)
+            response = self._format_response(
+                eval_result, partial_input_warning=partial_input_warning
+            )
             # Reason column is always-on for experiments (matches dataset
             # behavior in develop_dataset.py:7102-7128). For datasets we
             # still respect the legacy config.reason_column flag.
@@ -1123,35 +1122,33 @@ class EvaluationRunner:
                     )
             value = self.format_output(response, row)
 
-            config_dict = json.loads(api_call_log_row.config)
-            config_dict.update(
-                {
-                    "output": {
-                        "output": value,
-                        "reason": (
-                            response["reason"] if "reason" in response.keys() else None
-                        ),
-                    }
+            if api_call_log_row is not None:
+                config_dict = json.loads(api_call_log_row.config)
+                output_payload = {
+                    "output": value,
+                    "reason": (
+                        response["reason"] if "reason" in response.keys() else None
+                    ),
                 }
-            )
-            input_types = {}
-            for key, mapping_value in mappings.items():
-                # Extract base column ID to look up data type
-                base_col_id, _ = (
-                    _extract_column_id_and_path(str(mapping_value))
-                    if mapping_value
-                    else (None, None)
-                )
-                data_type = col_map.get(str(base_col_id)) if base_col_id else None
-                input_types[key] = (
-                    data_type if data_type in ["image", "images", "audio"] else "text"
-                )
-            config_dict.update({"input_data_types": input_types})
-            # logger.info(f' ----- INSIDE EvaluationRunner : function _process_eval_result | config_dict : {config_dict} -----')
-            api_call_log_row.config = json.dumps(config_dict)
-            api_call_log_row.save()
+                if response.get("warnings"):
+                    output_payload["warnings"] = response["warnings"]
+                config_dict.update({"output": output_payload})
+                input_types = {}
+                for key, mapping_value in mappings.items():
+                    base_col_id, _ = (
+                        _extract_column_id_and_path(str(mapping_value))
+                        if mapping_value
+                        else (None, None)
+                    )
+                    data_type = col_map.get(str(base_col_id)) if base_col_id else None
+                    input_types[key] = (
+                        data_type if data_type in ["image", "images", "audio"] else "text"
+                    )
+                config_dict.update({"input_data_types": input_types})
+                api_call_log_row.config = json.dumps(config_dict)
+                api_call_log_row.save()
 
-            self._handle_api_call_status(api_call_log_row, CellStatus.PASS.value)
+                self._handle_api_call_status(api_call_log_row, CellStatus.PASS.value)
 
             # Post-eval cost-based usage emit
             try:
@@ -1168,10 +1165,12 @@ class EvaluationRunner:
                 except ImportError:
                     emit = None
 
-                billing_config = BillingConfig.get()
+                billing_config = None
+                if BillingConfig is not None:
+                    billing_config = BillingConfig.get()
                 eval_cost = getattr(eval_instance, "cost", {})
                 llm_cost = eval_cost.get("total_cost", 0)
-                per_run_fee = billing_config.get_eval_per_run_fee()
+                per_run_fee = billing_config.get_eval_per_run_fee() if billing_config else 0
                 actual_cost = llm_cost + per_run_fee
 
                 # Also compute fallback cost for comparison logging
@@ -1199,7 +1198,7 @@ class EvaluationRunner:
                     token_usage=getattr(eval_instance, "token_usage", {}),
                 )
 
-                credits = billing_config.calculate_ai_credits(actual_cost)
+                credits = billing_config.calculate_ai_credits(actual_cost) if billing_config else 0
                 emit_org_id = str(
                     self.organization_id
                     or (
@@ -1217,10 +1216,12 @@ class EvaluationRunner:
                 _is_code_eval = getattr(self.eval_template, "eval_type", "") == "code"
                 eval_event_type = (
                     BillingEventType.CODE_EVALUATOR.value
-                    if _is_code_eval
+                    if _is_code_eval and BillingEventType is not None
                     else _get_api_call_type(self.user_eval_metric.model)
                 )
-                emit(
+                if emit is not None and UsageEvent is not None and BillingEventType is not None:
+
+                    emit(
                     UsageEvent(
                         org_id=emit_org_id,
                         event_type=eval_event_type,
@@ -1267,7 +1268,7 @@ class EvaluationRunner:
                         eval_result=value,
                         response=response,
                         cell=cell,
-                        log_id=str(api_call_log_row.log_id),
+                        log_id=str(api_call_log_row.log_id) if api_call_log_row else None,
                     )
 
         except Exception as e:
@@ -1367,6 +1368,9 @@ class EvaluationRunner:
                 }
             )
 
+        if log_and_deduct_cost_for_api_request is None:
+            return None
+
         api_call_log_row = log_and_deduct_cost_for_api_request(
             org if org else self.user_eval_metric.organization,
             api_call_type,
@@ -1388,7 +1392,6 @@ class EvaluationRunner:
             raise ValueError("API call not allowed : Error validating the api call.")
 
         if api_call_log_row.status != APICallStatusChoices.PROCESSING.value:
-            # Use the dedicated function to get the appropriate error message for this status
             error_message = get_error_for_api_status(api_call_log_row.status)
             raise ValueError(error_message)
 
@@ -1956,16 +1959,6 @@ class EvaluationRunner:
         required_field_error = required_field
         mapping_error = mapping
 
-        def _is_empty_value(value):
-            """Return True when value is effectively empty."""
-            if value is None:
-                return True
-            if isinstance(value, str) and not value.strip():
-                return True
-            if isinstance(value, list) and all(not item for item in value):
-                return True
-            return False
-
         def _is_mapped(mapping_config):
             """Return True when a key is mapped to any column."""
             if isinstance(mapping_config, list):
@@ -1987,25 +1980,41 @@ class EvaluationRunner:
                     return True
             return False
 
-        # Use eval template config with row mappings.
+        # Mapping-validity check: a configured-but-unresolvable mapping is
+        # a real config error regardless of eval type. Surface it before
+        # the emptiness check so the user gets the specific error message.
         required_keys = []
         optional_keys = []
+        is_user_custom_eval = False
         if getattr(self.eval_template, "config", None):
             required_keys = self.eval_template.config.get("required_keys", [])
             optional_keys = self.eval_template.config.get("optional_keys", [])
+            is_user_custom_eval = self.eval_template.config.get(
+                "custom_eval", False
+            )
 
-        # Validate mapped required/optional keys only.
+        # Emptiness rules live in the shared validator so dataset,
+        # playground, tracing, and SDK paths apply the same logic.
+        from model_hub.utils.eval_input_validation import (
+            is_empty_value,
+            validate_eval_inputs,
+        )
+
+        # Validate mapped required/optional keys only. Skip for user-built
+        # custom evals so empty cells flow through to the eval (the template
+        # can define explicit handling, e.g. a "No Input" choice). This keeps
+        # the dataset path consistent with the eval playground, which never
+        # applied this row-level guard. For custom evals the shared
+        # validator below still enforces the all-empty safety net.
         keys_to_check = list(set(required_keys) | set(optional_keys))
-        if keys_to_check:
+        if keys_to_check and not is_user_custom_eval:
             for key in keys_to_check:
-                # Mapping config indicates whether the user mapped this key.
                 mapping_config = (
                     mappings.get(key) if isinstance(mappings, dict) else None
                 )
                 # Skip unmapped keys.
                 if not _is_mapped(mapping_config):
                     continue
-
                 # Raise if mapped key has no row value.
                 if key not in required_field:
                     if not _has_valid_mapping(mapping_config, row.dataset_id):
@@ -2015,13 +2024,45 @@ class EvaluationRunner:
                     raise ValueError(
                         f"No input received for '{key}'. Please check your input."
                     )
-
                 # Map back from key to row value via the ordered lists.
                 value = mapping[required_field.index(key)]
-                if _is_empty_value(value):
+                if is_empty_value(value):
                     raise ValueError(
                         f"No input received for '{key}'. Please check your input."
                     )
+
+        values_for_validation = {
+            key: mapping[required_field.index(key)]
+            for key in required_field
+            if key in keys_to_check
+        }
+        mapped_keys_for_validation = set()
+        # Mapped-but-unresolved keys count as empty so the all-empty
+        # safety net can still fire for custom evals.
+        for key in keys_to_check:
+            mapping_config = (
+                mappings.get(key) if isinstance(mappings, dict) else None
+            )
+            if _is_mapped(mapping_config):
+                mapped_keys_for_validation.add(key)
+                if key not in values_for_validation:
+                    values_for_validation[key] = None
+
+        partial_input_warning, _normalized_values = validate_eval_inputs(
+            self.eval_template,
+            values_for_validation,
+            mapped_keys=mapped_keys_for_validation,
+        )
+        # The dataset path runs rows in parallel via ThreadPoolExecutor,
+        # so we cannot stash this on self — sibling threads would race and
+        # lose each other's warnings. Threaded through the return tuple
+        # and into _format_response per-row instead.
+        #
+        # Note: the dataset path builds kwargs separately via map_fields
+        # below, so normalized_values from the validator isn't fed into
+        # eval_instance.run here. The map_fields path already handles
+        # missing/empty cells; this validator's role on the dataset
+        # path is the all-empty guard + warning attach.
 
         # Validate param modalities for function evals (deterministic evals
         # validate inside their own _validate_param_modalities).
@@ -2175,6 +2216,7 @@ class EvaluationRunner:
             mapping_error,
             config_error,
             eval_instance,
+            partial_input_warning,
         )
 
     def _prepare_mapping_data(self, row, mappings):
@@ -2314,9 +2356,9 @@ class EvaluationRunner:
         except Exception:
             logger.error(f"unable to retrieve rule prompt for column id : {column_id}")
 
-        input_token_count = count_tiktoken_tokens(
+        input_token_count = (count_tiktoken_tokens(
             input_words_string, cell_values_image_urls
-        )
+        ) if count_tiktoken_tokens else 0)
         return input_token_count
 
     def _resolve_version(self):
@@ -2645,13 +2687,21 @@ class EvaluationRunner:
 
         return config
 
-    def _format_response(self, eval_result):
+    def _format_response(self, eval_result, partial_input_warning=None):
         """Format evaluation result response"""
         from evaluations.engine.formatting import extract_raw_result
 
         response = extract_raw_result(eval_result, self.eval_template)
         response["name"] = self.user_eval_metric.name
         response["model"] = ""  # Dataset path doesn't track model used
+
+        # Attach the per-row partial-input warning so the cell payload
+        # and the EvalLogger projection (output_metadata.warnings) both
+        # carry it. Threaded in as an argument because rows run in
+        # parallel — see _process_eval_result.
+        if partial_input_warning:
+            response.setdefault("warnings", []).append(partial_input_warning)
+
         return response
 
     def _handle_error(self, error):
@@ -2671,7 +2721,8 @@ class EvaluationRunner:
                 api_call_log_row.save(update_fields=["status"])
 
                 refund_config = {"evaluation_id": str(self.user_eval_metric_id)}
-                refund_cost_for_api_call(api_call_log_row, config=refund_config)
+                if refund_cost_for_api_call is not None:
+                    refund_cost_for_api_call(api_call_log_row, config=refund_config)
             except Exception as e:
                 logger.error(f"Error refunding cost for api call: {str(e)}")
         elif value == CellStatus.PASS.value and api_call_log_row:
@@ -3122,11 +3173,12 @@ class EvaluationRunner:
                 getattr(self.user_eval_metric, "model", None)
                 or ModelChoices.TURING_LARGE.value
             )
-            usage_check = check_usage(org_id, api_call_type)
-            if not usage_check.allowed:
-                self.user_eval_metric.status = StatusType.FAILED.value
-                self.user_eval_metric.save(update_fields=["status"])
-                raise ValueError(usage_check.reason or "Usage limit exceeded")
+            if check_usage is not None:
+                usage_check = check_usage(org_id, api_call_type)
+                if not usage_check.allowed:
+                    self.user_eval_metric.status = StatusType.FAILED.value
+                    self.user_eval_metric.save(update_fields=["status"])
+                    raise ValueError(usage_check.reason or "Usage limit exceeded")
 
             self.update_cell(row_ids=row_ids)
             logger.info(

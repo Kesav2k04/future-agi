@@ -712,9 +712,9 @@ function PropertyPicker({
                   No properties found
                 </Typography>
               )}
-              {visibleProperties.map((prop) => (
+              {visibleProperties.map((prop, idx) => (
                 <Box
-                  key={prop.id}
+                  key={`${prop.category}:${prop.id}:${idx}`}
                   onClick={() => {
                     onSelect(prop);
                     onClose();

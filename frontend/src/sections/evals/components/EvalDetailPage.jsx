@@ -49,12 +49,14 @@ import CodeEvalEditor from "./CodeEvalEditor";
 import ResizablePanels from "src/components/resizablePanels/ResizablePanels";
 import TestPlayground from "./TestPlayground";
 import CompositeDetailPanel from "./CompositeDetailPanel";
+import { buildCompositeChildConfigs } from "../Helpers/compositeRuntimeConfig";
 import EvalFeedbackTab from "./EvalFeedbackTab";
 import EvalGroundTruthTab from "./EvalGroundTruthTab";
 import EvalUsageTab from "./EvalUsageTab";
 import VersionBadge from "./VersionBadge";
 import { EVAL_TAGS } from "../constant";
 import { FAGI_MODEL_VALUES } from "./ModelSelector";
+import { buildDataInjection } from "src/sections/common/EvalPicker/evalPickerConfigUtils";
 
 const extract_selected_tools = (tools) => {
   if (Array.isArray(tools)) return tools;
@@ -696,11 +698,7 @@ const EvalDetailPage = () => {
       return;
     }
     try {
-      const dataInjection =
-        contextOptions.length === 0 ||
-        (contextOptions.length === 1 && contextOptions[0] === "variables_only")
-          ? { variables_only: true }
-          : { full_row: true };
+      const dataInjection = buildDataInjection(contextOptions);
       const summary =
         summaryType === "custom"
           ? { type: "custom", custom: "" }
@@ -728,10 +726,9 @@ const EvalDetailPage = () => {
         error_localizer_enabled: errorLocalizerEnabled,
         template_format: templateFormat,
         messages: evalType === "llm" ? messages : undefined,
-        few_shot_examples:
-          evalType === "llm" && fewShotExamples.length > 0
-            ? fewShotExamples
-            : undefined,
+        // Send [] for LLM evals so the BE can persist a user-cleared list.
+        // Omitting on empty would leave the previous examples in place.
+        few_shot_examples: evalType === "llm" ? fewShotExamples : undefined,
       };
       await updateEval.mutateAsync(payload);
 
@@ -761,10 +758,7 @@ const EvalDetailPage = () => {
         error_localizer_enabled: errorLocalizerEnabled,
         template_format: templateFormat,
         messages: evalType === "llm" ? messages : undefined,
-        few_shot_examples:
-          evalType === "llm" && fewShotExamples.length > 0
-            ? fewShotExamples
-            : undefined,
+        few_shot_examples: evalType === "llm" ? fewShotExamples : undefined,
       };
       const newVersion = await createVersion.mutateAsync({
         config_snapshot: configSnapshot,
@@ -845,6 +839,7 @@ const EvalDetailPage = () => {
         aggregation_function: compositeAggFunction,
         composite_child_axis: compositeChildAxis || undefined,
         child_template_ids: compositeChildren.map((c) => c.child_id),
+        child_configs: buildCompositeChildConfigs(compositeChildren),
         child_weights: Object.keys(weights).length > 0 ? weights : null,
         child_pinned_versions:
           Object.keys(pinnedVersions).length > 0 ? pinnedVersions : null,
@@ -889,12 +884,7 @@ const EvalDetailPage = () => {
       // Save current config to the template so the eval runner uses the latest
       // state.
       if (!isSystemEval && !isComposite) {
-        const dataInjection =
-          contextOptions.length === 0 ||
-          (contextOptions.length === 1 &&
-            contextOptions[0] === "variables_only")
-            ? { variables_only: true }
-            : { full_row: true };
+        const dataInjection = buildDataInjection(contextOptions);
         const summary =
           summaryType === "custom"
             ? { type: "custom", custom: "" }
@@ -919,10 +909,7 @@ const EvalDetailPage = () => {
           error_localizer_enabled: errorLocalizerEnabled,
           template_format: templateFormat,
           messages: evalType === "llm" ? messages : undefined,
-          few_shot_examples:
-            evalType === "llm" && fewShotExamples.length > 0
-              ? fewShotExamples
-              : undefined,
+          few_shot_examples: evalType === "llm" ? fewShotExamples : undefined,
         });
       }
       // Composite evals: save current children/weights/aggregation config
@@ -944,6 +931,7 @@ const EvalDetailPage = () => {
           aggregation_function: compositeAggFunction,
           composite_child_axis: compositeChildAxis || undefined,
           child_template_ids: compositeChildren.map((c) => c.child_id),
+          child_configs: buildCompositeChildConfigs(compositeChildren),
           child_weights: Object.keys(weights).length > 0 ? weights : null,
           child_pinned_versions:
             Object.keys(pinnedVersions).length > 0 ? pinnedVersions : null,
@@ -1477,6 +1465,7 @@ const EvalDetailPage = () => {
                       datasetColumns={datasetColumns}
                       datasetJsonSchemas={datasetJsonSchemas}
                       disabled={isSystemEval}
+                      modelSelectorDisabled={false}
                     />
                     <FewShotExamples
                       selectedDatasets={fewShotExamples}
@@ -1536,7 +1525,7 @@ const EvalDetailPage = () => {
                       >
                         <Typography variant="caption">0</Typography>
                         <Slider
-                          value={passThreshold * 100}
+                          value={Math.round(passThreshold * 100)}
                           onChange={(_, val) => {
                             setPassThreshold(val / 100);
                             markDirty();
@@ -1579,7 +1568,7 @@ const EvalDetailPage = () => {
                   ))}
 
                 {/* Error Localization */}
-                {!isComposite && (
+                {!isComposite && evalType !== "code"  && (
                   <Box>
                     <FormControlLabel
                       control={

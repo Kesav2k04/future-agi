@@ -188,8 +188,21 @@ def test_create_empty_dataset_request_validates_row_bounds():
     )
 
     assert at_limit.is_valid(), at_limit.errors
+    assert at_limit.validated_data["model_type"] == "GenerativeLLM"
     assert not over_limit.is_valid()
     assert "row" in over_limit.errors
+
+
+def test_create_empty_dataset_request_rejects_unknown_model_type():
+    serializer = CreateEmptyDatasetRequestSerializer(
+        data={
+            "new_dataset_name": "Unknown Model Type",
+            "model_type": "not-a-model-type",
+        }
+    )
+
+    assert not serializer.is_valid()
+    assert "model_type" in serializer.errors
 
 
 @pytest.mark.django_db

@@ -3,6 +3,7 @@ import json
 from rest_framework import serializers
 
 from model_hub.constants import MAX_EMPTY_DATASET_ROWS
+from model_hub.models.choices import ModelTypes
 from model_hub.serializers.optimize_dataset import (
     OptimizeDatasetKbSerializer,
     OptimizeDatasetSerializer,
@@ -2747,6 +2748,12 @@ class CreateEmptyDatasetRequestSerializer(serializers.Serializer):
     row = serializers.IntegerField(
         required=False, min_value=0, max_value=MAX_EMPTY_DATASET_ROWS
     )
+
+    def validate_model_type(self, value):
+        canonical = ModelTypes.coerce_value(value)
+        if canonical and canonical not in {tag.value for tag in ModelTypes}:
+            raise serializers.ValidationError(f'"{value}" is not a valid choice.')
+        return canonical
 
 
 class ManualDatasetCreateRequestSerializer(serializers.Serializer):

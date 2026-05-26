@@ -115,6 +115,33 @@ def test_create_empty_dataset_sets_workspace_after_validation(
 
 
 @pytest.mark.django_db
+def test_create_empty_dataset_accepts_legacy_model_type(
+    auth_client, workspace, monkeypatch
+):
+    _patch_usage(
+        monkeypatch,
+        "model_hub.views.datasets.create.empty_dataset",
+    )
+
+    response = auth_client.post(
+        "/model-hub/develops/create-empty-dataset/",
+        {
+            "new_dataset_name": "Legacy Model Type Empty Dataset",
+            "model_type": "generative_llm",
+            "row": 0,
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    result = response.json()["result"]
+    dataset = Dataset.no_workspace_objects.get(id=result["dataset_id"])
+    assert dataset.workspace_id == workspace.id
+    assert dataset.model_type == "GenerativeLLM"
+    assert result["dataset_model_type"] == "GenerativeLLM"
+
+
+@pytest.mark.django_db
 def test_create_empty_dataset_duplicate_name_does_not_charge(
     auth_client, organization, workspace, user, monkeypatch
 ):

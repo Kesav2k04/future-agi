@@ -12,7 +12,7 @@ from typing import Any, Dict, Tuple
 from tracer.services.clickhouse.query_builders.eval_metrics import (
     EvalMetricsQueryBuilder,
 )
-from tracer.services.clickhouse.v2.query_builders.filters import rewrite_v1_sql_to_v2
+from tracer.services.clickhouse.v2.query_builders.filters import rewrite_and_apply_v2_settings
 
 
 class EvalMetricsQueryBuilderV2(EvalMetricsQueryBuilder):
@@ -20,7 +20,7 @@ class EvalMetricsQueryBuilderV2(EvalMetricsQueryBuilder):
 
     def build(self) -> Tuple[str, Dict[str, Any]]:
         sql, params = super().build()
-        return rewrite_v1_sql_to_v2(sql), params
+        return rewrite_and_apply_v2_settings(sql), params
 
 
 __all__ = ["EvalMetricsQueryBuilderV2"]

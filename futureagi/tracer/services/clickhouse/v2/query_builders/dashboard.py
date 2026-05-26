@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Tuple
 
 from tracer.services.clickhouse.query_builders.dashboard import DashboardQueryBuilder
-from tracer.services.clickhouse.v2.query_builders.filters import rewrite_v1_sql_to_v2
+from tracer.services.clickhouse.v2.query_builders.filters import rewrite_and_apply_v2_settings
 
 
 class DashboardQueryBuilderV2(DashboardQueryBuilder):
@@ -24,12 +24,12 @@ class DashboardQueryBuilderV2(DashboardQueryBuilder):
 
     def build_metric_query(self, metric: dict) -> Tuple[str, dict]:
         sql, params = super().build_metric_query(metric)
-        return rewrite_v1_sql_to_v2(sql), params
+        return rewrite_and_apply_v2_settings(sql), params
 
     def build_all_queries(self) -> List[Tuple[str, dict, dict]]:
         # v1 returns [(sql, params, meta), …]. Apply the rewrite to each sql.
         results = super().build_all_queries()
-        return [(rewrite_v1_sql_to_v2(sql), params, meta) for sql, params, meta in results]
+        return [(rewrite_and_apply_v2_settings(sql), params, meta) for sql, params, meta in results]
 
 
 __all__ = ["DashboardQueryBuilderV2"]

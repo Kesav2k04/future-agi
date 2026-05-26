@@ -5,7 +5,7 @@ Mirrors the architecture of v2/query_builders/filters.py:
   - SUBCLASS the v1 builder so all dashboard logic (pagination, sort, eval
     + annotation joins, the 3-phase merge) is inherited unchanged.
   - REWRITE column references in the compiled SQL output via the same
-    `rewrite_v1_sql_to_v2()` helper used by the v2 filter compiler. The
+    `rewrite_and_apply_v2_settings()` helper used by the v2 filter compiler. The
     rewriter is whole-SQL: it covers both the dashboard's own column refs
     (e.g. `WHERE _peerdb_is_deleted = 0`) AND the WHERE-clause fragments
     the inner v1 filter compiler emits.
@@ -26,7 +26,7 @@ from __future__ import annotations
 from typing import Any, Dict, Tuple
 
 from tracer.services.clickhouse.query_builders.span_list import SpanListQueryBuilder
-from tracer.services.clickhouse.v2.query_builders.filters import rewrite_v1_sql_to_v2
+from tracer.services.clickhouse.v2.query_builders.filters import rewrite_and_apply_v2_settings
 
 
 class SpanListQueryBuilderV2(SpanListQueryBuilder):
@@ -43,15 +43,15 @@ class SpanListQueryBuilderV2(SpanListQueryBuilder):
 
     def build(self) -> Tuple[str, Dict[str, Any]]:
         sql, params = super().build()
-        return rewrite_v1_sql_to_v2(sql), params
+        return rewrite_and_apply_v2_settings(sql), params
 
     def build_content_query(self, span_ids: list) -> Tuple[str, Dict[str, Any]]:
         sql, params = super().build_content_query(span_ids)
-        return rewrite_v1_sql_to_v2(sql), params
+        return rewrite_and_apply_v2_settings(sql), params
 
     def build_count_query(self) -> Tuple[str, Dict[str, Any]]:
         sql, params = super().build_count_query()
-        return rewrite_v1_sql_to_v2(sql), params
+        return rewrite_and_apply_v2_settings(sql), params
 
 
 __all__ = ["SpanListQueryBuilderV2"]

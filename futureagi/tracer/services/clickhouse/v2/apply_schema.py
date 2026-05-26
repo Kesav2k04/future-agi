@@ -65,8 +65,16 @@ log = structlog.get_logger("apply_schema")
 # ──────────────────────────────────────────────────────────────────────────────
 def build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--schema-dir", type=Path, default=Path(__file__).parent.parent / "schema",
-                   help="Directory containing *.sql files")
+    p.add_argument(
+        "--schema-dir", type=Path,
+        # Default is THIS module's schema dir (v2). Earlier the default pointed
+        # to ../schema which resolved to the legacy CH 24.10 schema directory
+        # — codex review P1 finding. Tests sweep the v2 dir explicitly so they
+        # didn't catch this, but a CLI user could have applied legacy SQL to
+        # CH 25.3 by accident.
+        default=Path(__file__).parent / "schema",
+        help="Directory containing *.sql files (default: this module's v2 schema/)",
+    )
     p.add_argument("--ch-host", default="127.0.0.1")
     p.add_argument("--ch-http-port", type=int, default=19001)
     p.add_argument("--ch-user", default="default")
@@ -77,6 +85,23 @@ def build_argparser() -> argparse.ArgumentParser:
                    help="Apply even if hash drift detected (requires DECISIONS.md justification)")
     p.add_argument("--files", nargs="+", default=None,
                    help="Apply only these files (relative to --schema-dir). Default: all *.sql in order.")
+    p.add_argument("--replicated", action="store_true",
+                   help=("Rewrite engine declarations to their Replicated* variants and append "
+                         "ON CLUSTER to CREATE TABLE / CREATE MATERIALIZED VIEW. Use in production "
+                         "where tables are coordinated via ZooKeeper / ClickHouse Keeper. The local "
+                         "test rig (single-node, no Keeper) does NOT use this flag."))
+    p.add_argument("--cluster", default="default",
+                   help="Cluster name for --replicated (default 'default'). Must match the cluster "
+                        "name in remote_servers config on the prod CH cluster.")
+    p.add_argument("--zk-table-path-prefix", default="/clickhouse/tables/ch25",
+                   help=("ZooKeeper/Keeper path prefix for Replicated tables (default "
+                         "'/clickhouse/tables/ch25'). Each table gets "
+                         "<prefix>/{shard}/<table>. {shard} and {replica} are resolved by "
+                         "CH macros server-side. The '/ch25' segment namespaces v2 tables "
+                         "away from the legacy '/clickhouse/tables/{shard}/<table>' paths "
+                         "used by the existing CH 24.10 tables (per schema.py:760). Sharing "
+                         "the path would cause replica-metadata collisions on the same "
+                         "Keeper instance — codex review P0 finding."))
     return p
 
 
@@ -93,42 +118,42 @@ class SchemaFile:
         return cls(path=p, sha256=hashlib.sha256(p.read_bytes()).hexdigest())
 
 
-def split_statements(sql: str) -> list[str]:
-    """
-    Split a SQL file into individual statements.
-
-    We split on `;` followed by a newline, then strip + filter empties. This is
-    simpler than a full SQL parser and works for our schema files (no
-    semicolons inside string literals or comments today). If a file ever
-    needs a semicolon in a string, wrap the affected statement in its own file.
-    """
-    parts = sql.split(";\n")
-    out = []
-    for part in parts:
-        stripped = "\n".join(
-            line for line in part.splitlines()
-            if line.strip() and not line.strip().startswith("--")
-        ).strip()
-        if stripped:
-            out.append(stripped + ";")
-    return out
+# Pure-function rewriters are in apply_schema_rewriter so the test suite
+# can import them without pulling in clickhouse_connect.
+from tracer.services.clickhouse.v2.apply_schema_rewriter import (  # noqa: E402
+    extract_table_name as _extract_table_name,
+    rewrite_for_replicated,
+    split_statements,
+)
 
 
-def ensure_versions_table(client) -> None:
+def ensure_versions_table(client, *, replicated: bool = False,
+                          cluster: str = "default",
+                          zk_prefix: str = "/clickhouse/tables") -> None:
     """Create schema_versions if it doesn't exist. Bootstrap; not tracked itself.
 
     Uses unqualified table name so it lands in the connection's current database
     (set via --ch-database). Schema files use the same convention so dev / test /
     prod can use whichever DB they need without editing SQL.
+
+    In `replicated` mode we MUST use ReplicatedMergeTree for this table too —
+    otherwise each replica would track its own apply history and they'd
+    diverge. ON CLUSTER ensures the DDL fans out atomically.
     """
-    client.command("""
-        CREATE TABLE IF NOT EXISTS schema_versions (
+    on_cluster = f" ON CLUSTER '{cluster}'" if replicated else ""
+    if replicated:
+        engine = (f"ReplicatedMergeTree('{zk_prefix}/{{shard}}/schema_versions', "
+                  f"'{{replica}}')")
+    else:
+        engine = "MergeTree"
+    client.command(f"""
+        CREATE TABLE IF NOT EXISTS schema_versions{on_cluster} (
             filename   String,
             sha256     FixedString(64),
             applied_at DateTime64(3, 'UTC') DEFAULT now64(3, 'UTC'),
             applied_by String DEFAULT '',
             notes      String DEFAULT ''
-        ) ENGINE = MergeTree ORDER BY (filename, applied_at)
+        ) ENGINE = {engine} ORDER BY (filename, applied_at)
     """)
 
 
@@ -164,12 +189,30 @@ def discover_files(schema_dir: Path, only: Iterable[str] | None) -> list[SchemaF
     return [SchemaFile.from_path(p) for p in files]
 
 
-def apply_file(client, sf: SchemaFile, applied_by: str) -> int:
-    """Apply one file. Returns the number of statements executed."""
+def apply_file(client, sf: SchemaFile, applied_by: str, *,
+               replicated: bool = False, cluster: str = "default",
+               zk_prefix: str = "/clickhouse/tables") -> int:
+    """Apply one file. Returns the number of statements executed.
+
+    When `replicated=True`, each statement is passed through
+    `rewrite_for_replicated` to swap engines and append ON CLUSTER. The
+    rewrite is deterministic — the schema_versions row records the
+    ORIGINAL file sha256 (not the rewritten content), so re-applying with
+    the same `replicated` flag continues to be a no-op via the existing
+    drift-detection path.
+    """
     sql = sf.path.read_text()
     statements = split_statements(sql)
-    log.info("apply_file_begin", file=sf.path.name, sha256=sf.sha256[:12], statements=len(statements))
+    log.info("apply_file_begin", file=sf.path.name, sha256=sf.sha256[:12],
+             statements=len(statements), replicated=replicated)
     for i, stmt in enumerate(statements, 1):
+        if replicated:
+            table_name = _extract_table_name(stmt)
+            if table_name:
+                stmt = rewrite_for_replicated(
+                    stmt, table_name=table_name,
+                    cluster=cluster, zk_prefix=zk_prefix,
+                )
         first_line = stmt.splitlines()[0][:80]
         log.info("apply_statement", file=sf.path.name, n=i, of=len(statements), preview=first_line)
         try:
@@ -207,8 +250,14 @@ def main(argv: list[str] | None = None) -> int:
         send_receive_timeout=120,
     )
 
-    # Always make sure the versions table exists.
-    ensure_versions_table(client)
+    # Always make sure the versions table exists. In replicated mode this
+    # also fans out via ON CLUSTER so all replicas share an apply history.
+    ensure_versions_table(
+        client,
+        replicated=args.replicated,
+        cluster=args.cluster,
+        zk_prefix=args.zk_table_path_prefix,
+    )
 
     if args.status:
         applied = fetch_applied(client)
@@ -257,11 +306,21 @@ def main(argv: list[str] | None = None) -> int:
         log.info("nothing_to_apply")
         return 0
 
+    if args.replicated:
+        log.info("replicated_mode",
+                 cluster=args.cluster, zk_prefix=args.zk_table_path_prefix,
+                 note="engines will be rewritten to Replicated* and ON CLUSTER appended")
+
     total_stmts = 0
     t0 = time.time()
     for sf in to_apply:
         try:
-            total_stmts += apply_file(client, sf, user)
+            total_stmts += apply_file(
+                client, sf, user,
+                replicated=args.replicated,
+                cluster=args.cluster,
+                zk_prefix=args.zk_table_path_prefix,
+            )
         except Exception as e:
             log.error("apply_aborted", file=sf.path.name, err=str(e))
             return 3

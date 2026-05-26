@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Tuple
 from tracer.services.clickhouse.query_builders.voice_call_list import (
     VoiceCallListQueryBuilder,
 )
-from tracer.services.clickhouse.v2.query_builders.filters import rewrite_v1_sql_to_v2
+from tracer.services.clickhouse.v2.query_builders.filters import rewrite_and_apply_v2_settings
 
 
 class VoiceCallListQueryBuilderV2(VoiceCallListQueryBuilder):
@@ -21,19 +21,19 @@ class VoiceCallListQueryBuilderV2(VoiceCallListQueryBuilder):
 
     def build(self) -> Tuple[str, Dict[str, Any]]:
         sql, params = super().build()
-        return rewrite_v1_sql_to_v2(sql), params
+        return rewrite_and_apply_v2_settings(sql), params
 
     def build_count_query(self) -> Tuple[str, Dict[str, Any]]:
         sql, params = super().build_count_query()
-        return rewrite_v1_sql_to_v2(sql), params
+        return rewrite_and_apply_v2_settings(sql), params
 
     def build_content_query(self, span_ids: List[str]) -> Tuple[str, Dict[str, Any]]:
         sql, params = super().build_content_query(span_ids)
-        return rewrite_v1_sql_to_v2(sql), params
+        return rewrite_and_apply_v2_settings(sql), params
 
     def build_child_spans_query(self, *args, **kwargs) -> Tuple[str, Dict[str, Any]]:
         sql, params = super().build_child_spans_query(*args, **kwargs)
-        return rewrite_v1_sql_to_v2(sql), params
+        return rewrite_and_apply_v2_settings(sql), params
 
 
 __all__ = ["VoiceCallListQueryBuilderV2"]

@@ -87,6 +87,38 @@ _JSON_HAS_TARGET = {
     "metadata_map":            (cols.METADATA_JSON,    "String"),
 }
 
+# Map from legacy bare JSON column → v2 typed-JSON column. Used by the bare-
+# column rewriters below. These columns CAN'T just be renamed (their TYPES
+# differ — v1 is String, v2 is typed JSON), so:
+#   • In SELECT lists: wrap with toJSONString(v2_col) AS legacy_col so the
+#     callers' Python code can still do row["legacy_col"] and get a JSON string.
+#   • In WHERE emptiness checks: rewrite to length-based predicates on the
+#     toJSONString form (semantically equivalent for "has any keys").
+_BARE_JSON_REWRITES = {
+    "span_attributes_raw":     cols.ATTRIBUTES_EXTRA,
+    "metadata_map":            cols.METADATA_JSON,
+    "resource_attributes_raw": cols.RESOURCE_ATTRS,
+}
+
+# WHERE emptiness checks v1 emits: `<legacy_col> != '{}'`, `!= ''`, `= '{}'`, `= ''`.
+# Pattern allows single or doubled `{}` (the `{{}}` form appears when the SQL
+# was built via `f.format(...)` — the double-brace escapes inside an f-string).
+_WHERE_EMPTY_PATTERN = re.compile(
+    r"\b(span_attributes_raw|resource_attributes_raw|metadata_map)\b"
+    r"\s*(!=|=)\s*'(\{?\}?|\{\{?\}?\}?)'"
+)
+
+# Bare SELECT-list / projection reference. The negative lookahead skips matches
+# that are immediately followed by `[` (Map subscript — but the legacy Map
+# columns are span_attr_*, never these) or `(` (function call — already
+# consumed by the JSONExtract patterns above), and negative lookbehind skips
+# matches inside identifiers (preceded by alphanumeric or underscore).
+_BARE_REF_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9_'])"
+    r"\b(span_attributes_raw|resource_attributes_raw|metadata_map)\b"
+    r"(?![\[\(A-Za-z0-9_])"
+)
+
 
 # ─── v2 attribute-type meta (same shape as v1 module-level constant, retargeted) ─
 _SPAN_ATTR_TYPE_META_V2: Dict[str, Tuple[str, Callable[[Any], Any]]] = {
@@ -96,6 +128,56 @@ _SPAN_ATTR_TYPE_META_V2: Dict[str, Tuple[str, Callable[[Any], Any]]] = {
 }
 
 
+_V2_REQUIRED_SETTINGS = (
+    # CRITICAL for trillion-row scale: FINAL on ReplacingMergeTree bypasses
+    # skip indexes by default. Without this, every dashboard query that uses
+    # FINAL (almost all of them) full-scans the parts. Measured 47× slowdown
+    # locally without this setting. See DECISIONS #026 in
+    # internal-docs/clickhouse-analytics/migration-to-ch25/.
+    "use_skip_indexes_if_final = 1",
+    # Encourage projection auto-routing for dashboard aggregates. Falls
+    # through to base-table read if no projection matches — zero risk.
+    "optimize_use_projections = 1",
+    # Streaming aggregation order: when ORDER BY matches the table's ORDER
+    # BY prefix, CH can stream-aggregate without sorting. Big win on time-
+    # bucketed dashboard queries.
+    "optimize_aggregation_in_order = 1",
+)
+
+
+def _append_v2_settings(sql: str) -> str:
+    """Append the v2-required settings to a SQL string.
+
+    Idempotent: if the SQL already ends with a SETTINGS clause, merge the
+    v2 settings into it (don't double-apply). If not, append a fresh one.
+
+    Handles trailing FORMAT clause: SETTINGS must come BEFORE FORMAT.
+    """
+    sql_stripped = sql.rstrip().rstrip(';').rstrip()
+    # Check for an existing SETTINGS clause (case-insensitive, at end before
+    # any FORMAT clause). Use a simple heuristic — the v1 builders rarely
+    # emit SETTINGS, so the common case is "no existing clause."
+    import re as _re
+    # Pull out a trailing FORMAT clause so we can re-attach it after SETTINGS.
+    fmt_match = _re.search(r"\s+FORMAT\s+\w+\s*$", sql_stripped, _re.IGNORECASE)
+    if fmt_match:
+        format_clause = fmt_match.group(0)
+        sql_stripped = sql_stripped[:fmt_match.start()].rstrip()
+    else:
+        format_clause = ""
+
+    settings_clause = "SETTINGS " + ", ".join(_V2_REQUIRED_SETTINGS)
+    existing = _re.search(r"\s+SETTINGS\s+", sql_stripped, _re.IGNORECASE)
+    if existing:
+        # Merge — append our settings to the existing clause (later wins on
+        # duplicate keys, which is what we want).
+        sql_stripped = sql_stripped + ", " + ", ".join(_V2_REQUIRED_SETTINGS)
+    else:
+        sql_stripped = sql_stripped + "\n" + settings_clause
+
+    return sql_stripped + format_clause
+
+
 def rewrite_v1_sql_to_v2(sql: str) -> str:
     """Translate a v1-compiled SQL string to v2 column references.
 
@@ -103,12 +185,17 @@ def rewrite_v1_sql_to_v2(sql: str) -> str:
     the full filter compiler.
 
     Order matters:
-      1. JSON path access rewrites FIRST — these wrap whole expressions
-         containing legacy column names inside `JSONExtract*(...)` calls. We
-         must rewrite those expressions before any naked column-name
-         substitution would otherwise hit them.
-      2. Naked column-name renames SECOND — word-boundary substitution
-         catches the remaining direct references (`WHERE _peerdb_is_deleted = 0`).
+      1. JSON path access — JSONExtract*(legacy_col, ...) → typed JSON path.
+         Consumes legacy_col occurrences that are inside function calls.
+      2. JSON has — JSONHas(legacy_col, key) → (typed JSON path IS NOT NULL).
+      3. WHERE emptiness predicates — `WHERE legacy_col != '{}'` →
+         length-based check on toJSONString(v2_col).
+      4. Bare SELECT-list refs — `SELECT … legacy_col …` →
+         `SELECT … toJSONString(v2_col) AS legacy_col …`. Preserves the
+         downstream Python `row["legacy_col"]` shape (still a JSON string).
+      5. Naked simple renames — `_peerdb_is_deleted` → `is_deleted`, etc.
+         Word-boundary substitution; runs last.
+      6. Append v2-required settings (use_skip_indexes_if_final etc).
     """
     # 1. JSON path access
     for pat, target_col, ch_type in _JSON_EXTRACT_PATTERNS:
@@ -117,14 +204,57 @@ def rewrite_v1_sql_to_v2(sql: str) -> str:
             sql,
         )
 
+    # 2. JSON has
     def _has_repl(m):
         col, ch_type = _JSON_HAS_TARGET[m.group(1)]
         return f"({cols.json_path(col, m.group(2), ch_type)} IS NOT NULL)"
     sql = _JSON_HAS_PATTERN.sub(_has_repl, sql)
 
-    # 2. Naked column-name renames
+    # 3. WHERE emptiness predicates
+    def _empty_repl(m):
+        legacy_col = m.group(1)
+        op         = m.group(2)
+        literal    = m.group(3)
+        v2_col     = _BARE_JSON_REWRITES[legacy_col]
+        wrapped    = f"toJSONString({v2_col})"
+        # `'{}'` or `'{{}}'` mean "empty object literal" → 2 chars (or 4 if
+        # the double-brace was a Python format-string escape, which CH never
+        # sees — by the time SQL reaches us, the braces are concrete).
+        is_empty_obj = literal in ("{}", "{{}}", "{")
+        if op == "!=" and is_empty_obj:
+            return f"length({wrapped}) > 2"
+        if op == "!=" and literal == "":
+            return f"length({wrapped}) > 0"
+        if op == "=" and is_empty_obj:
+            return f"length({wrapped}) <= 2"
+        if op == "=" and literal == "":
+            return f"length({wrapped}) = 0"
+        # Fall back — wrap with toJSONString and keep the literal compare
+        return f"{wrapped} {op} '{literal}'"
+    sql = _WHERE_EMPTY_PATTERN.sub(_empty_repl, sql)
+
+    # 4. Bare SELECT-list refs — wrap with toJSONString() AS legacy_col so the
+    # caller's row["legacy_col"] still works.
+    def _bare_repl(m):
+        legacy_col = m.group(1)
+        v2_col = _BARE_JSON_REWRITES[legacy_col]
+        return f"toJSONString({v2_col}) AS {legacy_col}"
+    sql = _BARE_REF_PATTERN.sub(_bare_repl, sql)
+
+    # 5. Naked simple renames (must come last so we don't accidentally rewrite
+    # inside the AS aliases we just produced).
     sql = _COL_RENAME_RE.sub(lambda m: _COL_RENAMES[m.group(1)], sql)
+    # NOTE: this function does NOT append the v2 SETTINGS clause. The settings
+    # are appended at the BUILDER boundary (v2 `build()`/`build_count_query()` etc)
+    # via `_append_v2_settings()` — see ClickHouseFilterBuilderV2.translate.
+    # Keeping rewrite_v1_sql_to_v2 pure lets tests assert exact-string rewrites
+    # without dragging SETTINGS into every expectation.
     return sql
+
+
+def rewrite_and_apply_v2_settings(sql: str) -> str:
+    """One-call helper for builder methods: pure rewrite + SETTINGS append."""
+    return _append_v2_settings(rewrite_v1_sql_to_v2(sql))
 
 
 class ClickHouseFilterBuilderV2(ClickHouseFilterBuilder):
@@ -141,17 +271,25 @@ class ClickHouseFilterBuilderV2(ClickHouseFilterBuilder):
     SPAN_ATTR_TYPE_META = _SPAN_ATTR_TYPE_META_V2
 
     def translate(self, filters):  # type: ignore[override]
+        # `translate` returns a WHERE fragment that gets stitched into a larger
+        # SELECT statement by callers. Do NOT append SETTINGS here — that
+        # happens at the full-SELECT boundary in the per-builder `build()`
+        # methods (SpanListQueryBuilderV2.build, TraceListQueryBuilderV2.build,
+        # etc.). Otherwise we'd end up with `WHERE ... SETTINGS ... AND ...`
+        # which is a syntax error.
         sql, params = super().translate(filters)
         return rewrite_v1_sql_to_v2(sql), params
 
     def translate_sort(self, sort_params):  # type: ignore[override]
         result = super().translate_sort(sort_params)
-        # translate_sort may return tuple (sql, params) or bare sql depending
-        # on the v1 signature — handle both.
         if isinstance(result, tuple):
             sql, *rest = result
             return (rewrite_v1_sql_to_v2(sql), *rest)
         return rewrite_v1_sql_to_v2(result)
 
 
-__all__ = ["ClickHouseFilterBuilderV2", "rewrite_v1_sql_to_v2"]
+__all__ = [
+    "ClickHouseFilterBuilderV2",
+    "rewrite_v1_sql_to_v2",
+    "rewrite_and_apply_v2_settings",
+]

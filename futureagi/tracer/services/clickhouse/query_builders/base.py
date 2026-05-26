@@ -161,7 +161,7 @@ class BaseQueryBuilder(ABC):
         - ``"less_than"`` -- sets *end_date*.
         - ``"between"`` -- sets both from a two-element list.
 
-        If no start date is found the default is *now - 7 days*.  If no end
+        If no start date is found the default is *now - 30 days*. If no end
         date is found the default is *now*.
 
         Args:
@@ -190,8 +190,15 @@ class BaseQueryBuilder(ABC):
                 start_date = _parse_dt(val[0])
                 end_date = _parse_dt(val[1])
 
+        # Default window when no time filter supplied: 30 days back from now.
+        # Was previously 3650 days (10 years) — that bypassed partition pruning
+        # and forced full-history scans for every dashboard-default page-load
+        # (regression caught in kartik perf sweep; 100ms+ p95 just from the
+        # un-bounded window). 30 days matches the dashboard's default view
+        # range; users wanting older data set an explicit filter, which uses
+        # the path above and gets accurate pruning anyway.
         if not start_date:
-            start_date = datetime.utcnow() - timedelta(days=3650)
+            start_date = datetime.utcnow() - timedelta(days=30)
         if not end_date:
             end_date = datetime.utcnow()
         return start_date, end_date

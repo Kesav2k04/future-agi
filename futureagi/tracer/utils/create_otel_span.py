@@ -1,3 +1,11 @@
+"""OTel ingestion → ObservationSpan write path.
+
+CH25-TODO: KEEP-PG. This entire module is the OTel ingest write
+endpoint — every ObservationSpan.objects.create() / Trace.objects.get/
+create is a dual-write source-of-truth operation (D-027). CH receives
+the row via PeerDB CDC after the PG transaction commits. There is no
+CH-write path by design; CHSpanReader cannot be applied here.
+"""
 import json
 
 import structlog

@@ -1662,6 +1662,259 @@ export const datasetEvalJourneys = [
     },
   },
   {
+    id: "DPE-API-032",
+    title:
+      "Dataset clone happy path preserves rows, columns, cells, and config",
+    tags: ["dataset", "clone", "mutating", "data-roundtrip", "db-audit"],
+    async run({
+      client,
+      cleanup,
+      runId,
+      evidence,
+      organizationId,
+      workspaceId,
+    }) {
+      requireMutations();
+      const sourceName = `api clone source ${runId}`;
+      const cloneName = `api clone copy ${runId}`;
+      const firstValue = `clone source first ${runId}`;
+      const secondValue = `clone source second ${runId}`;
+      let sourceDatasetId;
+      let clonedDatasetId;
+      let sourceDeleted = false;
+      let cloneDeleted = false;
+
+      try {
+        const created = await client.post(
+          apiPath("/model-hub/develops/create-dataset-manually/"),
+          {
+            dataset_name: sourceName,
+            number_of_rows: 2,
+            number_of_columns: 2,
+          },
+        );
+        sourceDatasetId = created?.dataset_id;
+      } catch (error) {
+        if (error?.status !== 429) throw error;
+        evidence.push({
+          source_creation: "plan-limited",
+          status: error.status,
+        });
+        skip("Source dataset creation is plan-limited for this org/workspace.");
+      }
+      assert(sourceDatasetId, "Clone source create did not return dataset_id.");
+      cleanup.defer("delete API journey clone source dataset", () =>
+        sourceDeleted
+          ? Promise.resolve()
+          : client.delete(apiPath("/model-hub/develops/delete_dataset/"), {
+              body: { dataset_ids: [sourceDatasetId] },
+              okStatuses: [200, 404],
+            }),
+      );
+
+      let sourceTable = await getDatasetTable(client, sourceDatasetId);
+      const sourceColumns = asArray(sourceTable.column_config);
+      const sourceRows = asArray(sourceTable.table).filter(
+        (row) => row?.row_id,
+      );
+      assert(sourceRows.length === 2, "Clone source did not have 2 rows.");
+      const sourceColumnOne = sourceColumns.find(
+        (column) => column?.name === "Column 1",
+      );
+      const sourceColumnTwo = sourceColumns.find(
+        (column) => column?.name === "Column 2",
+      );
+      assert(sourceColumnOne?.id, "Clone source was missing Column 1.");
+      assert(sourceColumnTwo?.id, "Clone source was missing Column 2.");
+
+      await client.post(
+        apiPath("/model-hub/develops/{dataset_id}/update_cell_value/", {
+          dataset_id: sourceDatasetId,
+        }),
+        {
+          row_id: sourceRows[0].row_id,
+          column_id: sourceColumnOne.id,
+          new_value: firstValue,
+        },
+      );
+      await client.post(
+        apiPath("/model-hub/develops/{dataset_id}/update_cell_value/", {
+          dataset_id: sourceDatasetId,
+        }),
+        {
+          row_id: sourceRows[1].row_id,
+          column_id: sourceColumnTwo.id,
+          new_value: secondValue,
+        },
+      );
+
+      sourceTable = await getDatasetTable(client, sourceDatasetId);
+      const updatedSourceRows = asArray(sourceTable.table).filter(
+        (row) => row?.row_id,
+      );
+      assert(
+        updatedSourceRows.some(
+          (row) => cellValueFor(row, sourceColumnOne.id) === firstValue,
+        ),
+        "Clone source first value did not round-trip before clone.",
+      );
+      assert(
+        updatedSourceRows.some(
+          (row) => cellValueFor(row, sourceColumnTwo.id) === secondValue,
+        ),
+        "Clone source second value did not round-trip before clone.",
+      );
+
+      let cloned;
+      try {
+        cloned = await client.post(
+          apiPath("/model-hub/develops/clone-dataset/{dataset_id}/", {
+            dataset_id: sourceDatasetId,
+          }),
+          { new_dataset_name: cloneName },
+        );
+      } catch (error) {
+        if (error?.status !== 429) throw error;
+        evidence.push({ clone_creation: "plan-limited", status: error.status });
+        skip("Dataset clone creation is plan-limited for this org/workspace.");
+      }
+      clonedDatasetId = cloned?.dataset_id;
+      assert(clonedDatasetId, "Clone API did not return dataset_id.");
+      cleanup.defer("delete API journey cloned dataset", () =>
+        cloneDeleted
+          ? Promise.resolve()
+          : client.delete(apiPath("/model-hub/develops/delete_dataset/"), {
+              body: { dataset_ids: [clonedDatasetId] },
+              okStatuses: [200, 404],
+            }),
+      );
+
+      const listPayload = await client.get(
+        apiPath("/model-hub/develops/get-datasets/"),
+        { query: { page: 0, page_size: 100 } },
+      );
+      const listedClone = asArray(listPayload).find(
+        (row) => row?.id === clonedDatasetId,
+      );
+      assert(
+        listedClone?.name === cloneName,
+        "Cloned dataset was not visible in get-datasets readback.",
+      );
+
+      const cloneTable = await getDatasetTable(client, clonedDatasetId);
+      const cloneColumns = asArray(cloneTable.column_config);
+      const cloneRows = asArray(cloneTable.table).filter((row) => row?.row_id);
+      assert(cloneRows.length === 2, "Cloned dataset did not have 2 rows.");
+      const cloneColumnOne = cloneColumns.find(
+        (column) => column?.name === "Column 1",
+      );
+      const cloneColumnTwo = cloneColumns.find(
+        (column) => column?.name === "Column 2",
+      );
+      assert(cloneColumnOne?.id, "Cloned dataset was missing Column 1.");
+      assert(cloneColumnTwo?.id, "Cloned dataset was missing Column 2.");
+      assert(
+        cloneColumnOne.id !== sourceColumnOne.id &&
+          cloneColumnTwo.id !== sourceColumnTwo.id,
+        "Clone reused source column ids instead of cloning columns.",
+      );
+      assert(
+        cloneRows.every(
+          (row) =>
+            row.row_id !== sourceRows[0].row_id &&
+            row.row_id !== sourceRows[1].row_id,
+        ),
+        "Clone reused source row ids instead of cloning rows.",
+      );
+      assert(
+        cloneRows.some(
+          (row) => cellValueFor(row, cloneColumnOne.id) === firstValue,
+        ),
+        "Cloned dataset did not preserve first edited cell value.",
+      );
+      assert(
+        cloneRows.some(
+          (row) => cellValueFor(row, cloneColumnTwo.id) === secondValue,
+        ),
+        "Cloned dataset did not preserve second edited cell value.",
+      );
+
+      const sourceAudit = await loadDatasetCloneDbAudit({
+        datasetId: sourceDatasetId,
+        organizationId,
+        workspaceId,
+        expectedName: sourceName,
+      });
+      assertDatasetCloneAudit(sourceAudit, {
+        expectedDeleted: false,
+        expectedValues: [firstValue, secondValue],
+        expectedWorkspaceId: workspaceId,
+      });
+      const cloneAudit = await loadDatasetCloneDbAudit({
+        datasetId: clonedDatasetId,
+        organizationId,
+        workspaceId,
+        expectedName: cloneName,
+      });
+      assertDatasetCloneAudit(cloneAudit, {
+        expectedDeleted: false,
+        expectedValues: [firstValue, secondValue],
+        expectedWorkspaceId: workspaceId,
+      });
+      assert(
+        cloneAudit.column_ids.join(",") !== sourceAudit.column_ids.join(","),
+        "DB audit found cloned column ids identical to source column ids.",
+      );
+      assert(
+        cloneAudit.row_ids.join(",") !== sourceAudit.row_ids.join(","),
+        "DB audit found cloned row ids identical to source row ids.",
+      );
+
+      await client.delete(apiPath("/model-hub/develops/delete_dataset/"), {
+        body: { dataset_ids: [clonedDatasetId] },
+      });
+      cloneDeleted = true;
+      await client.delete(apiPath("/model-hub/develops/delete_dataset/"), {
+        body: { dataset_ids: [sourceDatasetId] },
+      });
+      sourceDeleted = true;
+
+      const deletedSourceAudit = await loadDatasetCloneDbAudit({
+        datasetId: sourceDatasetId,
+        organizationId,
+        workspaceId,
+        expectedName: sourceName,
+      });
+      assertDatasetCloneAudit(deletedSourceAudit, {
+        expectedDeleted: true,
+        expectedValues: [firstValue, secondValue],
+        expectedWorkspaceId: workspaceId,
+      });
+      const deletedCloneAudit = await loadDatasetCloneDbAudit({
+        datasetId: clonedDatasetId,
+        organizationId,
+        workspaceId,
+        expectedName: cloneName,
+      });
+      assertDatasetCloneAudit(deletedCloneAudit, {
+        expectedDeleted: true,
+        expectedValues: [firstValue, secondValue],
+        expectedWorkspaceId: workspaceId,
+      });
+
+      evidence.push({
+        source_dataset_id: sourceDatasetId,
+        cloned_dataset_id: clonedDatasetId,
+        source_columns: Number(sourceAudit.column_count),
+        cloned_columns: Number(cloneAudit.column_count),
+        source_rows: Number(sourceAudit.row_count),
+        cloned_rows: Number(cloneAudit.row_count),
+        cloned_cells: Number(cloneAudit.cell_count),
+        cleanup_deleted_at: deletedCloneAudit.deleted_at_set,
+      });
+    },
+  },
+  {
     id: "DPE-API-016",
     title: "Dataset advanced row/column readbacks and cleanup audit",
     tags: ["dataset", "develop", "mutating", "data-roundtrip", "db-audit"],
@@ -23612,6 +23865,128 @@ function assertManualDatasetAudit(
   assert(
     asArray(audit.generated_column_names).join(",") === "Column 1,Column 2",
     "Manual dataset DB audit generated column names mismatch.",
+  );
+}
+
+async function loadDatasetCloneDbAudit({
+  datasetId,
+  organizationId,
+  workspaceId,
+  expectedName,
+}) {
+  assert(isUuid(datasetId), "datasetId must be a UUID for DB audit.");
+  assert(isUuid(organizationId), "organizationId must be a UUID for DB audit.");
+  if (workspaceId)
+    assert(isUuid(workspaceId), "workspaceId must be a UUID for DB audit.");
+  assert(typeof expectedName === "string", "expectedName must be a string.");
+  const sql = `
+WITH dataset_row AS (
+  SELECT id, name, organization_id, workspace_id, source, deleted, deleted_at,
+         column_order, column_config
+  FROM model_hub_dataset
+  WHERE id = ${sqlUuid(datasetId)}
+    AND organization_id = ${sqlUuid(organizationId)}
+    AND name = ${sqlText(expectedName)}
+)
+SELECT json_build_object(
+  'dataset_id', d.id::text,
+  'dataset_name', d.name,
+  'organization_id', d.organization_id::text,
+  'workspace_id', d.workspace_id::text,
+  'source', d.source,
+  'deleted', d.deleted,
+  'deleted_at_set', d.deleted_at IS NOT NULL,
+  'row_count', (
+    SELECT count(*) FROM model_hub_row r
+    WHERE r.dataset_id = d.id AND r.deleted = false
+  ),
+  'column_count', (
+    SELECT count(*) FROM model_hub_column c
+    WHERE c.dataset_id = d.id AND c.deleted = false
+  ),
+  'cell_count', (
+    SELECT count(*) FROM model_hub_cell cell
+    WHERE cell.dataset_id = d.id AND cell.deleted = false
+  ),
+  'column_order_count', COALESCE(cardinality(d.column_order), 0),
+  'column_config_count', (
+    SELECT count(*) FROM jsonb_object_keys(COALESCE(d.column_config, '{}'::jsonb))
+  ),
+  'column_ids', COALESCE((
+    SELECT jsonb_agg(c.id::text ORDER BY c.name)
+    FROM model_hub_column c
+    WHERE c.dataset_id = d.id AND c.deleted = false
+  ), '[]'::jsonb),
+  'row_ids', COALESCE((
+    SELECT jsonb_agg(r.id::text ORDER BY r.order, r.created_at)
+    FROM model_hub_row r
+    WHERE r.dataset_id = d.id AND r.deleted = false
+  ), '[]'::jsonb),
+  'cell_values', COALESCE((
+    SELECT jsonb_agg(cell.value ORDER BY cell.value)
+    FROM model_hub_cell cell
+    WHERE cell.dataset_id = d.id
+      AND cell.deleted = false
+      AND cell.value IS NOT NULL
+  ), '[]'::jsonb)
+)
+FROM dataset_row d;
+`;
+  return runPostgresJson(sql);
+}
+
+function assertDatasetCloneAudit(
+  audit,
+  { expectedDeleted, expectedValues, expectedWorkspaceId },
+) {
+  assert(audit?.dataset_id, "Dataset clone DB audit did not find dataset.");
+  assert(
+    audit.source === "build",
+    "Dataset clone DB audit source was not build.",
+  );
+  if (expectedWorkspaceId) {
+    assert(
+      audit.workspace_id === expectedWorkspaceId,
+      "Dataset clone DB audit workspace mismatch.",
+    );
+  }
+  assert(
+    audit.deleted === expectedDeleted,
+    "Dataset clone DB audit deleted state mismatch.",
+  );
+  if (expectedDeleted) {
+    assert(
+      audit.deleted_at_set === true,
+      "Deleted clone dataset did not set deleted_at.",
+    );
+  }
+  assert(Number(audit.row_count) === 2, "Dataset clone row count mismatch.");
+  assert(
+    Number(audit.column_count) === 2,
+    "Dataset clone column count mismatch.",
+  );
+  assert(Number(audit.cell_count) === 4, "Dataset clone cell count mismatch.");
+  assert(
+    Number(audit.column_order_count) === 2,
+    "Dataset clone column_order count mismatch.",
+  );
+  assert(
+    Number(audit.column_config_count) === 2,
+    "Dataset clone column_config count mismatch.",
+  );
+  assert(
+    asArray(audit.column_ids).length === 2,
+    "Dataset clone DB audit did not return 2 column ids.",
+  );
+  assert(
+    asArray(audit.row_ids).length === 2,
+    "Dataset clone DB audit did not return 2 row ids.",
+  );
+  const actualValues = asArray(audit.cell_values).sort();
+  const expectedSorted = [...expectedValues].sort();
+  assert(
+    actualValues.join("\n") === expectedSorted.join("\n"),
+    "Dataset clone DB audit cell values mismatch.",
   );
 }
 

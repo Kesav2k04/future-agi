@@ -1237,22 +1237,37 @@ def _reopen_items_missing_required_labels(queue):
 
 
 def _span_notes_target_for_queue_item(item):
-    """Return the span that stores whole-item notes for queue annotation."""
+    """Return the span that stores whole-item notes for queue annotation.
+
+    Span-source items return the FK-loaded Django ``ObservationSpan`` (writes
+    still live in PG). Trace-source items pick the trace's root span from
+    CH 25 — preference order is ``observation_type="conversation"`` root span
+    (voice projects) → first root span by start_time → ``None``.
+    """
     if item.source_type == "observation_span" and item.observation_span_id:
         return item.observation_span
     if item.source_type != "trace" or not item.trace_id:
         return None
 
-    root_spans = ObservationSpan.objects.filter(
-        trace_id=item.trace_id,
-        deleted=False,
-    ).filter(Q(parent_span_id__isnull=True) | Q(parent_span_id=""))
-    return (
-        root_spans.filter(observation_type="conversation")
-        .order_by("start_time", "created_at")
-        .first()
-        or root_spans.order_by("start_time", "created_at").first()
-    )
+    # CH read replaces the prior PG path:
+    #   root_spans = ObservationSpan.objects.filter(trace_id=item.trace_id,
+    #       deleted=False).filter(Q(parent_span_id__isnull=True) |
+    #       Q(parent_span_id=""))
+    #   conversation root → start_time root → None
+    # CHSpanReader.list_by_trace already filters is_deleted=0 and orders by
+    # (start_time, id). Root spans have empty parent_span_id (CH stores it
+    # as a non-nullable String — see schema 001), so we filter in Python.
+    from tracer.services.clickhouse.v2 import get_reader
+
+    with get_reader() as reader:
+        spans = reader.list_by_trace(str(item.trace_id))
+    root_spans = [s for s in spans if not s.parent_span_id]
+    if not root_spans:
+        return None
+    for s in root_spans:
+        if s.observation_type == "conversation":
+            return s
+    return root_spans[0]
 
 
 def _serialize_queue_item_note(note):
@@ -1289,10 +1304,17 @@ def _item_note_rows(item):
 
 
 def _span_note_rows(span):
+    """Return SpanNotes for the given span.
+
+    *span* may be a Django ``ObservationSpan`` (span-source items, still PG)
+    or a ``CHSpan`` dataclass (trace-source items, loaded from CH 25 via
+    ``_span_notes_target_for_queue_item``). Both expose a string ``.id``
+    that the ``SpanNotes.span`` FK accepts as an ``span_id=`` filter value.
+    """
     if span is None:
         return []
     return list(
-        SpanNotes.objects.filter(span=span)
+        SpanNotes.objects.filter(span_id=span.id)
         .select_related("created_by_user")
         .order_by("-created_at")
     )
@@ -1395,35 +1417,47 @@ def _latest_item_note(item):
 
 
 def _span_note_targets_for_queue_items(items):
-    """Resolve whole-item note spans in bulk for export."""
+    """Resolve whole-item note spans in bulk for export.
+
+    Pairs ``_span_notes_target_for_queue_item`` semantics with a bulk fetch:
+    span-source items use the FK Django ``ObservationSpan`` (still PG);
+    trace-source items pick the trace root span from CH 25 in one bulk
+    query (conversation root preferred, then first-by-(start_time, id)).
+    Currently unused — kept for the export builders that may re-adopt it.
+    """
     targets = {}
     trace_ids = []
     for item in items:
         if item.source_type == "observation_span" and item.observation_span_id:
             targets[item.id] = item.observation_span
         elif item.source_type == "trace" and item.trace_id:
-            trace_ids.append(item.trace_id)
+            trace_ids.append(str(item.trace_id))
 
     if trace_ids:
-        spans = (
-            ObservationSpan.objects.filter(
-                trace_id__in=trace_ids,
-                deleted=False,
-            )
-            .filter(Q(parent_span_id__isnull=True) | Q(parent_span_id=""))
-            .order_by("trace_id", "start_time", "created_at")
-        )
+        # CH read replaces:
+        #   ObservationSpan.objects.filter(trace_id__in=trace_ids, deleted=False)
+        #     .filter(Q(parent_span_id__isnull=True) | Q(parent_span_id=""))
+        #     .order_by("trace_id", "start_time", "created_at")
+        # CHSpanReader.list_by_trace_ids already excludes is_deleted=1 and
+        # orders by (trace_id, start_time, id). Root-span filtering happens
+        # in Python (parent_span_id is non-nullable string in CH 25 schema).
+        from tracer.services.clickhouse.v2 import get_reader
+
+        with get_reader() as reader:
+            spans = reader.list_by_trace_ids(trace_ids)
         first_root_by_trace = {}
         first_conversation_by_trace = {}
         for span in spans:
+            if span.parent_span_id:
+                continue
             first_root_by_trace.setdefault(span.trace_id, span)
             if span.observation_type == "conversation":
                 first_conversation_by_trace.setdefault(span.trace_id, span)
         for item in items:
             if item.source_type == "trace" and item.trace_id:
                 target = first_conversation_by_trace.get(
-                    item.trace_id
-                ) or first_root_by_trace.get(item.trace_id)
+                    str(item.trace_id)
+                ) or first_root_by_trace.get(str(item.trace_id))
                 if target is not None:
                     targets[item.id] = target
 
@@ -2098,6 +2132,16 @@ def _build_annotation_queue_export_fields(queue, sample_items=None):
         fields.append(field)
 
     if sample_items is None:
+        # KEEP-PG (transitional bridge): the Prefetch hydrates
+        # `trace._queue_export_spans` which downstream callers
+        # (`_trace_primary_span`, `resolve_source_content`) read as a list of
+        # Django ObservationSpan objects with `.span_attributes` /
+        # `.resource_attributes` dict access. Migrating that chain requires
+        # either teaching `resolve_source_content` about CHSpan or attaching
+        # CHSpan objects through `Prefetch.to_attr`, which Django's prefetch
+        # machinery does not support. Deferred to a follow-up commit that
+        # refactors the export path to assemble its own per-trace span maps
+        # via CHSpanReader instead of leaning on Prefetch — see also DECISIONS.
         sample_items = (
             QueueItem.objects.filter(queue=queue, deleted=False)
             .select_related(
@@ -3253,6 +3297,11 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
         query_params = request.validated_query_data
 
         queue = self.get_object()
+        # KEEP-PG (transitional bridge): same Prefetch pattern as
+        # `_build_annotation_queue_export_fields` — see the comment there for
+        # the deferral rationale. The exported rows flow through
+        # `resolve_source_content`/`_trace_primary_span` which expect Django
+        # ObservationSpan objects.
         items_qs = (
             QueueItem.objects.filter(queue=queue, deleted=False)
             .select_related(
@@ -3575,6 +3624,10 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
                 user=request.user,
             )
 
+        # KEEP-PG (transitional bridge): same Prefetch pattern as
+        # `_build_annotation_queue_export_fields` and `export_annotations` —
+        # `resolve_source_content` reads Django ObservationSpan attrs off the
+        # prefetched chain. See the comment on the first occurrence above.
         items_qs = (
             QueueItem.objects.filter(queue=queue, deleted=False)
             .select_related(
@@ -4317,7 +4370,6 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
                         "observation_span",
                         "trace_session",
                     ):
-                        from tracer.models.observation_span import ObservationSpan
                         from tracer.models.trace import Trace
 
                         if st == "trace":
@@ -4325,9 +4377,18 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
                                 id=sid, project_id=dq.project_id, deleted=False
                             ).exists()
                         elif st == "observation_span":
-                            exists = ObservationSpan.objects.filter(
-                                id=sid, project_id=dq.project_id, deleted=False
-                            ).exists()
+                            # CH read replaces ObservationSpan.objects.filter(
+                            #   id=sid, project_id=dq.project_id, deleted=False
+                            # ).exists(). CHSpanReader.get already filters
+                            # is_deleted=0; the project_id match is a single
+                            # equality on the span's project_id column.
+                            from tracer.services.clickhouse.v2 import get_reader
+
+                            with get_reader() as reader:
+                                _sp = reader.get(str(sid))
+                            exists = _sp is not None and _sp.project_id == str(
+                                dq.project_id
+                            )
                         elif st == "trace_session":
                             from tracer.models.trace_session import TraceSession
 
@@ -4372,7 +4433,6 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
                         "observation_span",
                         "trace_session",
                     ):
-                        from tracer.models.observation_span import ObservationSpan
                         from tracer.models.trace import Trace
 
                         if st == "trace":
@@ -4382,11 +4442,26 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
                                 deleted=False,
                             ).exists()
                         elif st == "observation_span":
-                            exists = ObservationSpan.objects.filter(
-                                id=sid,
-                                project__observability_providers__agent_definition=dq.agent_definition_id,
-                                deleted=False,
-                            ).exists()
+                            # CH read replaces ObservationSpan.objects.filter(
+                            #   id=sid,
+                            #   project__observability_providers__agent_definition=dq.agent_definition_id,
+                            #   deleted=False,
+                            # ).exists(). The FK traversal
+                            # `project__observability_providers__agent_definition`
+                            # is not on the CH span row, so we fetch the span
+                            # (cheap, indexed lookup), confirm it exists, and
+                            # then verify the project linkage via PG.
+                            from tracer.services.clickhouse.v2 import get_reader
+
+                            with get_reader() as reader:
+                                _sp = reader.get(str(sid))
+                            exists = (
+                                _sp is not None
+                                and Project.objects.filter(
+                                    id=_sp.project_id,
+                                    observability_providers__agent_definition=dq.agent_definition_id,
+                                ).exists()
+                            )
                         elif st == "trace_session":
                             from tracer.models.trace_session import TraceSession
 
@@ -5210,9 +5285,15 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
                 ).update(deleted=True, deleted_at=now, updated_at=now)
 
         if span_notes_target is not None and item_notes is not None:
+            # `span_notes_target` is either a Django ObservationSpan (span
+            # source items) or a CHSpan dataclass (trace source items, root
+            # span loaded from CH). Both expose a string `.id` that the
+            # SpanNotes.span FK accepts as the `span_id=` argument; the FK
+            # column itself remains a PG CharField pointing at
+            # tracer_observation_span.id.
             if item_notes:
                 SpanNotes.objects.update_or_create(
-                    span=span_notes_target,
+                    span_id=span_notes_target.id,
                     created_by_user=request.user,
                     defaults={
                         "notes": item_notes,
@@ -5221,7 +5302,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
                 )
             else:
                 SpanNotes.objects.filter(
-                    span=span_notes_target,
+                    span_id=span_notes_target.id,
                     created_by_user=request.user,
                 ).delete()
 

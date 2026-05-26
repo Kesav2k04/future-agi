@@ -218,6 +218,12 @@ def _resolve_default_queue_scope(source_type, source_obj):
     they're not per-row. This helper centralises the mapping so the scores
     endpoints and the explicit ``get-or-create-default`` endpoint agree on
     what counts as "the default queue" for a given source.
+
+    CH 25.3 duck-typing: *source_obj* may be either a Django model instance
+    (with a ``project`` FK / related-object) or a CH-loaded dataclass like
+    :class:`CHSpan` (only carries ``project_id``). For the CH path we look
+    the Project row up directly in PG since the default-queue scope row
+    lives in PG and FK joins across stores aren't possible.
     """
     if source_type in (
         QueueItemSourceType.TRACE.value,
@@ -228,9 +234,18 @@ def _resolve_default_queue_scope(source_type, source_obj):
         if source_type == QueueItemSourceType.TRACE.value:
             project = getattr(source_obj, "project", None)
         elif source_type == QueueItemSourceType.OBSERVATION_SPAN.value:
+            # Django ObservationSpan: walk .project (or .trace.project).
             project = getattr(source_obj, "project", None) or getattr(
                 getattr(source_obj, "trace", None), "project", None
             )
+            if project is None:
+                # CHSpan path: no FK traversals available, but the row
+                # carries project_id. Resolve the PG Project explicitly.
+                pid = getattr(source_obj, "project_id", None)
+                if pid:
+                    from tracer.models.project import Project
+
+                    project = Project.objects.filter(id=pid).first()
         else:  # trace_session
             project = getattr(source_obj, "project", None)
         if not project:
@@ -389,6 +404,11 @@ def resolve_default_queue_item_for_source(source_type, source_obj, organization,
 
     Used by score writes to guarantee every Score has a ``queue_item``.
     Returns ``None`` when the source has no resolvable default-queue scope.
+
+    *source_obj* may be either a Django model instance (uses ``.pk``) or
+    a CH-loaded dataclass like :class:`CHSpan` (uses ``.id``); the FK
+    column on ``QueueItem`` is a ``CharField``-like that accepts the str
+    UUID identically either way.
     """
     from model_hub.models.annotation_queues import QueueItem
     from model_hub.models.choices import QueueItemStatus
@@ -403,10 +423,17 @@ def resolve_default_queue_item_for_source(source_type, source_obj, organization,
     if not fk_field:
         return None
 
+    # CHSpan dataclasses don't expose a Django ``pk`` descriptor; fall back
+    # to ``.id`` for parity. Django models also expose ``.id`` for the PK on
+    # every model in this codebase, so this works uniformly.
+    source_pk = getattr(source_obj, "pk", None) or getattr(source_obj, "id", None)
+    if source_pk is None:
+        return None
+
     item, _ = QueueItem.objects.get_or_create(
         queue=queue,
         source_type=source_type,
-        **{f"{fk_field}_id": source_obj.pk},
+        **{f"{fk_field}_id": source_pk},
         deleted=False,
         defaults={
             "organization": queue.organization,

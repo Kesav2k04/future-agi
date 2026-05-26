@@ -24,6 +24,7 @@ async function main() {
   const graphName = `browser agent ${marker}`;
   const sourceNodeName = `browser_source_${marker}`.slice(0, 80);
   const targetNodeName = `browser_target_${marker}`.slice(0, 80);
+  const connectedNodeName = "llm_prompt_node_1";
   const variableInitialValue = `browser variable initial ${auth.runId}`;
   const variableUpdatedValue = `browser variable updated ${auth.runId}`;
   const executionInputValue = `browser execution input ${auth.runId}`;
@@ -33,7 +34,7 @@ async function main() {
   const inputDataId = randomUUID();
   const outputDataId = randomUUID();
   const graphNames = [graphName];
-  const promptNames = [sourceNodeName, targetNodeName];
+  const promptNames = [sourceNodeName, targetNodeName, connectedNodeName];
   let graphId = null;
   let publicDeleteStatus = null;
   let cleanupAudit = null;
@@ -138,6 +139,15 @@ async function main() {
       agentRequests.push(`${request.method()} ${new URL(url).pathname}`);
       if (["POST", "PATCH", "PUT", "DELETE"].includes(request.method())) {
         if (
+          request.method() === "POST" &&
+          url.includes(
+            `/agent-playground/graphs/${graphId}/versions/${setup.draftVersionId}/nodes/`,
+          )
+        ) {
+          expectedMutations.push(`${request.method()} ${url}`);
+          return;
+        }
+        if (
           request.method() === "PUT" &&
           url.includes(
             `/agent-playground/graphs/${graphId}/dataset/cells/${variableSetup.cell_id}/`,
@@ -155,7 +165,9 @@ async function main() {
         apiFailures.push(`${response.status()} ${url}`);
       }
     });
-    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("pageerror", (error) =>
+      pageErrors.push(error.stack || error.message),
+    );
 
     try {
       logStep("open agents list");
@@ -238,6 +250,62 @@ async function main() {
       await waitForVisibleText(page, targetNodeName, { exact: true });
       await waitForSelectorWithSize(page, ".react-flow");
       evidence.rendered_edge_count = await waitForRenderedEdgeCount(page, 1);
+
+      logStep("add connected node from builder");
+      const connectedNodeCreateResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response
+            .url()
+            .includes(
+              `/agent-playground/graphs/${graphId}/versions/${setup.draftVersionId}/nodes/`,
+            ) &&
+          response.status() < 400,
+        { timeout: 60000 },
+      );
+      await addConnectedBlankPromptFromNode(page, targetNodeName);
+      const connectedNodePayload = await connectedNodeCreateResponse.then(
+        (response) => response.json(),
+      );
+      const connectedNode = connectedNodePayload?.result;
+      const connectedNodeConnection =
+        connectedNode?.node_connection || connectedNode?.nodeConnection;
+      assert(
+        connectedNode?.name === connectedNodeName,
+        "Builder connected-node add did not create the expected prompt node.",
+      );
+      assert(
+        connectedNodeConnection?.source_node_id === setup.targetNode.id,
+        "Builder connected-node add did not persist the expected source node.",
+      );
+      assert(
+        connectedNodeConnection?.target_node_id === connectedNode.id,
+        "Builder connected-node add did not persist the expected target node.",
+      );
+      await waitForVisibleText(page, connectedNodeName, { exact: true });
+      evidence.rendered_edge_count_after_connected_add =
+        await waitForRenderedEdgeCount(page, 2);
+      const postBuilderMutationAudit = await loadAgentGraphDbAudit({ graphId });
+      assert(
+        postBuilderMutationAudit.node_visible === 3,
+        "Builder connected-node add did not leave three visible nodes.",
+      );
+      assert(
+        postBuilderMutationAudit.node_connection_visible === 2,
+        "Builder connected-node add did not leave two visible node connections.",
+      );
+      assert(
+        postBuilderMutationAudit.prompt_template_node_visible === 3,
+        "Builder connected-node add did not create a visible prompt-template node link.",
+      );
+      evidence.browser_connected_node = {
+        node_id: connectedNode.id,
+        node_name: connectedNode.name,
+        node_connection_id: connectedNodeConnection.id,
+        source_node_id: connectedNodeConnection.source_node_id,
+        target_node_id: connectedNodeConnection.target_node_id,
+        post_mutation_audit: postBuilderMutationAudit,
+      };
 
       logStep("edit global variable drawer");
       const graphDatasetResponse = page.waitForResponse(
@@ -433,8 +501,8 @@ async function main() {
         `Agent playground smoke fired unexpected mutations: ${unexpectedMutations.join("; ")}`,
       );
       assert(
-        expectedMutations.length === 1,
-        `Expected one browser variable update mutation, saw ${expectedMutations.length}.`,
+        expectedMutations.length === 2,
+        `Expected one browser node add mutation and one variable update mutation, saw ${expectedMutations.length}.`,
       );
       evidence.expected_mutation_count = expectedMutations.length;
     } finally {
@@ -859,6 +927,126 @@ async function waitForRenderedEdgeCount(page, minimumCount, timeout = 30000) {
         (edge) => edge.querySelector("path")?.getAttribute("d"),
       ).length,
   );
+}
+
+async function addConnectedBlankPromptFromNode(page, sourceNodeLabel) {
+  await clickCanvasNodeAddButton(page, sourceNodeLabel);
+  await clickNodeTemplateFromOpenPopper(page, "LLM Prompt");
+  await waitForVisibleText(page, "Add Blank Prompt", { exact: true });
+  await clickVisibleText(page, "Add Blank Prompt", { exact: true });
+}
+
+async function clickCanvasNodeAddButton(page, nodeLabel) {
+  const point = await page.evaluate((expectedLabel) => {
+    const isVisible = (element) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return (
+        style.visibility !== "hidden" &&
+        style.display !== "none" &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    };
+    const node = Array.from(
+      document.querySelectorAll(".react-flow__node"),
+    ).find(
+      (candidate) =>
+        isVisible(candidate) &&
+        String(candidate.textContent || "").includes(expectedLabel),
+    );
+    if (!node) return null;
+    const nodeRect = node.getBoundingClientRect();
+    const candidates = Array.from(node.querySelectorAll("*"))
+      .map((element) => ({
+        element,
+        rect: element.getBoundingClientRect(),
+        style: window.getComputedStyle(element),
+      }))
+      .filter(({ rect, style }) => {
+        return (
+          rect.width >= 20 &&
+          rect.width <= 34 &&
+          rect.height >= 20 &&
+          rect.height <= 34 &&
+          rect.left > nodeRect.right - 8 &&
+          rect.top > nodeRect.top - 40 &&
+          rect.top < nodeRect.bottom + 40 &&
+          style.visibility !== "hidden" &&
+          style.display !== "none" &&
+          style.pointerEvents !== "none"
+        );
+      })
+      .sort((a, b) => b.rect.left - a.rect.left);
+    const target = candidates[0];
+    if (!target) return null;
+    return {
+      x: target.rect.left + target.rect.width / 2,
+      y: target.rect.top + target.rect.height / 2,
+    };
+  }, nodeLabel);
+  assert(point, `Could not find Add button for node ${nodeLabel}.`);
+  await page.mouse.click(point.x, point.y);
+  await waitForNodeTemplatePopper(page, "LLM Prompt");
+}
+
+async function waitForNodeTemplatePopper(page, text, timeout = 30000) {
+  await page.waitForFunction(
+    (expectedText) => {
+      const isVisible = (element) => {
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return (
+          style.visibility !== "hidden" &&
+          style.display !== "none" &&
+          rect.width > 0 &&
+          rect.height > 0
+        );
+      };
+      return Array.from(document.querySelectorAll(".MuiPaper-root")).some(
+        (paper) =>
+          isVisible(paper) &&
+          String(paper.textContent || "").includes(expectedText) &&
+          !String(paper.textContent || "").includes("Add Blank Prompt"),
+      );
+    },
+    { timeout },
+    text,
+  );
+}
+
+async function clickNodeTemplateFromOpenPopper(page, text) {
+  await waitForNodeTemplatePopper(page, text);
+  const clicked = await page.evaluate((expectedText) => {
+    const normalized = (value) => String(value || "").trim();
+    const isVisible = (element) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return (
+        style.visibility !== "hidden" &&
+        style.display !== "none" &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    };
+    const paper = Array.from(document.querySelectorAll(".MuiPaper-root")).find(
+      (candidate) =>
+        isVisible(candidate) &&
+        String(candidate.textContent || "").includes(expectedText) &&
+        !String(candidate.textContent || "").includes("Add Blank Prompt"),
+    );
+    if (!paper) return false;
+    const label = Array.from(paper.querySelectorAll("*")).find(
+      (candidate) =>
+        isVisible(candidate) &&
+        normalized(candidate.textContent) === expectedText,
+    );
+    const clickable = label?.closest(".MuiBox-root") || label;
+    if (!clickable) return false;
+    clickable.click();
+    return true;
+  }, text);
+  assert(clicked, `Could not click node template ${text}.`);
 }
 
 async function waitForSelectorWithSize(page, selector, timeout = 30000) {

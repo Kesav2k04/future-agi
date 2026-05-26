@@ -27,6 +27,22 @@ function deriveVariablesFromDataset(dataset) {
   return variables;
 }
 
+function getMappingOutputPorts(mapping) {
+  return mapping?.outputPorts || mapping?.output_ports || [];
+}
+
+function getMappingSourceNodeName(mapping) {
+  return mapping?.sourceNodeName || mapping?.source_node_name || "";
+}
+
+function getPortDisplayName(port) {
+  return port?.displayName || port?.display_name;
+}
+
+function getPortDataSchema(port) {
+  return port?.dataSchema || port?.data_schema;
+}
+
 /**
  * Derives connected input nodes, dropdown options, and a variable validator
  * for the prompt editor mention system.
@@ -131,11 +147,11 @@ export default function useConnectedNodeVariables(
 
   const dropdownOptions = useMemo(() => {
     const options = (edgeMappingsData || []).flatMap((mapping) =>
-      mapping.outputPorts
+      getMappingOutputPorts(mapping)
         .filter((port) => port.direction === "output")
         .map((port) => ({
-          id: `${mapping.sourceNodeName}.${port.display_name}`,
-          value: `${mapping.sourceNodeName}.${port.display_name}`,
+          id: `${getMappingSourceNodeName(mapping)}.${getPortDisplayName(port)}`,
+          value: `${getMappingSourceNodeName(mapping)}.${getPortDisplayName(port)}`,
         })),
     );
 
@@ -171,20 +187,27 @@ export default function useConnectedNodeVariables(
     // are validated separately via globalKeys (which checks assigned values)
     const edgeMappingVars = new Set(
       (edgeMappingsData || []).flatMap((mapping) =>
-        mapping.outputPorts
+        getMappingOutputPorts(mapping)
           .filter((port) => port.direction === "output")
-          .map((port) => `${mapping.sourceNodeName}.${port.display_name}`),
+          .map(
+            (port) =>
+              `${getMappingSourceNodeName(mapping)}.${getPortDisplayName(port)}`,
+          ),
       ),
     );
 
     // Build prefixes for ports with object dataSchema from edge mappings API
     const objectPrefixes = (edgeMappingsData || []).flatMap((mapping) =>
-      mapping.outputPorts
+      getMappingOutputPorts(mapping)
         .filter(
           (port) =>
-            port.direction === "output" && port.dataSchema?.type === "object",
+            port.direction === "output" &&
+            getPortDataSchema(port)?.type === "object",
         )
-        .map((port) => `${mapping.sourceNodeName}.${port.display_name}.`),
+        .map(
+          (port) =>
+            `${getMappingSourceNodeName(mapping)}.${getPortDisplayName(port)}.`,
+        ),
     );
 
     const jsonPrefixes = connectedNodes

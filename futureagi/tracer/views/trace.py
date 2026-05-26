@@ -4,7 +4,6 @@ import json
 import math
 import traceback
 from dataclasses import asdict
-from datetime import datetime
 from typing import Any, Dict, List
 from uuid import UUID
 
@@ -25,7 +24,6 @@ from django.db.models import (
     OuterRef,
     Q,
     Subquery,
-    Sum,
     TextField,
     Value,
     When,
@@ -51,7 +49,6 @@ from tfc.utils.api_contracts import validated_request
 from tfc.utils.api_serializers import ApiErrorResponseSerializer
 from tfc.utils.error_codes import get_error_message
 from tfc.utils.general_methods import GeneralMethods
-from tfc.utils.pagination import ExtendedPageNumberPagination
 from tracer.models.custom_eval_config import CustomEvalConfig, EvalOutputType
 from tracer.models.observation_span import EndUser, EvalLogger, ObservationSpan
 from tracer.models.project import Project
@@ -95,14 +92,8 @@ from tracer.utils.annotations import (
     build_annotation_subqueries as _build_annotation_subqueries_impl,
 )
 from tracer.utils.filters import FilterEngine
-from tracer.utils.graphs_optimized import (
-    get_annotation_graph_data,
-    get_eval_graph_data,
-    get_system_metric_data,
-)
 from tracer.utils.helper import (
     FieldConfig,
-    generate_timestamps,
     get_annotation_labels_for_project,
     get_default_trace_config,
     update_column_config_based_on_eval_config,
@@ -1075,39 +1066,25 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         """
         try:
             trace_id = kwargs.get("pk")
+            # Cross-store tenant gate (get_queryset filters by org/workspace).
             accessible_trace = self.get_queryset().filter(id=trace_id).first()
             if not accessible_trace:
                 raise Trace.DoesNotExist
 
-            # ClickHouse-only for trace detail. Legacy PG fallback removed —
-            # span data lives in CH post-migration. If CH errors, propagate;
-            # silent fallback to PG masks real data-pipeline issues.
+            # CH-only path post-migration. D-027: the previous PG fallback
+            # (get_observation_spans + _compute_summary_and_graph against
+            # the PG tracer_observation_span table) was deleted. CH is the
+            # authoritative span store; _retrieve_clickhouse produces the
+            # span tree, summary, and graph from the CH `spans` table. If
+            # TRACE_DETAIL isn't routed to CH that's a config error —
+            # surface it as a 400 rather than serving partial PG data.
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.TRACE_DETAIL):
-                return self._retrieve_clickhouse(request, trace_id, analytics)
-
-            trace = accessible_trace
-            serializer = self.get_serializer(trace)
-            trace = serializer.data
-            observation_spans_response = get_observation_spans(
-                {
-                    "project_id": trace["project"],
-                    "project_version_id": trace["project_version"],
-                    "trace_id": trace["id"],
-                }
-            )
-
-            # Compute summary and graph from the span tree (same logic as CH path)
-            summary, graph = self._compute_summary_and_graph(observation_spans_response)
-
-            return self._gm.success_response(
-                {
-                    "trace": trace,
-                    "observation_spans": observation_spans_response,
-                    "summary": summary,
-                    "graph": graph,
-                }
-            )
+            if not analytics.should_use_clickhouse(QueryType.TRACE_DETAIL):
+                return self._gm.bad_request(
+                    "TRACE_DETAIL is not routed to ClickHouse — "
+                    "trace detail requires the CH path post-migration"
+                )
+            return self._retrieve_clickhouse(request, trace_id, analytics)
         except Exception as e:
             logger.exception(f"Error in fetching the trace: {str(e)}")
             return self._gm.bad_request(
@@ -1972,370 +1949,31 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         try:
             query_params = request.validated_query_data
             project_version_id = str(query_params["project_version_id"])
+            # Tenant gate via PG (org/workspace-scoped ProjectVersion).
             project_version = _project_version_queryset_for_request(request).filter(
                 id=project_version_id
             ).first()
             if not project_version:
                 raise Exception("Project version not found")  # noqa: B904
 
-            # ClickHouse dispatch
+            # CH-only path post-migration. D-027: the previous PG fallback
+            # body (Trace.objects.filter + 6 ObservationSpan Subquery
+            # annotations for node_type / trace_name / span_attributes /
+            # start_time / status + per-config EvalLogger metric pivot +
+            # build_annotation_subqueries + 4-stage filter combinator +
+            # Python pivot) was deleted. CH path lives in
+            # _list_traces_clickhouse via TraceListQueryBuilder. If
+            # TRACE_LIST isn't routed to CH that's a config error —
+            # surface it as 400.
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.TRACE_LIST):
-                try:
-                    return self._list_traces_clickhouse(
-                        request, project_version_id, analytics, query_params
-                    )
-                except Exception as e:
-                    logger.exception(
-                        "ClickHouse trace-list failed",
-                        error=str(e),
-                    )
-                    logger.warning("Falling back to Postgres trace list")
-
-            # Base query with annotations
-            base_query = Trace.objects.filter(
-                project=project_version.project,
-                project_version=project_version,
+            if not analytics.should_use_clickhouse(QueryType.TRACE_LIST):
+                return self._gm.bad_request(
+                    "TRACE_LIST is not routed to ClickHouse — "
+                    "trace list requires the CH path post-migration"
+                )
+            return self._list_traces_clickhouse(
+                request, project_version_id, analytics, query_params
             )
-
-            # Add trace_ids filter if provided
-            trace_ids = query_params["trace_ids"]
-            if trace_ids:
-                if len(trace_ids) > 0:
-                    base_query = base_query.filter(id__in=trace_ids)
-
-            # Annotate with node_type
-            base_query = base_query.annotate(
-                node_type=Case(
-                    When(
-                        Exists(
-                            ObservationSpan.objects.filter(
-                                trace_id=OuterRef("id"), parent_span_id__isnull=True
-                            )
-                        ),
-                        then=Subquery(
-                            ObservationSpan.objects.filter(
-                                trace_id=OuterRef("id"), parent_span_id__isnull=True
-                            ).values("observation_type")[:1]
-                        ),
-                    ),
-                    default=Value("unknown"),
-                    output_field=CharField(),
-                ),
-                trace_name=Case(
-                    When(
-                        Exists(
-                            ObservationSpan.objects.filter(
-                                trace_id=OuterRef("id"), parent_span_id__isnull=True
-                            )
-                        ),
-                        then=Subquery(
-                            ObservationSpan.objects.filter(
-                                trace_id=OuterRef("id"), parent_span_id__isnull=True
-                            ).values("name")[:1]
-                        ),
-                    ),
-                    default=Value("[ Incomplete Trace ]"),
-                    output_field=CharField(),
-                ),
-                trace_id=F("id"),
-                # Fetch span_attributes from root span (fallback to eval_attributes for old data)
-                span_attributes=Subquery(
-                    ObservationSpan.objects.filter(
-                        trace_id=OuterRef("id"), parent_span_id__isnull=True
-                    )
-                    .annotate(_attrs=Coalesce("span_attributes", "eval_attributes"))
-                    .values("_attrs")[:1]
-                ),
-                start_time=Coalesce(
-                    Subquery(
-                        ObservationSpan.objects.filter(
-                            trace_id=OuterRef("id"), parent_span_id__isnull=True
-                        )
-                        .order_by("start_time")
-                        .values("start_time")[:1]
-                    ),
-                    "created_at",
-                ),
-                status=Case(
-                    # Highest priority: any ERROR
-                    When(
-                        Exists(
-                            ObservationSpan.objects.filter(
-                                trace_id=OuterRef("id"), parent_span_id__isnull=True
-                            ).filter(status="ERROR")
-                        ),
-                        then=Value("ERROR"),
-                    ),
-                    # Next: any OK
-                    When(
-                        Exists(
-                            ObservationSpan.objects.filter(
-                                trace_id=OuterRef("id"), parent_span_id__isnull=True
-                            ).filter(status="OK")
-                        ),
-                        then=Value("OK"),
-                    ),
-                    # Otherwise: UNSET
-                    default=Value("UNSET"),
-                    output_field=CharField(),
-                ),
-            )
-
-            # Get all eval configs from the project version
-            eval_configs = CustomEvalConfig.objects.filter(
-                id__in=EvalLogger.objects.filter(
-                    trace__project_version_id=project_version_id
-                )
-                .values("custom_eval_config_id")
-                .distinct(),
-                deleted=False,
-            ).select_related("eval_template")
-
-            # Add annotations for each eval metric dynamically
-            for config in eval_configs:
-                choices = (
-                    config.eval_template.choices
-                    if config.eval_template.choices
-                    else None
-                )
-
-                metric_subquery = (
-                    EvalLogger.objects.filter(
-                        trace_id=OuterRef("id"), custom_eval_config_id=config.id
-                    )
-                    .exclude(Q(output_str="ERROR") | Q(error=True))
-                    .values("custom_eval_config_id")
-                    .annotate(
-                        float_score=Round(Avg("output_float") * 100, 2),
-                        bool_score=Round(
-                            Avg(
-                                Case(
-                                    When(output_bool=True, then=100),
-                                    When(output_bool=False, then=0),
-                                    default=None,
-                                    output_field=FloatField(),
-                                )
-                            ),
-                            2,
-                        ),
-                        str_list_score=JSONObject(
-                            **{
-                                f"{value}": JSONObject(
-                                    score=Round(
-                                        100.0
-                                        * Count(
-                                            Case(
-                                                When(
-                                                    output_str_list__contains=[value],
-                                                    then=1,
-                                                ),
-                                                default=None,
-                                                output_field=IntegerField(),
-                                            )
-                                        )
-                                        / Count("output_str_list"),
-                                        2,
-                                    )
-                                )
-                                for value in choices or []
-                            }
-                        ),
-                    )
-                    .values("float_score", "bool_score", "str_list_score")[:1]
-                )
-
-                base_query = base_query.annotate(
-                    **{
-                        f"metric_{config.id}": Case(
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_float__isnull=False,
-                                    )
-                                ),
-                                then=JSONObject(
-                                    score=Subquery(
-                                        metric_subquery.values("float_score")
-                                    )
-                                ),
-                            ),
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_bool__isnull=False,
-                                    )
-                                ),
-                                then=JSONObject(
-                                    score=Subquery(metric_subquery.values("bool_score"))
-                                ),
-                            ),
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_str_list__isnull=False,
-                                    )
-                                ),
-                                then=Subquery(metric_subquery.values("str_list_score")),
-                            ),
-                            default=None,
-                            output_field=JSONField(),
-                        )
-                    }
-                )
-
-            # Add Root Span Annotations
-            annotation_labels = get_annotation_labels_for_project(
-                project_version.project.id
-            )
-            base_query = self._build_annotation_subqueries(
-                base_query, annotation_labels, request.user.organization
-            )
-
-            # Apply filters - combine all filter conditions for better performance
-            filters = query_params["filters"]
-
-            if filters:
-                # Combine all filter conditions into a single Q object
-                combined_filter_conditions = Q()
-
-                # Get system metric filters
-                filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_system_metrics(filters)
-                )
-                if filter_conditions:
-                    combined_filter_conditions &= filter_conditions
-
-                # Separate annotation filters from eval filters since
-                # annotations are JSON objects
-                def _get_col_type(f):
-                    fc = f.get("filter_config", {})
-                    return fc.get("col_type", f.get("col_type", ""))
-
-                annotation_col_types = {"ANNOTATION"}
-                annotation_column_ids = {"my_annotations", "annotator"}
-                non_annotation_filters = [
-                    f
-                    for f in filters
-                    if _get_col_type(f) not in annotation_col_types
-                    and f.get("column_id") not in annotation_column_ids
-                ]
-
-                # Get eval metric filters (excluding annotation filters)
-                eval_filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_non_system_metrics(
-                        non_annotation_filters
-                    )
-                )
-                if eval_filter_conditions:
-                    combined_filter_conditions &= eval_filter_conditions
-
-                # Get annotation filters (score, annotator, my_annotations)
-                annotation_filter_conditions, extra_annotations = (
-                    FilterEngine.get_filter_conditions_for_voice_call_annotations(
-                        filters, user_id=request.user.id
-                    )
-                )
-                if extra_annotations:
-                    base_query = base_query.annotate(**extra_annotations)
-                if annotation_filter_conditions:
-                    combined_filter_conditions &= annotation_filter_conditions
-
-                # Get span attribute filters
-                span_attribute_conditions = (
-                    FilterEngine.get_filter_conditions_for_span_attributes(filters)
-                )
-                if span_attribute_conditions:
-                    combined_filter_conditions &= span_attribute_conditions
-
-                # Apply has_eval filter (only traces with evals)
-                has_eval_condition = FilterEngine.get_filter_conditions_for_has_eval(
-                    filters, observe_type="trace"
-                )
-                if has_eval_condition:
-                    combined_filter_conditions &= has_eval_condition
-
-                # Apply has_annotation filter
-                has_annotation_condition = (
-                    FilterEngine.get_filter_conditions_for_has_annotation(
-                        filters,
-                        observe_type="trace",
-                        annotation_label_ids=[str(l.id) for l in annotation_labels],
-                    )
-                )
-                if has_annotation_condition:
-                    combined_filter_conditions &= has_annotation_condition
-
-                # Apply combined filters in a single operation
-                if combined_filter_conditions:
-                    base_query = base_query.filter(combined_filter_conditions)
-
-            base_query = base_query.order_by("-start_time", "-id")
-
-            # Get total count before pagination
-            total_count = base_query.count()
-
-            # Apply pagination
-            page_number = query_params["page_number"]
-            page_size = query_params["page_size"]
-            start = page_number * page_size
-            base_query = base_query[start : start + page_size]
-
-            # Prepare column config
-            column_config = get_default_trace_config()
-            column_config = update_column_config_based_on_eval_config(
-                column_config, eval_configs
-            )
-            column_config = update_span_column_config_based_on_annotations(
-                column_config, annotation_labels
-            )
-
-            # Process results
-            table_data = []
-            for trace in base_query:
-                input_val = trace.input
-                output_val = trace.output
-
-                result = {
-                    "node_type": trace.node_type or "",
-                    "trace_id": str(trace.id),
-                    "input": input_val,
-                    "output": output_val,
-                    "trace_name": trace.trace_name or "",
-                    "start_time": trace.start_time,
-                    "status": trace.status,
-                }
-
-                # Add eval metrics from annotated fields
-                for config in eval_configs:
-                    data = getattr(trace, f"metric_{config.id}")
-                    if data and "score" in data:
-                        result[str(config.id)] = data["score"]
-                    elif data:
-                        for key, value in data.items():
-                            result[str(config.id) + "**" + key] = value["score"]
-
-                # Add Root Span Annotations
-                for label in annotation_labels:
-                    ann_data = getattr(trace, f"annotation_{label.id}", None)
-                    if ann_data is not None:
-                        result[str(label.id)] = ann_data
-
-                table_data.append(result)
-
-            response = {
-                "column_config": column_config,
-                "metadata": {"total_rows": total_count},
-                "table": table_data,
-            }
-
-            return self._gm.success_response(response)
 
         except Exception as e:
             logger.exception(f"Error in fetching the traces list: {str(e)}")
@@ -2375,423 +2013,67 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             if type not in ["EVAL", "ANNOTATION", "SYSTEM_METRIC"]:
                 return self._gm.bad_request("Filter property type is not valid")
 
+            # CH-only path post-migration. D-027: the previous PG fallback
+            # (root_span_qs / all_span_qs Subquery annotations over Trace
+            # + per-config metric pivot + Score subqueries for annotations
+            # + 4-stage filter combinator + dispatch into
+            # get_eval_graph_data / get_annotation_graph_data /
+            # get_system_metric_data with PG trace_ids_queryset) was
+            # deleted. CH path lives in the three fetch_*_graph_ch helpers.
+            # If neither TIME_SERIES (SYSTEM_METRIC) / EVAL_METRICS (EVAL)
+            # / ANNOTATION_GRAPH (ANNOTATION) is routed to CH, that's a
+            # config error — surface it as a 400.
             analytics = AnalyticsQueryService()
             if type == "SYSTEM_METRIC":
-                if analytics.should_use_clickhouse(QueryType.TIME_SERIES):
-                    try:
-                        return self._gm.success_response(
-                            fetch_system_metric_graph_ch(
-                                analytics=analytics,
-                                project_id=project_id,
-                                filters=filters,
-                                interval=interval,
-                                metric_id=req_data_config.get("id", "latency"),
-                            )
-                        )
-                    except Exception as e:
-                        logger.exception(
-                            "ClickHouse trace time-series graph failed",
-                            error=str(e),
-                        )
-                        logger.warning("Falling back to Postgres trace graph")
+                if not analytics.should_use_clickhouse(QueryType.TIME_SERIES):
+                    return self._gm.bad_request(
+                        "TIME_SERIES is not routed to ClickHouse — "
+                        "system-metric trace graph requires the CH path "
+                        "post-migration"
+                    )
+                return self._gm.success_response(
+                    fetch_system_metric_graph_ch(
+                        analytics=analytics,
+                        project_id=project_id,
+                        filters=filters,
+                        interval=interval,
+                        metric_id=req_data_config.get("id", "latency"),
+                    )
+                )
             elif type == "EVAL":
-                if analytics.should_use_clickhouse(QueryType.EVAL_METRICS):
-                    try:
-                        return self._gm.success_response(
-                            fetch_eval_graph_ch(
-                                analytics=analytics,
-                                project_id=project_id,
-                                filters=filters,
-                                interval=interval,
-                                req_data_config=req_data_config,
-                            )
-                        )
-                    except Exception as e:
-                        logger.exception(
-                            "ClickHouse trace eval graph failed",
-                            error=str(e),
-                        )
-                        logger.warning("Falling back to Postgres trace graph")
+                if not analytics.should_use_clickhouse(QueryType.EVAL_METRICS):
+                    return self._gm.bad_request(
+                        "EVAL_METRICS is not routed to ClickHouse — "
+                        "eval trace graph requires the CH path post-migration"
+                    )
+                return self._gm.success_response(
+                    fetch_eval_graph_ch(
+                        analytics=analytics,
+                        project_id=project_id,
+                        filters=filters,
+                        interval=interval,
+                        req_data_config=req_data_config,
+                    )
+                )
             elif type == "ANNOTATION":
-                if analytics.should_use_clickhouse(QueryType.ANNOTATION_GRAPH):
-                    try:
-                        return self._gm.success_response(
-                            fetch_annotation_graph_ch(
-                                analytics=analytics,
-                                project_id=project_id,
-                                filters=filters,
-                                interval=interval,
-                                req_data_config=req_data_config,
-                                observe_type="trace",
-                            )
-                        )
-                    except Exception as e:
-                        logger.exception(
-                            "ClickHouse trace annotation graph failed",
-                            error=str(e),
-                        )
-                        logger.warning("Falling back to Postgres trace graph")
-
-            if type in ("SYSTEM_METRIC", "EVAL", "ANNOTATION"):
-                logger.warning(
-                    "Observe trace graph is using the legacy PG path because "
-                    "ClickHouse is disabled for this query type",
-                    graph_type=type,
-                )
-
-            root_span_qs = (
-                ObservationSpan.objects.filter(trace_id=OuterRef("id"))
-                .filter(Q(parent_span_id__isnull=True) | Q(parent_span_id=""))
-                .order_by("start_time")
-            )
-            all_span_qs = ObservationSpan.objects.filter(trace_id=OuterRef("id"))
-
-            # Legacy fallback for test/local environments with ClickHouse
-            # routes disabled. Observe production routes above must return
-            # before this ORM path so filters are evaluated by ClickHouse.
-            base_query = Trace.objects.filter(project_id=project_id).annotate(
-                row_avg_latency_ms=Coalesce(
-                    Subquery(root_span_qs.values("latency_ms")[:1]),
-                    0,
-                    output_field=IntegerField(),
-                ),
-                row_avg_cost=Coalesce(
-                    Subquery(
-                        all_span_qs.values("trace_id")
-                        .annotate(total=Sum("cost"))
-                        .values("total")[:1]
-                    ),
-                    0.0,
-                    output_field=FloatField(),
-                ),
-                total_tokens=Coalesce(
-                    Subquery(
-                        all_span_qs.values("trace_id")
-                        .annotate(total=Sum("total_tokens"))
-                        .values("total")[:1]
-                    ),
-                    0,
-                    output_field=IntegerField(),
-                ),
-                avg_input_tokens=Coalesce(
-                    Subquery(
-                        all_span_qs.values("trace_id")
-                        .annotate(total=Sum("prompt_tokens"))
-                        .values("total")[:1]
-                    ),
-                    0,
-                    output_field=IntegerField(),
-                ),
-                avg_output_tokens=Coalesce(
-                    Subquery(
-                        all_span_qs.values("trace_id")
-                        .annotate(total=Sum("completion_tokens"))
-                        .values("total")[:1]
-                    ),
-                    0,
-                    output_field=IntegerField(),
-                ),
-                node_type=Subquery(
-                    root_span_qs.values("observation_type")[:1]
-                ),
-                trace_name=Subquery(
-                    root_span_qs.values("name")[:1]
-                ),
-                trace_id=F("id"),
-                # Fetch span_attributes from root span (fallback to eval_attributes for old data)
-                span_attributes=Subquery(
-                    root_span_qs.annotate(
-                        _attrs=Coalesce("span_attributes", "eval_attributes")
-                    ).values("_attrs")[:1]
-                ),
-                user_id=Subquery(
-                    root_span_qs.values("end_user__user_id")[:1]
-                ),
-                start_time=Coalesce(
-                    Subquery(root_span_qs.values("start_time")[:1]),
-                    "created_at",
-                ),
-                status=Case(
-                    # Highest priority: any ERROR
-                    When(
-                        Exists(
-                            root_span_qs.filter(status="ERROR")
-                        ),
-                        then=Value("ERROR"),
-                    ),
-                    # Next: any OK
-                    When(
-                        Exists(
-                            root_span_qs.filter(status="OK")
-                        ),
-                        then=Value("OK"),
-                    ),
-                    # Otherwise: UNSET
-                    default=Value("UNSET"),
-                    output_field=CharField(),
-                ),
-            )
-
-            # Get all eval configs for the project
-            eval_configs = CustomEvalConfig.objects.filter(
-                id__in=EvalLogger.objects.filter(trace__project_id=project_id)
-                .values("custom_eval_config_id")
-                .distinct(),
-                deleted=False,
-            ).select_related("eval_template")
-
-            # Add annotations for each eval metric dynamically
-            for config in eval_configs:
-                choices = (
-                    config.eval_template.choices
-                    if config.eval_template.choices
-                    else None
-                )
-                metric_subquery = (
-                    EvalLogger.objects.filter(
-                        trace_id=OuterRef("id"), custom_eval_config_id=config.id
+                if not analytics.should_use_clickhouse(QueryType.ANNOTATION_GRAPH):
+                    return self._gm.bad_request(
+                        "ANNOTATION_GRAPH is not routed to ClickHouse — "
+                        "annotation trace graph requires the CH path "
+                        "post-migration"
                     )
-                    .exclude(Q(output_str="ERROR") | Q(error=True))
-                    .values("custom_eval_config_id")
-                    .annotate(
-                        float_score=Round(Avg("output_float") * 100, 2),
-                        bool_score=Round(
-                            Avg(
-                                Case(
-                                    When(output_bool=True, then=100),
-                                    When(output_bool=False, then=0),
-                                    default=None,
-                                    output_field=FloatField(),
-                                )
-                            ),
-                            2,
-                        ),
-                        str_list_score=JSONObject(
-                            **{
-                                f"{value}": JSONObject(
-                                    score=Round(
-                                        100.0
-                                        * Count(
-                                            Case(
-                                                When(
-                                                    output_str_list__contains=[value],
-                                                    then=1,
-                                                ),
-                                                default=None,
-                                                output_field=IntegerField(),
-                                            )
-                                        )
-                                        / Count("output_str_list"),
-                                        2,
-                                    )
-                                )
-                                for value in choices or []
-                            }
-                        ),
-                    )
-                    .values("float_score", "bool_score", "str_list_score")[:1]
-                )
-
-                base_query = base_query.annotate(
-                    **{
-                        f"metric_{config.id}": Case(
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_float__isnull=False,
-                                    )
-                                ),
-                                then=JSONObject(
-                                    score=Subquery(
-                                        metric_subquery.values("float_score")
-                                    )
-                                ),
-                            ),
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_bool__isnull=False,
-                                    )
-                                ),
-                                then=JSONObject(
-                                    score=Subquery(metric_subquery.values("bool_score"))
-                                ),
-                            ),
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_str_list__isnull=False,
-                                    )
-                                ),
-                                then=Subquery(metric_subquery.values("str_list_score")),
-                            ),
-                            default=None,
-                            output_field=JSONField(),
-                        )
-                    }
-                )
-
-            # Add Span Annotations
-            annotation_labels = get_annotation_labels_for_project(project_id)
-            base_query = self._build_annotation_subqueries(
-                base_query, annotation_labels, request.user.organization
-            )
-
-            # Apply filters
-            if filters:
-                # Apply system metric filters
-                system_filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_system_metrics(filters)
-                )
-                if system_filter_conditions:
-                    base_query = base_query.filter(system_filter_conditions)
-
-                # Apply voice system metric filters (agent latency, turn count, etc.)
-                voice_metric_conditions, voice_annotations = (
-                    FilterEngine.get_filter_conditions_for_voice_system_metrics(filters)
-                )
-                if voice_annotations:
-                    base_query = base_query.annotate(**voice_annotations)
-                if voice_metric_conditions:
-                    base_query = base_query.filter(voice_metric_conditions)
-
-                # Separate annotation filters from eval filters since
-                # annotations are JSON objects
-                def _get_col_type(f):
-                    fc = f.get("filter_config", {})
-                    return fc.get("col_type", f.get("col_type", ""))
-
-                annotation_col_types = {"ANNOTATION"}
-                annotation_column_ids = {"my_annotations", "annotator"}
-                non_annotation_filters = [
-                    f
-                    for f in filters
-                    if _get_col_type(f) not in annotation_col_types
-                    and f.get("column_id") not in annotation_column_ids
-                ]
-
-                # Apply eval metric filters (excluding annotation filters)
-                eval_filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_non_system_metrics(
-                        non_annotation_filters
-                    )
-                )
-                if eval_filter_conditions:
-                    base_query = base_query.filter(eval_filter_conditions)
-
-                # Apply annotation filters (score, annotator, my_annotations)
-                annotation_filter_conditions, extra_annotations = (
-                    FilterEngine.get_filter_conditions_for_voice_call_annotations(
-                        filters, user_id=request.user.id
-                    )
-                )
-                if extra_annotations:
-                    base_query = base_query.annotate(**extra_annotations)
-                if annotation_filter_conditions:
-                    base_query = base_query.filter(annotation_filter_conditions)
-
-                # Apply span attribute filters
-                span_attribute_conditions = (
-                    FilterEngine.get_filter_conditions_for_span_attributes(filters)
-                )
-                if span_attribute_conditions:
-                    base_query = base_query.filter(span_attribute_conditions)
-
-                # Apply has_eval filter (only traces with evals)
-                has_eval_condition = FilterEngine.get_filter_conditions_for_has_eval(
-                    filters, observe_type="trace"
-                )
-                if has_eval_condition:
-                    base_query = base_query.filter(has_eval_condition)
-
-                # Apply has_annotation filter
-                has_annotation_condition = (
-                    FilterEngine.get_filter_conditions_for_has_annotation(
-                        filters,
+                return self._gm.success_response(
+                    fetch_annotation_graph_ch(
+                        analytics=analytics,
+                        project_id=project_id,
+                        filters=filters,
+                        interval=interval,
+                        req_data_config=req_data_config,
                         observe_type="trace",
-                        annotation_label_ids=[str(l.id) for l in annotation_labels],
                     )
                 )
-                if has_annotation_condition:
-                    base_query = base_query.filter(has_annotation_condition)
+            return self._gm.bad_request("Filter property type is not valid")
 
-            filtered_trace_queryset = base_query
-
-            if type == "EVAL":
-                graph_data = get_eval_graph_data(
-                    interval=interval,
-                    filters=filters,
-                    property=property,
-                    observe_type="trace",
-                    req_data_config=req_data_config,
-                    eval_logger_filters={"trace_ids_queryset": filtered_trace_queryset},
-                )
-
-            elif type == "ANNOTATION":
-                graph_data = get_annotation_graph_data(
-                    interval=interval,
-                    filters=filters,
-                    property=property,
-                    observe_type="trace",
-                    req_data_config=req_data_config,
-                    annotation_logger_filters={
-                        "trace_ids_queryset": filtered_trace_queryset
-                    },
-                )
-
-            elif type == "SYSTEM_METRIC":
-                graph_data = get_system_metric_data(
-                    interval=interval,
-                    filters=filters,
-                    property=property,
-                    req_data_config=req_data_config,
-                    system_metric_filters={
-                        "trace_ids_queryset": filtered_trace_queryset
-                    },
-                    observe_type="trace",
-                )
-
-            if not graph_data:
-                # Add debug information
-                logger.info(
-                    f"""
-                    Graph data empty with params:
-                    - Project ID: {project_id}
-                    - Property: {property}
-                    - Interval: {interval}
-                """
-                )
-
-            data_fetched = graph_data.get("data", [])
-            if len(data_fetched) == 0:
-                # Find the filter with column_id == "created_at"
-                created_at_filter = None
-                for f in filters:
-                    if f.get("column_id") == "created_at":
-                        created_at_filter = f
-                        break
-
-                if not created_at_filter:
-                    return self._gm.success_response(graph_data)
-
-                filter_config = created_at_filter.get("filter_config", {})
-                filter_value = filter_config.get("filter_value", [])
-                if not (isinstance(filter_value, list) and len(filter_value) == 2):
-                    return self._gm.success_response(graph_data)
-
-                start = datetime.strptime(filter_value[0], "%Y-%m-%dT%H:%M:%S.%fZ")
-                end = datetime.strptime(filter_value[1], "%Y-%m-%dT%H:%M:%S.%fZ")
-
-                timestamps = generate_timestamps(interval, start, end)
-                graph_data["data"] = timestamps
-
-            return self._gm.success_response(graph_data)
 
         except Exception as e:
             logger.exception(f"Error in get_graph_methods: {str(e)}")
@@ -2845,6 +2127,14 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         """
         Compare traces across project versions with optimized queries.
         """
+        # CH25-TODO: this endpoint has no CH dispatch — it does PG-side
+        # Trace.objects + ObservationSpan Subquery + EvalLogger pivot to
+        # build cross-version comparison rows and then calls the PG-only
+        # get_observation_spans() helper. Migrating cleanly needs a CH
+        # cross-version reader plus the orphaned-span tree builder lifted
+        # from get_observation_spans. Staying PG-only until the
+        # compare_traces endpoint is either retired or a CH cross-version
+        # comparison reader exists.
         try:
             project_version_ids = self.request.data.get("project_version_ids", [])
             index = self.request.data.get("index", 0)
@@ -3098,6 +2388,12 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         """
         Get the previous and next trace id by index using efficient database queries.
         """
+        # CH25-TODO: PG-only prev/next navigation for experiment traces
+        # (project_version-scoped). Needs the same eval/annotation filter
+        # pivot the CH TraceListQueryBuilder produces plus a "by-start_time
+        # prev/next" step. Reader-gap candidate documented inline in
+        # observation_span.py (potential
+        # `prev_next_trace_by_start_time(...)` method).
         try:
             query = request.validated_query_data
             trace_id = str(query["trace_id"])
@@ -3390,423 +2686,33 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                     raise Exception("Project should be of type observe or experiment")
                 org_project_ids = None
 
-            # ClickHouse dispatch
+            # CH-only path post-migration. D-027: the previous PG fallback
+            # body (Trace.objects + _root_span_qs / _all_span_qs /
+            # _end_user_span_qs Subquery annotations + per-config EvalLogger
+            # metric pivot + build_annotation_subqueries + 4-stage filter
+            # combinator + Python pivot) was deleted. CH path lives in
+            # _list_traces_of_session_clickhouse via TraceListQueryBuilder.
+            # If TRACE_OF_SESSION_LIST isn't routed to CH that's a config
+            # error — surface as 400. (NOTE: the legacy PG path supported
+            # export=True by skipping pagination; the CH path always
+            # paginates. Export of traces-of-session beyond the first page
+            # is unsupported post-migration — feature parity tracked as a
+            # follow-up if needed.)
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.TRACE_OF_SESSION_LIST):
-                try:
-                    return self._list_traces_of_session_clickhouse(
-                        request,
-                        project_id,
-                        validated_data,
-                        analytics,
-                        org_project_ids=org_project_ids,
-                        org=org,
-                    )
-                except Exception as e:
-                    logger.exception(
-                        "CH traces-of-session failed",
-                        error=str(e),
-                    )
-                    logger.warning("Falling back to Postgres traces-of-session list")
-
-            # Get pagination parameters
-            page_number = validated_data["page_number"]
-            page_size = validated_data["page_size"]
-
-            base_query = (
-                Trace.objects.filter(project_id__in=org_project_ids)
-                if org_scope
-                else Trace.objects.filter(project_id=project_id)
-            )
-            if session_id:
-                base_query = base_query.filter(session_id=session_id)
-
-            # Optional project_version_id filter (for experiment/prototype projects)
-            project_version_id = (
-                str(validated_data["project_version_id"])
-                if validated_data.get("project_version_id")
-                else None
-            )
-            # Common annotation expressions (used with and without project_version_id)
-            _root_span_qs = ObservationSpan.objects.filter(
-                trace_id=OuterRef("id"), parent_span_id__isnull=True
-            )
-            _all_span_qs = ObservationSpan.objects.filter(trace_id=OuterRef("id"))
-            _end_user_span_qs = ObservationSpan.objects.filter(
-                trace_id=OuterRef("id"), end_user__isnull=False
-            ).order_by("start_time")
-
-            _common_annotations = dict(
-                node_type=Case(
-                    When(
-                        Exists(_root_span_qs),
-                        then=Subquery(_root_span_qs.values("observation_type")[:1]),
-                    ),
-                    default=Value("unknown"),
-                    output_field=CharField(),
-                ),
-                trace_name=Case(
-                    When(
-                        Exists(_root_span_qs),
-                        then=Subquery(_root_span_qs.values("name")[:1]),
-                    ),
-                    default=Value("[ Incomplete Trace ]"),
-                    output_field=CharField(),
-                ),
-                latency=Case(
-                    When(
-                        Exists(_root_span_qs),
-                        then=Subquery(_root_span_qs.values("latency_ms")[:1]),
-                    ),
-                    output_field=IntegerField(),
-                ),
-                total_tokens=Coalesce(
-                    Subquery(
-                        _all_span_qs.values("trace_id")
-                        .annotate(total=Sum("total_tokens"))
-                        .values("total")[:1]
-                    ),
-                    0,
-                    output_field=IntegerField(),
-                ),
-                total_cost=Coalesce(
-                    Subquery(
-                        _all_span_qs.values("trace_id")
-                        .annotate(total=Sum("cost"))
-                        .values("total")[:1]
-                    ),
-                    0,
-                    output_field=FloatField(),
-                ),
-                trace_id=F("id"),
-                # Fetch span_attributes from root span (fallback to eval_attributes for old data)
-                span_attributes=Subquery(
-                    ObservationSpan.objects.filter(
-                        trace_id=OuterRef("id"), parent_span_id__isnull=True
-                    )
-                    .annotate(_attrs=Coalesce("span_attributes", "eval_attributes"))
-                    .values("_attrs")[:1]
-                ),
-                user_id=Subquery(
-                    ObservationSpan.objects.filter(
-                        trace_id=OuterRef("id"), end_user__isnull=False
-                    )
-                    .order_by("start_time")
-                    .values("end_user__user_id")[:1]
-                ),
-                user_id_type=Subquery(
-                    _end_user_span_qs.values("end_user__user_id_type")[:1]
-                ),
-                user_id_hash=Subquery(
-                    _end_user_span_qs.values("end_user__user_id_hash")[:1]
-                ),
-                start_time=Coalesce(
-                    Subquery(
-                        _root_span_qs.order_by("start_time").values("start_time")[:1]
-                    ),
-                    "created_at",
-                ),
-                status=Case(
-                    When(
-                        Exists(_root_span_qs.filter(status="ERROR")),
-                        then=Value("ERROR"),
-                    ),
-                    When(
-                        Exists(_root_span_qs.filter(status="OK")),
-                        then=Value("OK"),
-                    ),
-                    default=Value("UNSET"),
-                    output_field=CharField(),
-                ),
+            if not analytics.should_use_clickhouse(QueryType.TRACE_OF_SESSION_LIST):
+                return self._gm.bad_request(
+                    "TRACE_OF_SESSION_LIST is not routed to ClickHouse — "
+                    "traces-of-session list requires the CH path post-migration"
+                )
+            return self._list_traces_of_session_clickhouse(
+                request,
+                project_id,
+                validated_data,
+                analytics,
+                org_project_ids=org_project_ids,
+                org=org,
             )
 
-            if project_version_id:
-                base_query = (
-                    base_query.filter(
-                        observation_spans__project_version_id=project_version_id,
-                        observation_spans__parent_span_id__isnull=True,
-                    )
-                    .distinct()
-                    .annotate(**_common_annotations)
-                )
-            else:
-                base_query = base_query.annotate(**_common_annotations)
-
-            # Get all eval configs for the project (or all org projects in
-            # org-scoped mode)
-            _eval_logger_qs = (
-                EvalLogger.objects.filter(trace__project_id__in=org_project_ids)
-                if org_scope
-                else EvalLogger.objects.filter(trace__project_id=project_id)
-            )
-            eval_configs = CustomEvalConfig.objects.filter(
-                id__in=_eval_logger_qs.values("custom_eval_config_id").distinct(),
-                deleted=False,
-            ).select_related("eval_template")
-
-            # Add annotations for each eval metric dynamically
-            for config in eval_configs:
-                choices = (
-                    config.eval_template.choices
-                    if config.eval_template.choices
-                    else None
-                )
-                metric_subquery = (
-                    EvalLogger.objects.filter(
-                        trace_id=OuterRef("id"), custom_eval_config_id=config.id
-                    )
-                    .exclude(Q(output_str="ERROR") | Q(error=True))
-                    .values("custom_eval_config_id")
-                    .annotate(
-                        float_score=Round(Avg("output_float") * 100, 2),
-                        bool_score=Round(
-                            Avg(
-                                Case(
-                                    When(output_bool=True, then=100),
-                                    When(output_bool=False, then=0),
-                                    default=None,
-                                    output_field=FloatField(),
-                                )
-                            ),
-                            2,
-                        ),
-                        str_list_score=JSONObject(
-                            **{
-                                f"{value}": JSONObject(
-                                    score=Round(
-                                        100.0
-                                        * Count(
-                                            Case(
-                                                When(
-                                                    output_str_list__contains=[value],
-                                                    then=1,
-                                                ),
-                                                default=None,
-                                                output_field=IntegerField(),
-                                            )
-                                        )
-                                        / Count("output_str_list"),
-                                        2,
-                                    )
-                                )
-                                for value in choices or []
-                            }
-                        ),
-                    )
-                    .values("float_score", "bool_score", "str_list_score")[:1]
-                )
-
-                base_query = base_query.annotate(
-                    **{
-                        f"metric_{config.id}": Case(
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_float__isnull=False,
-                                    )
-                                ),
-                                then=JSONObject(
-                                    score=Subquery(
-                                        metric_subquery.values("float_score")
-                                    )
-                                ),
-                            ),
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_bool__isnull=False,
-                                    )
-                                ),
-                                then=JSONObject(
-                                    score=Subquery(metric_subquery.values("bool_score"))
-                                ),
-                            ),
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_str_list__isnull=False,
-                                    )
-                                ),
-                                then=Subquery(metric_subquery.values("str_list_score")),
-                            ),
-                            default=None,
-                            output_field=JSONField(),
-                        ),
-                    }
-                )
-
-            # Add Span Annotations. In org-scoped mode we skip annotation
-            # labels (deferred enhancement — the helper only supports a
-            # single project).
-            annotation_labels = (
-                [] if org_scope else get_annotation_labels_for_project(project_id)
-            )
-            base_query = self._build_annotation_subqueries(
-                base_query, annotation_labels, request.user.organization
-            )
-
-            # Apply filters
-            filters = validated_data.get("filters", [])
-            if filters:
-                # Apply system metric filters
-                system_filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_system_metrics(filters)
-                )
-                if system_filter_conditions:
-                    base_query = base_query.filter(system_filter_conditions)
-
-                # Separate annotation filters from eval filters since
-                # annotations are JSON objects
-                def _get_col_type(f):
-                    fc = f.get("filter_config", {})
-                    return fc.get("col_type", f.get("col_type", ""))
-
-                annotation_col_types = {"ANNOTATION"}
-                annotation_column_ids = {"my_annotations", "annotator"}
-                non_annotation_filters = [
-                    f
-                    for f in filters
-                    if _get_col_type(f) not in annotation_col_types
-                    and f.get("column_id") not in annotation_column_ids
-                ]
-
-                # Apply eval metric filters (excluding annotation filters)
-                eval_filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_non_system_metrics(
-                        non_annotation_filters
-                    )
-                )
-                if eval_filter_conditions:
-                    base_query = base_query.filter(eval_filter_conditions)
-
-                # Apply annotation filters (score, annotator, my_annotations)
-                annotation_filter_conditions, extra_annotations = (
-                    FilterEngine.get_filter_conditions_for_voice_call_annotations(
-                        filters, user_id=request.user.id
-                    )
-                )
-                if extra_annotations:
-                    base_query = base_query.annotate(**extra_annotations)
-                if annotation_filter_conditions:
-                    base_query = base_query.filter(annotation_filter_conditions)
-
-                # Apply span attribute filters
-                span_attribute_conditions = (
-                    FilterEngine.get_filter_conditions_for_span_attributes(filters)
-                )
-                if span_attribute_conditions:
-                    base_query = base_query.filter(span_attribute_conditions)
-
-                # Apply has_eval filter (only traces with evals)
-                has_eval_condition = FilterEngine.get_filter_conditions_for_has_eval(
-                    filters, observe_type="trace"
-                )
-                if has_eval_condition:
-                    base_query = base_query.filter(has_eval_condition)
-
-                # Apply has_annotation filter
-                has_annotation_condition = (
-                    FilterEngine.get_filter_conditions_for_has_annotation(
-                        filters,
-                        observe_type="trace",
-                        annotation_label_ids=[str(l.id) for l in annotation_labels],
-                    )
-                )
-                if has_annotation_condition:
-                    base_query = base_query.filter(has_annotation_condition)
-
-            base_query = base_query.order_by("-start_time", "-id")
-
-            # Get total count before pagination
-            total_count = base_query.count()
-
-            # Apply pagination
-            start = page_number * page_size
-            base_query = base_query if export else base_query[start : start + page_size]
-
-            # Prepare column config — get_default_trace_config() already includes
-            # all standard columns (latency, tokens, cost, user_id, etc.)
-            column_config = get_default_trace_config()
-            column_config = update_column_config_based_on_eval_config(
-                column_config, eval_configs
-            )
-            column_config = update_span_column_config_based_on_annotations(
-                column_config, annotation_labels
-            )
-
-            # Process results
-            table_data = []
-            for trace in base_query:
-                input_val = trace.input
-                output_val = trace.output
-
-                result = {
-                    "trace_id": str(trace.id),
-                    "project_id": str(trace.project_id),
-                    "input": input_val,
-                    "output": output_val,
-                    "created_at": trace.created_at.isoformat() + "Z",
-                    "node_type": trace.node_type or "",
-                    "latency": trace.latency,
-                    "total_tokens": trace.total_tokens,
-                    "total_cost": round(trace.total_cost, 6) if trace.total_cost else 0,
-                    "user_id": trace.user_id,
-                    "user_id_type": trace.user_id_type,
-                    "user_id_hash": trace.user_id_hash,
-                    "trace_name": trace.trace_name or "",
-                    "start_time": trace.start_time,
-                    "status": trace.status,
-                }
-
-                # Add eval metrics from annotated fields
-                for config in eval_configs:
-                    data = getattr(trace, f"metric_{config.id}")
-                    if data and "score" in data:
-                        score = data["score"]
-                        result[str(config.id)] = (
-                            round(score, 2) if score is not None else None
-                        )
-                    elif data:
-                        for key, value in data.items():
-                            score = (
-                                value["score"]
-                                if isinstance(value, dict) and "score" in value
-                                else None
-                            )
-                            result[str(config.id) + "**" + key] = (
-                                round(score, 2) if score is not None else None
-                            )
-
-                # Add Root Span Annotations
-                for label in annotation_labels:
-                    ann_data = getattr(trace, f"annotation_{label.id}", None)
-                    if ann_data is not None:
-                        result[str(label.id)] = ann_data
-
-                # Include trace metadata as flat keys for custom columns
-                if trace.metadata and isinstance(trace.metadata, dict):
-                    for key, value in trace.metadata.items():
-                        if key not in result:
-                            if isinstance(value, str) and len(value) > 500:
-                                result[key] = value[:500] + "..."
-                            else:
-                                result[key] = value
-
-                table_data.append(result)
-
-            response = {
-                "metadata": {"total_rows": total_count},
-                "table": table_data,
-                "config": column_config,
-            }
-
-            return self._gm.success_response(response)
 
         except Exception as e:
             logger.exception(f"Error in fetching the traces list of observe: {str(e)}")
@@ -3844,189 +2750,31 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                 or self.request.user.organization,
             )
 
-            # ClickHouse for pagination + PG for span_attributes (hybrid)
+            # CH-only path post-migration. D-027: the previous PG fallback
+            # body (Trace.objects + has_conversation_root Exists +
+            # span_attributes Subquery from root_span_qs + per-config
+            # EvalLogger metric pivot via self.get_eval_configs +
+            # build_annotation_subqueries + 5-stage filter combinator +
+            # ExtendedPageNumberPagination + populate_call_logs_result on
+            # the PG queryset) was deleted. CH path lives in
+            # _list_voice_calls_clickhouse via VoiceCallListQueryBuilder.
+            # Already gated by `should_use_clickhouse` and CH failure was
+            # already a bad_request — making the route strictly CH-only is
+            # the natural cleanup.
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.VOICE_CALL_LIST):
-                try:
-                    return self._list_voice_calls_clickhouse(
-                        request,
-                        project_id,
-                        validated_data,
-                        remove_simulation_calls,
-                        analytics,
-                    )
-                except Exception as e:
-                    logger.exception(
-                        "CH voice-call-list failed",
-                        error=str(e),
-                    )
-                    return self._gm.bad_request("ClickHouse voice call list failed")
-
-            # Build optimized base query: only traces whose root span is a conversation
-            root_span_qs = ObservationSpan.objects.filter(
-                trace_id=OuterRef("id"), parent_span_id__isnull=True
+            if not analytics.should_use_clickhouse(QueryType.VOICE_CALL_LIST):
+                return self._gm.bad_request(
+                    "VOICE_CALL_LIST is not routed to ClickHouse — "
+                    "voice-call list requires the CH path post-migration"
+                )
+            return self._list_voice_calls_clickhouse(
+                request,
+                project_id,
+                validated_data,
+                remove_simulation_calls,
+                analytics,
             )
 
-            base_query = (
-                Trace.objects.filter(project_id=project_id)
-                .annotate(
-                    has_conversation_root=Exists(
-                        root_span_qs.filter(observation_type="conversation")
-                    ),
-                    trace_id=F("id"),
-                    # Fetch span_attributes from root span (fallback to eval_attributes for old data)
-                    span_attributes=Subquery(
-                        root_span_qs.annotate(
-                            _attrs=Coalesce("span_attributes", "eval_attributes")
-                        ).values("_attrs")[:1]
-                    ),
-                    root_metadata=Subquery(root_span_qs.values("metadata")[:1]),
-                    provider=Subquery(root_span_qs.values("provider")[:1]),
-                    start_time=Coalesce(
-                        Subquery(
-                            root_span_qs.order_by("start_time").values("start_time")[:1]
-                        ),
-                        "created_at",
-                    ),
-                    end_time=Subquery(
-                        root_span_qs.order_by("-end_time").values("end_time")[:1]
-                    ),
-                    status=Case(
-                        When(
-                            Exists(root_span_qs.filter(status="ERROR")),
-                            then=Value("ERROR"),
-                        ),
-                        When(
-                            Exists(root_span_qs.filter(status="OK")),
-                            then=Value("OK"),
-                        ),
-                        default=Value("UNSET"),
-                        output_field=CharField(),
-                    ),
-                )
-                .filter(has_conversation_root=True)
-            )
-
-            eval_configs, base_query = self.get_eval_configs(project_id, base_query)
-
-            # Add Span Annotations
-            annotation_labels = get_annotation_labels_for_project(project_id)
-
-            base_query = self._build_annotation_subqueries(
-                base_query, annotation_labels, request.user.organization
-            )
-
-            filters = validated_data.get("filters", [])
-            if filters:
-                # Apply system metric filters
-                system_filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_system_metrics(filters)
-                )
-                if system_filter_conditions:
-                    base_query = base_query.filter(system_filter_conditions)
-
-                # Apply voice system metric filters (agent latency, turn count, etc.)
-                voice_metric_conditions, voice_annotations = (
-                    FilterEngine.get_filter_conditions_for_voice_system_metrics(filters)
-                )
-                if voice_annotations:
-                    base_query = base_query.annotate(**voice_annotations)
-                if voice_metric_conditions:
-                    base_query = base_query.filter(voice_metric_conditions)
-
-                # Separate annotation filters from eval filters since voice call
-                # annotations are JSON objects (not scalars like in list_traces)
-                def _get_col_type(f):
-                    fc = f.get("filter_config", {})
-                    return fc.get("col_type", f.get("col_type", ""))
-
-                annotation_col_types = {"ANNOTATION"}
-                annotation_column_ids = {"my_annotations", "annotator"}
-                non_annotation_filters = [
-                    f
-                    for f in filters
-                    if _get_col_type(f) not in annotation_col_types
-                    and f.get("column_id") not in annotation_column_ids
-                ]
-
-                # Apply eval metric filters (excluding annotation filters)
-                eval_filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_non_system_metrics(
-                        non_annotation_filters
-                    )
-                )
-                if eval_filter_conditions:
-                    base_query = base_query.filter(eval_filter_conditions)
-
-                # Apply annotation filters (score, annotator, my_annotations)
-                annotation_filter_conditions, extra_annotations = (
-                    FilterEngine.get_filter_conditions_for_voice_call_annotations(
-                        filters, user_id=request.user.id
-                    )
-                )
-                if extra_annotations:
-                    base_query = base_query.annotate(**extra_annotations)
-                if annotation_filter_conditions:
-                    base_query = base_query.filter(annotation_filter_conditions)
-
-                # Apply span attribute filters
-                span_attribute_conditions = (
-                    FilterEngine.get_filter_conditions_for_span_attributes(filters)
-                )
-                if span_attribute_conditions:
-                    base_query = base_query.filter(span_attribute_conditions)
-
-                # Apply has_eval filter (only traces with evals)
-                has_eval_condition = FilterEngine.get_filter_conditions_for_has_eval(
-                    filters, observe_type="trace"
-                )
-                if has_eval_condition:
-                    base_query = base_query.filter(has_eval_condition)
-
-                # Apply has_annotation filter
-                has_annotation_condition = (
-                    FilterEngine.get_filter_conditions_for_has_annotation(
-                        filters,
-                        observe_type="trace",
-                        annotation_label_ids=[str(l.id) for l in annotation_labels],
-                    )
-                )
-                if has_annotation_condition:
-                    base_query = base_query.filter(has_annotation_condition)
-
-                # Hide FutureAGI simulator calls
-                remove_simulator_calls_conditions = (
-                    FilterEngine.get_filter_conditions_for_simulation_calls(
-                        remove_simulation_calls=remove_simulation_calls
-                    )
-                )
-                if remove_simulator_calls_conditions:
-                    base_query = base_query.exclude(remove_simulator_calls_conditions)
-
-            base_query = base_query.order_by("-start_time", "-id")
-
-            # Build column config for voice observability (simulator) projects
-            column_config = update_column_config_based_on_eval_config(
-                [], eval_configs, skip_choices=True, is_simulator=True
-            )
-            column_config = update_span_column_config_based_on_annotations(
-                column_config, annotation_labels
-            )
-
-            # Use ExtendedPageNumberPagination
-            paginator = ExtendedPageNumberPagination()
-            # Respect page_size if provided; fallback to 'limit' which paginator supports
-            paginator.page_size = validated_data.get("page_size", paginator.page_size)
-            page_qs = paginator.paginate_queryset(base_query, request, view=self)
-
-            results = self.populate_call_logs_result(
-                page_qs, eval_configs, annotation_labels=annotation_labels
-            )
-
-            # Get paginated response and add column config
-            response = paginator.get_paginated_response(results)
-            response.data["config"] = column_config
-            return response
 
         except NotFound:
             raise
@@ -4571,261 +3319,24 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
 
             filters = query["filters"]
 
-            # ClickHouse dispatch — simple prev/next by start_time
+            # CH-only path post-migration. D-027: the previous PG fallback
+            # body (Trace.objects + 4 ObservationSpan Subquery annotations
+            # for node_type / trace_name / user_id / span_attributes +
+            # per-config EvalLogger metric pivot + build_annotation_subqueries
+            # + 4-stage filter combinator + by-start_time prev/next pick)
+            # was deleted. CH path lives in
+            # _get_trace_id_by_index_observe_clickhouse and uses the spans
+            # table directly with cursor-style start_time comparisons.
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.TRACE_OF_SESSION_LIST):
-                try:
-                    return self._get_trace_id_by_index_observe_clickhouse(
-                        request, trace_id, project_id, filters, analytics
-                    )
-                except Exception as e:
-                    logger.exception(
-                        "CH get_trace_id_by_index_observe failed",
-                        error=str(e),
-                    )
-                    logger.warning("Falling back to Postgres trace observe navigation")
-
-            # PG fallback — base query with annotations
-            base_query = Trace.objects.filter(project=project).annotate(
-                node_type=Subquery(
-                    ObservationSpan.objects.filter(
-                        trace_id=OuterRef("id"), parent_span_id__isnull=True
-                    ).values("observation_type")[:1]
-                ),
-                trace_id=F("id"),
-                trace_name=Subquery(
-                    ObservationSpan.objects.filter(
-                        trace_id=OuterRef("id"), parent_span_id__isnull=True
-                    ).values("name")[:1]
-                ),
-                user_id=Subquery(
-                    ObservationSpan.objects.filter(
-                        trace_id=OuterRef("id"), parent_span_id__isnull=True
-                    ).values("end_user__user_id")[:1]
-                ),
-                # Fetch span_attributes from root span (fallback to eval_attributes for old data)
-                span_attributes=Subquery(
-                    ObservationSpan.objects.filter(
-                        trace_id=OuterRef("id"), parent_span_id__isnull=True
-                    )
-                    .annotate(_attrs=Coalesce("span_attributes", "eval_attributes"))
-                    .values("_attrs")[:1]
-                ),
-                start_time=Coalesce(
-                    Subquery(
-                        ObservationSpan.objects.filter(
-                            trace_id=OuterRef("id"), parent_span_id__isnull=True
-                        )
-                        .order_by("start_time")
-                        .values("start_time")[:1]
-                    ),
-                    "created_at",
-                ),
+            if not analytics.should_use_clickhouse(QueryType.TRACE_OF_SESSION_LIST):
+                return self._gm.bad_request(
+                    "TRACE_OF_SESSION_LIST is not routed to ClickHouse — "
+                    "trace observe navigation requires the CH path post-migration"
+                )
+            return self._get_trace_id_by_index_observe_clickhouse(
+                request, trace_id, project_id, filters, analytics
             )
 
-            # Get all eval configs for the project
-            eval_configs = CustomEvalConfig.objects.filter(
-                id__in=EvalLogger.objects.filter(trace__project_id=project_id)
-                .values("custom_eval_config_id")
-                .distinct(),
-                deleted=False,
-            ).select_related("eval_template")
-
-            # Add annotations for each eval metric dynamically
-            for config in eval_configs:
-                choices = (
-                    config.eval_template.choices
-                    if config.eval_template.choices
-                    else None
-                )
-                metric_subquery = (
-                    EvalLogger.objects.filter(
-                        trace_id=OuterRef("id"), custom_eval_config_id=config.id
-                    )
-                    .exclude(Q(output_str="ERROR") | Q(error=True))
-                    .values("custom_eval_config_id")
-                    .annotate(
-                        float_score=Round(Avg("output_float") * 100, 2),
-                        bool_score=Round(
-                            Avg(
-                                Case(
-                                    When(output_bool=True, then=100),
-                                    When(output_bool=False, then=0),
-                                    default=None,
-                                    output_field=FloatField(),
-                                )
-                            ),
-                            2,
-                        ),
-                        str_list_score=JSONObject(
-                            **{
-                                f"{value}": JSONObject(
-                                    score=Round(
-                                        100.0
-                                        * Count(
-                                            Case(
-                                                When(
-                                                    output_str_list__contains=[value],
-                                                    then=1,
-                                                ),
-                                                default=None,
-                                                output_field=IntegerField(),
-                                            )
-                                        )
-                                        / Count("output_str_list"),
-                                        2,
-                                    )
-                                )
-                                for value in choices or []
-                            }
-                        ),
-                    )
-                    .values("float_score", "bool_score", "str_list_score")[:1]
-                )
-
-                base_query = base_query.annotate(
-                    **{
-                        f"metric_{config.id}": Case(
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_float__isnull=False,
-                                    )
-                                ),
-                                then=JSONObject(
-                                    score=Subquery(
-                                        metric_subquery.values("float_score")
-                                    )
-                                ),
-                            ),
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_bool__isnull=False,
-                                    )
-                                ),
-                                then=JSONObject(
-                                    score=Subquery(metric_subquery.values("bool_score"))
-                                ),
-                            ),
-                            When(
-                                Exists(
-                                    EvalLogger.objects.filter(
-                                        trace_id=OuterRef("id"),
-                                        custom_eval_config_id=config.id,
-                                        output_str_list__isnull=False,
-                                    )
-                                ),
-                                then=Subquery(metric_subquery.values("str_list_score")),
-                            ),
-                            default=JSONObject(
-                                score=Value(0.0, output_field=FloatField())
-                            ),
-                            output_field=JSONField(),
-                        )
-                    }
-                )
-
-            # Add Span Annotations
-            annotation_labels = get_annotation_labels_for_project(project_id)
-            base_query = self._build_annotation_subqueries(
-                base_query, annotation_labels, request.user.organization
-            )
-
-            # Apply filters
-            filters = query.get("filters", [])
-
-            if filters:
-                # Apply system metric filters
-                # Override span_id: base_query is on Trace, so span_id
-                # must resolve through the ObservationSpan relation.
-                filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_system_metrics(
-                        filters,
-                        field_map={
-                            **FilterEngine.DEFAULT_FIELD_MAP,
-                            "span_id": "observation_spans__id",
-                        },
-                    )
-                )
-                if filter_conditions:
-                    base_query = base_query.filter(filter_conditions)
-
-                # Separate annotation filters from eval filters
-                def _get_col_type(f):
-                    fc = f.get("filter_config", {})
-                    return fc.get("col_type", f.get("col_type", ""))
-
-                annotation_col_types = {"ANNOTATION"}
-                annotation_column_ids = {"my_annotations", "annotator"}
-                non_annotation_filters = [
-                    f
-                    for f in filters
-                    if _get_col_type(f) not in annotation_col_types
-                    and f.get("column_id") not in annotation_column_ids
-                ]
-
-                # Apply eval metric filters (excluding annotation filters)
-                eval_filter_conditions = (
-                    FilterEngine.get_filter_conditions_for_non_system_metrics(
-                        non_annotation_filters
-                    )
-                )
-                if eval_filter_conditions:
-                    base_query = base_query.filter(eval_filter_conditions)
-
-                # Apply annotation filters (score, annotator, my_annotations)
-                annotation_filter_conditions, extra_annotations = (
-                    FilterEngine.get_filter_conditions_for_voice_call_annotations(
-                        filters, user_id=request.user.id
-                    )
-                )
-                if extra_annotations:
-                    base_query = base_query.annotate(**extra_annotations)
-                if annotation_filter_conditions:
-                    base_query = base_query.filter(annotation_filter_conditions)
-
-                # Apply span attribute filters
-                span_attribute_conditions = (
-                    FilterEngine.get_filter_conditions_for_span_attributes(filters)
-                )
-                if span_attribute_conditions:
-                    base_query = base_query.filter(span_attribute_conditions)
-
-            base_query = base_query.order_by("-start_time", "-id")
-
-            current_trace = base_query.filter(id=trace_id).values("start_time").first()
-            if not current_trace:
-                raise Exception("Trace not found in the list")
-
-            previous_trace = None
-            next_trace = None
-
-            if current_trace["start_time"] is not None:
-                previous_trace = (
-                    base_query.filter(start_time__lt=current_trace["start_time"])
-                    .order_by("-start_time")
-                    .values_list("id", flat=True)
-                    .first()
-                )
-
-                next_trace = (
-                    base_query.filter(start_time__gt=current_trace["start_time"])
-                    .order_by("start_time")
-                    .values_list("id", flat=True)
-                    .first()
-                )
-
-            response = {
-                "next_trace_id": str(previous_trace) if previous_trace else None,
-                "previous_trace_id": str(next_trace) if next_trace else None,
-            }  # Its reverse coz by next we mean next in line which is ideally the immediate previous one
-
-            return self._gm.success_response(response)
 
         except Exception as e:
             return self._gm.bad_request(
@@ -4851,7 +3362,14 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             if not project:
                 return self._gm.bad_request("Project not found")
 
-            # Check if project has voice/conversation traces
+            # Check if project has voice/conversation traces.
+            # CH25-TODO: KEEP-PG for now. The filter combines
+            # observation_type='conversation' with parent_span_id IS NULL
+            # which CHSpanReader.count_by_project doesn't expose. A
+            # dedicated `has_root_spans_of_type(project_id, type)` reader
+            # method would replace this — would need to filter
+            # parent_span_id='' on the CH side. Cheap PG existence check
+            # in the meantime.
             has_voice_traces = ObservationSpan.objects.filter(
                 trace__project_id=project_id,
                 parent_span_id__isnull=True,
@@ -4893,6 +3411,13 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         """
         Export voice/conversation traces as CSV with call-specific fields.
         """
+        # CH25-TODO: voice-call CSV export is PG-only — it needs to walk
+        # the full result set without pagination (no CH equivalent
+        # surface in VoiceCallListQueryBuilder today). Migrating cleanly
+        # would need either a CH builder that emits unbounded rows or a
+        # cursor-style pagination loop. Staying PG-only until the export
+        # path is moved to a Temporal job that does the unbounded walk
+        # against CH and streams to S3.
         serializer = TraceExportQuerySerializer(data=request.query_params)
         if not serializer.is_valid():
             return self._gm.bad_request(serializer.errors)

@@ -6533,8 +6533,17 @@ export const annotationQueueJourneys = [
     title:
       "Disposable queue annotate complete, next-item, skip, and progress round-trip",
     tags: ["annotation", "mutating", "submit", "navigation", "data-roundtrip"],
-    async run({ client, cleanup, runId, evidence }) {
+    async run({
+      client,
+      cleanup,
+      user,
+      runId,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
       requireMutations();
+      const userId = assertCurrentUserResolved(user);
       const sample = await resolveTraceAndSpanSample(client);
       const labelName = `api journey disposable text ${runId}`;
       const label = await client.post(
@@ -6817,6 +6826,15 @@ export const annotationQueueJourneys = [
         ),
         "Completed item annotation did not reload through annotate detail.",
       );
+      const completedScore = asArray(completedDetail.annotations).find(
+        (score) =>
+          String(score.label_id) === String(createdLabel.id) &&
+          sameJsonValue(score.value, { text: annotationText }),
+      );
+      assert(
+        completedScore?.id,
+        "Completed item annotation did not expose a reloadable score id.",
+      );
 
       const skippedDetail = await client.get(
         queuePath(
@@ -6829,6 +6847,57 @@ export const annotationQueueJourneys = [
       assert(
         skippedDetail.item?.status === "skipped",
         `Skipped item reloaded with status ${skippedDetail.item?.status}.`,
+      );
+
+      const navigationDb = await loadQueueNavigationDbAudit({
+        queueId: queue.id,
+        completedItemId: firstItem.id,
+        skippedItemId: secondItem.id,
+        labelId: createdLabel.id,
+        userId,
+      });
+      assert(
+        String(navigationDb.queue?.organization_id) ===
+          String(organizationId) &&
+          String(navigationDb.queue?.workspace_id) === String(workspaceId),
+        `Queue navigation DB queue scope mismatch: ${JSON.stringify(
+          navigationDb,
+        )}.`,
+      );
+      assert(
+        navigationDb.completed_item?.status === "completed" &&
+          navigationDb.skipped_item?.status === "skipped" &&
+          Number(navigationDb.completed_item?.source_fk_count) === 1 &&
+          Number(navigationDb.skipped_item?.source_fk_count) === 1 &&
+          String(navigationDb.completed_item?.organization_id) ===
+            String(organizationId) &&
+          String(navigationDb.skipped_item?.organization_id) ===
+            String(organizationId) &&
+          String(navigationDb.completed_item?.workspace_id) ===
+            String(workspaceId) &&
+          String(navigationDb.skipped_item?.workspace_id) ===
+            String(workspaceId),
+        `Queue navigation DB item state mismatch: ${JSON.stringify(
+          navigationDb,
+        )}.`,
+      );
+      assert(
+        Number(navigationDb.completed_score_count) === 1 &&
+          String(navigationDb.completed_score?.id) ===
+            String(completedScore.id) &&
+          sameJsonValue(navigationDb.completed_score?.value, {
+            text: annotationText,
+          }) &&
+          String(navigationDb.completed_score?.notes || "").includes(
+            labelNote,
+          ) &&
+          String(navigationDb.completed_item_note?.notes || "").includes(
+            itemNote,
+          ) &&
+          Number(navigationDb.skipped_score_count) === 0,
+        `Queue navigation DB score/note state mismatch: ${JSON.stringify(
+          navigationDb,
+        )}.`,
       );
 
       const progress = await client.get(
@@ -6936,7 +7005,13 @@ export const annotationQueueJourneys = [
         span_for_source_id: spanEntry.item.source_id,
         completed_item_id: firstItem.id,
         skipped_item_id: secondItem.id,
+        completed_score_id: navigationDb.completed_score?.id,
         item_sources: itemSources,
+        completed_item_source_fk_count:
+          navigationDb.completed_item?.source_fk_count,
+        skipped_item_source_fk_count:
+          navigationDb.skipped_item?.source_fk_count,
+        skipped_score_count: navigationDb.skipped_score_count,
         progress_delta_total:
           Number(progress.total || 0) - Number(beforeProgress.total || 0),
         progress_delta_completed:
@@ -10737,6 +10812,155 @@ SELECT json_build_object(
   assert(
     Number(audit?.score_count || 0) > 0,
     `Score ${scoreId} was not found in annotation history DB audit.`,
+  );
+  return audit;
+}
+
+async function loadQueueNavigationDbAudit({
+  queueId,
+  completedItemId,
+  skippedItemId,
+  labelId,
+  userId,
+}) {
+  const sql = `
+WITH queue AS (
+  SELECT
+    id::text,
+    organization_id::text,
+    workspace_id::text,
+    status,
+    deleted
+  FROM model_hub_annotationqueue
+  WHERE id = ${sqlUuid(queueId, "queueId")}
+),
+items AS (
+  SELECT
+    qi.id::text,
+    qi.queue_id::text,
+    qi.organization_id::text,
+    qi.workspace_id::text,
+    qi.status,
+    qi.source_type,
+    qi.dataset_row_id::text,
+    qi.trace_id::text,
+    qi.observation_span_id::text,
+    qi.prototype_run_id::text,
+    qi.call_execution_id::text,
+    qi.trace_session_id::text,
+    qi.deleted,
+    qi.reserved_by_id::text,
+    qi.reserved_at,
+    qi.reservation_expires_at,
+    (
+      (case when qi.dataset_row_id is null then 0 else 1 end) +
+      (case when qi.trace_id is null then 0 else 1 end) +
+      (case when qi.observation_span_id is null then 0 else 1 end) +
+      (case when qi.prototype_run_id is null then 0 else 1 end) +
+      (case when qi.call_execution_id is null then 0 else 1 end) +
+      (case when qi.trace_session_id is null then 0 else 1 end)
+    ) AS source_fk_count
+  FROM model_hub_queueitem qi
+  WHERE qi.id IN (
+    ${sqlUuid(completedItemId, "completedItemId")},
+    ${sqlUuid(skippedItemId, "skippedItemId")}
+  )
+),
+completed_score AS (
+  SELECT
+    id::text,
+    queue_item_id::text,
+    label_id::text,
+    annotator_id::text,
+    organization_id::text,
+    workspace_id::text,
+    source_type,
+    trace_id::text,
+    value,
+    notes,
+    score_source,
+    deleted
+  FROM model_hub_score
+  WHERE
+    queue_item_id = ${sqlUuid(completedItemId, "completedItemId")}
+    AND label_id = ${sqlUuid(labelId, "labelId")}
+    AND annotator_id = ${sqlUuid(userId, "userId")}
+    AND deleted = false
+  ORDER BY updated_at DESC
+  LIMIT 1
+),
+completed_item_note AS (
+  SELECT
+    id::text,
+    queue_item_id::text,
+    annotator_id::text,
+    organization_id::text,
+    workspace_id::text,
+    notes,
+    deleted
+  FROM model_hub_queueitemnote
+  WHERE
+    queue_item_id = ${sqlUuid(completedItemId, "completedItemId")}
+    AND annotator_id = ${sqlUuid(userId, "userId")}
+    AND deleted = false
+  ORDER BY updated_at DESC
+  LIMIT 1
+)
+SELECT json_build_object(
+  'queue',
+    coalesce((SELECT row_to_json(queue) FROM queue), '{}'::json),
+  'completed_item',
+    coalesce(
+      (
+        SELECT row_to_json(items)
+        FROM items
+        WHERE id = ${sqlUuid(completedItemId, "completedItemId")}::text
+      ),
+      '{}'::json
+    ),
+  'skipped_item',
+    coalesce(
+      (
+        SELECT row_to_json(items)
+        FROM items
+        WHERE id = ${sqlUuid(skippedItemId, "skippedItemId")}::text
+      ),
+      '{}'::json
+    ),
+  'completed_score',
+    coalesce(
+      (SELECT row_to_json(completed_score) FROM completed_score),
+      '{}'::json
+    ),
+  'completed_item_note',
+    coalesce(
+      (SELECT row_to_json(completed_item_note) FROM completed_item_note),
+      '{}'::json
+    ),
+  'completed_score_count',
+    (
+      SELECT count(*)::int
+      FROM model_hub_score
+      WHERE
+        queue_item_id = ${sqlUuid(completedItemId, "completedItemId")}
+        AND label_id = ${sqlUuid(labelId, "labelId")}
+        AND annotator_id = ${sqlUuid(userId, "userId")}
+        AND deleted = false
+    ),
+  'skipped_score_count',
+    (
+      SELECT count(*)::int
+      FROM model_hub_score
+      WHERE
+        queue_item_id = ${sqlUuid(skippedItemId, "skippedItemId")}
+        AND deleted = false
+    )
+)::text;
+`;
+  const audit = await runPostgresJson(sql);
+  assert(
+    audit?.completed_item?.id && audit?.skipped_item?.id,
+    `Queue navigation DB audit missed item rows: ${JSON.stringify(audit)}.`,
   );
   return audit;
 }

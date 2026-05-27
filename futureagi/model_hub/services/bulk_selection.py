@@ -577,15 +577,11 @@ def _resolve_voice_call_ids_clickhouse(
         )
         from tracer.services.clickhouse.query_service import (
             AnalyticsQueryService,
-            QueryType,
         )
     except ImportError:
         return None
 
     analytics = AnalyticsQueryService()
-    if not analytics.should_use_clickhouse(QueryType.VOICE_CALL_LIST):
-        return None
-
     builder = VoiceCallListQueryBuilder(
         project_id=str(project_id),
         page_number=0,
@@ -700,15 +696,11 @@ def _resolve_trace_ids_clickhouse(
         )
         from tracer.services.clickhouse.query_service import (
             AnalyticsQueryService,
-            QueryType,
         )
     except ImportError:
         return None
 
     analytics = AnalyticsQueryService()
-    if not analytics.should_use_clickhouse(QueryType.TRACE_OF_SESSION_LIST):
-        return None
-
     builder = TraceListQueryBuilder(
         project_id=str(project_id),
         page_number=0,

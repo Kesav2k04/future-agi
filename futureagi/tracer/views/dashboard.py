@@ -1220,17 +1220,17 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                         SELECT key, argMax(type, cnt) AS type FROM (
                             SELECT key, 'text' AS type, count() AS cnt
                             FROM spans ARRAY JOIN mapKeys(span_attr_str) AS key
-                            WHERE project_id IN %(project_ids)s AND _peerdb_is_deleted = 0
+                            WHERE project_id IN %(project_ids)s AND is_deleted = 0
                             GROUP BY key
                             UNION ALL
                             SELECT key, 'number' AS type, count() AS cnt
                             FROM spans ARRAY JOIN mapKeys(span_attr_num) AS key
-                            WHERE project_id IN %(project_ids)s AND _peerdb_is_deleted = 0
+                            WHERE project_id IN %(project_ids)s AND is_deleted = 0
                             GROUP BY key
                             UNION ALL
                             SELECT key, 'boolean' AS type, count() AS cnt
                             FROM spans ARRAY JOIN mapKeys(span_attr_bool) AS key
-                            WHERE project_id IN %(project_ids)s AND _peerdb_is_deleted = 0
+                            WHERE project_id IN %(project_ids)s AND is_deleted = 0
                             GROUP BY key
                         )
                         GROUP BY key ORDER BY key LIMIT 2000
@@ -2171,7 +2171,7 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                         f"SELECT DISTINCT {col_expr} AS val "
                         f"FROM spans "
                         f"WHERE project_id IN %(project_ids)s "
-                        f"AND _peerdb_is_deleted = 0 "
+                        f"AND is_deleted = 0 "
                         f"AND {col_expr} NOT IN ('', '{null_uuid}') "
                         f"ORDER BY val "
                         f"LIMIT 500"
@@ -2316,7 +2316,7 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                     "SELECT DISTINCT span_attr_str[%(attr_key)s] AS val "
                     "FROM spans "
                     "WHERE project_id IN %(project_ids)s "
-                    "AND _peerdb_is_deleted = 0 "
+                    "AND is_deleted = 0 "
                     "AND mapContains(span_attr_str, %(attr_key)s) "
                     "AND span_attr_str[%(attr_key)s] != '' "
                     "ORDER BY val "

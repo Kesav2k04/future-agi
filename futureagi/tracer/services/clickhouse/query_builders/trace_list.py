@@ -249,7 +249,7 @@ class TraceListQueryBuilder(BaseQueryBuilder):
         FROM {self.TABLE}
         PREWHERE trace_id IN %(content_trace_ids)s
         WHERE {self.project_filter_sql()}
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND (parent_span_id IS NULL OR parent_span_id = '')
         LIMIT 1 BY trace_id
         """
@@ -274,7 +274,7 @@ class TraceListQueryBuilder(BaseQueryBuilder):
         FROM {self.TABLE}
         PREWHERE trace_id IN %(attr_trace_ids)s
         WHERE {self.project_filter_sql()}
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND span_attributes_raw != '{{}}'
           AND span_attributes_raw != ''
         """
@@ -352,7 +352,7 @@ class TraceListQueryBuilder(BaseQueryBuilder):
         FROM {self.TABLE}
         WHERE {self.project_filter_sql()}
           AND trace_id IN %(sc_trace_ids)s
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
         GROUP BY trace_id
         """
         return query, params

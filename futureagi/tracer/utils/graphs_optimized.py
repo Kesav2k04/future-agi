@@ -147,43 +147,41 @@ def get_eval_graph_data(
             )
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.EVAL_METRICS):
-                eval_output_type_ch = custom_eval_config.eval_template.config.get(
-                    "output", "SCORE"
-                )
-                choices = []
-                if eval_output_type_ch == "CHOICES":
-                    choices = custom_eval_config.eval_template.choices or []
+            eval_output_type_ch = custom_eval_config.eval_template.config.get(
+                "output", "SCORE"
+            )
+            choices = []
+            if eval_output_type_ch == "CHOICES":
+                choices = custom_eval_config.eval_template.choices or []
 
-                ch_start, ch_end = parse_time_filters(filters)
-                # v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=EVAL_METRICS
-                from tracer.services.clickhouse.v2.dispatch import (
-                    get_query_builder_class,
-                )
-                EvalBuilderCls = get_query_builder_class("EVAL_METRICS")  # noqa: N806
-                builder = EvalBuilderCls(
-                    project_id=str(ch_project_id),
-                    custom_eval_config_id=str(custom_eval_config_id),
-                    start_date=ch_start,
-                    end_date=ch_end,
-                    interval=interval,
-                    eval_output_type=eval_output_type_ch,
-                    eval_name=custom_eval_config.name,
-                    choices=choices,
-                )
-                query, params = builder.build()
-                result = analytics.execute_ch_query(query, params, timeout_ms=5000)
-                ch_data = builder.format_result(result.data, result.columns or [])
-                # For observe_type="charts" with non-CHOICES types, the PG code
-                # wraps single-series results in a list. Match that behavior.
-                if observe_type == "charts" and eval_output_type_ch != "CHOICES":
-                    if isinstance(ch_data, dict):
-                        ch_data = [ch_data]
-                return ch_data
+            ch_start, ch_end = parse_time_filters(filters)
+            # v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=EVAL_METRICS
+            from tracer.services.clickhouse.v2.dispatch import (
+                get_query_builder_class,
+            )
+            EvalBuilderCls = get_query_builder_class("EVAL_METRICS")  # noqa: N806
+            builder = EvalBuilderCls(
+                project_id=str(ch_project_id),
+                custom_eval_config_id=str(custom_eval_config_id),
+                start_date=ch_start,
+                end_date=ch_end,
+                interval=interval,
+                eval_output_type=eval_output_type_ch,
+                eval_name=custom_eval_config.name,
+                choices=choices,
+            )
+            query, params = builder.build()
+            result = analytics.execute_ch_query(query, params, timeout_ms=5000)
+            ch_data = builder.format_result(result.data, result.columns or [])
+            # For observe_type="charts" with non-CHOICES types, the PG code
+            # wraps single-series results in a list. Match that behavior.
+            if observe_type == "charts" and eval_output_type_ch != "CHOICES":
+                if isinstance(ch_data, dict):
+                    ch_data = [ch_data]
+            return ch_data
         except Exception as e:
             logger.warning(
                 "ch_eval_graph_dispatch_failed",
@@ -949,39 +947,37 @@ def get_system_metric_data(
             from tracer.services.clickhouse.query_builders import TimeSeriesQueryBuilder
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.TIME_SERIES):
-                builder = TimeSeriesQueryBuilder(
-                    project_id=str(ch_project_id),
-                    filters=filters,
-                    interval=interval,
-                )
-                query, params = builder.build()
-                result = analytics.execute_ch_query(query, params, timeout_ms=5000)
-                ch_data = builder.format_result(result.data, result.columns or [])
-                # Transform CH all-metrics format to match PG single-metric format
-                # CH returns: {latency: [...], tokens: [...], cost: [...], traffic: [...]}
-                # PG returns: {metric_name: "latency", data: [{timestamp, value, primary_traffic}]}
-                metric_key = metric_name if metric_name in ch_data else "latency"
-                metric_points = ch_data.get(metric_key, [])
-                traffic_points = ch_data.get("traffic", [])
-                traffic_by_ts = {
-                    t.get("timestamp"): t.get("traffic", 0) for t in traffic_points
-                }
-                return {
-                    "metric_name": metric_name,
-                    "data": [
-                        {
-                            "timestamp": p.get("timestamp"),
-                            "value": p.get("value", 0),
-                            "primary_traffic": traffic_by_ts.get(p.get("timestamp"), 0),
-                        }
-                        for p in metric_points
-                    ],
-                }
+            builder = TimeSeriesQueryBuilder(
+                project_id=str(ch_project_id),
+                filters=filters,
+                interval=interval,
+            )
+            query, params = builder.build()
+            result = analytics.execute_ch_query(query, params, timeout_ms=5000)
+            ch_data = builder.format_result(result.data, result.columns or [])
+            # Transform CH all-metrics format to match PG single-metric format
+            # CH returns: {latency: [...], tokens: [...], cost: [...], traffic: [...]}
+            # PG returns: {metric_name: "latency", data: [{timestamp, value, primary_traffic}]}
+            metric_key = metric_name if metric_name in ch_data else "latency"
+            metric_points = ch_data.get(metric_key, [])
+            traffic_points = ch_data.get("traffic", [])
+            traffic_by_ts = {
+                t.get("timestamp"): t.get("traffic", 0) for t in traffic_points
+            }
+            return {
+                "metric_name": metric_name,
+                "data": [
+                    {
+                        "timestamp": p.get("timestamp"),
+                        "value": p.get("value", 0),
+                        "primary_traffic": traffic_by_ts.get(p.get("timestamp"), 0),
+                    }
+                    for p in metric_points
+                ],
+            }
         except Exception as e:
             logger.warning(
                 "ch_system_metric_dispatch_failed",
@@ -1186,25 +1182,23 @@ def get_annotation_graph_data(
             )
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.ANNOTATION_GRAPH):
-                builder = AnnotationGraphQueryBuilder(
-                    project_id=str(ch_project_id),
-                    annotation_label_id=str(annotation_label_id),
-                    annotation_name=annotation_label.name,
-                    start_date=start_date,
-                    end_date=end_date,
-                    interval=interval,
-                    output_type=output_type,
-                    value=req_data_config.get("value"),
-                )
-                query, params = builder.build()
-                result = analytics.execute_ch_query(query, params, timeout_ms=5000)
-                ch_data = builder.format_result(result.data, result.columns or [])
-                return ch_data
+            builder = AnnotationGraphQueryBuilder(
+                project_id=str(ch_project_id),
+                annotation_label_id=str(annotation_label_id),
+                annotation_name=annotation_label.name,
+                start_date=start_date,
+                end_date=end_date,
+                interval=interval,
+                output_type=output_type,
+                value=req_data_config.get("value"),
+            )
+            query, params = builder.build()
+            result = analytics.execute_ch_query(query, params, timeout_ms=5000)
+            ch_data = builder.format_result(result.data, result.columns or [])
+            return ch_data
         except Exception as e:
             logger.warning(
                 "ch_annotation_graph_dispatch_failed",

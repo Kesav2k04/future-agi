@@ -495,32 +495,6 @@ class TestChartsView:
         }
 
     @pytest.mark.django_db
-    @patch(
-        "tracer.services.clickhouse.query_service.AnalyticsQueryService.should_use_clickhouse",
-        return_value=False,
-    )
-    def test_fetch_graph_system_metric_uses_pg_fallback_when_clickhouse_disabled(
-        self, _mock_should_use_clickhouse, auth_client, observe_project
-    ):
-        query = urlencode(
-            {
-                "project_id": str(observe_project.id),
-                "interval": "day",
-                "property": "average",
-                "req_data_config": json.dumps(
-                    {"id": "latency", "type": "SYSTEM_METRIC"}
-                ),
-            }
-        )
-
-        response = auth_client.get(f"/tracer/charts/fetch_graph/?{query}")
-
-        assert response.status_code == 200
-        result = response.json()["result"]
-        assert result["metric_name"] == "latency"
-        assert len(result["data"]) > 0
-        assert {"timestamp", "value", "primary_traffic"}.issubset(result["data"][0])
-
     @pytest.mark.django_db
     @patch("tracer.views.charts.get_system_metric_data")
     def test_fetch_graph_rejects_same_org_other_workspace_project(

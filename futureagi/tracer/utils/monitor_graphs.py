@@ -33,7 +33,7 @@ from tracer.models.observation_span import EvalLogger, ObservationSpan
 from tracer.services.clickhouse.query_builders.monitor_metrics import (
     MonitorMetricsQueryBuilder,
 )
-from tracer.services.clickhouse.query_service import AnalyticsQueryService, QueryType
+from tracer.services.clickhouse.query_service import AnalyticsQueryService
 from tracer.utils.eval_tasks import parsing_evaltask_filters
 
 
@@ -139,30 +139,29 @@ def get_static_metric_graph_data(monitor, time_window_start=None, time_window_en
     """
     # --- ClickHouse dispatch ---
     analytics = AnalyticsQueryService()
-    if analytics.should_use_clickhouse(QueryType.MONITOR_METRICS):
-        try:
-            frequency_seconds = _get_frequency_seconds(monitor)
-            if not frequency_seconds:
-                return []
+    try:
+        frequency_seconds = _get_frequency_seconds(monitor)
+        if not frequency_seconds:
+            return []
 
-            effective_end = time_window_end or timezone.now()
-            effective_start = time_window_start or (effective_end - timedelta(days=7))
+        effective_end = time_window_end or timezone.now()
+        effective_start = time_window_start or (effective_end - timedelta(days=7))
 
-            builder = _build_monitor_graph_ch_builder(monitor)
-            query, params = builder.build_time_series_query(
-                monitor.metric_type,
-                effective_start,
-                effective_end,
-                frequency_seconds,
-            )
-            result = analytics.execute_ch_query(query, params, timeout_ms=10000)
-            return _format_ch_time_series(result.data)
-        except Exception as e:
-            logger.warning(
-                "CH static graph data failed, falling back to PG",
-                error=str(e),
-                monitor_id=str(monitor.id),
-            )
+        builder = _build_monitor_graph_ch_builder(monitor)
+        query, params = builder.build_time_series_query(
+            monitor.metric_type,
+            effective_start,
+            effective_end,
+            frequency_seconds,
+        )
+        result = analytics.execute_ch_query(query, params, timeout_ms=10000)
+        return _format_ch_time_series(result.data)
+    except Exception as e:
+        logger.warning(
+            "CH static graph data failed, falling back to PG",
+            error=str(e),
+            monitor_id=str(monitor.id),
+        )
 
     # --- PostgreSQL fallback ---
     # CH25-TODO(blocked-on-reader-extension): the CH primary branch above
@@ -751,62 +750,61 @@ def get_percentage_change_metric_graph_data(
     """
     # --- ClickHouse dispatch ---
     analytics = AnalyticsQueryService()
-    if analytics.should_use_clickhouse(QueryType.MONITOR_METRICS):
-        try:
-            frequency_seconds = _get_frequency_seconds(monitor)
-            if not frequency_seconds:
-                return {"graph_data": [], "alert_bar_data": []}
+    try:
+        frequency_seconds = _get_frequency_seconds(monitor)
+        if not frequency_seconds:
+            return {"graph_data": [], "alert_bar_data": []}
 
-            auto_threshold_time_window = timedelta(
-                minutes=monitor.auto_threshold_time_window
-            )
+        auto_threshold_time_window = timedelta(
+            minutes=monitor.auto_threshold_time_window
+        )
 
-            effective_end = time_window_end or timezone.now()
-            extended_start = None
-            if time_window_start:
-                extended_start = time_window_start - auto_threshold_time_window
+        effective_end = time_window_end or timezone.now()
+        extended_start = None
+        if time_window_start:
+            extended_start = time_window_start - auto_threshold_time_window
 
-            builder = _build_monitor_graph_ch_builder(monitor)
-            query, params = builder.build_time_series_query(
-                monitor.metric_type,
-                extended_start or (effective_end - timedelta(days=30)),
-                effective_end,
-                frequency_seconds,
-            )
-            result = analytics.execute_ch_query(query, params, timeout_ms=10000)
+        builder = _build_monitor_graph_ch_builder(monitor)
+        query, params = builder.build_time_series_query(
+            monitor.metric_type,
+            extended_start or (effective_end - timedelta(days=30)),
+            effective_end,
+            frequency_seconds,
+        )
+        result = analytics.execute_ch_query(query, params, timeout_ms=10000)
 
-            # Convert CH results to bucket format expected by _process_percentage_change_buckets
-            all_buckets = []
-            for row in result.data:
-                ts = row.get("timestamp")
-                if ts is not None:
-                    if isinstance(ts, str):
-                        ts = dt_datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                    ts = _ensure_timezone_aware(ts)
-                    all_buckets.append(
-                        {
-                            "timestamp": ts,
-                            "value": row.get("value", 0),
-                        }
-                    )
+        # Convert CH results to bucket format expected by _process_percentage_change_buckets
+        all_buckets = []
+        for row in result.data:
+            ts = row.get("timestamp")
+            if ts is not None:
+                if isinstance(ts, str):
+                    ts = dt_datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                ts = _ensure_timezone_aware(ts)
+                all_buckets.append(
+                    {
+                        "timestamp": ts,
+                        "value": row.get("value", 0),
+                    }
+                )
 
-            if not all_buckets:
-                return {"graph_data": [], "alert_bar_data": []}
+        if not all_buckets:
+            return {"graph_data": [], "alert_bar_data": []}
 
-            frequency_delta = timedelta(seconds=frequency_seconds)
-            return _process_percentage_change_buckets(
-                all_buckets,
-                monitor,
-                time_window_start,
-                frequency_delta,
-                auto_threshold_time_window,
-            )
-        except Exception as e:
-            logger.warning(
-                "CH percentage change graph data failed, falling back to PG",
-                error=str(e),
-                monitor_id=str(monitor.id),
-            )
+        frequency_delta = timedelta(seconds=frequency_seconds)
+        return _process_percentage_change_buckets(
+            all_buckets,
+            monitor,
+            time_window_start,
+            frequency_delta,
+            auto_threshold_time_window,
+        )
+    except Exception as e:
+        logger.warning(
+            "CH percentage change graph data failed, falling back to PG",
+            error=str(e),
+            monitor_id=str(monitor.id),
+        )
 
     # --- PostgreSQL fallback ---
     try:

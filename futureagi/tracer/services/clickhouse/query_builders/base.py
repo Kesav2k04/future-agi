@@ -109,9 +109,13 @@ class BaseQueryBuilder(ABC):
             A ``WHERE`` clause fragment.
         """
         prefix = f"{table_alias}." if table_alias else ""
+        # CH25 close-out: the v2 spans table uses `is_deleted` (UInt8 column
+        # from schema 002_spans_v2.sql) rather than the PeerDB-managed
+        # `_peerdb_is_deleted` of the legacy CDC mirror. All query builders
+        # that inherit from BaseQueryBuilder target the v2 spans table.
         return (
             f"WHERE {self.project_filter_sql(table_alias)} "
-            f"AND {prefix}_peerdb_is_deleted = 0"
+            f"AND {prefix}is_deleted = 0"
         )
 
     def project_filter_sql(self, table_alias: str = "") -> str:

@@ -24,6 +24,30 @@ from tracer.models.project import Project
 from tracer.models.project_version import ProjectVersion
 from tracer.models.trace import Trace
 from tracer.models.trace_session import TraceSession
+from tracer.tests._ch_seed import seed_ch_span, seed_ch_spans, truncate_ch_spans
+
+
+@pytest.fixture
+def ch_seed():
+    """Seed ObservationSpan rows directly into the CH ``spans`` table.
+
+    Tests that exercise CH-backed endpoints can request ``ch_seed`` and call
+    ``ch_seed(span)`` or ``ch_seed([span1, span2])``. The fixture wipes the
+    CH ``spans`` table after the test to keep cross-test state from leaking.
+
+    Use this when the test creates spans via ``ObservationSpan.objects.create``
+    and then hits an endpoint that reads from CH — without seeding CH, the
+    endpoint sees an empty table even though PG is populated.
+    """
+
+    def _seed(spans_or_span):
+        if hasattr(spans_or_span, "__iter__") and not hasattr(spans_or_span, "id"):
+            return seed_ch_spans(spans_or_span)
+        seed_ch_span(spans_or_span)
+        return 1
+
+    yield _seed
+    truncate_ch_spans()
 
 
 @pytest.fixture(autouse=True)
@@ -127,9 +151,10 @@ def session_trace(db, observe_project, trace_session):
 
 @pytest.fixture
 def observation_span(db, project, trace):
-    """Create a test observation span."""
+    """Create a test observation span. Auto-seeds CH so endpoints that read
+    from the CH ``spans`` table see the row alongside PG."""
     span_id = f"span_{uuid.uuid4().hex[:16]}"
-    return ObservationSpan.objects.create(
+    span = ObservationSpan.objects.create(
         id=span_id,
         project=project,
         trace=trace,
@@ -148,13 +173,16 @@ def observation_span(db, project, trace):
         status="OK",
         metadata={"key": "value"},
     )
+    seed_ch_span(span)
+    return span
 
 
 @pytest.fixture
 def child_span(db, project, trace, observation_span):
-    """Create a child observation span."""
+    """Create a child observation span. Auto-seeds CH so the parent/child
+    chain is visible to endpoints that walk via parent_span_id in CH."""
     span_id = f"child_span_{uuid.uuid4().hex[:16]}"
-    return ObservationSpan.objects.create(
+    span = ObservationSpan.objects.create(
         id=span_id,
         project=project,
         trace=trace,
@@ -168,6 +196,8 @@ def child_span(db, project, trace, observation_span):
         latency_ms=200,
         status="OK",
     )
+    seed_ch_span(span)
+    return span
 
 
 @pytest.fixture

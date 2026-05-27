@@ -45,17 +45,17 @@ class TestRewriteV1SqlToV2:
 
     def test_multiple_column_renames_in_one_string(self):
         v1 = ("SELECT span_attr_str['a'], span_attr_num['b'] "
-              "FROM spans WHERE _peerdb_is_deleted = 0")
+              "FROM spans WHERE is_deleted = 0")
         v2 = ("SELECT attrs_string['a'], attrs_number['b'] "
               "FROM spans WHERE is_deleted = 0")
         assert rewrite_v1_sql_to_v2(v1) == v2
 
     # ─── Negative: don't rewrite substrings of unrelated identifiers ─────────
     def test_does_not_rewrite_substring_of_another_identifier(self):
-        # `_peerdb_is_deleted_extra` should NOT be rewritten — only the
-        # exact word `_peerdb_is_deleted` is the column we target.
-        assert "_peerdb_is_deleted_extra" in \
-               rewrite_v1_sql_to_v2("SELECT _peerdb_is_deleted_extra FROM x")
+        # `is_deleted_extra` should NOT be rewritten — only the
+        # exact word `is_deleted` is the column we target.
+        assert "is_deleted_extra" in \
+               rewrite_v1_sql_to_v2("SELECT is_deleted_extra FROM x")
 
     def test_does_not_rewrite_quoted_string_literal_token(self):
         # If a v1 query contained the LITERAL STRING "span_attr_str" inside

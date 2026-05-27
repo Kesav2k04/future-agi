@@ -159,7 +159,7 @@ class SpanListQueryBuilder(BaseQueryBuilder):
         SELECT id, input, output, span_attributes_raw
         FROM {self.TABLE}
         PREWHERE id IN %(content_span_ids)s
-        WHERE project_id = %(project_id)s AND _peerdb_is_deleted = 0
+        WHERE project_id = %(project_id)s AND is_deleted = 0
         """
         return query, params
 

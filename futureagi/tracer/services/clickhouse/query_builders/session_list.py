@@ -162,7 +162,7 @@ class SessionListQueryBuilder(BaseQueryBuilder):
             argMax(input, start_time) AS last_message
         FROM {self.TABLE}
         WHERE {self.project_filter_sql()}
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND trace_session_id IN %(content_session_ids)s
           AND (parent_span_id IS NULL OR parent_span_id = '')
         GROUP BY trace_session_id
@@ -298,7 +298,7 @@ class SessionListQueryBuilder(BaseQueryBuilder):
         FROM {self.TABLE}
         PREWHERE trace_session_id IN %(attr_session_ids)s
         WHERE {self.project_filter_sql()}
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND (parent_span_id IS NULL OR parent_span_id = '')
           AND (
             (span_attributes_raw != '{{}}' AND span_attributes_raw != '')

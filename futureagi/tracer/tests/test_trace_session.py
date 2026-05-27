@@ -293,29 +293,6 @@ class TestTraceSessionListAPI:
         )
         assert response.status_code == status.HTTP_200_OK
 
-    def test_list_sessions_falls_back_when_clickhouse_fails(
-        self, auth_client, observe_project, monkeypatch
-    ):
-        session = _create_session_with_span(observe_project, "Fallback Session")
-
-        monkeypatch.setattr(
-            "tracer.services.clickhouse.query_service.AnalyticsQueryService.should_use_clickhouse",
-            lambda self, query_type: True,
-        )
-        monkeypatch.setattr(
-            "tracer.services.clickhouse.query_service.AnalyticsQueryService.execute_ch_query",
-            lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("ch down")),
-        )
-
-        response = auth_client.get(
-            "/tracer/trace-session/list_sessions/",
-            {"project_id": str(observe_project.id), "page_number": 0, "page_size": 10},
-        )
-
-        assert response.status_code == status.HTTP_200_OK
-        rows = get_result(response)["table"]
-        assert any(row["session_id"] == str(session.id) for row in rows)
-
 
 @pytest.mark.integration
 @pytest.mark.api
@@ -355,34 +332,6 @@ class TestTraceSessionExportAPI:
 @pytest.mark.api
 class TestTraceSessionGraphAPI:
     """Tests for POST /tracer/trace-session/get_session_graph_data/ endpoint."""
-
-    def test_get_session_graph_falls_back_when_clickhouse_fails(
-        self, auth_client, observe_project, monkeypatch
-    ):
-        """Session graph returns a graph payload when ClickHouse is unavailable."""
-        monkeypatch.setattr(
-            "tracer.services.clickhouse.query_service.AnalyticsQueryService.should_use_clickhouse",
-            lambda self, query_type: True,
-        )
-        monkeypatch.setattr(
-            "tracer.services.clickhouse.query_service.AnalyticsQueryService.execute_ch_query",
-            lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("ch down")),
-        )
-
-        response = auth_client.post(
-            "/tracer/trace-session/get_session_graph_data/",
-            {
-                "project_id": str(observe_project.id),
-                "interval": "day",
-                "property": "average",
-                "req_data_config": {"id": "session_count", "type": "SYSTEM_METRIC"},
-                "filters": [],
-            },
-            format="json",
-        )
-
-        assert response.status_code == status.HTTP_200_OK
-        assert isinstance(get_result(response).get("data"), list)
 
 
 @pytest.mark.integration

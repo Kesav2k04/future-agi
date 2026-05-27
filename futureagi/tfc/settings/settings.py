@@ -269,35 +269,11 @@ CLICKHOUSE = {
     "CH_FLUSH_INTERVAL_SECONDS": int(os.getenv("CH_FLUSH_INTERVAL_SECONDS", "5")),
     "CH_MAX_RETRIES": int(os.getenv("CH_MAX_RETRIES", "3")),
     "CH_RETRY_DELAY_SECONDS": int(os.getenv("CH_RETRY_DELAY_SECONDS", "1")),
-    # Query routing: "clickhouse", "postgres", or "auto" (ClickHouse with PG fallback)
-    "CH_ANALYTICS_BACKEND": os.getenv("CH_ANALYTICS_BACKEND", "postgres"),
     # Connection pool settings
     "CH_POOL_SIZE": int(os.getenv("CH_POOL_SIZE", "10")),
     "CH_CONNECT_TIMEOUT": int(os.getenv("CH_CONNECT_TIMEOUT", "10")),
     "CH_SEND_TIMEOUT": int(os.getenv("CH_SEND_TIMEOUT", "300")),
     "CH_RECEIVE_TIMEOUT": int(os.getenv("CH_RECEIVE_TIMEOUT", "300")),
-    # Per-query-type routing for gradual rollout
-    # Values: "postgres", "clickhouse", "auto" (CH with PG fallback), "shadow" (both, compare, return PG)
-    "CH_ROUTE_TIME_SERIES": os.getenv("CH_ROUTE_TIME_SERIES", "postgres"),
-    "CH_ROUTE_TRACE_LIST": os.getenv("CH_ROUTE_TRACE_LIST", "postgres"),
-    "CH_ROUTE_SESSION_LIST": os.getenv("CH_ROUTE_SESSION_LIST", "postgres"),
-    "CH_ROUTE_EVAL_METRICS": os.getenv("CH_ROUTE_EVAL_METRICS", "postgres"),
-    "CH_ROUTE_ERROR_ANALYSIS": os.getenv("CH_ROUTE_ERROR_ANALYSIS", "postgres"),
-    "CH_ROUTE_SPAN_LIST": os.getenv("CH_ROUTE_SPAN_LIST", "postgres"),
-    "CH_ROUTE_TRACE_OF_SESSION_LIST": os.getenv(
-        "CH_ROUTE_TRACE_OF_SESSION_LIST", "postgres"
-    ),
-    "CH_ROUTE_SPAN_GRAPH": os.getenv("CH_ROUTE_SPAN_GRAPH", "postgres"),
-    "CH_ROUTE_VOICE_CALL_LIST": os.getenv("CH_ROUTE_VOICE_CALL_LIST", "postgres"),
-    "CH_ROUTE_SESSION_ANALYTICS": os.getenv("CH_ROUTE_SESSION_ANALYTICS", "postgres"),
-    "CH_ROUTE_ANNOTATION_GRAPH": os.getenv("CH_ROUTE_ANNOTATION_GRAPH", "postgres"),
-    "CH_ROUTE_TRACE_DETAIL": os.getenv("CH_ROUTE_TRACE_DETAIL", "postgres"),
-    "CH_ROUTE_MONITOR_METRICS": os.getenv("CH_ROUTE_MONITOR_METRICS", "postgres"),
-    "CH_ROUTE_ANNOTATION_DETAIL": os.getenv("CH_ROUTE_ANNOTATION_DETAIL", "postgres"),
-    "CH_ROUTE_VOICE_CALL_DETAIL": os.getenv("CH_ROUTE_VOICE_CALL_DETAIL", "postgres"),
-    # Shadow mode: run both PG+CH, compare results, return PG
-    "CH_SHADOW_MODE": os.getenv("CH_SHADOW_MODE", "false").lower()
-    in ("true", "1", "yes"),
 }
 
 # Password validation

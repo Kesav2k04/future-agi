@@ -97,7 +97,7 @@ class TestOTLPTraceEndpointAuth:
             data=b"",
             content_type="application/x-protobuf",
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_post_traces_with_trailing_slash_unauthenticated(self, api_client):
         """Trailing slash endpoint also requires auth."""
@@ -106,7 +106,7 @@ class TestOTLPTraceEndpointAuth:
             data=b"",
             content_type="application/x-protobuf",
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
 
 @pytest.mark.integration

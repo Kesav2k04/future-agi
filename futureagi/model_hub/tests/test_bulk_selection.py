@@ -226,9 +226,6 @@ class TestCap:
             data = [{"trace_id": f"trace-{i}"} for i in range(11)]
 
         class FakeAnalytics:
-            def should_use_clickhouse(self, _query_type):
-                return True
-
             def execute_ch_query(self, *_args, **_kwargs):
                 return FakeResult()
 

@@ -41,14 +41,10 @@ def _try_session_navigation_ch(request, project_id, current_session_id, query_da
     )
     from tracer.services.clickhouse.query_service import (
         AnalyticsQueryService,
-        QueryType,
     )
 
     try:
         service = AnalyticsQueryService()
-        if not service.should_use_clickhouse(QueryType.SESSION_ANALYTICS):
-            return None
-
         query_data = _get_navigation_query_data(request, query_data)
         filters = query_data.get("filters", [])
         sort_params = query_data.get("sort_params", [])

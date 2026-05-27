@@ -247,11 +247,6 @@ class TestSpanAttributeKeysNormalisation:
 
         monkeypatch.setattr(
             AnalyticsQueryService,
-            "should_use_clickhouse",
-            lambda self, qt: True,
-        )
-        monkeypatch.setattr(
-            AnalyticsQueryService,
             "get_span_attribute_keys_ch",
             lambda self, pid: raw_input,
         )

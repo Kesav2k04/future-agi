@@ -85,7 +85,7 @@ from tracer.services.clickhouse.graph_dispatch import (
     fetch_eval_graph_ch,
     fetch_system_metric_graph_ch,
 )
-from tracer.services.clickhouse.query_service import AnalyticsQueryService, QueryType
+from tracer.services.clickhouse.query_service import AnalyticsQueryService
 from tracer.services.observability_providers import ObservabilityService
 from tracer.utils.aggregates import JSONBObjectAgg
 from tracer.utils.annotations import (
@@ -1079,11 +1079,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             # TRACE_DETAIL isn't routed to CH that's a config error —
             # surface it as a 400 rather than serving partial PG data.
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.TRACE_DETAIL):
-                return self._gm.bad_request(
-                    "TRACE_DETAIL is not routed to ClickHouse — "
-                    "trace detail requires the CH path post-migration"
-                )
             return self._retrieve_clickhouse(request, trace_id, analytics)
         except Exception as e:
             logger.exception(f"Error in fetching the trace: {str(e)}")
@@ -1195,7 +1190,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             FROM spans
             WHERE project_id = %(project_id)s
               AND trace_id = %(trace_id)s
-              AND _peerdb_is_deleted = 0
+              AND is_deleted = 0
             ORDER BY start_time
             LIMIT 1 BY id
         """
@@ -1903,16 +1898,12 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
 
             # ClickHouse dispatch: resolve which eval config IDs have data
             analytics = AnalyticsQueryService()
-            eval_config_ids = None
             # CH-only path. Legacy PG fallback removed: EvalLogger lives in
             # CH now and the PG `tracer_evallogger` table is destined for
             # deletion. If CH errors, propagate so the operator sees it.
-            if analytics.should_use_clickhouse(QueryType.EVAL_METRICS):
-                eval_config_ids = analytics.get_eval_config_ids_with_data_ch(
-                    str(project_id)
-                )
-            else:
-                eval_config_ids = []
+            eval_config_ids = analytics.get_eval_config_ids_with_data_ch(
+                str(project_id)
+            )
 
             # Config lookup always from PG (small config table)
             configs = (
@@ -1966,11 +1957,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             # TRACE_LIST isn't routed to CH that's a config error —
             # surface it as 400.
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.TRACE_LIST):
-                return self._gm.bad_request(
-                    "TRACE_LIST is not routed to ClickHouse — "
-                    "trace list requires the CH path post-migration"
-                )
             return self._list_traces_clickhouse(
                 request, project_version_id, analytics, query_params
             )
@@ -2025,12 +2011,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             # config error — surface it as a 400.
             analytics = AnalyticsQueryService()
             if type == "SYSTEM_METRIC":
-                if not analytics.should_use_clickhouse(QueryType.TIME_SERIES):
-                    return self._gm.bad_request(
-                        "TIME_SERIES is not routed to ClickHouse — "
-                        "system-metric trace graph requires the CH path "
-                        "post-migration"
-                    )
                 return self._gm.success_response(
                     fetch_system_metric_graph_ch(
                         analytics=analytics,
@@ -2041,11 +2021,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                     )
                 )
             elif type == "EVAL":
-                if not analytics.should_use_clickhouse(QueryType.EVAL_METRICS):
-                    return self._gm.bad_request(
-                        "EVAL_METRICS is not routed to ClickHouse — "
-                        "eval trace graph requires the CH path post-migration"
-                    )
                 return self._gm.success_response(
                     fetch_eval_graph_ch(
                         analytics=analytics,
@@ -2056,12 +2031,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                     )
                 )
             elif type == "ANNOTATION":
-                if not analytics.should_use_clickhouse(QueryType.ANNOTATION_GRAPH):
-                    return self._gm.bad_request(
-                        "ANNOTATION_GRAPH is not routed to ClickHouse — "
-                        "annotation trace graph requires the CH path "
-                        "post-migration"
-                    )
                 return self._gm.success_response(
                     fetch_annotation_graph_ch(
                         analytics=analytics,
@@ -2742,11 +2711,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             # is unsupported post-migration — feature parity tracked as a
             # follow-up if needed.)
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.TRACE_OF_SESSION_LIST):
-                return self._gm.bad_request(
-                    "TRACE_OF_SESSION_LIST is not routed to ClickHouse — "
-                    "traces-of-session list requires the CH path post-migration"
-                )
             return self._list_traces_of_session_clickhouse(
                 request,
                 project_id,
@@ -2801,15 +2765,9 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             # ExtendedPageNumberPagination + populate_call_logs_result on
             # the PG queryset) was deleted. CH path lives in
             # _list_voice_calls_clickhouse via VoiceCallListQueryBuilder.
-            # Already gated by `should_use_clickhouse` and CH failure was
-            # already a bad_request — making the route strictly CH-only is
-            # the natural cleanup.
+            # Per-query routing gate was removed in the CH25 close-out — CH
+            # is the single source of truth; CH failures propagate.
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.VOICE_CALL_LIST):
-                return self._gm.bad_request(
-                    "VOICE_CALL_LIST is not routed to ClickHouse — "
-                    "voice-call list requires the CH path post-migration"
-                )
             return self._list_voice_calls_clickhouse(
                 request,
                 project_id,
@@ -2895,11 +2853,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             # `clickhouse` (default in .env) — if it ever resolves to
             # postgres, that's a config error, not a fallback opportunity.
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.VOICE_CALL_DETAIL):
-                return self._gm.bad_request(
-                    "CH_ROUTE_VOICE_CALL_DETAIL is not set to clickhouse — "
-                    "voice-call detail requires the ClickHouse path post-migration"
-                )
             return self._voice_call_detail_clickhouse(
                 request, trace_id, analytics, str(trace.project_id)
             )
@@ -2939,7 +2892,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         FROM spans
         WHERE project_id = toUUID(%(project_id)s)
           AND trace_id = %(trace_id)s
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND (parent_span_id IS NULL OR parent_span_id = '')
           AND observation_type = 'conversation'
         LIMIT 1
@@ -3022,7 +2975,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         FROM spans
         WHERE project_id = toUUID(%(project_id)s)
           AND trace_id = %(trace_id)s
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND parent_span_id IS NOT NULL
         ORDER BY start_time ASC
         LIMIT 1 BY id
@@ -3284,7 +3237,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         SELECT start_time
         FROM spans
         WHERE project_id = toUUID(%(project_id)s)
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND trace_id = %(trace_id)s
           AND (parent_span_id IS NULL OR parent_span_id = '')
           {time_filter}
@@ -3306,7 +3259,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         SELECT trace_id
         FROM spans
         WHERE project_id = toUUID(%(project_id)s)
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND (parent_span_id IS NULL OR parent_span_id = '')
           AND trace_id != %(trace_id)s
           AND start_time <= %(current_start_time)s
@@ -3324,7 +3277,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         SELECT trace_id
         FROM spans
         WHERE project_id = toUUID(%(project_id)s)
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND (parent_span_id IS NULL OR parent_span_id = '')
           AND trace_id != %(trace_id)s
           AND start_time >= %(current_start_time)s
@@ -3371,11 +3324,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             # _get_trace_id_by_index_observe_clickhouse and uses the spans
             # table directly with cursor-style start_time comparisons.
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.TRACE_OF_SESSION_LIST):
-                return self._gm.bad_request(
-                    "TRACE_OF_SESSION_LIST is not routed to ClickHouse — "
-                    "trace observe navigation requires the CH path post-migration"
-                )
             return self._get_trace_id_by_index_observe_clickhouse(
                 request, trace_id, project_id, filters, analytics
             )
@@ -4528,9 +4476,6 @@ class UsersView(APIView):
                 current_page = 0
 
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.SPAN_LIST):
-                return self._gm.bad_request("ClickHouse user list route disabled")
-
             builder = UserListQueryBuilder(
                 organization_id=str(organization_id),
                 workspace_id=str(request.workspace.id),
@@ -4578,7 +4523,7 @@ class UsersView(APIView):
                         span_attr_num
                     FROM spans
                     PREWHERE end_user_id IN %(eu_ids)s
-                    WHERE _peerdb_is_deleted = 0
+                    WHERE is_deleted = 0
                       {project_clause}
                       AND (
                         (span_attributes_raw != '{{}}' AND span_attributes_raw != '')

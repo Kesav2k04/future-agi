@@ -1,20 +1,19 @@
 """
-Analytics Query Service - Dispatch Layer
+Analytics Query Service.
 
-Routes analytics queries to ClickHouse or PostgreSQL based on per-query-type
-feature flags, with automatic fallback and shadow mode support.
+ClickHouse is the single source of truth for the analytics paths in this
+module; the per-query-type routing toggle (`CH_ROUTE_*`) and PG fallback
+were removed in the CH25 migration close-out (2026-05-26). The CH25 read
+endpoints assume CH is reachable; if it's down, the request fails loudly.
 """
 
 import time
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 import structlog
-from django.conf import settings
-from django.db import connection as pg_connection
 
 from tracer.services.clickhouse.client import (
     ClickHouseClient,
@@ -45,15 +44,6 @@ class QueryType(str, Enum):
     VOICE_CALL_DETAIL = "VOICE_CALL_DETAIL"
 
 
-class RouteDecision(str, Enum):
-    """Possible routing decisions."""
-
-    POSTGRES = "postgres"
-    CLICKHOUSE = "clickhouse"
-    AUTO = "auto"
-    SHADOW = "shadow"
-
-
 @dataclass
 class QueryResult:
     """Container for query results with metadata."""
@@ -79,15 +69,7 @@ class QueryResult:
 
 
 class AnalyticsQueryService:
-    """
-    Service for routing analytics queries to the appropriate backend.
-
-    Supports per-query-type routing via CH_ROUTE_* settings:
-    - "postgres": Always use PostgreSQL
-    - "clickhouse": Always use ClickHouse (fail if unavailable)
-    - "auto": Try ClickHouse, fallback to PostgreSQL on failure
-    - "shadow": Run both, compare, return PostgreSQL result
-    """
+    """ClickHouse query dispatcher for the analytics endpoints."""
 
     def __init__(self):
         self._ch_client: Optional[ClickHouseClient] = None
@@ -97,28 +79,6 @@ class AnalyticsQueryService:
         if self._ch_client is None:
             self._ch_client = get_clickhouse_client()
         return self._ch_client
-
-    def get_route(self, query_type: QueryType) -> RouteDecision:
-        """Get the routing decision for a query type."""
-        ch_settings = getattr(settings, "CLICKHOUSE", {})
-        route_key = f"CH_ROUTE_{query_type.value}"
-        route = ch_settings.get(route_key, "postgres")
-
-        # If shadow mode is globally enabled, override to shadow
-        if ch_settings.get("CH_SHADOW_MODE", False) and route != "postgres":
-            return RouteDecision.SHADOW
-
-        try:
-            return RouteDecision(route)
-        except ValueError:
-            return RouteDecision.POSTGRES
-
-    def should_use_clickhouse(self, query_type: QueryType) -> bool:
-        """Check if ClickHouse should be used for this query type."""
-        route = self.get_route(query_type)
-        if route == RouteDecision.POSTGRES:
-            return False
-        return is_clickhouse_enabled()
 
     def execute_ch_query(
         self, query: str, params: dict = None, timeout_ms: int = 10000
@@ -179,7 +139,7 @@ class AnalyticsQueryService:
                 SELECT key, 'text' AS type, count() AS cnt FROM (
                     SELECT span_attr_str FROM spans
                     WHERE project_id = %(project_id)s
-                      AND _peerdb_is_deleted = 0
+                      AND is_deleted = 0
                       AND created_at >= now() - INTERVAL 7 DAY
                     LIMIT 10000
                 ) ARRAY JOIN mapKeys(span_attr_str) AS key
@@ -188,7 +148,7 @@ class AnalyticsQueryService:
                 SELECT key, 'number' AS type, count() AS cnt FROM (
                     SELECT span_attr_num FROM spans
                     WHERE project_id = %(project_id)s
-                      AND _peerdb_is_deleted = 0
+                      AND is_deleted = 0
                       AND created_at >= now() - INTERVAL 7 DAY
                     LIMIT 10000
                 ) ARRAY JOIN mapKeys(span_attr_num) AS key
@@ -197,7 +157,7 @@ class AnalyticsQueryService:
                 SELECT key, 'boolean' AS type, count() AS cnt FROM (
                     SELECT span_attr_bool FROM spans
                     WHERE project_id = %(project_id)s
-                      AND _peerdb_is_deleted = 0
+                      AND is_deleted = 0
                       AND created_at >= now() - INTERVAL 7 DAY
                     LIMIT 10000
                 ) ARRAY JOIN mapKeys(span_attr_bool) AS key
@@ -269,7 +229,7 @@ class AnalyticsQueryService:
                   SELECT DISTINCT trace_id
                   FROM spans
                   WHERE project_id = %(project_id)s
-                    AND _peerdb_is_deleted = 0
+                    AND is_deleted = 0
               )
         """
         result = self.execute_ch_query(
@@ -278,17 +238,12 @@ class AnalyticsQueryService:
         return [row["config_id"] for row in result.data]
 
     def get_backend_status(self) -> Dict[str, Any]:
-        """Get status of all backends and routing config."""
-        ch_settings = getattr(settings, "CLICKHOUSE", {})
+        """Get the ClickHouse connectivity status."""
         status = {
             "clickhouse": {
                 "enabled": is_clickhouse_enabled(),
                 "connected": False,
             },
-            "routing": {
-                k: v for k, v in ch_settings.items() if k.startswith("CH_ROUTE_")
-            },
-            "shadow_mode": ch_settings.get("CH_SHADOW_MODE", False),
         }
 
         try:

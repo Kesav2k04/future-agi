@@ -95,10 +95,7 @@ from tracer.services.clickhouse.graph_dispatch import (
     fetch_eval_graph_ch,
     fetch_system_metric_graph_ch,
 )
-from tracer.services.clickhouse.query_service import (
-    AnalyticsQueryService,
-    QueryType,
-)
+from tracer.services.clickhouse.query_service import AnalyticsQueryService
 from tracer.utils.annotations import build_annotation_subqueries
 from tracer.utils.create_otel_span import create_single_otel_span
 from tracer.utils.eval import (
@@ -358,22 +355,14 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # ClickHouse dispatch for span detail
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             # CH-only path post-migration. The legacy ORM body that lived
             # below (PromptVersion lookup → EvalLogger scan → eval_metrics
             # pivot) was removed per D-027: CH is the authoritative span +
             # eval store, and the equivalent CH pivot lives in
-            # `_retrieve_clickhouse`. If the dispatch flag ever resolves to
-            # PG, that's a config error — surface it as 400 instead of
-            # silently serving partial PG data.
+            # `_retrieve_clickhouse`.
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.TRACE_DETAIL):
-                return self._gm.bad_request(
-                    "TRACE_DETAIL is not routed to ClickHouse — "
-                    "span retrieval requires the CH path post-migration"
-                )
             return self._retrieve_clickhouse(
                 request, observation_span_id, analytics
             )
@@ -402,7 +391,7 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
                 span_attr_str, span_attr_num, span_attr_bool
             FROM spans
             WHERE id = %(span_id)s
-              AND _peerdb_is_deleted = 0
+              AND is_deleted = 0
             LIMIT 1
         """
         result = analytics.execute_ch_query(
@@ -536,7 +525,7 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             FROM spans
             WHERE trace_id = %(trace_id)s
               AND project_id = %(project_id)s
-              AND _peerdb_is_deleted = 0
+              AND is_deleted = 0
         """
         children_result = analytics.execute_ch_query(
             children_query,
@@ -969,7 +958,6 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # ClickHouse dispatch
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             # CH-only path post-migration. D-027: the previous PG fallback
@@ -977,15 +965,8 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # annotations + Score subqueries + Python pivot, ~270 LOC)
             # was deleted. CH is the authoritative span + eval store; the
             # eval/annotation pivots live in `_list_spans_non_observe_clickhouse`
-            # via SpanListQueryBuilder. If SPAN_LIST is not routed to CH,
-            # that's an operator config error — surface it as a 400 rather
-            # than serving stale PG results.
+            # via SpanListQueryBuilder.
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.SPAN_LIST):
-                return self._gm.bad_request(
-                    "SPAN_LIST is not routed to ClickHouse — "
-                    "span list requires the CH path post-migration"
-                )
             return self._list_spans_non_observe_clickhouse(
                 request,
                 project_version_id,
@@ -1237,7 +1218,6 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # ClickHouse dispatch
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             # CH-only path post-migration. D-027: the previous PG fallback
@@ -1245,14 +1225,8 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # annotations + Score subqueries + Python pivot, ~350 LOC) was
             # deleted. CH is the authoritative span + eval store and the
             # pivot now lives in `_list_spans_clickhouse` via
-            # SpanListQueryBuilder. If SPAN_LIST is not routed to CH that's
-            # a config error — surface it as a 400.
+            # SpanListQueryBuilder.
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.SPAN_LIST):
-                return self._gm.bad_request(
-                    "SPAN_LIST is not routed to ClickHouse — "
-                    "span list (observe) requires the CH path post-migration"
-                )
             return self._list_spans_clickhouse(
                 request, project_id, validated_data, analytics
             )
@@ -1748,14 +1722,8 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # annotations + Score subqueries + Python pivot, ~270 LOC) was
             # deleted. SPAN_GRAPH is served by the three CH helpers
             # (fetch_system_metric_graph_ch / fetch_eval_graph_ch /
-            # fetch_annotation_graph_ch). If SPAN_GRAPH isn't routed to CH
-            # that's a config error — surface it as a 400.
+            # fetch_annotation_graph_ch).
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.SPAN_GRAPH):
-                return self._gm.bad_request(
-                    "SPAN_GRAPH is not routed to ClickHouse — "
-                    "observe span graph requires the CH path post-migration"
-                )
             if type == "SYSTEM_METRIC":
                 return self._gm.success_response(
                     fetch_system_metric_graph_ch(
@@ -1896,7 +1864,7 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
     _OBSERVED_MAX_SAMPLE_SIZE = 100
 
     def _get_span_attribute_keys(self, project_id: str) -> list:
-        """Project's distinct span_attributes keys. CH-first, PG fallback.
+        """Project's distinct span_attributes keys, sourced from CH.
 
         Single source for both ``get_span_attributes_list`` (which wraps
         it in a DRF response) and the trace + session path builders.
@@ -1906,20 +1874,13 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
         bare strings. The normalization loop below collapses both
         shapes to ``list[str]`` so callers never see dicts f-stringed
         into paths like ``traces.0.spans.0.{'key': '...', ...}``.
+
+        CH25 close-out (2026-05-26): PG fallback removed alongside the
+        routing toggle. Span attribute keys come from the CH ``attrs_*``
+        typed-Map indexes (the authoritative inventory).
         """
-        # CH-first; PG fallback retained for the CH-not-routed config.
-        # Codex wave-2 P3 (REVIEWS/codex-trace-obs-views-chunk-20260526T1135.md):
-        # earlier comment claimed the PG fallback was removed, but the
-        # `else` branch still calls SQL_query_handler — the path runs
-        # when operators have SPAN_LIST routed to PG. Span attribute
-        # keys come from the CH attrs_* typed-Map indexes (authoritative
-        # inventory) under CH dispatch, and from the PG span_attributes
-        # JSONB column under PG dispatch.
         analytics = AnalyticsQueryService()
-        if analytics.should_use_clickhouse(QueryType.SPAN_LIST):
-            raw = analytics.get_span_attribute_keys_ch(str(project_id))
-        else:
-            raw = SQL_query_handler.get_span_attributes_for_project(project_id)
+        raw = analytics.get_span_attribute_keys_ch(str(project_id))
 
         keys = []
         for item in raw or []:
@@ -2162,22 +2123,16 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # ClickHouse dispatch
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             analytics = AnalyticsQueryService()
-            # CH-first; PG fallback retained for the CH-not-routed config.
-            # Codex wave-2 P3 (REVIEWS/codex-trace-obs-views-chunk-20260526T1135.md):
-            # the earlier comment claimed the PG fallback was removed but
-            # the PG path below still runs when TRACE_DETAIL is not routed
-            # to ClickHouse. D-027 only removed the try/except-around-CH
-            # fallback; the PG-not-routed branch is a legitimate dispatch
-            # arm. EvalLogger reads here are PG-backed; the CH variant
-            # reads from `tracer_eval_logger` via the CDC pipeline.
-            if analytics.should_use_clickhouse(QueryType.TRACE_DETAIL):
-                return self._get_evaluation_details_clickhouse(
-                    observation_span_id, custom_eval_config_id, analytics
-                )
+            # CH-only path post-migration. EvalLogger reads previously
+            # served as a PG fallback; the CH variant reads from
+            # `tracer_eval_logger` via the CDC pipeline and is now the
+            # only routed path.
+            return self._get_evaluation_details_clickhouse(
+                observation_span_id, custom_eval_config_id, analytics
+            )
 
             # Mirror the ClickHouse filter; excludes session-target rows.
             eval_logger = EvalLogger.objects.filter(

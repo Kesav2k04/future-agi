@@ -46,36 +46,27 @@ CLICKHOUSE = {
     "CH_PASSWORD": os.environ.get("CH_PASSWORD", ""),
     "CH_DATABASE": os.environ.get("CH_DATABASE", "test_tfc"),
     "CH_ENABLED": os.environ.get("CH_ENABLED", "true").lower() in ("true", "1", "yes"),
-    "CH_ROUTE_TIME_SERIES": os.environ.get("CH_ROUTE_TIME_SERIES", "clickhouse"),
-    "CH_ROUTE_TRACE_LIST": os.environ.get("CH_ROUTE_TRACE_LIST", "clickhouse"),
-    "CH_ROUTE_SESSION_LIST": os.environ.get("CH_ROUTE_SESSION_LIST", "clickhouse"),
-    "CH_ROUTE_EVAL_METRICS": os.environ.get("CH_ROUTE_EVAL_METRICS", "clickhouse"),
-    "CH_ROUTE_ERROR_ANALYSIS": os.environ.get("CH_ROUTE_ERROR_ANALYSIS", "clickhouse"),
-    "CH_ROUTE_SPAN_LIST": os.environ.get("CH_ROUTE_SPAN_LIST", "clickhouse"),
-    "CH_ROUTE_TRACE_OF_SESSION_LIST": os.environ.get(
-        "CH_ROUTE_TRACE_OF_SESSION_LIST", "clickhouse"
-    ),
-    "CH_ROUTE_SPAN_GRAPH": os.environ.get("CH_ROUTE_SPAN_GRAPH", "clickhouse"),
-    "CH_ROUTE_VOICE_CALL_LIST": os.environ.get(
-        "CH_ROUTE_VOICE_CALL_LIST", "clickhouse"
-    ),
-    "CH_ROUTE_SESSION_ANALYTICS": os.environ.get(
-        "CH_ROUTE_SESSION_ANALYTICS", "clickhouse"
-    ),
-    "CH_ROUTE_ANNOTATION_GRAPH": os.environ.get(
-        "CH_ROUTE_ANNOTATION_GRAPH", "clickhouse"
-    ),
-    "CH_ROUTE_TRACE_DETAIL": os.environ.get("CH_ROUTE_TRACE_DETAIL", "clickhouse"),
-    "CH_ROUTE_MONITOR_METRICS": os.environ.get(
-        "CH_ROUTE_MONITOR_METRICS", "clickhouse"
-    ),
-    "CH_ROUTE_ANNOTATION_DETAIL": os.environ.get(
-        "CH_ROUTE_ANNOTATION_DETAIL", "clickhouse"
-    ),
-    "CH_ROUTE_VOICE_CALL_DETAIL": os.environ.get(
-        "CH_ROUTE_VOICE_CALL_DETAIL", "clickhouse"
-    ),
-    "CH_SHADOW_MODE": os.environ.get("CH_SHADOW_MODE", "false"),
+}
+
+# Point Redis-using code at the test compose sidecar at localhost:16379
+# (per docker-compose.test.yml). Without this, modules fall through to the
+# dev `.env` host `redis://redis:6379/0` which doesn't resolve outside
+# Docker, and the payload_storage / distributed_locks helpers raise
+# "Redis is not available" mid-test.
+os.environ.setdefault("REDIS_URL", "redis://localhost:16379/0")
+os.environ.setdefault("REDIS_LOCK_URL", "redis://localhost:16379/2")
+
+# CHSpanReader / CH25 v2 service uses clickhouse-connect over HTTP. The TCP
+# port lives in `CLICKHOUSE['CH_PORT']` (19000) but the HTTP listener is on
+# 18123 in the test compose. Without this dict `get_v2_config()` would fall
+# back to the hardcoded HTTP default 8123 and hit the dev CH 24.10 instead.
+CLICKHOUSE_V2 = {
+    "CH25_HOST": os.environ.get("CH25_HOST", "localhost"),
+    "CH25_HTTP_PORT": int(os.environ.get("CH25_HTTP_PORT", "18123")),
+    "CH25_TCP_PORT": int(os.environ.get("CH25_TCP_PORT", "19000")),
+    "CH25_USER": os.environ.get("CH25_USER", "default"),
+    "CH25_PASSWORD": os.environ.get("CH25_PASSWORD", ""),
+    "CH25_DATABASE": os.environ.get("CH25_DATABASE", "test_tfc"),
 }
 
 # Test cache configuration

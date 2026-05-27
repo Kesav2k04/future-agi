@@ -352,7 +352,7 @@ class ClickHouseFilterBuilder:
             f"(SELECT {select_cols} FROM spans "
             f"WHERE {project_pred} "
             f"{date_pred} "
-            f"AND _peerdb_is_deleted = 0"
+            f"AND is_deleted = 0"
             f"{extra}"
             f"{id_filter})"
         )
@@ -805,7 +805,7 @@ class ClickHouseFilterBuilder:
             f"trace_id IN ("
             f"SELECT trace_id FROM {self.table} "
             f"WHERE {self._project_scope_predicate()} "
-            f"AND _peerdb_is_deleted = 0 "
+            f"AND is_deleted = 0 "
             f"{root_clause}"
             f"AND {inner})"
         )
@@ -832,7 +832,7 @@ class ClickHouseFilterBuilder:
             f"SELECT trace_id FROM {self.table} "
             f"WHERE {self._project_scope_predicate()} "
             f"AND end_user_id IN %({param})s "
-            f"AND _peerdb_is_deleted = 0)"
+            f"AND is_deleted = 0)"
         )
 
     def _build_enduser_string_condition(
@@ -866,7 +866,7 @@ class ClickHouseFilterBuilder:
                 f"SELECT trace_id FROM {self.table} "
                 f"WHERE {self._project_scope_predicate()} "
                 f"AND {has_end_user} "
-                f"AND _peerdb_is_deleted = 0)"
+                f"AND is_deleted = 0)"
             )
 
         if filter_value is None or filter_value == "":
@@ -910,7 +910,7 @@ class ClickHouseFilterBuilder:
             f"SELECT trace_id FROM {self.table} "
             f"WHERE {self._project_scope_predicate()} "
             f"AND end_user_id IN ({enduser_subquery}) "
-            f"AND _peerdb_is_deleted = 0)"
+            f"AND is_deleted = 0)"
         )
 
     def _build_span_attr_condition(
@@ -951,7 +951,7 @@ class ClickHouseFilterBuilder:
             f"trace_id IN ("
             f"SELECT trace_id FROM {self.table} "
             f"WHERE {self._project_scope_predicate()} "
-            f"AND _peerdb_is_deleted = 0 "
+            f"AND is_deleted = 0 "
             f"AND {inner_predicate})"
         )
 
@@ -1371,7 +1371,7 @@ class ClickHouseFilterBuilder:
                 f"{outer_col} {outer_operator} ("
                 f"SELECT {inner_col} FROM tracer_eval_logger FINAL "
                 f"WHERE custom_eval_config_id IN %({param_cfg})s "
-                f"AND _peerdb_is_deleted = 0 "
+                f"AND is_deleted = 0 "
                 f"{error_clause} "
                 f"AND {match_condition}"
                 f")"
@@ -1834,7 +1834,7 @@ class ClickHouseFilterBuilder:
             "SELECT DISTINCT toString(el.trace_id) FROM tracer_eval_logger AS el FINAL "
             f"INNER JOIN {self.table} AS sp ON sp.trace_id = toString(el.trace_id) "
             "WHERE el._peerdb_is_deleted = 0 AND el.trace_id IS NOT NULL "
-            "AND sp._peerdb_is_deleted = 0 "
+            "AND sp.is_deleted = 0 "
             f"AND {self._project_scope_predicate('sp')})"
         )
 

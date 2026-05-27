@@ -125,16 +125,10 @@ def _get_session_metrics_from_ch(session, project_id):
     from tracer.services.clickhouse.query_builders.session_analytics import (
         SessionAnalyticsQueryBuilder,
     )
-    from tracer.services.clickhouse.query_service import (
-        AnalyticsQueryService,
-        QueryType,
-    )
+    from tracer.services.clickhouse.query_service import AnalyticsQueryService
 
     try:
         service = AnalyticsQueryService()
-        if not service.should_use_clickhouse(QueryType.SESSION_ANALYTICS):
-            return None
-
         builder = SessionAnalyticsQueryBuilder(project_id=str(project_id))
         query, params = builder.build_session_metrics_query([str(session.id)])
         result = service.execute_ch_query(query, params)
@@ -167,16 +161,10 @@ def _get_user_stats_from_ch(user, project_id):
     from tracer.services.clickhouse.query_builders.session_analytics import (
         SessionAnalyticsQueryBuilder,
     )
-    from tracer.services.clickhouse.query_service import (
-        AnalyticsQueryService,
-        QueryType,
-    )
+    from tracer.services.clickhouse.query_service import AnalyticsQueryService
 
     try:
         service = AnalyticsQueryService()
-        if not service.should_use_clickhouse(QueryType.SESSION_ANALYTICS):
-            return None
-
         builder = SessionAnalyticsQueryBuilder(project_id=str(project_id))
         query, params = builder.build_user_stats_query(str(user.id))
         result = service.execute_ch_query(query, params)
@@ -557,6 +545,7 @@ def complete_sessions_with_trace_completion_task():
     - No new spans have been added in the last hour
     - The last span has status OK or ERROR (not UNSET)
     """
+    from tracer.models.observation_span import ObservationSpan
     from tracer.models.trace import Trace
     from tracer.models.trace_session import SessionStatus, TraceSession
     from tracer.services.clickhouse.v2 import get_reader
@@ -610,15 +599,35 @@ def complete_sessions_with_trace_completion_task():
                 # span" pick stale and trigger an early COMPLETED write.
                 seen_trace_ids = {str(s.trace_id) for s in spans}
                 requested = {str(tid) for tid in trace_ids}
-                missing = sorted(requested - seen_trace_ids)
+                missing = requested - seen_trace_ids
                 if missing:
-                    logger.warning(
-                        "ch_lag_skip_session_completion",
-                        session_id=str(session.id),
-                        missing_trace_ids_count=len(missing),
-                        missing_trace_ids_sample=missing[:10],
+                    # Codex final-review P2 (2026-05-26): a Trace row can
+                    # legitimately have zero spans (e.g. trace created but
+                    # ingestion failed). Without this PG existence gate,
+                    # any such trace would keep `missing` non-empty
+                    # forever and the session would never mark COMPLETED.
+                    # Same pattern as `_aggregate_spans_by_trace_ids`.
+                    pg_present = set(
+                        str(tid)
+                        for tid in ObservationSpan.no_workspace_objects.filter(
+                            trace_id__in=missing,
+                            deleted=False,
+                        )
+                        .values_list("trace_id", flat=True)
+                        .distinct()
                     )
-                    continue
+                    lagging = sorted(missing & pg_present)
+                    if lagging:
+                        logger.warning(
+                            "ch_lag_skip_session_completion",
+                            session_id=str(session.id),
+                            missing_trace_ids_count=len(lagging),
+                            missing_trace_ids_sample=lagging[:10],
+                        )
+                        continue
+                    # All missing traces are legitimately spanless — drop
+                    # them from the requested set and fall through to the
+                    # completion check below.
 
                 # Mirror Django's `order_by("-end_time").first()` ordering
                 # exactly: PostgreSQL defaults NULLs FIRST under DESC, so a

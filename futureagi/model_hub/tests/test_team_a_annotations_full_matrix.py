@@ -2111,15 +2111,7 @@ class TestGetAnnotationLabelsLegacy:
         numeric_label,
         text_label,
         categorical_label,
-        monkeypatch,
     ):
-        from tracer.services.clickhouse.query_service import AnalyticsQueryService
-
-        monkeypatch.setattr(
-            AnalyticsQueryService,
-            "should_use_clickhouse",
-            lambda self, query_type: False,
-        )
         api_client.force_authenticate(user=user)
         resp = api_client.get(
             "/tracer/trace/list_traces_of_session/",

@@ -48,7 +48,7 @@ from tracer.services.clickhouse.query_builders import (
     TimeSeriesQueryBuilder,
     UserListQueryBuilder,
 )
-from tracer.services.clickhouse.query_service import AnalyticsQueryService, QueryType
+from tracer.services.clickhouse.query_service import AnalyticsQueryService
 from tracer.utils.constants import (
     INSTALLATION_GUIDE,
     INSTRUMENTORS,
@@ -476,7 +476,7 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                             "SELECT project_id, count() AS vol "
                             "FROM spans "
                             "WHERE project_id IN %(pids)s "
-                            "AND _peerdb_is_deleted = 0 "
+                            "AND is_deleted = 0 "
                             "AND (parent_span_id IS NULL OR parent_span_id = %(e)s) "
                             "AND start_time >= %(since)s "
                             "GROUP BY project_id",
@@ -495,7 +495,7 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                             "SELECT project_id, toDate(start_time) AS day, count() AS vol "
                             "FROM spans "
                             "WHERE project_id IN %(pids)s "
-                            "AND _peerdb_is_deleted = 0 "
+                            "AND is_deleted = 0 "
                             "AND (parent_span_id IS NULL OR parent_span_id = %(e)s) "
                             "AND start_time >= %(since)s "
                             "GROUP BY project_id, day "
@@ -537,7 +537,7 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                             "SELECT project_id, max(start_time) AS last_active "
                             "FROM spans "
                             "WHERE project_id IN %(pids)s "
-                            "AND _peerdb_is_deleted = 0 "
+                            "AND is_deleted = 0 "
                             "GROUP BY project_id",
                             {"pids": project_ids},
                             timeout_ms=5000,
@@ -671,9 +671,6 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
             _org = get_request_organization(request) or request.user.organization
             _org_id = str(_org.id)
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.SPAN_LIST):
-                return self._gm.bad_request("ClickHouse user metrics route disabled")
-
             builder = UserListQueryBuilder(
                 organization_id=_org_id,
                 workspace_id=str(request.workspace.id),
@@ -741,51 +738,50 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
             analytics = AnalyticsQueryService()
 
             if metric_type == "SYSTEM_METRIC":
-                if analytics.should_use_clickhouse(QueryType.TIME_SERIES):
-                    try:
-                        from tracer.services.clickhouse.query_builders.user_time_series import (
-                            UserTimeSeriesQueryBuilder,
-                        )
+                try:
+                    from tracer.services.clickhouse.query_builders.user_time_series import (
+                        UserTimeSeriesQueryBuilder,
+                    )
 
-                        builder = UserTimeSeriesQueryBuilder(
-                            project_id=str(project_id),
-                            filters=filters,
-                            interval=interval,
-                        )
-                        query, params = builder.build()
-                        result = analytics.execute_ch_query(
-                            query, params, timeout_ms=10000
-                        )
-                        ch_data = builder.format_result(
-                            result.data, result.columns or []
-                        )
+                    builder = UserTimeSeriesQueryBuilder(
+                        project_id=str(project_id),
+                        filters=filters,
+                        interval=interval,
+                    )
+                    query, params = builder.build()
+                    result = analytics.execute_ch_query(
+                        query, params, timeout_ms=10000
+                    )
+                    ch_data = builder.format_result(
+                        result.data, result.columns or []
+                    )
 
-                        metric_key = (
-                            metric_id if metric_id in ch_data else "active_users"
-                        )
-                        metric_points = ch_data.get(metric_key, [])
-                        traffic_points = ch_data.get("traffic", [])
-                        traffic_by_ts = {
-                            t.get("timestamp"): t.get("traffic", 0)
-                            for t in traffic_points
-                        }
-                        graph_data = {
-                            "metric_name": metric_id,
-                            "data": [
-                                {
-                                    "timestamp": p.get("timestamp"),
-                                    "value": p.get("value", 0),
-                                    "primary_traffic": traffic_by_ts.get(
-                                        p.get("timestamp"), 0
-                                    ),
-                                }
-                                for p in metric_points
-                            ],
-                        }
-                        return self._gm.success_response(graph_data)
-                    except Exception as e:
-                        logger.warning("CH user time-series failed", error=str(e))
-                        return self._gm.bad_request("ClickHouse user graph failed")
+                    metric_key = (
+                        metric_id if metric_id in ch_data else "active_users"
+                    )
+                    metric_points = ch_data.get(metric_key, [])
+                    traffic_points = ch_data.get("traffic", [])
+                    traffic_by_ts = {
+                        t.get("timestamp"): t.get("traffic", 0)
+                        for t in traffic_points
+                    }
+                    graph_data = {
+                        "metric_name": metric_id,
+                        "data": [
+                            {
+                                "timestamp": p.get("timestamp"),
+                                "value": p.get("value", 0),
+                                "primary_traffic": traffic_by_ts.get(
+                                    p.get("timestamp"), 0
+                                ),
+                            }
+                            for p in metric_points
+                        ],
+                    }
+                    return self._gm.success_response(graph_data)
+                except Exception as e:
+                    logger.warning("CH user time-series failed", error=str(e))
+                    return self._gm.bad_request("ClickHouse user graph failed")
 
             elif metric_type in ("EVAL", "ANNOTATION"):
                 user_filters = [
@@ -800,9 +796,7 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                         },
                     },
                 ]
-                if metric_type == "EVAL" and analytics.should_use_clickhouse(
-                    QueryType.EVAL_METRICS
-                ):
+                if metric_type == "EVAL":
                     try:
                         return self._gm.success_response(
                             fetch_eval_graph_ch(
@@ -820,9 +814,7 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                         )
                         return self._gm.bad_request("ClickHouse user graph failed")
 
-                if metric_type == "ANNOTATION" and analytics.should_use_clickhouse(
-                    QueryType.ANNOTATION_GRAPH
-                ):
+                if metric_type == "ANNOTATION":
                     try:
                         return self._gm.success_response(
                             fetch_annotation_graph_ch(
@@ -903,9 +895,6 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                 interval = body["interval"]
                 filters = body["filters"]
                 analytics = AnalyticsQueryService()
-                if not analytics.should_use_clickhouse(QueryType.TIME_SERIES):
-                    return self._gm.bad_request("ClickHouse user graph route disabled")
-
                 builder = TimeSeriesQueryBuilder(
                     project_id=project_id,
                     filters=filters,
@@ -950,7 +939,7 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                     sum(ifNull(completion_tokens, 0)) AS output_tokens
                 FROM spans
                 WHERE project_id = %(project_id)s
-                  AND _peerdb_is_deleted = 0
+                  AND is_deleted = 0
                   AND end_user_id IN (
                     SELECT id
                     FROM tracer_enduser FINAL

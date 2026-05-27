@@ -777,10 +777,6 @@ class TestVoiceAnnotationRegressionE2E:
         root_conversation_span,
         simulation_call_execution,
     ):
-        monkeypatch.setattr(
-            "tracer.services.clickhouse.query_service.AnalyticsQueryService.should_use_clickhouse",
-            lambda self, query_type: False,
-        )
         ScenarioGraph.objects.create(
             name="Order flow",
             scenario=simulation_call_execution.scenario,

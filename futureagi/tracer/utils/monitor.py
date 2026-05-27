@@ -43,7 +43,7 @@ from tracer.models.observation_span import EvalLogger, ObservationSpan
 from tracer.services.clickhouse.query_builders.monitor_metrics import (
     MonitorMetricsQueryBuilder,
 )
-from tracer.services.clickhouse.query_service import AnalyticsQueryService, QueryType
+from tracer.services.clickhouse.query_service import AnalyticsQueryService
 from tracer.utils.eval_tasks import parsing_evaltask_filters
 
 
@@ -244,39 +244,37 @@ def _get_metric_value(monitor, start_time, end_time):
 
     # --- ClickHouse dispatch ---
     analytics = AnalyticsQueryService()
-    if analytics.should_use_clickhouse(QueryType.MONITOR_METRICS):
-        try:
-            builder = _build_monitor_ch_builder(monitor)
-            metric_type = monitor.metric_type
+    try:
+        builder = _build_monitor_ch_builder(monitor)
+        metric_type = monitor.metric_type
 
-            # For DAILY/MONTHLY tokens, override start_time
-            ch_start = start_time
-            if metric_type == MonitorMetricTypeChoices.DAILY_TOKENS_SPENT:
-                ch_start = end_time - timedelta(days=1)
-            elif metric_type == MonitorMetricTypeChoices.MONTHLY_TOKENS_SPENT:
-                ch_start = end_time - timedelta(days=30)
+        # For DAILY/MONTHLY tokens, override start_time
+        ch_start = start_time
+        if metric_type == MonitorMetricTypeChoices.DAILY_TOKENS_SPENT:
+            ch_start = end_time - timedelta(days=1)
+        elif metric_type == MonitorMetricTypeChoices.MONTHLY_TOKENS_SPENT:
+            ch_start = end_time - timedelta(days=30)
 
-            query, params = builder.build_metric_value_query(
-                metric_type, ch_start, end_time
-            )
-            result = analytics.execute_ch_query(query, params, timeout_ms=5000)
-            if result.data:
-                return result.data[0].get("value")
-            return None
-        except Exception as e:
-            logger.warning(
-                "CH monitor metric failed, falling back to PG",
-                error=str(e),
-                monitor_id=str(monitor.id),
-            )
+        query, params = builder.build_metric_value_query(
+            metric_type, ch_start, end_time
+        )
+        result = analytics.execute_ch_query(query, params, timeout_ms=5000)
+        if result.data:
+            return result.data[0].get("value")
+        return None
+    except Exception as e:
+        logger.warning(
+            "CH monitor metric failed, falling back to PG",
+            error=str(e),
+            monitor_id=str(monitor.id),
+        )
 
     # --- PostgreSQL fallback ---
     # CH25-TODO(blocked-on-reader-extension): the CH primary path above
     # uses MonitorMetricsQueryBuilder which fully handles span_attributes_
     # filters, status-stratified counts, group-by-session and group-by-
     # provider via the FilterEngine v2. This Django-ORM fallback exists
-    # as the safety net when the CH dispatch raises (and is also used
-    # when `should_use_clickhouse()` is False on a tenant/feature flag).
+    # as the safety net when the CH dispatch raises.
     # Migrating the fallback to CH would defeat its purpose. To remove
     # the ORM entirely, we'd need readers for:
     #   • aggregate_window_with_filters(project_id, since, until,
@@ -558,36 +556,35 @@ def _get_historical_stats(monitor, start_time, end_time):
 
     # --- ClickHouse dispatch ---
     analytics = AnalyticsQueryService()
-    if analytics.should_use_clickhouse(QueryType.MONITOR_METRICS):
-        try:
-            metric_type = monitor.metric_type
+    try:
+        metric_type = monitor.metric_type
 
-            # For time-aggregated metrics, compute stats from time-series buckets
-            if metric_type in (
-                MonitorMetricTypeChoices.COUNT_OF_ERRORS,
-                MonitorMetricTypeChoices.TOKEN_USAGE,
-                MonitorMetricTypeChoices.DAILY_TOKENS_SPENT,
-                MonitorMetricTypeChoices.MONTHLY_TOKENS_SPENT,
-            ):
-                return _get_stats_for_time_aggregated_metrics(
-                    monitor, start_time, end_time
-                )
+        # For time-aggregated metrics, compute stats from time-series buckets
+        if metric_type in (
+            MonitorMetricTypeChoices.COUNT_OF_ERRORS,
+            MonitorMetricTypeChoices.TOKEN_USAGE,
+            MonitorMetricTypeChoices.DAILY_TOKENS_SPENT,
+            MonitorMetricTypeChoices.MONTHLY_TOKENS_SPENT,
+        ):
+            return _get_stats_for_time_aggregated_metrics(
+                monitor, start_time, end_time
+            )
 
-            builder = _build_monitor_ch_builder(monitor)
-            query, params = builder.build_historical_stats_query(
-                metric_type, start_time, end_time
-            )
-            result = analytics.execute_ch_query(query, params, timeout_ms=5000)
-            if result.data:
-                row = result.data[0]
-                return row.get("mean"), row.get("stddev")
-            return None, None
-        except Exception as e:
-            logger.warning(
-                "CH historical stats failed, falling back to PG",
-                error=str(e),
-                monitor_id=str(monitor.id),
-            )
+        builder = _build_monitor_ch_builder(monitor)
+        query, params = builder.build_historical_stats_query(
+            metric_type, start_time, end_time
+        )
+        result = analytics.execute_ch_query(query, params, timeout_ms=5000)
+        if result.data:
+            row = result.data[0]
+            return row.get("mean"), row.get("stddev")
+        return None, None
+    except Exception as e:
+        logger.warning(
+            "CH historical stats failed, falling back to PG",
+            error=str(e),
+            monitor_id=str(monitor.id),
+        )
 
     # --- PostgreSQL fallback ---
     # CH25-TODO(blocked-on-reader-extension): see _get_metric_value above.

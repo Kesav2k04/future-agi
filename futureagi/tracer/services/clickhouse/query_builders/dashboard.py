@@ -855,10 +855,10 @@ class DashboardQueryBuilder:
                 "AND a.observation_span_id IN ("
                 "SELECT id FROM spans "
                 "WHERE project_id IN %(project_ids)s "
-                "AND _peerdb_is_deleted = 0))"
+                "AND is_deleted = 0))"
                 ")"
             ),
-            "a._peerdb_is_deleted = 0",
+            "a.is_deleted = 0",
             "a.deleted = 0",
             "a.created_at >= %(start_date)s",
             "a.created_at < %(end_date)s",

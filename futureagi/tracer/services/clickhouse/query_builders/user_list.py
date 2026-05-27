@@ -178,7 +178,7 @@ class UserListQueryBuilder(BaseQueryBuilder):
                 span_attr_str,
                 span_attr_num
             FROM spans
-            WHERE _peerdb_is_deleted = 0
+            WHERE is_deleted = 0
               AND end_user_id IN (SELECT id FROM filtered_end_users)
               AND isNotNull(end_user_id)
               AND start_time >= %(start_date)s

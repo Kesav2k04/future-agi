@@ -306,7 +306,7 @@ class TestClickHouseSchema:
         assert len(stmts) > 0
         assert "INSERT INTO spans" in stmts[0]
         assert "FROM tracer_observation_span" in stmts[0]
-        assert "_peerdb_is_deleted = 0" in stmts[0]
+        assert "is_deleted = 0" in stmts[0]
 
 
 # ============================================================================
@@ -1584,7 +1584,7 @@ class TestClickHouseFilterBuilder:
         where, params = builder.translate(filters)
         assert "trace_id IN" in where
         assert "tracer_eval_logger" in where
-        assert "_peerdb_is_deleted = 0" in where
+        assert "is_deleted = 0" in where
         # No params needed — the subquery is static
         assert params == {}
 
@@ -1696,7 +1696,7 @@ class TestClickHouseFilterBuilder:
         assert "model_hub_score" in where
         assert "FROM spans WHERE" in where
         assert "sp.id = s.observation_span_id" in where
-        assert "_peerdb_is_deleted = 0" in where
+        assert "is_deleted = 0" in where
         assert params == {}
 
     def test_span_mode_has_annotation_targets_span_id(self):
@@ -2101,7 +2101,7 @@ class TestTraceListQueryBuilder:
         )
         query, params = builder.build()
         assert params["offset"] == 75  # 3 * 25
-        assert params["limit"] == 26  # 25 + 1 for has_more detection
+        assert params["limit"] == 25
 
 
 @pytest.mark.unit
@@ -2839,51 +2839,15 @@ class TestErrorAnalysisQueryBuilder:
 class TestAnalyticsQueryService:
     """Test the dispatch layer."""
 
-    def test_get_route_returns_valid_decision(self):
-        """get_route should return a valid RouteDecision enum value."""
-        from tracer.services.clickhouse.query_service import (
-            AnalyticsQueryService,
-            QueryType,
-            RouteDecision,
-        )
-
-        service = AnalyticsQueryService()
-        route = service.get_route(QueryType.TRACE_LIST)
-        assert route in (
-            RouteDecision.POSTGRES,
-            RouteDecision.CLICKHOUSE,
-            RouteDecision.SHADOW,
-        )
-
-    @mock.patch(
-        "tracer.services.clickhouse.query_service.is_clickhouse_enabled",
-        return_value=True,
-    )
-    def test_should_use_clickhouse_consistent_with_route(self, _mock_enabled):
-        """should_use_clickhouse should be True when route is CLICKHOUSE or SHADOW."""
-        from tracer.services.clickhouse.query_service import (
-            AnalyticsQueryService,
-            QueryType,
-            RouteDecision,
-        )
-
-        service = AnalyticsQueryService()
-        route = service.get_route(QueryType.TRACE_LIST)
-        uses_ch = service.should_use_clickhouse(QueryType.TRACE_LIST)
-        if route == RouteDecision.POSTGRES:
-            assert uses_ch is False
-        else:
-            assert uses_ch is True
-
     def test_get_backend_status(self):
-        """get_backend_status should return a dict with clickhouse and routing info."""
+        """get_backend_status reports CH enablement + connectivity."""
         from tracer.services.clickhouse.query_service import AnalyticsQueryService
 
         service = AnalyticsQueryService()
         status = service.get_backend_status()
         assert "clickhouse" in status
-        assert "routing" in status
-        assert "shadow_mode" in status
+        assert "enabled" in status["clickhouse"]
+        assert "connected" in status["clickhouse"]
 
     def test_query_result_creation(self):
         """QueryResult dataclass should be creatable with expected fields."""
@@ -2923,16 +2887,6 @@ class TestAnalyticsQueryService:
         assert QueryType.SESSION_LIST == "SESSION_LIST"
         assert QueryType.EVAL_METRICS == "EVAL_METRICS"
         assert QueryType.ERROR_ANALYSIS == "ERROR_ANALYSIS"
-
-    def test_route_decision_enum_values(self):
-        """RouteDecision should have all expected routing options."""
-        from tracer.services.clickhouse.query_service import RouteDecision
-
-        assert RouteDecision.POSTGRES == "postgres"
-        assert RouteDecision.CLICKHOUSE == "clickhouse"
-        assert RouteDecision.AUTO == "auto"
-        assert RouteDecision.SHADOW == "shadow"
-
 
 # ============================================================================
 # 5. Consistency Checker Tests
@@ -3089,7 +3043,7 @@ class TestBaseQueryBuilder:
         assert end.day == 30
 
     def test_parse_time_range_defaults(self):
-        """Empty filters should default to a very wide window (10 years)."""
+        """Empty filters should default to a 30-day window (partition-pruning friendly)."""
         from datetime import datetime, timedelta
 
         from tracer.services.clickhouse.query_builders.base import BaseQueryBuilder
@@ -3097,8 +3051,9 @@ class TestBaseQueryBuilder:
         start, end = BaseQueryBuilder.parse_time_range([])
         assert start is not None
         assert end is not None
-        # Default is ~3650 days (10 years) to include all historical data.
-        assert (datetime.utcnow() - start).days >= 3649
+        # Default is 30 days back from now (was 3650; shortened in CH 25.3 perf sweep).
+        assert (datetime.utcnow() - start).days >= 29
+        assert (datetime.utcnow() - start).days <= 31
         # End should be close to now
         assert abs((datetime.utcnow() - end).total_seconds()) < 5
 
@@ -3118,8 +3073,9 @@ class TestBaseQueryBuilder:
             }
         ]
         start, end = BaseQueryBuilder.parse_time_range(filters)
-        # Should fall back to defaults (~3650 days back).
-        assert (datetime.utcnow() - start).days >= 3649
+        # Should fall back to defaults (30 days back).
+        assert (datetime.utcnow() - start).days >= 29
+        assert (datetime.utcnow() - start).days <= 31
 
     def test_parse_time_range_handles_start_time_column(self):
         """parse_time_range should also recognize start_time as a date column."""
@@ -3148,7 +3104,7 @@ class TestBaseQueryBuilder:
         builder = TimeSeriesQueryBuilder(project_id="test-id")
         where = builder.project_where()
         assert "project_id = %(project_id)s" in where
-        assert "_peerdb_is_deleted = 0" in where
+        assert "is_deleted = 0" in where
 
     def test_project_where_with_alias(self):
         """project_where() with alias should prefix column names."""
@@ -3157,7 +3113,7 @@ class TestBaseQueryBuilder:
         builder = TimeSeriesQueryBuilder(project_id="test-id")
         where = builder.project_where(table_alias="s")
         assert "s.project_id = %(project_id)s" in where
-        assert "s._peerdb_is_deleted = 0" in where
+        assert "s.is_deleted = 0" in where
 
     def test_normalize_timestamp_hour(self):
         """_normalize_timestamp for hour should truncate to hour boundary."""
@@ -3808,7 +3764,7 @@ class TestTraceListQueryBuilderComprehensive:
         )
         _, params = builder.build()
         assert params["offset"] == 0
-        assert params["limit"] == 51  # +1 for has_more
+        assert params["limit"] == 50
 
     def test_pagination_large_page(self):
         """Large page number should calculate correct offset."""
@@ -3821,7 +3777,7 @@ class TestTraceListQueryBuilderComprehensive:
         )
         _, params = builder.build()
         assert params["offset"] == 1000
-        assert params["limit"] == 101
+        assert params["limit"] == 100
 
     def test_pagination_small_page_size(self):
         """Small page size should work correctly."""
@@ -3834,7 +3790,7 @@ class TestTraceListQueryBuilderComprehensive:
         )
         _, params = builder.build()
         assert params["offset"] == 50
-        assert params["limit"] == 11
+        assert params["limit"] == 10
 
     # ------------------------------------------------------------------
     # Count query
@@ -4356,7 +4312,7 @@ class TestSpanListQueryBuilderComprehensive:
         )
         _, params = builder.build()
         assert params["offset"] == 60
-        assert params["limit"] == 21  # +1 for has_more detection
+        assert params["limit"] == 20
 
     def test_sort_default(self):
         """Default sort should be ORDER BY start_time DESC."""
@@ -5068,7 +5024,7 @@ class TestFilterBuilderEdgeCases:
         assert "model_hub_score AS s FINAL" in where
         # The column on model_hub_score is simply label_id (not annotation_label_id).
         assert "label_id" in where
-        assert "_peerdb_is_deleted = 0" in where
+        assert "is_deleted = 0" in where
 
     def test_annotation_number_not_equals(self):
         """Canonical number op not_equals should translate to SQL !=."""
@@ -5686,7 +5642,7 @@ class TestVoiceCallListQueryBuilderComprehensive:
         builder = VoiceCallListQueryBuilder(project_id="proj-abc")
         query, params = builder.build()
         assert "project_id = %(project_id)s" in query
-        assert "_peerdb_is_deleted = 0" in query
+        assert "is_deleted = 0" in query
         assert params["project_id"] == "proj-abc"
 
     def test_build_orders_by_start_time_desc(self):
@@ -5700,7 +5656,7 @@ class TestVoiceCallListQueryBuilderComprehensive:
         assert "ORDER BY start_time DESC" in query
 
     def test_build_uses_default_time_range_when_no_date_filter(self):
-        """When no date filter, should default to a very wide window (10 years)."""
+        """When no date filter, should default to a 30-day window."""
         from datetime import datetime, timedelta
 
         from tracer.services.clickhouse.query_builders.voice_call_list import (
@@ -5710,8 +5666,10 @@ class TestVoiceCallListQueryBuilderComprehensive:
         builder = VoiceCallListQueryBuilder(project_id="proj-1", filters=[])
         _, params = builder.build()
         now = datetime.utcnow()
-        # Default is ~3650 days (10 years) back — matches BaseQueryBuilder.parse_time_range.
-        assert (now - params["start_date"]).days >= 3649
+        # Default is 30 days back — matches BaseQueryBuilder.parse_time_range
+        # (was 3650; shortened in CH 25.3 perf sweep for partition pruning).
+        assert (now - params["start_date"]).days >= 29
+        assert (now - params["start_date"]).days <= 31
         # end_date should be roughly now
         assert abs((now - params["end_date"]).total_seconds()) < 5
 
@@ -6260,7 +6218,7 @@ class TestVoiceCallListQueryBuilderComprehensive:
 
         builder = VoiceCallListQueryBuilder(project_id="proj-1")
         query, _ = builder.build_child_spans_query(["trace-1"])
-        assert "_peerdb_is_deleted = 0" in query
+        assert "is_deleted = 0" in query
 
     def test_child_spans_query_orders_by_start_time(self):
         """Child spans should be ordered chronologically."""
@@ -6386,13 +6344,6 @@ class TestVoiceCallListQueryBuilderComprehensive:
         assert hasattr(QueryType, "VOICE_CALL_LIST")
         assert QueryType.VOICE_CALL_LIST.value == "VOICE_CALL_LIST"
 
-    def test_voice_call_list_route_setting(self):
-        """CH_ROUTE_VOICE_CALL_LIST should be present in CLICKHOUSE settings."""
-        from django.conf import settings
-
-        ch_settings = settings.CLICKHOUSE
-        assert "CH_ROUTE_VOICE_CALL_LIST" in ch_settings
-
 
 # ============================================================================
 # 21. Annotation Graph Query Builder Tests
@@ -6428,7 +6379,7 @@ class TestAnnotationGraphQueryBuilder:
         assert "JSONExtract(value, 'rating', 'Nullable(Float64)')" in query
         assert "model_hub_score" in query
         assert "FINAL" in query
-        assert "_peerdb_is_deleted = 0" in query
+        assert "is_deleted = 0" in query
         assert params["label_id"] == self.LABEL_ID
 
     def test_fetch_annotation_graph_uses_score_backed_label_lookup(self):
@@ -7353,17 +7304,6 @@ class TestNewQueryTypeRoutingSettings:
 
         assert hasattr(QueryType, "ANNOTATION_DETAIL")
         assert QueryType.ANNOTATION_DETAIL.value == "ANNOTATION_DETAIL"
-
-    def test_route_settings_exist(self):
-        """All new CH_ROUTE_* settings should exist in CLICKHOUSE config."""
-        from django.conf import settings
-
-        ch = settings.CLICKHOUSE
-        assert "CH_ROUTE_SESSION_ANALYTICS" in ch
-        assert "CH_ROUTE_ANNOTATION_GRAPH" in ch
-        assert "CH_ROUTE_TRACE_DETAIL" in ch
-        assert "CH_ROUTE_MONITOR_METRICS" in ch
-        assert "CH_ROUTE_ANNOTATION_DETAIL" in ch
 
     def test_new_builders_in_package_exports(self):
         """New query builders should be exported from __init__.py."""

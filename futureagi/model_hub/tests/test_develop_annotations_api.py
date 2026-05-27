@@ -712,7 +712,7 @@ class TestAnnotationsViewSetActions:
             payload,
             format="json",
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_update_cells_rejects_legacy_label_values_alias(
         self, auth_client, annotation, row

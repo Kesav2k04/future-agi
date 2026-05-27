@@ -35,7 +35,6 @@ from tracer.serializers.annotation import (
 )
 from tracer.services.clickhouse.query_service import (
     AnalyticsQueryService,
-    QueryType,
 )
 
 logger = structlog.get_logger(__name__)
@@ -345,20 +344,19 @@ class TraceAnnotationView(ModelViewSet):
             # mirrored via dual-write). Notes still come from PG because they
             # weren't replicated; that's the only PG read this path makes.
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.ANNOTATION_DETAIL):
-                ch_annotations = self._get_annotations_from_clickhouse(
-                    request,
-                    observation_span_id,
-                    trace_id,
-                    annotators_list,
-                    exclude_annotators_list,
-                )
-                notes_details = self._get_notes_from_pg(
-                    request, observation_span_id
-                )
-                return self._gm.success_response(
-                    {"annotations": ch_annotations, "notes": notes_details}
-                )
+            ch_annotations = self._get_annotations_from_clickhouse(
+                request,
+                observation_span_id,
+                trace_id,
+                annotators_list,
+                exclude_annotators_list,
+            )
+            notes_details = self._get_notes_from_pg(
+                request, observation_span_id
+            )
+            return self._gm.success_response(
+                {"annotations": ch_annotations, "notes": notes_details}
+            )
 
             query_params = {
                 "deleted": False,

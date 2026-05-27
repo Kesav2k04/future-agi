@@ -174,6 +174,32 @@ class DatasetView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                         ch_spans = reader.list_by_trace_ids(
                             [str(t) for t in validated_trace_ids]
                         )
+                    # Codex final-review P2 (2026-05-26): every PG-validated
+                    # trace must produce at least one root span in CH. A
+                    # silently empty subset would have the dataset task
+                    # report "creation started" while quietly dropping
+                    # selected rows, because the downstream missing-span
+                    # check only sees the already-filtered list.
+                    seen_root_trace_ids = {
+                        str(s.trace_id) for s in ch_spans if not s.parent_span_id
+                    }
+                    missing_root = [
+                        str(t)
+                        for t in validated_trace_ids
+                        if str(t) not in seen_root_trace_ids
+                    ]
+                    if missing_root:
+                        logger.error(
+                            "dataset_add_to_new_ch_traces_missing_root_spans",
+                            dataset_id=str(dataset_id) if dataset_id else None,
+                            missing_count=len(missing_root),
+                            missing_sample=missing_root[:10],
+                        )
+                        raise RuntimeError(
+                            f"CH missing root spans for {len(missing_root)} of "
+                            f"{len(validated_trace_ids)} requested traces; "
+                            "refusing to silently drop rows from the new dataset."
+                        )
                     span_id_list = [s.id for s in ch_spans if not s.parent_span_id]
             elif span_ids and len(span_ids) > 0:
                 # Pre-validate span_ids via PG (project + org JOIN) so

@@ -238,22 +238,20 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
             # ClickHouse dispatch for session detail
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             # CH-only path post-migration. PG fallback removed; a CH error
             # propagates so operators see real data-pipeline issues instead
             # of silently degrading to incomplete legacy session data.
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.TRACE_DETAIL):
-                return self._retrieve_clickhouse(
-                    request,
-                    trace_session_id,
-                    trace_session,
-                    project_id,
-                    analytics,
-                    query_data,
-                )
+            return self._retrieve_clickhouse(
+                request,
+                trace_session_id,
+                trace_session,
+                project_id,
+                analytics,
+                query_data,
+            )
 
             serializer = self.get_serializer(trace_session)
             trace_session = serializer.data
@@ -581,7 +579,7 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
             FROM spans
             WHERE project_id = %(project_id)s
               AND trace_session_id = %(session_id)s
-              AND _peerdb_is_deleted = 0
+              AND is_deleted = 0
         """
         agg_result = analytics.execute_ch_query(
             agg_query,
@@ -624,7 +622,7 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
             FROM spans
             WHERE project_id = %(project_id)s
               AND trace_session_id = %(session_id)s
-              AND _peerdb_is_deleted = 0
+              AND is_deleted = 0
             GROUP BY trace_id
             ORDER BY trace_min_start_time ASC
             LIMIT %(limit)s
@@ -794,12 +792,9 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
 
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             analytics = AnalyticsQueryService()
-            if not analytics.should_use_clickhouse(QueryType.SESSION_LIST):
-                return self._gm.success_response({"values": []})
 
             # For firstMessage/lastMessage we need argMin/argMax from root spans
             if ch_column in ("first_message", "last_message"):
@@ -814,7 +809,7 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                     SELECT {agg_expr} AS val
                     FROM spans
                     WHERE project_id = %(project_id)s
-                      AND _peerdb_is_deleted = 0
+                      AND is_deleted = 0
                       AND trace_session_id IS NOT NULL
                       AND (parent_span_id IS NULL OR parent_span_id = '')
                     GROUP BY trace_session_id
@@ -835,7 +830,7 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                 SELECT DISTINCT {select_expr} AS val
                 FROM spans
                 WHERE project_id = %(project_id)s
-                  AND _peerdb_is_deleted = 0
+                  AND is_deleted = 0
                   AND {ch_column} IS NOT NULL
                   AND (parent_span_id IS NULL OR parent_span_id = '')
                   {search_clause}
@@ -897,63 +892,61 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
 
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             analytics = AnalyticsQueryService()
 
             # --- SYSTEM_METRIC: session-level aggregation via ClickHouse ---
             if metric_type == "SYSTEM_METRIC":
-                if analytics.should_use_clickhouse(QueryType.TIME_SERIES):
-                    try:
-                        from tracer.services.clickhouse.query_builders.session_time_series import (
-                            SessionTimeSeriesQueryBuilder,
-                        )
+                try:
+                    from tracer.services.clickhouse.query_builders.session_time_series import (
+                        SessionTimeSeriesQueryBuilder,
+                    )
 
-                        builder = SessionTimeSeriesQueryBuilder(
-                            project_id=str(project_id),
-                            filters=filters,
-                            interval=interval,
-                        )
-                        query, params = builder.build()
-                        result = analytics.execute_ch_query(
-                            query, params, timeout_ms=10000
-                        )
-                        ch_data = builder.format_result(
-                            result.data, result.columns or []
-                        )
+                    builder = SessionTimeSeriesQueryBuilder(
+                        project_id=str(project_id),
+                        filters=filters,
+                        interval=interval,
+                    )
+                    query, params = builder.build()
+                    result = analytics.execute_ch_query(
+                        query, params, timeout_ms=10000
+                    )
+                    ch_data = builder.format_result(
+                        result.data, result.columns or []
+                    )
 
-                        metric_key = (
-                            metric_id if metric_id in ch_data else "session_count"
-                        )
-                        metric_points = ch_data.get(metric_key, [])
-                        traffic_points = ch_data.get("traffic", [])
-                        traffic_by_ts = {
-                            t.get("timestamp"): t.get("traffic", 0)
-                            for t in traffic_points
-                        }
-                        graph_data = {
-                            "metric_name": metric_id,
-                            "data": [
-                                {
-                                    "timestamp": p.get("timestamp"),
-                                    "value": p.get("value", 0),
-                                    "primary_traffic": traffic_by_ts.get(
-                                        p.get("timestamp"), 0
-                                    ),
-                                }
-                                for p in metric_points
-                            ],
-                        }
-                        return self._gm.success_response(graph_data)
-                    except Exception as e:
-                        session_logger.warning(
-                            "CH session time-series failed",
-                            error=str(e),
-                        )
-                        session_logger.warning(
-                            "Falling back to Postgres session graph"
-                        )
+                    metric_key = (
+                        metric_id if metric_id in ch_data else "session_count"
+                    )
+                    metric_points = ch_data.get(metric_key, [])
+                    traffic_points = ch_data.get("traffic", [])
+                    traffic_by_ts = {
+                        t.get("timestamp"): t.get("traffic", 0)
+                        for t in traffic_points
+                    }
+                    graph_data = {
+                        "metric_name": metric_id,
+                        "data": [
+                            {
+                                "timestamp": p.get("timestamp"),
+                                "value": p.get("value", 0),
+                                "primary_traffic": traffic_by_ts.get(
+                                    p.get("timestamp"), 0
+                                ),
+                            }
+                            for p in metric_points
+                        ],
+                    }
+                    return self._gm.success_response(graph_data)
+                except Exception as e:
+                    session_logger.warning(
+                        "CH session time-series failed",
+                        error=str(e),
+                    )
+                    session_logger.warning(
+                        "Falling back to Postgres session graph"
+                    )
 
             # --- EVAL / ANNOTATION: delegate to shared helpers ---
             # Filter traces to only those belonging to sessions
@@ -970,9 +963,7 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                         },
                     },
                 ]
-                if metric_type == "EVAL" and analytics.should_use_clickhouse(
-                    QueryType.EVAL_METRICS
-                ):
+                if metric_type == "EVAL":
                     try:
                         return self._gm.success_response(
                             fetch_eval_graph_ch(
@@ -992,9 +983,7 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                             "Falling back to Postgres session graph"
                         )
 
-                if metric_type == "ANNOTATION" and analytics.should_use_clickhouse(
-                    QueryType.ANNOTATION_GRAPH
-                ):
+                if metric_type == "ANNOTATION":
                     try:
                         return self._gm.success_response(
                             fetch_annotation_graph_ch(
@@ -1102,15 +1091,11 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
             # ClickHouse dispatch
             from tracer.services.clickhouse.query_service import (
                 AnalyticsQueryService,
-                QueryType,
             )
 
             analytics = AnalyticsQueryService()
             bookmarked = validated_data.get("bookmarked")
-            if (
-                bookmarked is None
-                and analytics.should_use_clickhouse(QueryType.SESSION_LIST)
-            ):
+            if bookmarked is None:
                 try:
                     return self._list_sessions_clickhouse(
                         request,

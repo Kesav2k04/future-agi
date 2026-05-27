@@ -24,7 +24,55 @@ export async function runJourneys(journeys, argv = process.argv.slice(2)) {
     return true;
   });
 
-  const baseContext = await createAuthenticatedContext();
+  if (!selected.length) {
+    const summary = {
+      status: "passed",
+      api_base: normalizeBaseUrl(
+        process.env.API_BASE || "http://localhost:8003",
+      ),
+      organization_id: process.env.FUTURE_AGI_ORGANIZATION_ID || null,
+      workspace_id: process.env.FUTURE_AGI_WORKSPACE_ID || null,
+      total: 0,
+      passed: 0,
+      skipped: 0,
+      failed: 0,
+      selected_total: 0,
+      results: [],
+    };
+    await writeSummary(summary, args);
+    return summary;
+  }
+
+  let baseContext;
+  try {
+    baseContext = await createAuthenticatedContext();
+  } catch (error) {
+    const summary = {
+      status: "failed",
+      api_base: normalizeBaseUrl(
+        process.env.API_BASE || "http://localhost:8003",
+      ),
+      organization_id: process.env.FUTURE_AGI_ORGANIZATION_ID || null,
+      workspace_id: process.env.FUTURE_AGI_WORKSPACE_ID || null,
+      total: 1,
+      passed: 0,
+      skipped: 0,
+      failed: 1,
+      selected_total: selected.length,
+      results: [
+        {
+          id: "context_setup",
+          title: "Authenticated API journey context",
+          status: "failed",
+          error: error.message,
+          stack: error.stack,
+        },
+      ],
+    };
+    await writeSummary(summary, args);
+    process.exitCode = 1;
+    return summary;
+  }
   const results = [];
 
   for (const journey of selected) {
@@ -97,12 +145,20 @@ export async function runJourneys(journeys, argv = process.argv.slice(2)) {
     results,
   };
 
+  await writeSummary(summary, args);
+  if (summary.failed > 0) process.exitCode = 1;
+  return summary;
+}
+
+async function writeSummary(summary, args) {
   if (args.jsonPath) {
     await fs.writeFile(args.jsonPath, `${JSON.stringify(summary, null, 2)}\n`);
   }
   console.log(JSON.stringify(summary, null, 2));
-  if (summary.failed > 0) process.exitCode = 1;
-  return summary;
+}
+
+function normalizeBaseUrl(value) {
+  return String(value || "").replace(/\/+$/, "");
 }
 
 function parseArgs(argv) {

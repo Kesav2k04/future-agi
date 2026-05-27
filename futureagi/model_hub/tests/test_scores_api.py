@@ -462,10 +462,6 @@ class TestBulkCreateScores:
         )
         assert result[0]["span_notes_source_id"] == observation_span.id
 
-    @pytest.mark.xfail(
-        strict=False,
-        reason="annotate-detail reads root span from CH; no test CDC for trace-source items",
-    )
     def test_queue_annotate_detail_prefills_and_saves_item_notes(
         self,
         auth_client,
@@ -478,6 +474,11 @@ class TestBulkCreateScores:
     ):
         """Queue workspace whole-item notes use the trace root span."""
         from tracer.models.span_notes import SpanNotes
+        from tracer.tests._ch_seed import seed_ch_span
+
+        # The annotate-detail endpoint reads the root span from CH
+        # to resolve span_notes_source_id for trace-source items.
+        seed_ch_span(observation_span)
 
         queue = AnnotationQueue.objects.create(
             name="Trace workspace queue",
@@ -900,7 +901,7 @@ class TestSessionScores:
             output={"response": "hey"},
         )
         span_id = f"session_span_{uuid.uuid4().hex[:10]}"
-        ObservationSpan.objects.create(
+        span = ObservationSpan.objects.create(
             id=span_id,
             project=observe_project,
             trace=t,
@@ -917,12 +918,8 @@ class TestSessionScores:
             prompt_tokens=10,
             completion_tokens=5,
         )
-        return t
+        return span
 
-    @pytest.mark.xfail(
-        strict=False,
-        reason="list_sessions reads from CH; test fixtures only seed PG — score columns absent",
-    )
     def test_session_list_includes_score_columns(
         self,
         auth_client,
@@ -932,6 +929,12 @@ class TestSessionScores:
         session_with_span,
     ):
         """Session list API returns annotation metric columns in config."""
+        from tracer.tests._ch_seed import seed_ch_span
+
+        # list_sessions reads session aggregation data from CH — seed the
+        # span so the session appears in results and triggers config building.
+        seed_ch_span(session_with_span)
+
         # Create a score on the session
         auth_client.post(
             SCORE_URL,

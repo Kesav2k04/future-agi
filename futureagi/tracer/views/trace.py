@@ -3032,10 +3032,11 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             )
         except (json.JSONDecodeError, TypeError):
             span_attrs = {}
-        # eval_attributes was removed from the SELECT above (column doesn't
-        # exist on `spans`). Pass empty so simulation_context's fallback path
-        # behaves the same as the PG path did when span_attributes was set.
-        eval_attrs = {}
+        # eval_attributes is not a top-level column on the CH `spans` table,
+        # but the adapter merges it into `attributes_extra` under the key
+        # "eval_attributes". Extract it so simulation_context can resolve
+        # fi.simulator.call_execution_id and similar keys.
+        eval_attrs = span_attrs.get("eval_attributes", {}) or {}
 
         raw_log = span_attrs.get("raw_log") or {}
         metadata_raw = row.get("metadata_json") or "{}"

@@ -1,26 +1,30 @@
-"""Test helpers for seeding the CH 25.3 ``spans`` table directly.
+"""Test helpers for seeding CH tables directly (spans + model_hub_score).
 
-Tests that exercise CH-backed endpoints used to seed PG via
-``ObservationSpan.objects.create(...)`` and rely on PeerDB CDC to propagate
-the row to CH. There's no CDC in the test path post-CH25-cutover, so the
-endpoint reads return empty even when PG is populated.
+Tests that exercise CH-backed endpoints used to seed PG via Django ORM and
+rely on PeerDB CDC to propagate the row to CH. There's no CDC in the test
+path post-CH25-cutover, so the endpoint reads return empty even when PG is
+populated.
 
-This module gives tests an explicit, CH-direct seed function: one call per
-ObservationSpan instance and the same row lands in the CH ``spans`` table
+This module gives tests explicit, CH-direct seed functions: one call per
+Django model instance and the same row lands in the corresponding CH table
 the reader queries. No "magic" signals — tests opt in when they need CH
 coverage.
 
 Typical usage::
 
-    from tracer.tests._ch_seed import seed_ch_span
+    from tracer.tests._ch_seed import seed_ch_span, seed_ch_score
 
     span = ObservationSpan.objects.create(...)
     seed_ch_span(span)                    # ← one new line
     response = auth_client.get("/some/ch-backed/endpoint/")
 
-Or seed many at once via ``seed_ch_spans([span1, span2, ...])``.
+    score = Score.objects.create(...)
+    seed_ch_score(score)                  # ← seed the CDC mirror
+    response = auth_client.get("/some/score-reading/endpoint/")
 
-The helper goes through the same ``adapt()`` path the production
+Or seed many at once via ``seed_ch_spans([...])`` / ``seed_ch_scores([...])``.
+
+The span helper goes through the same ``adapt()`` path the production
 PG→CH backfill uses, so test rows have the same shape as real spans.
 """
 
@@ -75,7 +79,14 @@ def _pg_row_from_django_span(span: Any) -> dict[str, Any]:
         "tags": getattr(span, "tags", None) or [],
         "span_events": getattr(span, "span_events", None) or [],
         "end_user_id": getattr(span, "end_user_id", None),
-        "trace_session_id": getattr(span, "trace_session_id", None),
+        # The backfill joins tracer_trace.session_id as trace_session_id.
+        # ObservationSpan doesn't carry trace_session_id; resolve via trace FK.
+        "trace_session_id": (
+            getattr(span, "trace_session_id", None)
+            or (
+                getattr(getattr(span, "trace", None), "session_id", None)
+            )
+        ),
         "prompt_version_id": getattr(span, "prompt_version_id", None),
         "prompt_label_id": getattr(span, "prompt_label_id", None),
         "custom_eval_config_id": getattr(span, "custom_eval_config_id", None),
@@ -161,5 +172,143 @@ def truncate_ch_spans() -> None:
     client = _get_ch_client()
     try:
         client.command("TRUNCATE TABLE IF EXISTS spans")
+    finally:
+        client.close()
+
+
+# ---------------------------------------------------------------------------
+# model_hub_score  (CDC mirror of PG model_hub.models.score.Score)
+# ---------------------------------------------------------------------------
+
+# Column order matches the CH DDL in tracer/services/clickhouse/schema.py
+# (CDC_MODEL_HUB_SCORE). value is stored as a JSON-encoded String in CH.
+_SCORE_INSERT_COLUMNS = [
+    "id",
+    "source_type",
+    "trace_id",
+    "observation_span_id",
+    "trace_session_id",
+    "call_execution_id",
+    "dataset_row_id",
+    "prototype_run_id",
+    "queue_item_id",
+    "project_id",
+    "label_id",
+    "value",
+    "annotator_id",
+    "score_source",
+    "notes",
+    "organization_id",
+    "workspace_id",
+    "deleted",
+    "deleted_at",
+    "created_at",
+    "updated_at",
+    "_peerdb_synced_at",
+    "_peerdb_is_deleted",
+    "_peerdb_version",
+]
+
+
+def _score_row_from_django(score: Any) -> tuple:
+    """Build a CH-insert tuple from a Django ``Score`` instance.
+
+    Resolves ``project_id`` from the source FK's project when not set
+    directly on the score (the PG model stores project_id but it can be
+    NULL on older rows).
+    """
+    import json
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+
+    # Resolve project_id — try Score.project_id first, then walk source FKs.
+    project_id = getattr(score, "project_id", None)
+    if project_id is None:
+        for attr in ("trace", "observation_span", "trace_session", "call_execution"):
+            source = getattr(score, attr, None)
+            if source is not None:
+                project_id = getattr(source, "project_id", None)
+                if project_id is not None:
+                    break
+
+    def _uuid_or_none(val: Any) -> Any:
+        return str(val) if val else None
+
+    value_json = json.dumps(score.value) if isinstance(score.value, dict) else str(score.value or "{}")
+
+    return (
+        str(score.id),
+        score.source_type or "",
+        _uuid_or_none(score.trace_id),
+        str(score.observation_span_id) if score.observation_span_id else None,
+        _uuid_or_none(score.trace_session_id),
+        _uuid_or_none(score.call_execution_id),
+        _uuid_or_none(score.dataset_row_id),
+        _uuid_or_none(score.prototype_run_id),
+        _uuid_or_none(score.queue_item_id),
+        _uuid_or_none(project_id),
+        str(score.label_id),
+        value_json,
+        _uuid_or_none(score.annotator_id),
+        score.score_source or "HUMAN",
+        score.notes,
+        str(score.organization_id),
+        _uuid_or_none(score.workspace_id),
+        1 if score.deleted else 0,
+        score.deleted_at,
+        score.created_at or now,
+        score.updated_at or now,
+        now,     # _peerdb_synced_at
+        0,       # _peerdb_is_deleted
+        1,       # _peerdb_version
+    )
+
+
+def seed_ch_score(score: Any, *, client: Optional[Any] = None) -> None:
+    """Insert ONE Score into the CH ``model_hub_score`` table.
+
+    Accepts a Django ``Score`` instance. Caller-supplied ``client``
+    is optional; we open a fresh one if omitted.
+    """
+    seed_ch_scores([score], client=client)
+
+
+def seed_ch_scores(
+    scores: Iterable[Any],
+    *,
+    client: Optional[Any] = None,
+) -> int:
+    """Bulk-insert Score rows into the CH ``model_hub_score`` table.
+
+    Returns the number of rows inserted.
+    """
+    rows: list[tuple] = []
+    for s in scores:
+        rows.append(_score_row_from_django(s))
+
+    if not rows:
+        return 0
+
+    own_client = client is None
+    if own_client:
+        client = _get_ch_client()
+    try:
+        client.insert("model_hub_score", rows, column_names=_SCORE_INSERT_COLUMNS)
+    finally:
+        if own_client:
+            client.close()
+
+    return len(rows)
+
+
+def truncate_ch_scores() -> None:
+    """Wipe the CH ``model_hub_score`` table.
+
+    Idempotent; no-op if the table doesn't exist.
+    """
+    client = _get_ch_client()
+    try:
+        client.command("TRUNCATE TABLE IF EXISTS model_hub_score")
     finally:
         client.close()

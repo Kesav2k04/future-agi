@@ -2175,13 +2175,11 @@ class TestGetAnnotationValues:
         result = _result(resp)
         assert "annotations" in result or isinstance(result, list)
 
-    @pytest.mark.xfail(
-        strict=False,
-        reason="get_annotation_values reads from CH; no test CDC and no seed helper for scores yet",
-    )
     def test_returns_annotations_for_span_with_annotator_filter(
         self, auth_client, user, observation_span, star_label
     ):
+        from tracer.tests._ch_seed import seed_ch_score
+
         auth_client.post(
             SCORE_URL,
             {
@@ -2192,6 +2190,14 @@ class TestGetAnnotationValues:
             },
             format="json",
         )
+
+        score = Score.objects.get(
+            observation_span=observation_span,
+            label=star_label,
+            annotator=user,
+            deleted=False,
+        )
+        seed_ch_score(score)
 
         resp = auth_client.get(
             TRACER_ANN_VALUES,

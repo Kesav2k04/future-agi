@@ -1749,14 +1749,43 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
             except Exception as e:
                 logger.warning(f"Session span attribute aggregation failed: {e}")
 
+        # Build config with annotation metric columns (mirrors the PG path)
+        config = (
+            (project.session_config if project else None)
+            or get_default_project_session_config()
+        )
+        _pid = project_id or (project.id if project else None)
+        annotation_labels = list(
+            AnnotationsLabels.objects.filter(project_id=_pid, deleted=False)
+        ) if _pid else []
+        if annotation_labels:
+            score_configs = self._build_score_column_config(
+                annotation_labels, project_id=_pid
+            )
+            for sc in score_configs:
+                if not any(c["id"] == sc["id"] for c in config):
+                    config.append(sc)
+
+            # Attach score data to each session row
+            if session_ids_page:
+                try:
+                    scores_map = self._fetch_session_scores(
+                        session_ids_page, annotation_labels
+                    )
+                    for entry in formatted:
+                        sid = entry.get("session_id", "")
+                        session_scores = scores_map.get(sid, {})
+                        for label in annotation_labels:
+                            lid = str(label.id)
+                            entry[lid] = session_scores.get(lid)
+                except Exception:
+                    logger.exception("Failed to fetch session scores (CH path)")
+
         return self._gm.success_response(
             {
                 "metadata": {"total_rows": total_count},
                 "table": formatted,
-                "config": (
-                    (project.session_config if project else None)
-                    or get_default_project_session_config()
-                ),
+                "config": config,
             }
         )
 

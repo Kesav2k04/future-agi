@@ -753,11 +753,6 @@ CREATE TABLE IF NOT EXISTS spans (
 
     -- Projection for fast root-span pagination: allows CH to skip non-root
     -- spans via the index instead of scanning all rows.
-    -- NOTE (TH-5092): adding/removing columns from this projection on
-    -- already-deployed `spans` tables is destructive (DROP + ADD +
-    -- MATERIALIZE PROJECTION) and expensive, so it is intentionally NOT
-    -- in POST_DDL_ALTERS. Apply via the runbook on each environment after
-    -- a schema change here.
     PROJECTION proj_root_spans (
         SELECT
             trace_id, trace_name, name, observation_type, status,
@@ -1885,17 +1880,6 @@ POST_DDL_ALTERS: List[str] = [
     "idx_trace_session_id trace_session_id TYPE bloom_filter GRANULARITY 1",
     "ALTER TABLE tracer_eval_logger ADD INDEX IF NOT EXISTS "
     "idx_target_type target_type TYPE bloom_filter GRANULARITY 1",
-    # TH-5092: evolve already-deployed `spans` tables so the list_sessions
-    # end_user_id subquery is selective. CREATE TABLE IF NOT EXISTS skips
-    # existing tables, so the new INDEX clauses in SPANS_TABLE only apply
-    # to fresh deployments — these ALTERs backfill the indexes in place.
-    # Idempotent via IF NOT EXISTS. Indexes are populated for new parts
-    # automatically; old parts require a one-time `MATERIALIZE INDEX`
-    # (expensive — runbook step, not auto-run on startup).
-    "ALTER TABLE spans ADD INDEX IF NOT EXISTS "
-    "idx_trace_session_id trace_session_id TYPE bloom_filter GRANULARITY 1",
-    "ALTER TABLE spans ADD INDEX IF NOT EXISTS "
-    "idx_end_user_id end_user_id TYPE bloom_filter GRANULARITY 1",
 ]
 
 

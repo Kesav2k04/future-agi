@@ -45,6 +45,18 @@ class AttributeKey:
     count: int
 
 
+@dataclass(frozen=True)
+class TraceAttribute:
+    """One attribute key with the distinct values it took across a trace's
+    spans. If only one value appears, ``values`` has length 1; cross-span
+    conflicts surface as length>1 and the caller can render ``[varies]``.
+    """
+
+    key: str
+    type: str  # "string" | "number" | "boolean"
+    values: list[str]  # stringified for transport — caller may coerce on type
+
+
 def _ch_available() -> bool:
     if not is_clickhouse_enabled():
         return False
@@ -116,6 +128,88 @@ def list_attribute_keys_for_project(project_id: str) -> list[AttributeKey]:
 
     return [
         AttributeKey(key=row[0], type=row[1], count=row[2]) for row in rows
+    ]
+
+
+def list_attributes_for_trace(trace_id: str) -> list[TraceAttribute]:
+    """Return distinct (key, type, values[]) per attribute on a single trace.
+
+    Walks the three shredded Map columns (``span_attr_str`` /
+    ``span_attr_num`` / ``span_attr_bool``) for every span in the trace,
+    groups by key, and emits one row per key with the distinct value set
+    seen across that trace's spans. A trace with consistent attribute
+    values renders cleanly; cross-span drift (e.g. a flag toggled mid-trace)
+    surfaces as ``values=["a", "b"]``.
+
+    Returns an empty list (with a log) if ClickHouse is unavailable.
+    """
+    if not trace_id:
+        return []
+    if not is_clickhouse_enabled():
+        logger.info(
+            "ch_unavailable_for_trace_attributes_lookup",
+            trace_id=trace_id,
+        )
+        return []
+
+    # arrayZip(mapKeys, mapValues) flattened by ARRAY JOIN gives us one
+    # row per (span, key, value) tuple. The CTE unions the three typed
+    # Maps so we can group by key once across all of them.
+    query = """
+        WITH attrs AS (
+            SELECT pair.1 AS key, toString(pair.2) AS value, 'string' AS type
+            FROM spans
+            ARRAY JOIN arrayZip(
+                mapKeys(span_attr_str), mapValues(span_attr_str)
+            ) AS pair
+            WHERE toString(trace_id) = %(trace_id)s
+
+            UNION ALL
+
+            SELECT pair.1 AS key, toString(pair.2) AS value, 'number' AS type
+            FROM spans
+            ARRAY JOIN arrayZip(
+                mapKeys(span_attr_num), mapValues(span_attr_num)
+            ) AS pair
+            WHERE toString(trace_id) = %(trace_id)s
+
+            UNION ALL
+
+            SELECT pair.1 AS key, toString(pair.2) AS value, 'boolean' AS type
+            FROM spans
+            ARRAY JOIN arrayZip(
+                mapKeys(span_attr_bool), mapValues(span_attr_bool)
+            ) AS pair
+            WHERE toString(trace_id) = %(trace_id)s
+        )
+        SELECT key, any(type) AS type, groupUniqArray(value) AS values
+        FROM attrs
+        GROUP BY key
+        ORDER BY key
+    """
+    params = {"trace_id": str(trace_id)}
+
+    try:
+        client = ClickHouseClient()
+        rows, _column_types, query_time_ms = client.execute_read(query, params)
+    except Exception as e:
+        logger.warning(
+            "ch_trace_attributes_lookup_failed",
+            error=str(e),
+            trace_id=trace_id,
+        )
+        return []
+
+    logger.info(
+        "trace_attributes_fetched",
+        trace_id=trace_id,
+        attribute_count=len(rows),
+        query_time_ms=query_time_ms,
+    )
+
+    return [
+        TraceAttribute(key=row[0], type=row[1], values=list(row[2]))
+        for row in rows
     ]
 
 

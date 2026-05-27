@@ -1,6 +1,7 @@
 /* global process */
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import {
   ApiJourneyError,
@@ -2791,6 +2792,8 @@ export const observeFilterJourneys = [
           Array.isArray(chartGraph?.data),
         "Charts fetch_graph did not return the single system metric shape.",
       );
+      const generatedContractAudit =
+        await loadGeneratedChartCrudContractAudit();
 
       const chartId = "00000000-0000-4000-8000-000000000017";
       const payload = {
@@ -2844,6 +2847,14 @@ export const observeFilterJourneys = [
         project_id: project.id,
         chart_metric_name: chartGraph?.metric_name || "latency",
         guarded_methods: guardedMethods,
+        generated_contract_chart_crud_methods:
+          generatedContractAudit.advertised_crud_methods,
+        generated_contract_openapi_success_statuses:
+          generatedContractAudit.openapi_success_statuses,
+        generated_client_success_statuses:
+          generatedContractAudit.generated_client_success_statuses,
+        generated_contract_fetch_graph_methods:
+          generatedContractAudit.fetch_graph_methods,
       });
     },
   },
@@ -10096,6 +10107,106 @@ function observeChartsSpanAttributeFilter(
       filter_value: filterValue,
     },
   };
+}
+
+const CHART_CRUD_CONTRACT_OPERATIONS = [
+  {
+    key: "list",
+    path: "/tracer/charts/",
+    method: "get",
+    responseType: "tracerChartsListResponse",
+  },
+  {
+    key: "create",
+    path: "/tracer/charts/",
+    method: "post",
+    responseType: "tracerChartsCreateResponse",
+  },
+  {
+    key: "read",
+    path: "/tracer/charts/{id}/",
+    method: "get",
+    responseType: "tracerChartsReadResponse",
+  },
+  {
+    key: "update",
+    path: "/tracer/charts/{id}/",
+    method: "put",
+    responseType: "tracerChartsUpdateResponse",
+  },
+  {
+    key: "partial_update",
+    path: "/tracer/charts/{id}/",
+    method: "patch",
+    responseType: "tracerChartsPartialUpdateResponse",
+  },
+  {
+    key: "delete",
+    path: "/tracer/charts/{id}/",
+    method: "delete",
+    responseType: "tracerChartsDeleteResponse",
+  },
+];
+
+async function loadGeneratedChartCrudContractAudit() {
+  const [{ OPENAPI_CONTRACT }, generatedApiText] = await Promise.all([
+    import(
+      new URL(
+        "../../../src/api/contracts/openapi-contract.generated.js",
+        import.meta.url,
+      )
+    ),
+    readFile(
+      new URL("../../../src/generated/api-contracts/api.ts", import.meta.url),
+      "utf8",
+    ),
+  ]);
+  const endpoints = OPENAPI_CONTRACT?.endpoints || {};
+  const fetchGraphMethods = Object.keys(
+    endpoints["/tracer/charts/fetch_graph/"] || {},
+  ).sort();
+  assert(
+    fetchGraphMethods.includes("get"),
+    "Generated OpenAPI contract no longer advertises /tracer/charts/fetch_graph/.",
+  );
+
+  const advertisedCrudMethods = [];
+  const openapiSuccessStatuses = {};
+  const generatedClientSuccessStatuses = {};
+  for (const operation of CHART_CRUD_CONTRACT_OPERATIONS) {
+    const openapiOperation = endpoints[operation.path]?.[operation.method];
+    if (openapiOperation) {
+      advertisedCrudMethods.push(
+        `${operation.method.toUpperCase()} ${operation.path}`,
+      );
+      openapiSuccessStatuses[operation.key] = Object.keys(
+        openapiOperation.responses || {},
+      )
+        .filter((status) => /^[23]\d\d$/.test(status))
+        .sort();
+    }
+    generatedClientSuccessStatuses[operation.key] =
+      getGeneratedClientSuccessStatuses(
+        generatedApiText,
+        operation.responseType,
+      );
+  }
+
+  return {
+    advertised_crud_methods: advertisedCrudMethods,
+    fetch_graph_methods: fetchGraphMethods,
+    generated_client_success_statuses: generatedClientSuccessStatuses,
+    openapi_success_statuses: openapiSuccessStatuses,
+  };
+}
+
+function getGeneratedClientSuccessStatuses(sourceText, responseType) {
+  const statuses = new Set();
+  const pattern = new RegExp(`export type ${responseType}(\\d{3})\\b`, "g");
+  for (const match of sourceText.matchAll(pattern)) {
+    statuses.add(match[1]);
+  }
+  return Array.from(statuses).sort();
 }
 
 async function getObserveChartsGraph(client, projectId, filters) {

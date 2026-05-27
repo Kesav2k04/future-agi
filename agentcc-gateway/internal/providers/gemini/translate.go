@@ -37,11 +37,21 @@ type geminiContent struct {
 
 type geminiPart struct {
 	Text             string              `json:"text,omitempty"`
+	Thought          bool                `json:"thought,omitempty"`
+	ThoughtSignature string              `json:"thoughtSignature,omitempty"`
 	InlineData       *geminiInlineData   `json:"inlineData,omitempty"`
 	FileData         *geminiFileData     `json:"fileData,omitempty"`
 	FunctionCall     *geminiFunctionCall `json:"functionCall,omitempty"`
 	FunctionResponse *geminiFuncResponse `json:"functionResponse,omitempty"`
 }
+
+// toolCallIDDelim separates the synthetic tool_call.id ("call_0") from the
+// base64 thoughtSignature Gemini returned on the corresponding part. The
+// signature has to round-trip back to Gemini verbatim on the next request
+// or thinking-enabled tool calling 400s with "missing thought_signature".
+// The OpenAI ToolCall struct has no extension slot, so we smuggle it through
+// the only string field the client is guaranteed to preserve: the id.
+const toolCallIDDelim = "::sig::"
 
 type geminiFileData struct {
 	MimeType string `json:"mimeType"`
@@ -273,7 +283,16 @@ func translateMessage(msg models.Message) geminiContent {
 	// Handle assistant messages with tool calls.
 	if msg.Role == "assistant" && len(msg.ToolCalls) > 0 {
 		for _, tc := range msg.ToolCalls {
+			// Recover the thoughtSignature we smuggled through the id on the
+			// outbound response (see translateResponse). Without restoring
+			// this, thinking-enabled Gemini 3+ models reject the request
+			// with "Function call is missing a thought_signature".
+			signature := ""
+			if idx := strings.Index(tc.ID, toolCallIDDelim); idx != -1 {
+				signature = tc.ID[idx+len(toolCallIDDelim):]
+			}
 			gc.Parts = append(gc.Parts, geminiPart{
+				ThoughtSignature: signature,
 				FunctionCall: &geminiFunctionCall{
 					Name: tc.Function.Name,
 					Args: json.RawMessage(tc.Function.Arguments),
@@ -492,6 +511,12 @@ func translateResponse(resp *geminiResponse, model string) *models.ChatCompletio
 		toolCallIdx := 0
 
 		for _, part := range candidate.Content.Parts {
+			// Drop thinking text from the user-visible content. The signature
+			// still needs to ride along on the functionCall part below; this
+			// only suppresses the freeform reasoning prose.
+			if part.Thought && part.FunctionCall == nil {
+				continue
+			}
 			if part.Text != "" {
 				textParts = append(textParts, part.Text)
 			}
@@ -503,8 +528,15 @@ func translateResponse(resp *geminiResponse, model string) *models.ChatCompletio
 				}
 			}
 			if part.FunctionCall != nil {
+				toolCallID := fmt.Sprintf("call_%d", toolCallIdx)
+				// Smuggle thoughtSignature through the id so it survives the
+				// OpenAI SDK round-trip and we can restore it on the next
+				// request — Gemini rejects subsequent turns otherwise.
+				if part.ThoughtSignature != "" {
+					toolCallID = toolCallID + toolCallIDDelim + part.ThoughtSignature
+				}
 				toolCalls = append(toolCalls, models.ToolCall{
-					ID:   fmt.Sprintf("call_%d", toolCallIdx),
+					ID:   toolCallID,
 					Type: "function",
 					Function: models.FunctionCall{
 						Name:      part.FunctionCall.Name,

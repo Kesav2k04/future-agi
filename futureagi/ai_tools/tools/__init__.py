@@ -83,6 +83,7 @@ from ai_tools.tools.docs import search_docs  # noqa: F401
 # Evaluation tools
 from ai_tools.tools.evaluations import compare_evaluations  # noqa: F401
 from ai_tools.tools.evaluations import create_composite_eval  # noqa: F401
+from ai_tools.tools.evaluations import create_eval_group  # noqa: F401
 from ai_tools.tools.evaluations import create_eval_template  # noqa: F401
 from ai_tools.tools.evaluations import delete_eval_logs  # noqa: F401
 from ai_tools.tools.evaluations import delete_eval_template  # noqa: F401

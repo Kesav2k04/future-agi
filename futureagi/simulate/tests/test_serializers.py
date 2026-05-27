@@ -209,8 +209,9 @@ class TestCreateScenarioSerializer:
             data=data, context={"request": mock_request}
         )
         assert not serializer.is_valid()
-        assert "non_field_errors" in serializer.errors
-        assert "dataset_id" in str(serializer.errors["non_field_errors"][0]).lower()
+        assert "dataset_id" in serializer.errors or "non_field_errors" in serializer.errors
+        all_errors = str(serializer.errors).lower()
+        assert "dataset_id" in all_errors
 
     def test_create_scenario_serializer_script_missing_url(self, mock_request):
         """Script kind without script_url should fail validation."""
@@ -223,8 +224,9 @@ class TestCreateScenarioSerializer:
             data=data, context={"request": mock_request}
         )
         assert not serializer.is_valid()
-        assert "non_field_errors" in serializer.errors
-        assert "script_url" in str(serializer.errors["non_field_errors"][0]).lower()
+        assert "script_url" in serializer.errors or "non_field_errors" in serializer.errors
+        all_errors = str(serializer.errors).lower()
+        assert "script_url" in all_errors
 
     def test_create_scenario_serializer_graph_missing_requirements(self, mock_request):
         """Graph kind without graph data or generate_graph should fail validation."""

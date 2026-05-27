@@ -458,8 +458,8 @@ class AddVectorDBColumnView(APIView):
             dataset.column_config = column_config
             dataset.save()
 
-            # Ensure config is JSON serializable
-            serializable_config = json.loads(json.dumps(config))
+            # Ensure config is JSON serializable (validated_data may contain UUIDs)
+            serializable_config = json.loads(json.dumps(config, default=str))
             Column.objects.filter(id=new_column.id).update(
                 status=StatusType.RUNNING.value
             )

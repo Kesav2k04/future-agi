@@ -678,6 +678,5 @@ class TestLoginRateLimiting:
             resp = _login(api_client, user.email, "wrong-password")
             assert resp.status_code == status.HTTP_400_BAD_REQUEST
             data = resp.json()
-            result = data.get("result", data)
-            # Should contain error and remaining_attempts info
-            assert "error" in result or "remaining_attempts" in result
+            # build_error_envelope flattens to top-level keys
+            assert "error" in data or "code" in data

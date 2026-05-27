@@ -384,11 +384,11 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
                 name, observation_type, start_time, end_time, input, output,
                 model, '' AS model_parameters, latency_ms, prompt_tokens,
                 completion_tokens, total_tokens, cost, status, status_message,
-                tags, span_attributes_raw AS span_attributes,
+                tags, toJSONString(attributes_extra) AS span_attributes,
                 span_events, provider,
-                metadata_map,
+                toJSONString(metadata) AS metadata_json,
                 custom_eval_config_id,
-                span_attr_str, span_attr_num, span_attr_bool
+                attrs_string, attrs_number, attrs_bool
             FROM spans
             WHERE id = %(span_id)s
               AND is_deleted = 0
@@ -432,11 +432,11 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
         if not span_attrs:
             # Fall back to reconstructing from decomposed maps
             span_attrs = {}
-            for k, v in (row.get("span_attr_str") or {}).items():
+            for k, v in (row.get("attrs_string") or {}).items():
                 span_attrs[k] = v
-            for k, v in (row.get("span_attr_num") or {}).items():
+            for k, v in (row.get("attrs_number") or {}).items():
                 span_attrs[k] = v
-            for k, v in (row.get("span_attr_bool") or {}).items():
+            for k, v in (row.get("attrs_bool") or {}).items():
                 span_attrs[k] = bool(v)
         # Fallback: if CH has no span_attributes, try PG
         if not span_attrs:
@@ -448,9 +448,9 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             except ObservationSpan.DoesNotExist:
                 pass
 
-        # Build metadata from metadata_map
-        metadata_map = row.get("metadata_map") or {}
-        metadata = dict(metadata_map) if metadata_map else {}
+        # Build metadata from CH JSON column
+        metadata_raw = row.get("metadata_json") or "{}"
+        metadata = _parse_json(metadata_raw, default={})
 
         observation_span = {
             "id": str(row["id"]),

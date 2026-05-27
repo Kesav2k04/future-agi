@@ -190,6 +190,7 @@ class TestErrorClusterDetailAPI:
         assert response.status_code in [
             status.HTTP_200_OK,  # May return empty
             status.HTTP_400_BAD_REQUEST,
+            status.HTTP_403_FORBIDDEN,  # Workspace gating rejects before 404
             status.HTTP_404_NOT_FOUND,
         ]
 

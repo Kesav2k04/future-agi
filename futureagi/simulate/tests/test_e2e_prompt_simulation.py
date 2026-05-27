@@ -481,7 +481,10 @@ class E2EPromptSimulationTestCase(TestCase):
         print("FLOW 4: Simulation Execution Tests")
         print("=" * 60)
 
-        # Create simulation
+        # Create simulation with completed scenario
+        self.scenario.status = "Completed"
+        self.scenario.save()
+
         simulation = RunTest.objects.create(
             name="Execution Test Simulation",
             source_type="prompt",

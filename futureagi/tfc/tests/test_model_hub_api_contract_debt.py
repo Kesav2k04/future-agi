@@ -265,7 +265,7 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
             "CompareDataset"
         ),
         ("POST", "/model-hub/datasets/{dataset_id}/compare-datasets/add-eval/"): (
-            "UserEval"
+            "CompareExperimentEvalRequest"
         ),
         ("POST", "/model-hub/datasets/{dataset_id}/compare-datasets/download/"): (
             "CompareDataset"
@@ -385,7 +385,7 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
         (
             "POST",
             "/model-hub/develops/{dataset_id}/edit_and_run_user_eval/{eval_id}/",
-        ): "UserEvalMutationRequest",
+        ): "UserEvalUpdateRequest",
         ("PUT", "/model-hub/develops/{dataset_id}/edit_dataset_behavior/"): (
             "DatasetBehaviorRequest"
         ),
@@ -475,7 +475,7 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
             "EvalSummaryTemplateMutationRequest"
         ),
         ("POST", "/model-hub/experiments/"): "ExperimentsTable",
-        ("PUT", "/model-hub/experiments/"): "ExperimentsTable",
+        ("PUT", "/model-hub/experiments/"): "ExperimentsTableUpdate",
         ("POST", "/model-hub/experiments/re-run/"): (
             "ExperimentRerunRequest"
         ),
@@ -501,7 +501,7 @@ def test_model_hub_ai_writer_and_custom_model_mutations_have_request_contracts()
             "ModelHubEmptyRequest"
         ),
         ("POST", "/model-hub/experiments/{experiment_id}/add-eval/"): (
-            "UserEval"
+            "UserEvalMutationRequest"
         ),
         (
             "POST",

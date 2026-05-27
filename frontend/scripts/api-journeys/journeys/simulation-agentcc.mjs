@@ -3974,6 +3974,259 @@ export const simulationAgentccJourneys = [
     },
   },
   {
+    id: "SIM-API-011",
+    title: "Voice simulation completed call output readback and cleanup",
+    tags: [
+      "simulation",
+      "voice",
+      "run-tests",
+      "test-executions",
+      "call-executions",
+      "mutating",
+      "data-roundtrip",
+      "db-audit",
+    ],
+    async run({
+      client,
+      cleanup,
+      runId,
+      evidence,
+      organizationId,
+      workspaceId,
+      user,
+    }) {
+      requireMutations();
+      assert(
+        currentUserId(user),
+        "Voice simulation journey requires current user id.",
+      );
+
+      const name = `api journey voice sim ${runId}`;
+      let hardCleaned = false;
+      cleanup.defer("hard-delete API journey voice simulation rows", () =>
+        hardCleaned
+          ? null
+          : hardDeleteVoiceSimulationCallOutputFixturesDb({
+              namePrefix: name,
+              organizationId,
+            }),
+      );
+
+      await hardDeleteVoiceSimulationCallOutputFixturesDb({
+        namePrefix: name,
+        organizationId,
+      });
+
+      const fixture = await seedVoiceSimulationCallOutputFixtureDb({
+        namePrefix: name,
+        organizationId,
+        workspaceId,
+      });
+      assert(
+        isUuid(fixture.run_test_id) &&
+          isUuid(fixture.test_execution_id) &&
+          isUuid(fixture.call_execution_id),
+        `Voice simulation seed did not return run/test/call ids: ${JSON.stringify(
+          fixture,
+        )}`,
+      );
+
+      const runDetail = await client.get(
+        apiPath("/simulate/run-tests/{run_test_id}/", {
+          run_test_id: fixture.run_test_id,
+        }),
+      );
+      assert(
+        runDetail?.id === fixture.run_test_id,
+        "Voice run-test detail returned the wrong id.",
+      );
+      assert(
+        asArray(runDetail.scenarios)
+          .map(String)
+          .includes(fixture.scenario_id) ||
+          asArray(runDetail.scenarios_detail).some(
+            (scenario) => scenario.id === fixture.scenario_id,
+          ),
+        "Voice run-test detail did not include the seeded scenario.",
+      );
+
+      const statusPayload = await client.get(
+        apiPath("/simulate/run-tests/{run_test_id}/status/", {
+          run_test_id: fixture.run_test_id,
+        }),
+      );
+      assert(
+        statusPayload.execution_id === fixture.test_execution_id &&
+          statusPayload.status === "completed" &&
+          Number(statusPayload.completed_calls) === 1,
+        `Voice run-test status did not reflect the completed seeded call: ${JSON.stringify(
+          statusPayload,
+        )}`,
+      );
+
+      const callsPayload = await client.get(
+        apiPath("/simulate/run-tests/{run_test_id}/call-executions/", {
+          run_test_id: fixture.run_test_id,
+        }),
+        { query: { status: "completed", limit: 10, page: 1 } },
+      );
+      const callRows = collectionRows(callsPayload);
+      const callListRow = callRows.find(
+        (row) => row?.id === fixture.call_execution_id,
+      );
+      assert(
+        callListRow?.status === "completed" &&
+          callListRow.simulation_call_type === "voice" &&
+          callListRow.audio_url === fixture.recording_url,
+        "Voice call list did not expose the completed voice call output row.",
+      );
+
+      const [
+        callDetail,
+        callTranscripts,
+        testTranscripts,
+        kpis,
+        performance,
+        analytics,
+      ] = await Promise.all([
+        client.get(
+          apiPath("/simulate/call-executions/{call_execution_id}/", {
+            call_execution_id: fixture.call_execution_id,
+          }),
+        ),
+        client.get(
+          apiPath(
+            "/simulate/call-executions/{call_execution_id}/transcripts/",
+            { call_execution_id: fixture.call_execution_id },
+          ),
+        ),
+        client.get(
+          apiPath(
+            "/simulate/test-executions/{test_execution_id}/transcripts/",
+            { test_execution_id: fixture.test_execution_id },
+          ),
+        ),
+        client.get(
+          apiPath("/simulate/test-executions/{test_execution_id}/kpis/", {
+            test_execution_id: fixture.test_execution_id,
+          }),
+        ),
+        client.get(
+          apiPath(
+            "/simulate/test-executions/{test_execution_id}/performance-summary/",
+            { test_execution_id: fixture.test_execution_id },
+          ),
+        ),
+        client.get(
+          apiPath("/simulate/test-executions/{test_execution_id}/analytics/", {
+            test_execution_id: fixture.test_execution_id,
+          }),
+        ),
+      ]);
+
+      const detailTranscripts = asArray(callDetail.transcript);
+      assert(
+        callDetail?.id === fixture.call_execution_id &&
+          callDetail.status === "completed" &&
+          callDetail.simulation_call_type === "voice" &&
+          callDetail.provider === "vapi" &&
+          callDetail.audio_url === fixture.recording_url &&
+          callDetail.recordings?.mono?.combined === fixture.recording_url &&
+          callDetail.duration_seconds === 64 &&
+          callDetail.turn_count === 1 &&
+          callDetail.agent_talk_percentage === 60,
+        `Voice call detail did not expose expected output fields: ${JSON.stringify(
+          callDetail,
+        )}`,
+      );
+      assert(
+        detailTranscripts.length === 2 &&
+          detailTranscripts[0].speaker_role === "user" &&
+          detailTranscripts[1].speaker_role === "assistant",
+        "Voice call detail transcript did not preserve ordered user/assistant turns.",
+      );
+      assert(
+        callDetail.attributes?.raw_log ||
+          callDetail.attributes?.["vapi.call_id"] === fixture.customer_call_id,
+        "Voice call detail did not expose provider attributes/raw log.",
+      );
+
+      const transcriptRows = asArray(callTranscripts.transcripts);
+      assert(
+        callTranscripts.call_execution_id === fixture.call_execution_id &&
+          Number(callTranscripts.total_transcripts) === 2 &&
+          transcriptRows[0]?.speaker_role === "user" &&
+          transcriptRows[1]?.speaker_role === "assistant",
+        "Call transcript endpoint did not return the seeded voice transcript turns.",
+      );
+      assert(
+        testTranscripts.test_execution_id === fixture.test_execution_id &&
+          Number(testTranscripts.total_calls) === 1 &&
+          Number(testTranscripts.total_transcripts) === 2,
+        "Test-execution transcript endpoint did not aggregate the seeded voice call.",
+      );
+      assert(
+        Number(kpis.total_calls) === 1 &&
+          performance?.test_run_performance_metrics &&
+          analytics?.metadata,
+        "Voice test-execution KPI/performance/analytics reads did not return expected shapes.",
+      );
+
+      const dbAudit = await loadVoiceSimulationCallOutputDbAudit({
+        runTestId: fixture.run_test_id,
+        testExecutionId: fixture.test_execution_id,
+        callExecutionId: fixture.call_execution_id,
+        organizationId,
+        workspaceId,
+      });
+      assert(
+        dbAudit.workspace_matches === true &&
+          dbAudit.agent_type === "voice" &&
+          dbAudit.call_status === "completed" &&
+          Number(dbAudit.transcript_count) === 2 &&
+          Number(dbAudit.create_call_count) === 1 &&
+          dbAudit.recording_available === true &&
+          dbAudit.provider_keys?.includes("vapi"),
+        `Voice simulation DB audit did not match expected output state: ${JSON.stringify(
+          dbAudit,
+        )}`,
+      );
+
+      const hardCleanup = await hardDeleteVoiceSimulationCallOutputFixturesDb({
+        namePrefix: name,
+        organizationId,
+      });
+      hardCleaned = true;
+      assert(
+        Number(hardCleanup.remaining_run_test_count) === 0 &&
+          Number(hardCleanup.remaining_test_execution_count) === 0 &&
+          Number(hardCleanup.remaining_call_execution_count) === 0 &&
+          Number(hardCleanup.remaining_scenario_count) === 0 &&
+          Number(hardCleanup.remaining_agent_count) === 0 &&
+          Number(hardCleanup.remaining_simulator_agent_count) === 0,
+        `Voice simulation cleanup left disposable artifacts: ${JSON.stringify(
+          hardCleanup,
+        )}`,
+      );
+
+      evidence.push({
+        run_test_id: fixture.run_test_id,
+        test_execution_id: fixture.test_execution_id,
+        call_execution_id: fixture.call_execution_id,
+        scenario_id: fixture.scenario_id,
+        agent_definition_id: fixture.agent_definition_id,
+        simulator_agent_id: fixture.simulator_agent_id,
+        transcript_count: Number(dbAudit.transcript_count),
+        turn_count: callDetail.turn_count,
+        agent_talk_percentage: callDetail.agent_talk_percentage,
+        provider: callDetail.provider,
+        recording_url: fixture.recording_url,
+        db_audit: dbAudit,
+        hard_cleanup: hardCleanup,
+      });
+    },
+  },
+  {
     id: "AGENTCC-API-001",
     title:
       "Gateway blocklist create, add words, remove words, update, and delete lifecycle",
@@ -7787,6 +8040,654 @@ SELECT json_build_object(
   return result;
 }
 
+async function seedVoiceSimulationCallOutputFixtureDb({
+  namePrefix,
+  organizationId,
+  workspaceId,
+}) {
+  const agentDefinitionId = randomUUID();
+  const agentVersionId = randomUUID();
+  const simulatorAgentId = randomUUID();
+  const scenarioId = randomUUID();
+  const scenarioGraphId = randomUUID();
+  const runTestId = randomUUID();
+  const testExecutionId = randomUUID();
+  const callExecutionId = randomUUID();
+  const createCallExecutionId = randomUUID();
+  const transcriptIds = [randomUUID(), randomUUID()];
+  const customerCallId = `${namePrefix}-provider-call`;
+  const recordingUrl = "https://example.com/api-journey/voice-call.mp3";
+  const stereoRecordingUrl =
+    "https://example.com/api-journey/voice-call-stereo.mp3";
+  const providerPayload = {
+    id: customerCallId,
+    type: "outboundPhoneCall",
+    status: "ended",
+    endedReason: "customer-ended-call",
+    recordingUrl,
+    stereoRecordingUrl,
+    recording: {
+      mono: { combined: recordingUrl },
+      stereo: stereoRecordingUrl,
+    },
+    artifact: {
+      recordingUrl,
+      stereoRecordingUrl,
+      messages: [
+        { role: "user", message: "I need help checking my order." },
+        {
+          role: "assistant",
+          message: "I can help with that. What is the order number?",
+        },
+      ],
+    },
+    analysis: {
+      summary: "The customer asked for order status and the agent helped.",
+      successEvaluation: true,
+    },
+    cost: 0.42,
+  };
+  const voiceSnapshot = {
+    agent_name: `${namePrefix} voice agent`,
+    agent_type: "voice",
+    provider: "vapi",
+    assistant_id: `${namePrefix}-assistant`,
+    contact_number: "+15555550111",
+    inbound: false,
+    language: "en",
+    languages: ["en"],
+    authentication_method: "api_key",
+    model: "gpt-4o-mini",
+    model_details: { source: "api-journey", fixture: "voice-output" },
+  };
+
+  const sql = `
+WITH inserted_agent AS (
+  INSERT INTO simulate_agent_definition (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    agent_name,
+    agent_type,
+    contact_number,
+    inbound,
+    description,
+    assistant_id,
+    provider,
+    language,
+    languages,
+    websocket_url,
+    websocket_headers,
+    organization_id,
+    workspace_id,
+    api_key,
+    authentication_method,
+    model,
+    model_details
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(agentDefinitionId)},
+    ${sqlString(`${namePrefix} voice agent`)},
+    'voice',
+    '+15555550111',
+    false,
+    ${sqlString("Temporary voice agent for API journey output readback.")},
+    ${sqlString(`${namePrefix}-assistant`)},
+    'vapi',
+    'en',
+    ARRAY['en']::varchar[],
+    NULL,
+    '{}'::jsonb,
+    ${sqlUuid(organizationId)},
+    ${sqlUuid(workspaceId)},
+    NULL,
+    'api_key',
+    'gpt-4o-mini',
+    ${sqlJson({ source: "api-journey", fixture: "voice-output" })}
+  )
+  RETURNING id
+),
+inserted_version AS (
+  INSERT INTO simulate_agent_version (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    version_number,
+    version_name,
+    status,
+    score,
+    test_count,
+    pass_rate,
+    description,
+    commit_message,
+    release_notes,
+    agent_definition_id,
+    organization_id,
+    workspace_id,
+    configuration_snapshot
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(agentVersionId)},
+    1,
+    'v1',
+    'active',
+    9.0,
+    1,
+    100.00,
+    ${sqlString("Temporary voice version for API journey output readback.")},
+    ${sqlString("Seed voice simulation output fixture.")},
+    NULL,
+    ${sqlUuid(agentDefinitionId)},
+    ${sqlUuid(organizationId)},
+    ${sqlUuid(workspaceId)},
+    ${sqlJson(voiceSnapshot)}
+  )
+  RETURNING id
+),
+inserted_simulator_agent AS (
+  INSERT INTO simulator_agents (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    prompt,
+    voice_provider,
+    voice_name,
+    interrupt_sensitivity,
+    conversation_speed,
+    finished_speaking_sensitivity,
+    model,
+    llm_temperature,
+    max_call_duration_in_minutes,
+    initial_message_delay,
+    initial_message,
+    organization_id,
+    workspace_id
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(simulatorAgentId)},
+    ${sqlString(`${namePrefix} simulator`)},
+    ${sqlString("You are a temporary voice simulator for API journey coverage.")},
+    'elevenlabs',
+    'marissa',
+    0.5,
+    1.0,
+    0.5,
+    'gpt-4o-mini',
+    0.7,
+    30,
+    0,
+    'Hello, how can I help?',
+    ${sqlUuid(organizationId)},
+    ${sqlUuid(workspaceId)}
+  )
+  RETURNING id
+),
+inserted_scenario AS (
+  INSERT INTO simulate_scenarios (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    source,
+    scenario_type,
+    organization_id,
+    dataset_id,
+    description,
+    workspace_id,
+    metadata,
+    simulator_agent_id,
+    status,
+    agent_definition_id,
+    source_type,
+    prompt_template_id,
+    prompt_version_id
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(scenarioId)},
+    ${sqlString(`${namePrefix} voice scenario`)},
+    ${sqlString(`${namePrefix} voice source`)},
+    'graph',
+    ${sqlUuid(organizationId)},
+    NULL,
+    ${sqlString("Temporary voice scenario for completed call output coverage.")},
+    ${sqlUuid(workspaceId)},
+    ${sqlJson({ source: "api-journey", fixture: "voice-output" })},
+    ${sqlUuid(simulatorAgentId)},
+    'Completed',
+    ${sqlUuid(agentDefinitionId)},
+    'agent_definition',
+    NULL,
+    NULL
+  )
+  RETURNING id
+),
+inserted_graph AS (
+  INSERT INTO simulate_scenario_graph (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    description,
+    version,
+    is_active,
+    graph_config,
+    organization_id,
+    scenario_id
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(scenarioGraphId)},
+    ${sqlString(`${namePrefix} voice graph`)},
+    ${sqlString("Temporary voice graph for API journey output coverage.")},
+    1,
+    true,
+    ${sqlJson({
+      graph_data: {
+        nodes: [
+          { id: "start", type: "start", label: "Start" },
+          { id: "order", type: "intent", label: "Order lookup" },
+        ],
+        edges: [{ id: "start-order", source: "start", target: "order" }],
+      },
+      source: "api-journey",
+    })},
+    ${sqlUuid(organizationId)},
+    ${sqlUuid(scenarioId)}
+  )
+  RETURNING id
+),
+inserted_run AS (
+  INSERT INTO simulate_run_test (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    name,
+    description,
+    agent_definition_id,
+    agent_version_id,
+    source_type,
+    prompt_template_id,
+    prompt_version_id,
+    dataset_row_ids,
+    simulator_agent_id,
+    organization_id,
+    workspace_id,
+    enable_tool_evaluation
+  )
+  VALUES (
+    now(),
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(runTestId)},
+    ${sqlString(`${namePrefix} run`)},
+    ${sqlString("Temporary voice run for completed call output coverage.")},
+    ${sqlUuid(agentDefinitionId)},
+    ${sqlUuid(agentVersionId)},
+    'agent_definition',
+    NULL,
+    NULL,
+    ARRAY[]::varchar[],
+    ${sqlUuid(simulatorAgentId)},
+    ${sqlUuid(organizationId)},
+    ${sqlUuid(workspaceId)},
+    false
+  )
+  RETURNING id
+),
+inserted_run_scenario AS (
+  INSERT INTO simulate_run_test_scenarios (
+    runtest_id,
+    scenarios_id
+  )
+  VALUES (
+    ${sqlUuid(runTestId)},
+    ${sqlUuid(scenarioId)}
+  )
+  RETURNING runtest_id
+),
+inserted_execution AS (
+  INSERT INTO simulate_test_execution (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    run_test_id,
+    status,
+    started_at,
+    completed_at,
+    total_scenarios,
+    scenario_ids,
+    total_calls,
+    completed_calls,
+    failed_calls,
+    execution_metadata,
+    picked_up_by_executor,
+    simulator_agent_id,
+    agent_definition_id,
+    agent_version_id,
+    eval_explanation_summary,
+    eval_explanation_summary_last_updated,
+    eval_explanation_summary_status,
+    agent_optimiser_id,
+    error_reason
+  )
+  VALUES (
+    now() - interval '2 minutes',
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(testExecutionId)},
+    ${sqlUuid(runTestId)},
+    'completed',
+    now() - interval '2 minutes',
+    now() - interval '1 minute',
+    1,
+    ${sqlJson([scenarioId])},
+    1,
+    1,
+    0,
+    ${sqlJson({ source: "api-journey", fixture: "voice-output" })},
+    true,
+    ${sqlUuid(simulatorAgentId)},
+    ${sqlUuid(agentDefinitionId)},
+    ${sqlUuid(agentVersionId)},
+    '{}'::jsonb,
+    now(),
+    'completed',
+    NULL,
+    NULL
+  )
+  RETURNING id
+),
+inserted_call AS (
+  INSERT INTO simulate_call_execution (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    test_execution_id,
+    simulation_call_type,
+    scenario_id,
+    phone_number,
+    service_provider_call_id,
+    status,
+    started_at,
+    completed_at,
+    duration_seconds,
+    recording_url,
+    cost_cents,
+    call_metadata,
+    error_message,
+    provider_call_data,
+    monitor_call_data,
+    logs_ingested_at,
+    logs_summary,
+    customer_logs_summary,
+    stereo_recording_url,
+    customer_log_url,
+    call_summary,
+    ended_reason,
+    stt_cost_cents,
+    llm_cost_cents,
+    tts_cost_cents,
+    storage_cost_cents,
+    vapi_cost_cents,
+    overall_score,
+    response_time_ms,
+    assistant_id,
+    customer_number,
+    call_type,
+    ended_at,
+    analysis_data,
+    evaluation_data,
+    message_count,
+    transcript_available,
+    recording_available,
+    row_id,
+    eval_outputs,
+    tool_outputs,
+    agent_version_id,
+    customer_call_id,
+    customer_cost_cents,
+    customer_cost_breakdown,
+    customer_latency_metrics,
+    avg_agent_latency_ms,
+    user_interruption_count,
+    user_interruption_rate,
+    user_wpm,
+    bot_wpm,
+    talk_ratio,
+    ai_interruption_count,
+    ai_interruption_rate,
+    avg_stop_time_after_interruption_ms,
+    conversation_metrics_data
+  )
+  VALUES (
+    now() - interval '2 minutes',
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(callExecutionId)},
+    ${sqlUuid(testExecutionId)},
+    'voice',
+    ${sqlUuid(scenarioId)},
+    '+15555550123',
+    ${sqlString(customerCallId)},
+    'completed',
+    now() - interval '2 minutes',
+    now() - interval '56 seconds',
+    64,
+    ${sqlString(recordingUrl)},
+    42,
+    ${sqlJson({
+      source: "api-journey",
+      fixture: "voice-output",
+      call_direction: "outbound",
+      recording_offset_ms: 250,
+    })},
+    NULL,
+    ${sqlJson({ vapi: providerPayload })},
+    ${sqlJson({ source: "api-journey", status: "completed" })},
+    now(),
+    ${sqlJson({ info: 1, error: 0 })},
+    ${sqlJson({ info: 1 })},
+    ${sqlString(stereoRecordingUrl)},
+    'https://example.com/api-journey/customer-log.json',
+    'Customer asked about an order and the agent collected the order number.',
+    'customer-ended-call',
+    5,
+    12,
+    20,
+    0.05,
+    42,
+    9.4,
+    1200,
+    ${sqlString(`${namePrefix}-assistant`)},
+    '+15555550123',
+    'outboundPhoneCall',
+    now() - interval '56 seconds',
+    ${sqlJson({
+      summary: "Customer asked about an order.",
+      successEvaluation: true,
+    })},
+    ${sqlJson({ success: true, score: 0.94 })},
+    2,
+    true,
+    true,
+    NULL,
+    '{}'::jsonb,
+    '{}'::jsonb,
+    ${sqlUuid(agentVersionId)},
+    ${sqlString(customerCallId)},
+    42,
+    ${sqlJson({ total: 42, stt: 5, llm: 12, tts: 20, storage: 0.05 })},
+    ${sqlJson({ avg_agent_latency_ms: 1200 })},
+    1200,
+    0,
+    0,
+    142.5,
+    115.0,
+    1.5,
+    0,
+    0,
+    NULL,
+    ${sqlJson({
+      turn_count: 1,
+      bot_message_count: 1,
+      user_message_count: 1,
+      message_count: 2,
+      avg_latency_ms: 1200,
+      csat_score: 5,
+    })}
+  )
+  RETURNING id
+),
+inserted_create_call AS (
+  INSERT INTO simulate_createcallexecution (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    phone_number_id,
+    to_number,
+    system_prompt,
+    metadata,
+    voice_settings,
+    call_execution_id,
+    status
+  )
+  VALUES (
+    now() - interval '2 minutes',
+    now(),
+    false,
+    NULL,
+    ${sqlUuid(createCallExecutionId)},
+    ${sqlString(`${namePrefix}-phone-number`)},
+    '+15555550123',
+    'Temporary voice simulation call for API journey output coverage.',
+    ${sqlJson({ source: "api-journey", fixture: "voice-output" })},
+    ${sqlJson({ provider: "vapi", voice: "marissa" })},
+    ${sqlUuid(callExecutionId)},
+    'completed'
+  )
+  RETURNING id
+),
+inserted_transcripts AS (
+  INSERT INTO simulate_call_transcript (
+    created_at,
+    updated_at,
+    deleted,
+    deleted_at,
+    id,
+    call_execution_id,
+    speaker_role,
+    content,
+    start_time_ms,
+    end_time_ms,
+    confidence_score
+  )
+  VALUES
+    (
+      now() - interval '2 minutes',
+      now(),
+      false,
+      NULL,
+      ${sqlUuid(transcriptIds[0])},
+      ${sqlUuid(callExecutionId)},
+      'user',
+      'I need help checking my order.',
+      0,
+      1800,
+      0.99
+    ),
+    (
+      now() - interval '2 minutes',
+      now(),
+      false,
+      NULL,
+      ${sqlUuid(transcriptIds[1])},
+      ${sqlUuid(callExecutionId)},
+      'assistant',
+      'I can help with that. What is the order number?',
+      2200,
+      5200,
+      0.98
+    )
+  RETURNING id
+)
+SELECT json_build_object(
+  'agent_definition_id', ${sqlString(agentDefinitionId)},
+  'agent_version_id', ${sqlString(agentVersionId)},
+  'simulator_agent_id', ${sqlString(simulatorAgentId)},
+  'scenario_id', ${sqlString(scenarioId)},
+  'scenario_graph_id', ${sqlString(scenarioGraphId)},
+  'run_test_id', ${sqlString(runTestId)},
+  'test_execution_id', ${sqlString(testExecutionId)},
+  'call_execution_id', ${sqlString(callExecutionId)},
+  'customer_call_id', ${sqlString(customerCallId)},
+  'recording_url', ${sqlString(recordingUrl)},
+  'inserted_agent_count', (SELECT count(*) FROM inserted_agent),
+  'inserted_version_count', (SELECT count(*) FROM inserted_version),
+  'inserted_simulator_agent_count', (SELECT count(*) FROM inserted_simulator_agent),
+  'inserted_scenario_count', (SELECT count(*) FROM inserted_scenario),
+  'inserted_graph_count', (SELECT count(*) FROM inserted_graph),
+  'inserted_run_count', (SELECT count(*) FROM inserted_run),
+  'inserted_run_scenario_count', (SELECT count(*) FROM inserted_run_scenario),
+  'inserted_execution_count', (SELECT count(*) FROM inserted_execution),
+  'inserted_call_count', (SELECT count(*) FROM inserted_call),
+  'inserted_create_call_count', (SELECT count(*) FROM inserted_create_call),
+  'inserted_transcript_count', (SELECT count(*) FROM inserted_transcripts)
+);
+`;
+  const result = await runPostgresJson(sql);
+  assert(
+    Number(result.inserted_agent_count) === 1 &&
+      Number(result.inserted_version_count) === 1 &&
+      Number(result.inserted_run_count) === 1 &&
+      Number(result.inserted_execution_count) === 1 &&
+      Number(result.inserted_call_count) === 1 &&
+      Number(result.inserted_transcript_count) === 2,
+    `Failed to seed voice simulation output fixture: ${JSON.stringify(result)}`,
+  );
+  return result;
+}
+
 async function loadSimulationScenarioDbAudit({
   scenarioIds,
   datasetId,
@@ -9325,6 +10226,297 @@ SELECT json_build_object(
 );
 `;
   return runPostgresJson(sql);
+}
+
+async function loadVoiceSimulationCallOutputDbAudit({
+  runTestId,
+  testExecutionId,
+  callExecutionId,
+  organizationId,
+  workspaceId,
+}) {
+  const sql = `
+WITH target_run AS (
+  SELECT rt.*, ad.agent_type
+  FROM simulate_run_test rt
+  JOIN simulate_agent_definition ad ON ad.id = rt.agent_definition_id
+  WHERE rt.id = ${sqlUuid(runTestId)}
+    AND rt.organization_id = ${sqlUuid(organizationId)}
+),
+target_execution AS (
+  SELECT *
+  FROM simulate_test_execution
+  WHERE id = ${sqlUuid(testExecutionId)}
+    AND run_test_id IN (SELECT id FROM target_run)
+),
+target_call AS (
+  SELECT *
+  FROM simulate_call_execution
+  WHERE id = ${sqlUuid(callExecutionId)}
+    AND test_execution_id IN (SELECT id FROM target_execution)
+),
+target_create_call AS (
+  SELECT *
+  FROM simulate_createcallexecution
+  WHERE call_execution_id IN (SELECT id FROM target_call)
+)
+SELECT json_build_object(
+  'run_test_id', (SELECT id::text FROM target_run),
+  'workspace_matches', (
+    SELECT workspace_id = ${sqlUuid(workspaceId)}
+    FROM target_run
+  ),
+  'agent_type', (SELECT agent_type FROM target_run),
+  'test_execution_status', (SELECT status FROM target_execution),
+  'call_status', (SELECT status FROM target_call),
+  'simulation_call_type', (SELECT simulation_call_type FROM target_call),
+  'recording_available', (SELECT recording_available FROM target_call),
+  'transcript_available', (SELECT transcript_available FROM target_call),
+  'recording_url', (SELECT recording_url FROM target_call),
+  'provider_keys', (
+    SELECT COALESCE(json_agg(key ORDER BY key), '[]'::json)
+    FROM target_call,
+    LATERAL json_object_keys(provider_call_data) AS keys(key)
+  ),
+  'transcript_count', (
+    SELECT count(*)
+    FROM simulate_call_transcript
+    WHERE call_execution_id IN (SELECT id FROM target_call)
+      AND deleted = false
+  ),
+  'create_call_count', (SELECT count(*) FROM target_create_call),
+  'create_call_status', (SELECT status FROM target_create_call),
+  'message_count', (SELECT message_count FROM target_call),
+  'duration_seconds', (SELECT duration_seconds FROM target_call),
+  'customer_call_id', (SELECT customer_call_id FROM target_call),
+  'cost_cents', (SELECT cost_cents FROM target_call),
+  'customer_cost_cents', (SELECT customer_cost_cents FROM target_call),
+  'run_scenario_count', (
+    SELECT count(*)
+    FROM simulate_run_test_scenarios
+    WHERE runtest_id IN (SELECT id FROM target_run)
+  )
+);
+`;
+  return runPostgresJson(sql);
+}
+
+async function hardDeleteVoiceSimulationCallOutputFixturesDb({
+  namePrefix,
+  organizationId,
+}) {
+  const sql = `
+WITH target_runs AS (
+  SELECT id, agent_definition_id, agent_version_id, simulator_agent_id
+  FROM simulate_run_test
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND name LIKE ${sqlString(`${namePrefix}%`)}
+),
+target_run_scenarios AS (
+  SELECT scenarios_id AS id
+  FROM simulate_run_test_scenarios
+  WHERE runtest_id IN (SELECT id FROM target_runs)
+),
+target_scenarios AS (
+  SELECT id, agent_definition_id, simulator_agent_id
+  FROM simulate_scenarios
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND (
+      name LIKE ${sqlString(`${namePrefix}%`)}
+      OR id IN (SELECT id FROM target_run_scenarios)
+    )
+),
+target_executions AS (
+  SELECT id
+  FROM simulate_test_execution
+  WHERE run_test_id IN (SELECT id FROM target_runs)
+),
+target_calls AS (
+  SELECT id
+  FROM simulate_call_execution
+  WHERE test_execution_id IN (SELECT id FROM target_executions)
+),
+target_agents AS (
+  SELECT id
+  FROM simulate_agent_definition
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND (
+      agent_name LIKE ${sqlString(`${namePrefix}%`)}
+      OR id IN (SELECT agent_definition_id FROM target_runs WHERE agent_definition_id IS NOT NULL)
+      OR id IN (SELECT agent_definition_id FROM target_scenarios WHERE agent_definition_id IS NOT NULL)
+    )
+),
+target_versions AS (
+  SELECT id
+  FROM simulate_agent_version
+  WHERE agent_definition_id IN (SELECT id FROM target_agents)
+     OR id IN (SELECT agent_version_id FROM target_runs WHERE agent_version_id IS NOT NULL)
+),
+target_simulator_agents AS (
+  SELECT id
+  FROM simulator_agents
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND (
+      name LIKE ${sqlString(`${namePrefix}%`)}
+      OR id IN (SELECT simulator_agent_id FROM target_runs WHERE simulator_agent_id IS NOT NULL)
+      OR id IN (SELECT simulator_agent_id FROM target_scenarios WHERE simulator_agent_id IS NOT NULL)
+    )
+),
+updated_phone_numbers AS (
+  UPDATE simulate_phone_numbers
+  SET current_call_execution_id = NULL
+  WHERE current_call_execution_id IN (SELECT id FROM target_calls)
+  RETURNING id
+),
+deleted_queue_items AS (
+  DELETE FROM model_hub_queueitem
+  WHERE call_execution_id IN (SELECT id FROM target_calls)
+  RETURNING id
+),
+deleted_scores AS (
+  DELETE FROM model_hub_score
+  WHERE call_execution_id IN (SELECT id FROM target_calls)
+  RETURNING id
+),
+deleted_trial_results AS (
+  DELETE FROM trial_item_result
+  WHERE call_execution_id IN (SELECT id FROM target_calls)
+  RETURNING id
+),
+deleted_snapshots AS (
+  DELETE FROM simulate_call_execution_snapshot
+  WHERE call_execution_id IN (SELECT id FROM target_calls)
+  RETURNING id
+),
+deleted_transcripts AS (
+  DELETE FROM simulate_call_transcript
+  WHERE call_execution_id IN (SELECT id FROM target_calls)
+  RETURNING id
+),
+deleted_logs AS (
+  DELETE FROM simulate_call_log_entry
+  WHERE call_execution_id IN (SELECT id FROM target_calls)
+  RETURNING id
+),
+deleted_create_calls AS (
+  DELETE FROM simulate_createcallexecution
+  WHERE call_execution_id IN (SELECT id FROM target_calls)
+  RETURNING id
+),
+deleted_calls AS (
+  DELETE FROM simulate_call_execution
+  WHERE id IN (SELECT id FROM target_calls)
+  RETURNING id
+),
+deleted_executions AS (
+  DELETE FROM simulate_test_execution
+  WHERE id IN (SELECT id FROM target_executions)
+  RETURNING id
+),
+deleted_run_scenarios AS (
+  DELETE FROM simulate_run_test_scenarios
+  WHERE runtest_id IN (SELECT id FROM target_runs)
+     OR scenarios_id IN (SELECT id FROM target_scenarios)
+  RETURNING id
+),
+deleted_runs AS (
+  DELETE FROM simulate_run_test
+  WHERE id IN (SELECT id FROM target_runs)
+  RETURNING id
+),
+deleted_graphs AS (
+  DELETE FROM simulate_scenario_graph
+  WHERE scenario_id IN (SELECT id FROM target_scenarios)
+  RETURNING id
+),
+deleted_scenarios AS (
+  DELETE FROM simulate_scenarios
+  WHERE id IN (SELECT id FROM target_scenarios)
+  RETURNING id
+),
+deleted_credentials AS (
+  DELETE FROM simulate_provider_credentials
+  WHERE agent_definition_id IN (SELECT id FROM target_agents)
+  RETURNING id
+),
+deleted_versions AS (
+  DELETE FROM simulate_agent_version
+  WHERE id IN (SELECT id FROM target_versions)
+  RETURNING id
+),
+deleted_agents AS (
+  DELETE FROM simulate_agent_definition
+  WHERE id IN (SELECT id FROM target_agents)
+  RETURNING id
+),
+deleted_simulator_agents AS (
+  DELETE FROM simulator_agents
+  WHERE id IN (SELECT id FROM target_simulator_agents)
+  RETURNING id
+)
+SELECT json_build_object(
+  'deleted_run_test_count', (SELECT count(*) FROM deleted_runs),
+  'deleted_test_execution_count', (SELECT count(*) FROM deleted_executions),
+  'deleted_call_execution_count', (SELECT count(*) FROM deleted_calls),
+  'deleted_create_call_count', (SELECT count(*) FROM deleted_create_calls),
+  'deleted_transcript_count', (SELECT count(*) FROM deleted_transcripts),
+  'deleted_scenario_count', (SELECT count(*) FROM deleted_scenarios),
+  'deleted_graph_count', (SELECT count(*) FROM deleted_graphs),
+  'deleted_agent_count', (SELECT count(*) FROM deleted_agents),
+  'deleted_agent_version_count', (SELECT count(*) FROM deleted_versions),
+  'deleted_simulator_agent_count', (SELECT count(*) FROM deleted_simulator_agents),
+  'deleted_credential_count', (SELECT count(*) FROM deleted_credentials)
+);
+`;
+  const cleanup = await runPostgresJson(sql);
+  const remainingSql = `
+WITH target_runs AS (
+  SELECT id
+  FROM simulate_run_test
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND name LIKE ${sqlString(`${namePrefix}%`)}
+),
+target_executions AS (
+  SELECT id
+  FROM simulate_test_execution
+  WHERE run_test_id IN (SELECT id FROM target_runs)
+),
+target_calls AS (
+  SELECT id
+  FROM simulate_call_execution
+  WHERE test_execution_id IN (SELECT id FROM target_executions)
+),
+target_scenarios AS (
+  SELECT id
+  FROM simulate_scenarios
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND name LIKE ${sqlString(`${namePrefix}%`)}
+),
+target_agents AS (
+  SELECT id
+  FROM simulate_agent_definition
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND agent_name LIKE ${sqlString(`${namePrefix}%`)}
+),
+target_simulator_agents AS (
+  SELECT id
+  FROM simulator_agents
+  WHERE organization_id = ${sqlUuid(organizationId)}
+    AND name LIKE ${sqlString(`${namePrefix}%`)}
+)
+SELECT json_build_object(
+  'remaining_run_test_count', (SELECT count(*) FROM target_runs),
+  'remaining_test_execution_count', (SELECT count(*) FROM target_executions),
+  'remaining_call_execution_count', (SELECT count(*) FROM target_calls),
+  'remaining_scenario_count', (SELECT count(*) FROM target_scenarios),
+  'remaining_agent_count', (SELECT count(*) FROM target_agents),
+  'remaining_simulator_agent_count', (SELECT count(*) FROM target_simulator_agents)
+);
+`;
+  return {
+    ...cleanup,
+    ...(await runPostgresJson(remainingSql)),
+  };
 }
 
 async function hardDeleteSimulationRunActionFixturesDb({

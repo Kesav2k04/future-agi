@@ -323,6 +323,272 @@ export const annotationQueueJourneys = [
     },
   },
   {
+    id: "AQ-API-034",
+    title: "Queue list filters, archived view, and duplicate-create payload",
+    tags: ["annotation", "mutating", "list", "duplicate", "db-audit"],
+    async run({
+      client,
+      cleanup,
+      user,
+      runId,
+      organizationId,
+      workspaceId,
+      evidence,
+    }) {
+      requireMutations();
+      const userId = assertCurrentUserResolved(user);
+      const namePrefix = `api journey queue list duplicate ${runId}`;
+      const baseQueueName = `${namePrefix} base`;
+      const duplicateQueueName = `Copy of ${baseQueueName}`;
+      await deleteQueueCreateFixturesDb(namePrefix);
+      cleanup.defer("delete queue list/duplicate fixtures", () =>
+        deleteQueueCreateFixturesDb(namePrefix),
+      );
+
+      const basePayload = {
+        name: baseQueueName,
+        description:
+          "Disposable queue for list/search/filter/duplicate coverage.",
+        instructions: "Verify queue list filters and duplicate create payload.",
+        assignment_strategy: "manual",
+        annotations_required: 1,
+        reservation_timeout_minutes: 37,
+        requires_review: false,
+        auto_assign: false,
+      };
+
+      let baseQueue;
+      let createMode = "api";
+      try {
+        baseQueue = await client.post(
+          apiPath("/model-hub/annotation-queues/"),
+          basePayload,
+        );
+      } catch (error) {
+        if (error.status !== 402) throw error;
+        createMode = "db_seeded_after_create_entitlement";
+        evidence.push({
+          create_entitlement_status: error.status,
+          create_entitlement_body: error.body,
+        });
+        baseQueue = await insertAnnotationQueueCreateFixtureDb({
+          queueName: baseQueueName,
+          organizationId,
+          workspaceId,
+          userId,
+        });
+      }
+      assert(
+        baseQueue?.id,
+        "Queue list/duplicate setup did not create a queue.",
+      );
+      cleanup.defer("hard-delete base queue list fixture", () =>
+        hardDeleteQueueIfPresent(client, baseQueue.id, baseQueueName),
+      );
+
+      const invalidPageSizeStatus = await expectHttpStatus(
+        () =>
+          client.get(apiPath("/model-hub/annotation-queues/"), {
+            query: { page_size: 5 },
+          }),
+        400,
+      );
+
+      const searchRows = asArray(
+        await client.get(apiPath("/model-hub/annotation-queues/"), {
+          query: { search: namePrefix, include_counts: true, limit: 100 },
+        }),
+      );
+      const searchedBase = searchRows.find((row) => row.id === baseQueue.id);
+      assert(
+        searchedBase &&
+          Object.prototype.hasOwnProperty.call(searchedBase, "label_count") &&
+          Object.prototype.hasOwnProperty.call(
+            searchedBase,
+            "annotator_count",
+          ) &&
+          Object.prototype.hasOwnProperty.call(searchedBase, "item_count"),
+        `Queue search/include_counts did not expose the base queue counts: ${JSON.stringify(
+          searchRows,
+        )}.`,
+      );
+
+      const baseStatus = baseQueue.status || searchedBase.status || "active";
+      const statusRows = asArray(
+        await client.get(apiPath("/model-hub/annotation-queues/"), {
+          query: {
+            search: namePrefix,
+            status: baseStatus,
+            include_counts: true,
+            limit: 100,
+          },
+        }),
+      );
+      assert(
+        statusRows.some((row) => row.id === baseQueue.id) &&
+          statusRows.every((row) => row.status === baseStatus),
+        `Queue status filter did not isolate ${baseStatus} rows: ${JSON.stringify(
+          statusRows,
+        )}.`,
+      );
+
+      await client.delete(
+        apiPath("/model-hub/annotation-queues/{id}/", { id: baseQueue.id }),
+      );
+      const defaultRowsAfterArchive = asArray(
+        await client.get(apiPath("/model-hub/annotation-queues/"), {
+          query: { search: baseQueueName, limit: 100 },
+        }),
+      );
+      assert(
+        !defaultRowsAfterArchive.some((row) => row.id === baseQueue.id),
+        `Default queue list included an archived queue: ${JSON.stringify(
+          defaultRowsAfterArchive,
+        )}.`,
+      );
+
+      const archivedRows = asArray(
+        await client.get(apiPath("/model-hub/annotation-queues/"), {
+          query: {
+            archived: true,
+            search: baseQueueName,
+            include_counts: true,
+            limit: 100,
+          },
+        }),
+      );
+      assert(
+        archivedRows.some((row) => row.id === baseQueue.id),
+        `Archived queue list did not include the archived queue: ${JSON.stringify(
+          archivedRows,
+        )}.`,
+      );
+
+      await client.post(
+        apiPath("/model-hub/annotation-queues/{id}/restore/", {
+          id: baseQueue.id,
+        }),
+      );
+      const restoredDetail = await client.get(
+        apiPath("/model-hub/annotation-queues/{id}/", { id: baseQueue.id }),
+      );
+      assert(
+        restoredDetail?.id === baseQueue.id && restoredDetail.deleted !== true,
+        `Queue restore did not return an active queue detail: ${JSON.stringify(
+          restoredDetail,
+        )}.`,
+      );
+
+      const duplicatePayload = {
+        name: duplicateQueueName,
+        description: restoredDetail.description || "",
+        instructions: restoredDetail.instructions || "",
+        assignment_strategy: restoredDetail.assignment_strategy || "manual",
+        annotations_required: restoredDetail.annotations_required || 1,
+        reservation_timeout_minutes:
+          restoredDetail.reservation_timeout_minutes || 60,
+        requires_review: restoredDetail.requires_review === true,
+        auto_assign: restoredDetail.auto_assign === true,
+        label_ids: asArray(restoredDetail.labels)
+          .map((queueLabel) => labelId(queueLabel))
+          .filter(Boolean),
+        annotator_ids: asArray(restoredDetail.annotators)
+          .map((annotator) => annotator.user_id)
+          .filter(Boolean),
+        annotator_roles: buildQueueAnnotatorRoleMap(restoredDetail.annotators),
+      };
+
+      let duplicateQueue;
+      let duplicateCreateMode = "api";
+      try {
+        duplicateQueue = await client.post(
+          apiPath("/model-hub/annotation-queues/"),
+          duplicatePayload,
+        );
+      } catch (error) {
+        if (error.status !== 402) throw error;
+        duplicateCreateMode = "entitlement_blocked";
+        evidence.push({
+          duplicate_create_entitlement_status: error.status,
+          duplicate_create_entitlement_body: error.body,
+        });
+      }
+
+      if (duplicateQueue?.id) {
+        cleanup.defer("hard-delete duplicate queue fixture", () =>
+          hardDeleteQueueIfPresent(
+            client,
+            duplicateQueue.id,
+            duplicateQueueName,
+          ),
+        );
+        assert(
+          duplicateQueue.id !== baseQueue.id &&
+            duplicateQueue.name === duplicateQueueName,
+          `Duplicate-create response reused the source queue or wrong name: ${JSON.stringify(
+            duplicateQueue,
+          )}.`,
+        );
+        const duplicateDetail = await client.get(
+          apiPath("/model-hub/annotation-queues/{id}/", {
+            id: duplicateQueue.id,
+          }),
+        );
+        assert(
+          duplicateDetail.description === duplicatePayload.description &&
+            duplicateDetail.instructions === duplicatePayload.instructions &&
+            duplicateDetail.assignment_strategy ===
+              duplicatePayload.assignment_strategy &&
+            Number(duplicateDetail.annotations_required) ===
+              Number(duplicatePayload.annotations_required) &&
+            Number(duplicateDetail.reservation_timeout_minutes) ===
+              Number(duplicatePayload.reservation_timeout_minutes) &&
+            duplicateDetail.requires_review ===
+              duplicatePayload.requires_review,
+          `Duplicate queue did not preserve copied settings: ${JSON.stringify({
+            duplicatePayload,
+            duplicateDetail,
+          })}.`,
+        );
+        const duplicateSearchRows = asArray(
+          await client.get(apiPath("/model-hub/annotation-queues/"), {
+            query: { search: duplicateQueueName, limit: 100 },
+          }),
+        );
+        assert(
+          duplicateSearchRows.some((row) => row.id === duplicateQueue.id),
+          `Queue search did not find duplicate-created queue: ${JSON.stringify(
+            duplicateSearchRows,
+          )}.`,
+        );
+      }
+
+      const dbAudit = await loadQueueListDuplicateDbAudit({
+        organizationId,
+        workspaceId,
+        namePrefix,
+      });
+      assert(
+        Number(dbAudit.wrong_scope_count) === 0 &&
+          Number(dbAudit.matching_total_count) >= (duplicateQueue?.id ? 2 : 1),
+        `Queue list/duplicate DB audit mismatch: ${JSON.stringify(dbAudit)}.`,
+      );
+
+      evidence.push({
+        queue_create_mode: createMode,
+        duplicate_create_mode: duplicateCreateMode,
+        base_queue_id: baseQueue.id,
+        duplicate_queue_id: duplicateQueue?.id || null,
+        status_filter: baseStatus,
+        invalid_page_size_status: invalidPageSizeStatus,
+        search_match_count: searchRows.length,
+        archived_match_count: archivedRows.length,
+        matching_total_count: dbAudit.matching_total_count,
+        wrong_scope_count: dbAudit.wrong_scope_count,
+      });
+    },
+  },
+  {
     id: "AQ-API-002",
     title:
       "Queue item read paths, annotate detail, annotations, discussion, next item",
@@ -2926,7 +3192,10 @@ export const annotationQueueJourneys = [
       });
       const altUser = await altClient.get(apiPath("/accounts/user-info/"));
       const reviewerId = currentUserId(altUser);
-      assert(reviewerId, "Legacy role alternate user id could not be resolved.");
+      assert(
+        reviewerId,
+        "Legacy role alternate user id could not be resolved.",
+      );
       if (String(reviewerId) === String(creatorId)) {
         skip("Alternate token resolved to the creator user.");
       }
@@ -2995,7 +3264,9 @@ export const annotationQueueJourneys = [
       ).find((annotator) => String(annotator.user_id) === String(reviewerId));
       assert(
         sameJsonValue(asArray(creatorMemberBefore?.roles), ["manager"]) &&
-          asArray(reviewerLegacyBeforeDetail.viewer_roles).includes("reviewer") &&
+          asArray(reviewerLegacyBeforeDetail.viewer_roles).includes(
+            "reviewer",
+          ) &&
           sameJsonValue(asArray(reviewerMemberBefore?.roles), ["reviewer"]),
         `Legacy fallback API roles did not preserve pre-backfill access: ${JSON.stringify(
           {
@@ -3036,8 +3307,7 @@ export const annotationQueueJourneys = [
             )?.roles,
           ),
           [],
-        ) &&
-          Number(afterDryRunAudit.missing_creator_membership_count) === 1,
+        ) && Number(afterDryRunAudit.missing_creator_membership_count) === 1,
         `Legacy role dry-run mutated fixture rows: ${JSON.stringify(
           afterDryRunAudit,
         )}.`,
@@ -3130,7 +3400,9 @@ export const annotationQueueJourneys = [
             "reviewer",
             "annotator",
           ]) &&
-          asArray(reviewerLegacyAfterDetail.viewer_roles).includes("reviewer") &&
+          asArray(reviewerLegacyAfterDetail.viewer_roles).includes(
+            "reviewer",
+          ) &&
           sameJsonValue(asArray(reviewerMemberAfter?.roles), ["reviewer"]),
         `Legacy role backfill API readback mismatch: ${JSON.stringify({
           creatorMemberAfter,
@@ -3257,7 +3529,10 @@ export const annotationQueueJourneys = [
           apiPath("/model-hub/annotation-queues/"),
           payloadFor(blockedQueueName),
         );
-        assert(firstQueue?.id && secondQueue?.id, "OSS queue creates returned no id.");
+        assert(
+          firstQueue?.id && secondQueue?.id,
+          "OSS queue creates returned no id.",
+        );
         assertQueueDetailRoles(
           firstQueue,
           {
@@ -3280,7 +3555,12 @@ export const annotationQueueJourneys = [
           workspaceId,
           namePrefix,
         });
-        assertQueueCountDelta(before, afterOssCreates, 2, "OSS multi-user creates");
+        assertQueueCountDelta(
+          before,
+          afterOssCreates,
+          2,
+          "OSS multi-user creates",
+        );
         assert(
           Number(afterOssCreates.matching_active_member_count) === 4,
           `OSS multi-user creates did not persist four memberships: ${JSON.stringify(
@@ -3288,8 +3568,16 @@ export const annotationQueueJourneys = [
           )}.`,
         );
 
-        await hardDeleteQueueIfPresent(client, firstQueue.id, capacityQueueName);
-        await hardDeleteQueueIfPresent(client, secondQueue.id, blockedQueueName);
+        await hardDeleteQueueIfPresent(
+          client,
+          firstQueue.id,
+          capacityQueueName,
+        );
+        await hardDeleteQueueIfPresent(
+          client,
+          secondQueue.id,
+          blockedQueueName,
+        );
         const finalAudit = await loadQueueLimitDbAudit({
           organizationId,
           workspaceId,
@@ -5616,7 +5904,8 @@ export const annotationQueueJourneys = [
   },
   {
     id: "AQ-API-033",
-    title: "Scheduled automation rule guardrails persist without queue mutation",
+    title:
+      "Scheduled automation rule guardrails persist without queue mutation",
     tags: ["annotation", "mutating", "automation", "schedule", "db-audit"],
     async run({
       apiBase,
@@ -5663,7 +5952,10 @@ export const annotationQueueJourneys = [
           userId,
         });
       }
-      assert(queue?.id, "Automation schedule queue create/seed returned no id.");
+      assert(
+        queue?.id,
+        "Automation schedule queue create/seed returned no id.",
+      );
       cleanup.defer("hard-delete automation schedule queue", () =>
         hardDeleteQueueIfPresent(client, queue.id, queueName),
       );
@@ -5694,7 +5986,10 @@ export const annotationQueueJourneys = [
           trigger_frequency: "daily",
         },
       );
-      assert(scheduledRule?.id, "Scheduled automation rule create returned no id.");
+      assert(
+        scheduledRule?.id,
+        "Scheduled automation rule create returned no id.",
+      );
       cleanup.defer("delete scheduled automation rule", () =>
         deleteAutomationRuleIfPresent(client, queue.id, scheduledRule.id),
       );
@@ -5909,7 +6204,8 @@ export const annotationQueueJourneys = [
       });
 
       await hardDeleteQueueIfPresent(client, queue.id, queueName);
-      const finalResidue = await loadAutomationScheduleResidueDbAudit(namePrefix);
+      const finalResidue =
+        await loadAutomationScheduleResidueDbAudit(namePrefix);
       assert(
         Number(finalResidue.matching_queues) === 0 &&
           Number(finalResidue.matching_rules) === 0 &&
@@ -10187,6 +10483,64 @@ SELECT coalesce(
   return audit;
 }
 
+async function loadQueueListDuplicateDbAudit({
+  organizationId,
+  workspaceId,
+  namePrefix,
+}) {
+  const sql = `
+WITH matching_queues AS (
+  SELECT
+    id::text,
+    name,
+    description,
+    instructions,
+    status,
+    assignment_strategy,
+    annotations_required,
+    reservation_timeout_minutes,
+    requires_review,
+    auto_assign,
+    organization_id::text,
+    workspace_id::text,
+    created_by_id::text,
+    deleted
+  FROM model_hub_annotationqueue
+  WHERE
+    organization_id = ${sqlUuid(organizationId, "organizationId")}
+    AND (
+      name LIKE ${sqlString(`${namePrefix}%`)}
+      OR name LIKE ${sqlString(`Copy of ${namePrefix}%`)}
+    )
+)
+SELECT json_build_object(
+  'matching_total_count',
+    (SELECT count(*)::int FROM matching_queues),
+  'matching_active_count',
+    (SELECT count(*)::int FROM matching_queues WHERE deleted = false),
+  'matching_deleted_count',
+    (SELECT count(*)::int FROM matching_queues WHERE deleted = true),
+  'wrong_scope_count',
+    (
+      SELECT count(*)::int
+      FROM matching_queues
+      WHERE
+        workspace_id IS NULL
+        OR workspace_id <> ${sqlUuid(workspaceId, "workspaceId")}::text
+    ),
+  'rows',
+    coalesce(
+      (
+        SELECT json_agg(row_to_json(matching_queues) ORDER BY name)
+        FROM matching_queues
+      ),
+      '[]'::json
+    )
+)::text;
+`;
+  return runPostgresJson(sql);
+}
+
 async function loadQueueLimitDbAudit({
   organizationId,
   workspaceId,
@@ -10390,7 +10744,11 @@ SELECT json_build_object(
 async function deleteQueueCreateFixturesDb(namePrefix) {
   const sql = `
 WITH matching_queues AS (
-  SELECT id FROM model_hub_annotationqueue WHERE name LIKE ${sqlString(`${namePrefix}%`)}
+  SELECT id
+  FROM model_hub_annotationqueue
+  WHERE
+    name LIKE ${sqlString(`${namePrefix}%`)}
+    OR name LIKE ${sqlString(`Copy of ${namePrefix}%`)}
 ),
 matching_labels AS (
   SELECT id FROM model_hub_annotationslabels WHERE name LIKE ${sqlString(`${namePrefix}%`)}
@@ -10816,9 +11174,13 @@ async function runBackendManageCommand(container, commandName, args = []) {
     `UV_PROJECT_ENVIRONMENT=/tmp/ws2-pytest-venv UV_LINK_MODE=copy uv run python manage.py ${manageArgs}`,
   ].join(" && ");
   try {
-    return await execFileAsync("docker", ["exec", container, "sh", "-lc", command], {
-      maxBuffer: 20 * 1024 * 1024,
-    });
+    return await execFileAsync(
+      "docker",
+      ["exec", container, "sh", "-lc", command],
+      {
+        maxBuffer: 20 * 1024 * 1024,
+      },
+    );
   } catch (error) {
     throw new Error(
       `Backend manage.py ${commandName} failed: ${String(
@@ -10836,9 +11198,13 @@ async function runBackendShellScript(container, script) {
     )}`,
   ].join(" && ");
   try {
-    return await execFileAsync("docker", ["exec", container, "sh", "-lc", command], {
-      maxBuffer: 20 * 1024 * 1024,
-    });
+    return await execFileAsync(
+      "docker",
+      ["exec", container, "sh", "-lc", command],
+      {
+        maxBuffer: 20 * 1024 * 1024,
+      },
+    );
   } catch (error) {
     throw new Error(
       `Backend shell script failed: ${String(

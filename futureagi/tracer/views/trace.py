@@ -4117,10 +4117,17 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         query, params = builder.build()
         result = analytics.execute_ch_query(query, params, timeout_ms=10000)
 
-        # Phase 1b: Fetch span_attributes from the CH CDC table for the
-        # paginated spans.  The denormalized `spans` table has empty
-        # attributes_extra (MV wasn't in place during initial sync),
-        # but the CDC source `tracer_observation_span` has full data.
+        # Phase 1b: Fetch span_attributes + provider for the paginated spans
+        # from the v2 `spans` table (CH25 close-out: was `tracer_observation_span`
+        # CDC mirror). fi-collector populates three sources, in priority order:
+        #   1. `attributes_extra` JSON — overflow keys that didn't match the
+        #      typed-Map classifier.
+        #   2. `attrs_string` / `attrs_number` / `attrs_bool` Maps — the
+        #      common-case typed attributes (gen_ai.* keys for LLM spans).
+        # We SELECT all three and reconstruct the flat dict on the Python
+        # side, matching the pattern used by the trace-tree fetch above
+        # (~line 1195). `FINAL` collapses ReplacingMergeTree duplicates;
+        # the `idx_id` bloom filter keeps the PREWHERE scan cheap.
         page_rows = result.data[:page_size]
         span_ids = [
             str(row.get("span_id", "")) for row in page_rows if row.get("span_id")
@@ -4128,10 +4135,12 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         attrs_map = {}
         if span_ids:
             attrs_result = analytics.execute_ch_query(
-                "SELECT id, span_attributes, provider "
-                "FROM tracer_observation_span FINAL "
+                "SELECT id, provider, "
+                "attributes_extra AS span_attributes, "
+                "attrs_string, attrs_number, attrs_bool "
+                "FROM spans FINAL "
                 "PREWHERE id IN %(span_ids)s "
-                "WHERE _peerdb_is_deleted = 0",
+                "WHERE is_deleted = 0",
                 {"span_ids": tuple(span_ids)},
                 timeout_ms=10000,
             )
@@ -4142,6 +4151,17 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                     parsed = json.loads(raw) if isinstance(raw, str) else (raw or {})
                 except (json.JSONDecodeError, TypeError):
                     parsed = {}
+                # Fall back to the typed Maps when attributes_extra is empty
+                # (the common case for LLM spans, where everything is in
+                # attrs_string / attrs_number / attrs_bool).
+                if not parsed:
+                    parsed = {}
+                    for k, v in (arow.get("attrs_string") or {}).items():
+                        parsed[k] = v
+                    for k, v in (arow.get("attrs_number") or {}).items():
+                        parsed[k] = v
+                    for k, v in (arow.get("attrs_bool") or {}).items():
+                        parsed[k] = bool(v)
                 attrs_map[sid] = {
                     "span_attributes": parsed,
                     "provider": arow.get("provider"),

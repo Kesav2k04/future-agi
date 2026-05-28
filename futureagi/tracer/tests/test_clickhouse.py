@@ -5983,6 +5983,108 @@ class TestVoiceCallListQueryBuilder:
 
 
 @pytest.mark.unit
+class TestVoiceCallListPhase1bMigration:
+    """Pin the CH25 cutover for the Phase 1b attrs hydration step.
+
+    The voice list view fetches the paginated root spans first (Phase 1)
+    and then hydrates `span_attributes` + `provider` for that page in a
+    second query (Phase 1b). Pre-CH25 that second query hit the legacy
+    `tracer_observation_span` CDC mirror. Post-CH25 it reads the v2
+    `spans` table (`attributes_extra` JSON + typed Maps), and that
+    cutover is the one thing standing between us and being able to
+    decommission the PeerDB stream for that table.
+
+    The SQL is inline in the view method, not in a builder class, so we
+    pin it by inspecting the function source — same pattern used by
+    test_trace_workspace_scope.py for the agent_graph PG-fallback ban.
+    """
+
+    @staticmethod
+    def _voice_list_source() -> str:
+        import inspect
+
+        from tracer.views.trace import TraceView
+
+        return inspect.getsource(TraceView._list_voice_calls_clickhouse)
+
+    def test_phase_1b_does_not_query_legacy_cdc_mirror(self):
+        """The Phase 1b hydration must NOT read `tracer_observation_span`.
+
+        Reverting to the CDC mirror means voice attributes go stale the
+        moment we cut PeerDB. Catch that statically.
+
+        Scope: the *Phase 1b* query specifically. The view legitimately
+        keeps `_peerdb_is_deleted` for the unrelated `tracer_eval_logger`
+        CDC query earlier in the same method — that mirror still flows
+        through PeerDB and is out of scope for this cutover.
+        """
+        import re
+
+        src = self._voice_list_source()
+        # Ban the actual query, not the comments that document the cutover.
+        assert not re.search(r"FROM\s+tracer_observation_span", src), (
+            "_list_voice_calls_clickhouse references the legacy CDC mirror; "
+            "the Phase 1b query must read from the v2 `spans` table."
+        )
+        # Narrow the `_peerdb_is_deleted` ban to the Phase 1b block, found
+        # by anchoring on the unique `attributes_extra AS span_attributes`
+        # projection and slicing forward to the next `analytics.execute_ch_query`
+        # call. Anything inside that slice belongs to the Phase 1b query.
+        anchor = "attributes_extra AS span_attributes"
+        assert anchor in src, (
+            "Phase 1b query no longer projects `attributes_extra AS "
+            "span_attributes`; this regression test needs a new anchor."
+        )
+        start = src.index(anchor)
+        phase_1b_block = src[start : start + 600]
+        assert "_peerdb_is_deleted" not in phase_1b_block, (
+            "Phase 1b query still filters on `_peerdb_is_deleted`; v2 "
+            "`spans` uses `is_deleted` (no CDC = no PeerDB tombstone)."
+        )
+
+    def test_phase_1b_reads_v2_spans_table(self):
+        """The Phase 1b hydration must select from v2 `spans` with FINAL."""
+        import re
+
+        src = self._voice_list_source()
+        # `FROM spans FINAL` collapses ReplacingMergeTree duplicates — the
+        # v2 dedup contract. FINAL alone (without `spans`) is too permissive.
+        assert re.search(r"FROM\s+spans\s+FINAL", src), (
+            "_list_voice_calls_clickhouse must hydrate from v2 `spans FINAL`."
+        )
+        assert "is_deleted = 0" in src
+
+    def test_phase_1b_selects_typed_map_columns_for_reconstruction(self):
+        """The Phase 1b query must SELECT the typed Maps + attributes_extra.
+
+        fi-collector puts the common-case LLM keys (gen_ai.*) into the
+        typed Maps; `attributes_extra` only holds the overflow. If we
+        only select `attributes_extra`, voice spans show empty
+        `span_attributes` because nothing fell into the overflow tier.
+        """
+        src = self._voice_list_source()
+        assert "attributes_extra AS span_attributes" in src
+        assert "attrs_string" in src
+        assert "attrs_number" in src
+        assert "attrs_bool" in src
+
+    def test_phase_1b_python_fallback_merges_typed_maps(self):
+        """Python-side: when `attributes_extra` is empty, fall back to Maps.
+
+        The fallback is what makes the reconstruction actually work — it's
+        easy to drop accidentally during refactors. Pin it.
+        """
+        src = self._voice_list_source()
+        # The fallback walks all three Maps. Any one being missing would
+        # silently drop a class of attributes.
+        assert 'arow.get("attrs_string")' in src
+        assert 'arow.get("attrs_number")' in src
+        assert 'arow.get("attrs_bool")' in src
+        # Bool values get cast to Python bool (CH UInt8 → 0/1 otherwise).
+        assert "bool(v)" in src
+
+
+@pytest.mark.unit
 class TestVoiceCallListQueryBuilderComprehensive:
     """Comprehensive tests for VoiceCallListQueryBuilder covering all phases,
     filters, simulation exclusion, edge cases, and result pivoting."""

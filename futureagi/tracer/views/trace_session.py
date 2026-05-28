@@ -553,32 +553,54 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         # Get eval metrics from CH
         trace_ids = [r["trace_id"] for r in traces_data]
 
-        # Bound the only PG hop in the CH detail path: TH-5562 traced one
-        # trigger of the cascade to this query (EvalLogger / CustomEvalConfig
-        # are still PG-resident). Wrap in a 5s ``statement_timeout`` budget
-        # — on a hot or oversized EvalLogger this used to run the whole
-        # ``retrieve()`` past the 30s middleware budget. On timeout we
-        # degrade to an empty config list: the page renders without eval
-        # columns instead of failing.
-        try:
-            with transaction.atomic():
-                with connection.cursor() as cur:
-                    cur.execute("SET LOCAL statement_timeout = '5s'")
+        #
+        #   CustomEvalConfig.objects.filter(
+        #       id__in=EvalLogger.objects.filter(trace_id__in=trace_ids).values(...))
+        #
+        # which is a Postgres scan of ``tracer_eval_logger`` — the table
+        # that grows linearly with eval traffic and was traced as one
+        # trigger of the TH-5562 cascade. Push that scan to CH (the
+        # ``tracer_eval_logger`` mirror is already used by the CH eval-
+        # metrics query below) and keep PG only for the small metadata
+        # lookup by primary key, which is always fast.
+        eval_configs: list = []
+        if trace_ids:
+            try:
+                config_id_result = analytics.execute_ch_query(
+                    """
+                    SELECT DISTINCT toString(custom_eval_config_id) AS config_id
+                    FROM tracer_eval_logger FINAL
+                    WHERE trace_id IN %(trace_ids)s
+                      AND _peerdb_is_deleted = 0
+                      AND (deleted = 0 OR deleted IS NULL)
+                    """,
+                    {"trace_ids": trace_ids},
+                    timeout_ms=3000,
+                )
+                pre_config_ids = [
+                    row["config_id"]
+                    for row in config_id_result.data
+                    if row.get("config_id")
+                ]
+            except Exception as e:
+                # CH lookup failure must not crash the page — eval columns
+                # simply won't render. The CH error is already logged by
+                # the client layer.
+                logger.warning(
+                    "ch_eval_config_id_lookup_failed",
+                    session_id=str(trace_session_id),
+                    error=str(e),
+                )
+                pre_config_ids = []
+
+            if pre_config_ids:
+                # PK-bounded PG fetch — small list, always cheap.
                 eval_configs = list(
                     CustomEvalConfig.objects.filter(
-                        id__in=EvalLogger.objects.filter(trace_id__in=trace_ids).values(
-                            "custom_eval_config_id"
-                        ),
+                        id__in=pre_config_ids,
                         deleted=False,
                     ).select_related("eval_template")
                 )
-        except OperationalError as e:
-            logger.warning(
-                "retrieve_clickhouse_eval_configs_timeout",
-                session_id=str(trace_session_id),
-                error=str(e),
-            )
-            eval_configs = []
 
         eval_map = {}
         if eval_configs and trace_ids:

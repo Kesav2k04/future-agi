@@ -55880,7 +55880,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Guardrails",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55888,7 +55887,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Routing",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55896,7 +55894,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Cache",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55904,7 +55901,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Rate limiting",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55912,7 +55908,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Budgets",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55920,7 +55915,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Cost tracking",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55928,7 +55922,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Ip acl",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55936,7 +55929,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Alerting",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55944,7 +55936,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Privacy",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55952,7 +55943,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Tool policy",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55960,7 +55950,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Mcp",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55968,7 +55957,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "A2a",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55976,7 +55964,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Audit",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55984,7 +55971,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Model database",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         },
@@ -55992,7 +55978,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Model map",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
             "x-nullable": true
           }
         }

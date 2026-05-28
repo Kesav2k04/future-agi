@@ -285,21 +285,31 @@ class GatewayMutationResponseSerializer(serializers.Serializer):
 
 
 class GatewayConfigPatchRequestSerializer(serializers.Serializer):
-    guardrails = serializers.DictField(required=False)
-    routing = serializers.DictField(required=False)
-    cache = serializers.DictField(required=False)
-    rate_limiting = serializers.DictField(required=False)
-    budgets = serializers.DictField(required=False)
-    cost_tracking = serializers.DictField(required=False)
-    ip_acl = serializers.DictField(required=False)
-    alerting = serializers.DictField(required=False)
-    privacy = serializers.DictField(required=False)
-    tool_policy = serializers.DictField(required=False)
-    mcp = serializers.DictField(required=False)
-    a2a = serializers.DictField(required=False)
-    audit = serializers.DictField(required=False)
-    model_database = serializers.DictField(required=False)
-    model_map = serializers.DictField(required=False)
+    guardrails = serializers.DictField(
+        child=serializers.JSONField(), required=False
+    )
+    routing = serializers.DictField(child=serializers.JSONField(), required=False)
+    cache = serializers.DictField(child=serializers.JSONField(), required=False)
+    rate_limiting = serializers.DictField(
+        child=serializers.JSONField(), required=False
+    )
+    budgets = serializers.DictField(child=serializers.JSONField(), required=False)
+    cost_tracking = serializers.DictField(
+        child=serializers.JSONField(), required=False
+    )
+    ip_acl = serializers.DictField(child=serializers.JSONField(), required=False)
+    alerting = serializers.DictField(child=serializers.JSONField(), required=False)
+    privacy = serializers.DictField(child=serializers.JSONField(), required=False)
+    tool_policy = serializers.DictField(
+        child=serializers.JSONField(), required=False
+    )
+    mcp = serializers.DictField(child=serializers.JSONField(), required=False)
+    a2a = serializers.DictField(child=serializers.JSONField(), required=False)
+    audit = serializers.DictField(child=serializers.JSONField(), required=False)
+    model_database = serializers.DictField(
+        child=serializers.JSONField(), required=False
+    )
+    model_map = serializers.DictField(child=serializers.JSONField(), required=False)
 
 
 class GatewayProviderUpdateRequestSerializer(serializers.Serializer):

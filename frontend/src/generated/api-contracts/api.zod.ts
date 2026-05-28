@@ -5796,21 +5796,21 @@ export const AgentccGatewaysUpdateConfigParams = zod.object({
 })
 
 export const AgentccGatewaysUpdateConfigBody = zod.object({
-  "guardrails": zod.record(zod.string(), zod.string()).optional(),
-  "routing": zod.record(zod.string(), zod.string()).optional(),
-  "cache": zod.record(zod.string(), zod.string()).optional(),
-  "rate_limiting": zod.record(zod.string(), zod.string()).optional(),
-  "budgets": zod.record(zod.string(), zod.string()).optional(),
-  "cost_tracking": zod.record(zod.string(), zod.string()).optional(),
-  "ip_acl": zod.record(zod.string(), zod.string()).optional(),
-  "alerting": zod.record(zod.string(), zod.string()).optional(),
-  "privacy": zod.record(zod.string(), zod.string()).optional(),
-  "tool_policy": zod.record(zod.string(), zod.string()).optional(),
-  "mcp": zod.record(zod.string(), zod.string()).optional(),
-  "a2a": zod.record(zod.string(), zod.string()).optional(),
-  "audit": zod.record(zod.string(), zod.string()).optional(),
-  "model_database": zod.record(zod.string(), zod.string()).optional(),
-  "model_map": zod.record(zod.string(), zod.string()).optional()
+  "guardrails": zod.record(zod.string(), zod.unknown()).optional(),
+  "routing": zod.record(zod.string(), zod.unknown()).optional(),
+  "cache": zod.record(zod.string(), zod.unknown()).optional(),
+  "rate_limiting": zod.record(zod.string(), zod.unknown()).optional(),
+  "budgets": zod.record(zod.string(), zod.unknown()).optional(),
+  "cost_tracking": zod.record(zod.string(), zod.unknown()).optional(),
+  "ip_acl": zod.record(zod.string(), zod.unknown()).optional(),
+  "alerting": zod.record(zod.string(), zod.unknown()).optional(),
+  "privacy": zod.record(zod.string(), zod.unknown()).optional(),
+  "tool_policy": zod.record(zod.string(), zod.unknown()).optional(),
+  "mcp": zod.record(zod.string(), zod.unknown()).optional(),
+  "a2a": zod.record(zod.string(), zod.unknown()).optional(),
+  "audit": zod.record(zod.string(), zod.unknown()).optional(),
+  "model_database": zod.record(zod.string(), zod.unknown()).optional(),
+  "model_map": zod.record(zod.string(), zod.unknown()).optional()
 })
 
 export const AgentccGatewaysUpdateConfigResponse = zod.object({

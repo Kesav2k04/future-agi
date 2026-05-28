@@ -2812,35 +2812,35 @@ export interface GatewayToggleGuardrailRequestApi {
   enabled: boolean;
 }
 
-export type GatewayConfigPatchRequestApiGuardrails = {[key: string]: string};
+export type GatewayConfigPatchRequestApiGuardrails = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiRouting = {[key: string]: string};
+export type GatewayConfigPatchRequestApiRouting = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiCache = {[key: string]: string};
+export type GatewayConfigPatchRequestApiCache = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiRateLimiting = {[key: string]: string};
+export type GatewayConfigPatchRequestApiRateLimiting = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiBudgets = {[key: string]: string};
+export type GatewayConfigPatchRequestApiBudgets = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiCostTracking = {[key: string]: string};
+export type GatewayConfigPatchRequestApiCostTracking = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiIpAcl = {[key: string]: string};
+export type GatewayConfigPatchRequestApiIpAcl = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiAlerting = {[key: string]: string};
+export type GatewayConfigPatchRequestApiAlerting = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiPrivacy = {[key: string]: string};
+export type GatewayConfigPatchRequestApiPrivacy = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiToolPolicy = {[key: string]: string};
+export type GatewayConfigPatchRequestApiToolPolicy = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiMcp = {[key: string]: string};
+export type GatewayConfigPatchRequestApiMcp = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiA2a = {[key: string]: string};
+export type GatewayConfigPatchRequestApiA2a = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiAudit = {[key: string]: string};
+export type GatewayConfigPatchRequestApiAudit = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiModelDatabase = {[key: string]: string};
+export type GatewayConfigPatchRequestApiModelDatabase = {[key: string]: unknown};
 
-export type GatewayConfigPatchRequestApiModelMap = {[key: string]: string};
+export type GatewayConfigPatchRequestApiModelMap = {[key: string]: unknown};
 
 export interface GatewayConfigPatchRequestApi {
   guardrails?: GatewayConfigPatchRequestApiGuardrails;

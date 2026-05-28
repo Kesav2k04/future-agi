@@ -331,7 +331,12 @@ const ExistingDatasetModal = ({
             "add from existing model dataset or experiment",
         });
 
-        enqueueSnackbar("New dataset has been created", { variant: "success" });
+        enqueueSnackbar(
+          dataset
+            ? "Rows imported successfully"
+            : "New dataset has been created",
+          { variant: "success" },
+        );
 
         performClose();
         refreshGrid({ purge: true }, true);
@@ -348,7 +353,7 @@ const ExistingDatasetModal = ({
         });
 
         const createdDatasetId = getCreatedDatasetCopyId(data);
-        if (createdDatasetId) {
+        if (!dataset && createdDatasetId) {
           navigate(`/dashboard/develop/${createdDatasetId}?tab=data`);
         }
       },

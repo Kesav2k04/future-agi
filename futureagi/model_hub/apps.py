@@ -104,52 +104,63 @@ class ModelHubConfig(AppConfig):
 
     @staticmethod
     def _migrate_v1_spans_if_needed(ch, detect_fn):
-        """Drop a v1 ``spans`` table and re-apply v2 schema if v1 detected.
+        """Make the v2 spans schema match the running code, regardless of
+        what shape `spans` is in beforehand.
 
         Runs only when ``CH25_DROP_LEGACY_CDC_CHAIN`` is set (caller-gated).
-        Idempotent: no-op when the table is already v2 or doesn't exist.
+        Three input states are handled:
 
-        Why this is needed: ``CREATE TABLE IF NOT EXISTS`` doesn't fail
-        when the existing table has a different shape. A dev box that
-        used to run CH 24.x with the legacy ``SPANS_TABLE`` definition
-        keeps that v1 ``spans`` table forever — and every v2 read
-        (``spans.attrs_string`` etc.) silently 500s.
+        - ``v1``: an old CH 24.x volume left a v1 ``spans`` table behind.
+          Drop it (``CREATE TABLE IF NOT EXISTS`` would silently no-op on
+          shape drift — every v2 read would then 500 on a missing column).
+        - ``absent``: a fresh CH with no spans tables yet. The Django
+          ``migrate`` step normally applies the v2 SQL via migration 0078,
+          but ``FAST_STARTUP`` skips migrations on dev containers and the
+          schema runner sits unused. Run it explicitly here.
+        - ``v2``: spans already matches the running code. Still call
+          ``ch25_apply_schema`` so schema files added since the last apply
+          (e.g. 014 — index fix) land idempotently. The runner skips
+          unchanged files via the sha256 in ``schema_versions``.
+        - ``unknown``: refuse to touch the table — operator decides.
 
-        The fix:
-          1. Detect: read ``system.columns`` for the typed-Map marker.
-          2. If v1: drop the table (cascades to dependent MVs).
-          3. Tell ``apply_schema`` to re-run the v2 SQL via
-             ``ch25_apply_schema --force`` so the schema_versions sha
-             check doesn't skip the (now missing) v2 file.
-
-        The schema_versions row for ``002_spans_v2.sql`` is not deleted
-        here; ``--force`` is the documented way to bypass drift checks
-        and is harmless on a fresh table.
+        The ``--force`` flag handles the v1 case (we just dropped the
+        target so the stored sha is stale). In the absent / v2 cases it's
+        equivalent to a normal apply because no rows have drifted.
         """
         shape = detect_fn(ch.execute)
-        if shape != "v1":
-            logger.info("CH25 v1-spans check: %s — no v1 → v2 migration needed", shape)
+        logger.info("CH25 v1-spans check: %s", shape)
+
+        if shape == "unknown":
+            logger.warning(
+                "CH25: `spans` table exists with neither v1 nor v2 marker — "
+                "refusing to auto-migrate. Inspect manually."
+            )
             return
 
-        logger.warning(
-            "CH25 v1-spans detected — dropping v1 `spans` and re-applying "
-            "v2 schema. This is one-time per dev environment; the legacy "
-            "table predated typed-JSON columns."
-        )
-        try:
-            ch.execute("DROP TABLE IF EXISTS spans SYNC")
-        except Exception as e:
-            logger.error("CH25 v1-spans DROP failed: %s", e)
-            return
+        if shape == "v1":
+            logger.warning(
+                "CH25 v1-spans detected — dropping v1 `spans` and re-applying "
+                "v2 schema. This is one-time per dev environment; the legacy "
+                "table predated typed-JSON columns."
+            )
+            try:
+                ch.execute("DROP TABLE IF EXISTS spans SYNC")
+            except Exception as e:
+                logger.error("CH25 v1-spans DROP failed: %s", e)
+                return
 
+        # Run the schema runner for all paths that pass the check above.
+        # Idempotent: sha-matched files are skipped, missing files are
+        # applied. --force here is for the v1 case where we dropped the
+        # stored target; in absent / v2 it's a no-op against the sha check.
         try:
             from django.core.management import call_command
 
             call_command("ch25_apply_schema", "--force", verbosity=1)
-            logger.info("CH25 v2 schema re-applied after v1 drop")
+            logger.info("CH25 v2 schema apply complete")
         except Exception as e:
             logger.error(
-                "CH25 v2 schema re-apply failed after v1 drop: %s. Run "
+                "CH25 v2 schema apply failed: %s. Run "
                 "`python manage.py ch25_apply_schema --force` manually.",
                 e,
             )

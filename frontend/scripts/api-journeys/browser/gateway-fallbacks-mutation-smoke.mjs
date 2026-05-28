@@ -13,6 +13,7 @@ const require = createRequire(import.meta.url);
 const puppeteer = require("puppeteer-core");
 
 const APP_BASE = process.env.APP_BASE || "http://127.0.0.1:3032";
+const ADD_SCREENSHOT_PATH = "/tmp/gateway-fallbacks-mutation-add-smoke.png";
 const SAVE_SCREENSHOT_PATH = "/tmp/gateway-fallbacks-mutation-save-smoke.png";
 const REMOVE_SCREENSHOT_PATH =
   "/tmp/gateway-fallbacks-mutation-remove-smoke.png";
@@ -91,10 +92,8 @@ async function main() {
       "Fallbacks & Reliability",
       "Model Fallback Chains",
       "Default Model",
-      "Primary",
-      "#1",
       evidence.primary_model,
-      evidence.fallback_model,
+      "Add Fallback Chain",
       "Provider Failover",
       "Retry",
       "Circuit Breaker",
@@ -102,6 +101,55 @@ async function main() {
     ]) {
       await waitForVisibleText(page, label, { exact: true });
     }
+    await waitForVisibleText(page, "No fallback chains configured.");
+
+    await clickVisibleText(page, "Add Fallback Chain", { exact: true });
+    await waitForVisibleText(page, "Primary", { exact: true });
+    await waitForVisibleText(page, evidence.primary_model, { exact: true });
+    await clickVisibleText(page, "Add Fallback", { exact: true });
+    await waitForVisibleText(page, "#1", { exact: true });
+    await selectFallbackChainModel(page, 1, evidence.fallback_model);
+    await waitForVisibleText(page, evidence.fallback_model, { exact: true });
+    await waitForVisibleText(page, "You have unsaved changes.");
+
+    const [addResponse] = await waitForResponsesDuring(
+      page,
+      "save added fallback chain through browser",
+      [orgConfigCreateResponse(), orgConfigActiveResponse()],
+      () => clickSaveAndApply(page),
+    );
+    evidence.add_response = await responseResult(addResponse);
+
+    const activeAfterAdd = await auth.client.get(
+      apiPath("/agentcc/org-configs/active/"),
+    );
+    const gatewayAfterAdd = await auth.client.get(
+      apiPath("/agentcc/gateways/{id}/config/", { id: evidence.gateway_id }),
+    );
+    assert(
+      activeAfterAdd?.routing?.model_fallbacks?.[
+        evidence.primary_model
+      ]?.includes(evidence.fallback_model),
+      `Active OrgConfig did not persist added fallback chain: ${JSON.stringify(
+        activeAfterAdd?.routing?.model_fallbacks,
+      )}`,
+    );
+    assert(
+      gatewayAfterAdd?.routing?.model_fallbacks?.[
+        evidence.primary_model
+      ]?.includes(evidence.fallback_model),
+      `Gateway config did not expose added fallback chain: ${JSON.stringify(
+        gatewayAfterAdd?.routing?.model_fallbacks,
+      )}`,
+    );
+    evidence.added_routing = {
+      version: activeAfterAdd.version,
+      fallback_chain:
+        activeAfterAdd.routing.model_fallbacks[evidence.primary_model],
+    };
+
+    await page.screenshot({ path: ADD_SCREENSHOT_PATH, fullPage: true });
+    evidence.add_screenshot = ADD_SCREENSHOT_PATH;
 
     await clickVisibleText(page, "Provider Failover", { exact: true });
     await setInputByLabel(page, "Max Attempts", String(evidence.max_attempts));
@@ -203,8 +251,8 @@ async function main() {
       )}`,
     );
     assert(
-      browserMutations.length === 2,
-      `Expected two fallback browser mutations, saw ${browserMutations.length}: ${browserMutations.join(
+      browserMutations.length === 3,
+      `Expected three fallback browser mutations, saw ${browserMutations.length}: ${browserMutations.join(
         "; ",
       )}`,
     );
@@ -293,9 +341,7 @@ async function preflightFallbacks(client, baseline) {
         strategy: "fallback",
         fallback_enabled: true,
         default_model: primaryModel,
-        model_fallbacks: {
-          [primaryModel]: [fallbackModel],
-        },
+        model_fallbacks: {},
         failover: {
           enabled: true,
           max_attempts: 3,
@@ -332,10 +378,10 @@ async function preflightFallbacks(client, baseline) {
   );
   assert(
     gatewayConfig.routing?.fallback_enabled === true &&
-      asArray(gatewayConfig.routing?.model_fallbacks?.[primaryModel]).includes(
-        fallbackModel,
-      ),
-    "Gateway config did not expose the disposable fallback chain.",
+      Object.keys(gatewayConfig.routing?.model_fallbacks || {}).length === 0,
+    `Gateway config did not expose an empty disposable fallback chain state: ${JSON.stringify(
+      gatewayConfig.routing?.model_fallbacks,
+    )}`,
   );
 
   return {
@@ -707,6 +753,86 @@ async function clickSaveAndApply(page, timeout = 30000) {
     return true;
   });
   assert(clicked, "Could not click Save & Apply.");
+}
+
+async function selectFallbackChainModel(page, comboboxIndex, model) {
+  await page.waitForFunction(
+    (index) => {
+      const candidates = window
+        .visibleElements(".MuiCard-root")
+        .filter(
+          (card) =>
+            card.textContent.includes("Primary") &&
+            card.textContent.includes("Add Fallback"),
+        );
+      const chain = candidates.sort((a, b) => {
+        const aRect = a.getBoundingClientRect();
+        const bRect = b.getBoundingClientRect();
+        return aRect.width * aRect.height - bRect.width * bRect.height;
+      })[0];
+      return (
+        chain &&
+        window
+          .visibleElements('[role="combobox"]')
+          .filter((combobox) => chain.contains(combobox)).length > index
+      );
+    },
+    { timeout: 30000 },
+    comboboxIndex,
+  );
+
+  const opened = await page.evaluate((index) => {
+    const candidates = window
+      .visibleElements(".MuiCard-root")
+      .filter(
+        (card) =>
+          card.textContent.includes("Primary") &&
+          card.textContent.includes("Add Fallback"),
+      );
+    const chain = candidates.sort((a, b) => {
+      const aRect = a.getBoundingClientRect();
+      const bRect = b.getBoundingClientRect();
+      return aRect.width * aRect.height - bRect.width * bRect.height;
+    })[0];
+    if (!chain) return false;
+    const comboboxes = window
+      .visibleElements('[role="combobox"]')
+      .filter((combobox) => chain.contains(combobox));
+    const combobox = comboboxes[index];
+    if (!combobox) return false;
+    window.dispatchClick(combobox);
+    return true;
+  }, comboboxIndex);
+  assert(
+    opened,
+    `Could not open fallback chain model select ${comboboxIndex}.`,
+  );
+
+  await page.waitForFunction(
+    (expectedModel) =>
+      window
+        .visibleElements('[role="option"], li')
+        .some(
+          (option) =>
+            window.normalizeText(option.textContent) === expectedModel &&
+            option.getAttribute("aria-disabled") !== "true",
+        ),
+    { timeout: 30000 },
+    model,
+  );
+  const selected = await page.evaluate((expectedModel) => {
+    const option = window
+      .visibleElements('[role="option"], li')
+      .find(
+        (candidate) =>
+          window.normalizeText(candidate.textContent) === expectedModel &&
+          candidate.getAttribute("aria-disabled") !== "true",
+      );
+    if (!option) return false;
+    window.dispatchClick(option);
+    return true;
+  }, model);
+  assert(selected, `Could not select fallback chain model: ${model}`);
 }
 
 async function clickRemoveFallbackChain(page, timeout = 30000) {

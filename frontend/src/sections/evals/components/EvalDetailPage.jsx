@@ -1928,22 +1928,37 @@ const EvalDetailPage = () => {
                     </CustomTooltip>
                   )}
                   {!isSystemEval && isComposite && (
-                    <Button
-                      variant="contained"
+                    <CustomTooltip
+                      show={compositeChildren.length === 0}
+                      title="Select at least one child evaluation"
+                      arrow
                       size="small"
-                      onClick={handleSaveComposite}
-                      disabled={isSaving || !isDirty}
-                      startIcon={
-                        isSaving ? (
-                          <CircularProgress size={14} />
-                        ) : (
-                          <Iconify icon="mdi:content-save-outline" width={16} />
-                        )
-                      }
-                      sx={{ textTransform: "none" }}
+                      type="black"
+                      placement="top"
                     >
-                      {isSaving ? "Saving..." : "Save Changes"}
-                    </Button>
+                      <span>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={handleSaveComposite}
+                          disabled={
+                            isSaving ||
+                            !isDirty ||
+                            compositeChildren.length === 0
+                          }
+                          startIcon={
+                            isSaving ? (
+                              <CircularProgress size={14} />
+                            ) : (
+                              <Iconify icon="mdi:content-save-outline" width={16} />
+                            )
+                          }
+                          sx={{ textTransform: "none" }}
+                        >
+                          {isSaving ? "Saving..." : "Save Changes"}
+                        </Button>
+                      </span>
+                    </CustomTooltip>
                   )}
                 </Box>
               </Box>

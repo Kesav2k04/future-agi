@@ -46,9 +46,24 @@ class ModelHubConfig(AppConfig):
         from tracer.services.clickhouse.schema import (
             POST_DDL_ALTERS,
             get_all_schema_ddl,
+            get_legacy_chain_drop_statements,
+            should_drop_legacy_chain,
         )
 
         ch = get_clickhouse_client()
+
+        # CH25 cutover (dev/local default): drop the legacy CDC chain
+        # before re-applying schema. `CREATE IF NOT EXISTS` would leave
+        # stale tables in place; explicit `DROP IF EXISTS` cleans them.
+        # No-op when the env flag is unset (prod default).
+        if should_drop_legacy_chain():
+            for name, drop_sql in get_legacy_chain_drop_statements():
+                try:
+                    ch.execute(drop_sql)
+                    logger.info(f"CH legacy DDL dropped: {name}")
+                except Exception as e:
+                    logger.warning(f"CH legacy DDL drop {name}: {e}")
+
         for name, ddl in get_all_schema_ddl():
             try:
                 ch.execute(ddl)
@@ -87,11 +102,16 @@ class ModelHubConfig(AppConfig):
         OS page cache.  Subsequent user queries hit warm cache (~300ms)
         instead of cold disk (~5s).
         """
+        from tracer.services.clickhouse.schema import should_drop_legacy_chain
+
         warmup_queries = [
-            # Warm spans index + light columns for recent data
+            # Warm spans index + light columns for recent data. The v2
+            # spans table uses `is_deleted`; pre-cutover prod still
+            # carries the `_peerdb_is_deleted` ALIAS column for back-
+            # compat, but the canonical name is what we read.
             (
                 "SELECT project_id, count() FROM spans "
-                "WHERE _peerdb_is_deleted = 0 "
+                "WHERE is_deleted = 0 "
                 "AND start_time >= now() - INTERVAL 7 DAY "
                 "GROUP BY project_id",
                 "spans (7d)",
@@ -112,13 +132,27 @@ class ModelHubConfig(AppConfig):
                 "GROUP BY organization_id",
                 "usage_apicalllog (7d)",
             ),
-            # Warm span_metrics_hourly for dashboard
+            # Warm spans_hourly_rollup (v2 dashboard aggregate). Replaces
+            # span_metrics_hourly post-CH25 cutover; see
+            # docs/CH25_MIGRATION.md. countMerge collapses the aggregate
+            # state column.
             (
-                "SELECT count() FROM span_metrics_hourly "
+                "SELECT countMerge(n) FROM spans_hourly_rollup "
                 "WHERE hour >= now() - INTERVAL 7 DAY",
-                "span_metrics_hourly (7d)",
+                "spans_hourly_rollup (7d)",
             ),
         ]
+
+        # When the legacy chain is retained (prod default), also warm
+        # the legacy aggregate so it stays hot until the cutover.
+        if not should_drop_legacy_chain():
+            warmup_queries.append(
+                (
+                    "SELECT count() FROM span_metrics_hourly "
+                    "WHERE hour >= now() - INTERVAL 7 DAY",
+                    "span_metrics_hourly (7d, legacy)",
+                )
+            )
         for query, label in warmup_queries:
             try:
                 ch.execute_read(query, timeout_ms=30000)

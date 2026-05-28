@@ -65,6 +65,26 @@ class EndUser(BaseModel):
 
 
 class ObservationSpan(BaseModel):
+    """[DEPRECATED] PG-side span model superseded by CH v2 ``spans``.
+
+    CH25 cutover status:
+    - Writes: fi-collector is the canonical ingest path for span data
+      into CH ``spans``. The PG row is still produced by legacy ingest
+      shims and consumed by a small set of readers (see below).
+    - Reads remaining:
+        • ``tracer/socket.py`` (graph data WebSocket)
+        • ``tracer/utils/sql_queries.py``
+        • ``model_hub/utils/SQL_queries.py``
+        • ``ee/usage/management/commands/backfill_usage_summary.py``
+      Those four PG readers need migration to v2 CH ``spans`` before
+      the PG table can be dropped.
+
+    Dev / local docker compose: the
+    ``drop_legacy_observation_span`` management command can run after
+    fi-collector verification. In prod, the drop stays manual until
+    those four readers are migrated. See ``docs/CH25_MIGRATION.md``.
+    """
+
     OBSERVATION_SPAN_TYPES = (
         ("tool", "Tool"),
         ("chain", "Chain"),
@@ -339,8 +359,7 @@ class EvalLogger(BaseModel):
         else:
             if self.trace_session_id:
                 raise ValidationError(
-                    "Span/trace-target EvalLogger rows must not set "
-                    "trace_session."
+                    "Span/trace-target EvalLogger rows must not set trace_session."
                 )
             if not (self.observation_span_id and self.trace_id):
                 raise ValidationError(

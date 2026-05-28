@@ -25,18 +25,26 @@ class TestClickHouseSchema:
 
     def test_get_all_schema_ddl_returns_correct_count(self):
         """Should return all DDL statements in correct order."""
-        from tracer.services.clickhouse.schema import get_all_schema_ddl
+        from tracer.services.clickhouse.schema import (
+            get_all_schema_ddl,
+            should_drop_legacy_chain,
+        )
 
         ddl = get_all_schema_ddl()
         # 4 CDC tables + dict + spans + spans_mv + 2 agg tables + 2 MVs = 11
         assert len(ddl) >= 10
         names = [name for name, _ in ddl]
-        assert "tracer_observation_span" in names
         assert "tracer_trace" in names
         assert "trace_session" in names
         assert "tracer_eval_logger" in names
         assert "trace_dict" in names
         assert "spans" in names
+        # The legacy CDC chain is gated by CH25_DROP_LEGACY_CDC_CHAIN.
+        # Default (False, prod-safe) keeps it; True (dev) drops it.
+        if should_drop_legacy_chain():
+            assert "tracer_observation_span" not in names
+        else:
+            assert "tracer_observation_span" in names
 
     def test_get_all_schema_ddl_returns_list_of_tuples(self):
         """Each entry should be a (name, ddl_string) tuple."""
@@ -52,7 +60,10 @@ class TestClickHouseSchema:
 
     def test_get_all_schema_ddl_creation_order(self):
         """CDC tables must come before dict, dict before spans, spans before MVs."""
-        from tracer.services.clickhouse.schema import get_all_schema_ddl
+        from tracer.services.clickhouse.schema import (
+            get_all_schema_ddl,
+            should_drop_legacy_chain,
+        )
 
         ddl = get_all_schema_ddl()
         names = [name for name, _ in ddl]
@@ -61,16 +72,18 @@ class TestClickHouseSchema:
         assert names.index("tracer_trace") < names.index("trace_dict")
         # trace_dict must appear before spans
         assert names.index("trace_dict") < names.index("spans")
-        # spans must appear before spans_mv
-        assert names.index("spans") < names.index("spans_mv")
         # Dataset CDC tables must appear before dataset dictionaries
         assert names.index("model_hub_dataset") < names.index("dataset_dict")
         assert names.index("model_hub_column") < names.index("column_dict")
         # Dataset dictionaries must appear before dataset_cells view
         assert names.index("column_dict") < names.index("dataset_cells")
         assert names.index("dataset_dict") < names.index("dataset_cells")
-        # spans_mv must appear before span_metrics_hourly
-        assert names.index("spans_mv") < names.index("span_metrics_hourly")
+        # Legacy chain ordering — only meaningful when the chain is in
+        # the registry. When CH25_DROP_LEGACY_CDC_CHAIN drops these, the
+        # ordering invariants below have no entries to compare.
+        if not should_drop_legacy_chain():
+            assert names.index("spans") < names.index("spans_mv")
+            assert names.index("spans_mv") < names.index("span_metrics_hourly")
 
     def test_eval_logger_ddl_has_target_type_and_trace_session_columns(self):
         """PR3: tracer_eval_logger DDL must carry the new row_type-stack columns.
@@ -309,6 +322,55 @@ class TestClickHouseSchema:
         assert "INSERT INTO spans" in stmts[0]
         assert "FROM tracer_observation_span" in stmts[0]
         assert "is_deleted = 0" in stmts[0]
+
+    # ------------------------------------------------------------------
+    # CH25_DROP_LEGACY_CDC_CHAIN toggle
+    # ------------------------------------------------------------------
+    # Dev/local docker compose sets the flag True so fi-collector is the
+    # sole writer for `spans`. Prod keeps the legacy chain alive until
+    # the cutover playbook (see docs/CH25_MIGRATION.md) is run.
+
+    def test_legacy_chain_drop_statements_order_and_idempotency(self):
+        """MV drops first, then their source tables; every drop is IF EXISTS."""
+        from tracer.services.clickhouse.schema import (
+            get_legacy_chain_drop_statements,
+        )
+
+        drops = get_legacy_chain_drop_statements()
+        names = [n for n, _ in drops]
+        # MV drops MUST precede the source table they reference.
+        assert names.index("span_metrics_hourly_mv") < names.index(
+            "span_metrics_hourly"
+        ), "MV must drop before its source table"
+        assert names.index("spans_mv") < names.index("tracer_observation_span"), (
+            "spans_mv must drop before tracer_observation_span"
+        )
+        # Idempotency: every drop wraps IF EXISTS so reruns are no-ops.
+        for _, sql in drops:
+            assert "IF EXISTS" in sql, f"drop must be idempotent: {sql}"
+        # MV drops use DROP VIEW (not DROP TABLE) — CH refuses the wrong kind.
+        for name, sql in drops:
+            if name.endswith("_mv"):
+                assert sql.startswith("DROP VIEW IF EXISTS")
+            else:
+                assert sql.startswith("DROP TABLE IF EXISTS")
+
+    def test_legacy_chain_drop_covers_exactly_the_four_tables(self):
+        """The drop list pins the migration scope — no more, no less."""
+        from tracer.services.clickhouse.schema import (
+            get_legacy_chain_drop_statements,
+        )
+
+        names = {n for n, _ in get_legacy_chain_drop_statements()}
+        assert names == {
+            "tracer_observation_span",
+            "spans_mv",
+            "span_metrics_hourly",
+            "span_metrics_hourly_mv",
+        }, (
+            "Legacy chain drop set drifted; update "
+            "_LEGACY_CDC_CHAIN_NAMES in schema.py and the cutover doc."
+        )
 
 
 # ============================================================================

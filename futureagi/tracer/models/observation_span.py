@@ -332,6 +332,10 @@ class EvalLogger(BaseModel):
     )
     error = models.BooleanField(default=False)
     error_message = models.TextField(null=True, blank=True)
+    # Set when the eval was skipped rather than run — e.g. a mapped span
+    # attribute was absent. Distinct from `error` so read paths render
+    # "Skipped" and drop these rows from failure-rate metrics.
+    skipped_reason = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"Eval Log {self.id}"

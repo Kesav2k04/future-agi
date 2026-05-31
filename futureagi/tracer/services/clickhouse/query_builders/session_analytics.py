@@ -7,9 +7,13 @@ tables with efficient ClickHouse GROUP BY queries on the denormalized
 ``spans`` table.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from tracer.services.clickhouse.query_builders.base import NIL_UUID, BaseQueryBuilder
+from tracer.services.clickhouse.v2.id_remap_sql import (
+    remap_left_join,
+    resolved_id_expr,
+)
 
 
 class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
@@ -28,7 +32,7 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
     def __init__(self, project_id: str, **kwargs: Any) -> None:
         super().__init__(project_id, **kwargs)
 
-    def build(self) -> Tuple[str, Dict[str, Any]]:
+    def build(self) -> tuple[str, dict[str, Any]]:
         """Not used directly -- call specific build_* methods instead."""
         raise NotImplementedError(
             "Use build_session_metrics_query, build_session_navigation_query, "
@@ -40,8 +44,8 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
     # ------------------------------------------------------------------
 
     def build_session_metrics_query(
-        self, session_ids: List[str]
-    ) -> Tuple[str, Dict[str, Any]]:
+        self, session_ids: list[str]
+    ) -> tuple[str, dict[str, Any]]:
         """Build a query returning per-session aggregate metrics.
 
         Args:
@@ -74,7 +78,7 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
     # Session navigation (all sessions with metrics)
     # ------------------------------------------------------------------
 
-    def build_session_navigation_query(self) -> Tuple[str, Dict[str, Any]]:
+    def build_session_navigation_query(self) -> tuple[str, dict[str, Any]]:
         """Build a query returning all sessions with their metrics for navigation.
 
         Returns:
@@ -103,7 +107,7 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
     # User stats (per-user aggregates)
     # ------------------------------------------------------------------
 
-    def build_user_stats_query(self, user_id: str) -> Tuple[str, Dict[str, Any]]:
+    def build_user_stats_query(self, user_id: str) -> tuple[str, dict[str, Any]]:
         """Build a query returning aggregate stats for a specific user.
 
         Args:
@@ -115,6 +119,20 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
         params = dict(self.params)
         params["user_id"] = user_id
 
+        # P3b step1.5 id-remap resolution (DESIGN §3 / id_remap_sql): `user_id`
+        # here is the OLD curated id (callers pass `str(EndUser.id)` /
+        # `str(user.id)` — tracer/tasks/session.py, tracer/utils/session.py). A
+        # cross-cutover straddler's NEW (deterministic-id) spans carry
+        # `end_user_id = new_id`, so resolve each span new→old through
+        # `end_user_id_remap` and match the OLD id on the RESOLVED value, so
+        # old + new spans roll into this per-user stat as ONE user. The project
+        # scope predicate stays on the bare inner scan; only the identity match
+        # moves to the resolved layer. `resolved_id_expr` is the zero-uuid-guarded
+        # map (NOT a COALESCE — an unmatched LEFT JOIN fills `old_id` with the
+        # zero-uuid; see id_remap_sql). Pre-flip NO span matches a `new_id`, so
+        # the resolved id == the span's own id and this is a no-op (gate B).
+        remap_join = remap_left_join("rs.end_user_id", "end_user_id_remap")
+        resolved_eu = resolved_id_expr("rs.end_user_id")
         query = f"""
         SELECT
             count(DISTINCT trace_session_id) AS session_count,
@@ -122,9 +140,21 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
             sum(cost) AS total_cost,
             min(start_time) AS first_seen,
             max(start_time) AS last_seen
-        FROM {self.TABLE}
-        {self.project_where()}
-          AND end_user_id = %(user_id)s
+        FROM (
+            SELECT
+                {resolved_eu} AS end_user_id,
+                rs.trace_session_id AS trace_session_id,
+                rs.total_tokens AS total_tokens,
+                rs.cost AS cost,
+                rs.start_time AS start_time
+            FROM (
+                SELECT end_user_id, trace_session_id, total_tokens, cost, start_time
+                FROM {self.TABLE}
+                {self.project_where()}
+            ) AS rs
+            {remap_join}
+        )
+        WHERE end_user_id = %(user_id)s
         """
         return query, params
 
@@ -133,8 +163,8 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
     # ------------------------------------------------------------------
 
     def build_first_last_message_query(
-        self, session_ids: List[str]
-    ) -> Tuple[str, Dict[str, Any]]:
+        self, session_ids: list[str]
+    ) -> tuple[str, dict[str, Any]]:
         """Build queries returning the first and last input/output per session.
 
         Uses ClickHouse's ``LIMIT 1 BY`` to efficiently get the first and

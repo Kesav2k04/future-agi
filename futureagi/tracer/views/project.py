@@ -928,6 +928,28 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                 # upstream via `_get_project_in_scope`, and the subquery already
                 # pins to a single enduser by (id, organization_id, project_id),
                 # which fully constrains the row without the workspace guard.
+                #
+                # P3b step1.5 (DESIGN §3 / id_remap_sql): resolve each span's
+                # `end_user_id` new→old through `end_user_id_remap` BEFORE the
+                # `IN (end_users …)` membership check, so a cross-cutover
+                # straddler's NEW (deterministic-id) spans match the SAME curated
+                # `end_user_id` the `end_users` subquery returns (the OLD id, still
+                # primary) and roll into this per-user detail graph instead of
+                # being dropped. The raw `spans` scan keeps the committed
+                # project/time/soft-delete predicates and `{extra_clause}` on the
+                # bare columns; the remap join is a thin outer layer and
+                # `resolved_id_expr` is the zero-uuid-guarded new→old map (NOT a
+                # COALESCE — an unmatched LEFT JOIN fills `old_id` with the
+                # zero-uuid, not NULL; see id_remap_sql). Pre-flip NO span matches
+                # a `new_id`, so the resolved id == the span's own id and this is a
+                # byte-identical no-op (acceptance gate B).
+                from tracer.services.clickhouse.v2.id_remap_sql import (
+                    remap_left_join,
+                    resolved_id_expr,
+                )
+
+                eu_remap_join = remap_left_join("rs.end_user_id", "end_user_id_remap")
+                eu_resolved = resolved_id_expr("rs.end_user_id")
                 query = f"""
                 SELECT
                     {bucket_fn}(created_at) AS time_bucket,
@@ -936,10 +958,24 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                     sum(ifNull(cost, 0)) AS cost,
                     sum(ifNull(prompt_tokens, 0)) AS input_tokens,
                     sum(ifNull(completion_tokens, 0)) AS output_tokens
-                FROM spans
-                WHERE project_id = %(project_id)s
-                  AND is_deleted = 0
-                  AND end_user_id IN (
+                FROM (
+                    SELECT
+                        {eu_resolved} AS end_user_id,
+                        rs.trace_id AS trace_id,
+                        rs.trace_session_id AS trace_session_id,
+                        rs.created_at AS created_at,
+                        rs.cost AS cost,
+                        rs.prompt_tokens AS prompt_tokens,
+                        rs.completion_tokens AS completion_tokens
+                    FROM spans AS rs
+                    {eu_remap_join}
+                    WHERE rs.project_id = %(project_id)s
+                      AND rs.is_deleted = 0
+                      AND rs.created_at >= %(start_date)s
+                      AND rs.created_at < %(end_date)s
+                      {extra_clause}
+                )
+                WHERE end_user_id IN (
                     SELECT end_user_id
                     FROM end_users FINAL
                     WHERE end_user_id = toUUID(%(end_user_id)s)
@@ -947,9 +983,6 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                       AND project_id = toUUID(%(project_id)s)
                       AND is_deleted = 0
                   )
-                  AND created_at >= %(start_date)s
-                  AND created_at < %(end_date)s
-                  {extra_clause}
                 GROUP BY time_bucket
                 ORDER BY time_bucket
                 """

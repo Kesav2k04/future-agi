@@ -1861,6 +1861,16 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         # Resolve the raw user_id to a list of end_user UUIDs and inject as
         # a synthetic end_user_id IN(...) filter. Scope by org (and project
         # if we're in project mode).
+        #
+        # P3b step1.5 (DESIGN §3 / id_remap_sql): `_ids` are intentionally the
+        # OLD curated `EndUser.id`s (still primary). The cross-cutover straddler
+        # split is resolved DOWNSTREAM in the CH read, NOT here: the
+        # SessionListQueryBuilder extracts this synthetic `end_user_id` filter
+        # (`_ENDUSER_ID_FILTER_COLS`) and binds it to the id-remap-RESOLVED
+        # `end_user_id` column (`_build_resolved_user_clause`), so a returning
+        # user's NEW (deterministic-id) spans resolve new→old and select under
+        # the same OLD id. Do NOT expand `_ids` with deterministic new ids here —
+        # the join-based resolution is the single canonical mechanism.
         if user_id_raw:
             _eu_qs = EndUser.objects.filter(
                 user_id=user_id_raw,

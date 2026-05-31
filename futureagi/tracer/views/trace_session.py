@@ -88,6 +88,34 @@ logger = structlog.get_logger(__name__)
 session_logger = structlog.get_logger(__name__)
 
 
+def _resolve_session_ids_to_canonical(analytics, session_ids):
+    """Map ``{input trace_session_id (str) -> canonical (old) id (str)}``.
+
+    P3b step1.5 (DESIGN §3 / id_remap_sql): the ``trace_session_id_remap`` table
+    is keyed ``old_id -> new_id``; the resolve direction is new→old. A caller id
+    that is a NEW (deterministic) id maps to its ``old_id`` (the still-primary
+    curated key); an OLD id (or any id absent from the map) maps to ITSELF. Used
+    by the per-session label re-key so a bare-browse straddler row keyed by either
+    the old OR the new id resolves to the unified session. Pre-flip the map has no
+    row whose ``new_id`` is one of these ids, so every id maps to itself (no-op).
+    """
+    ids = {str(s) for s in (session_ids or []) if s}
+    if not ids:
+        return {}
+    q = (
+        "SELECT toString(new_id) AS new_id, toString(old_id) AS old_id "
+        "FROM trace_session_id_remap FINAL WHERE new_id IN %(ids)s"
+    )
+    res = analytics.execute_ch_query(q, {"ids": tuple(ids)}, timeout_ms=5000)
+    new_to_old = {}
+    for row in res.data or []:
+        if isinstance(row, dict):
+            new_to_old[str(row.get("new_id"))] = str(row.get("old_id"))
+        else:
+            new_to_old[str(row[0])] = str(row[1])
+    return {i: new_to_old.get(i, i) for i in ids}
+
+
 def _get_request_organization(request):
     return getattr(request, "organization", None) or getattr(
         request.user, "organization", None
@@ -617,8 +645,28 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         page_size = query_data["page_size"]
         page_start = page_number * page_size
 
+        # P3b step1.5 (DESIGN §3 / id_remap_sql): the session detail is keyed by the
+        # OLD curated `TraceSession.id` (the URL pk). A cross-cutover straddler's
+        # NEW (deterministic-id) spans carry `trace_session_id = new_id`, so resolve
+        # each span's `trace_session_id` new→old through `trace_session_id_remap`
+        # and match the OLD id on the RESOLVED value — the detail aggregates AND the
+        # paginated trace list then see old + new spans as ONE session. The remap
+        # table only carries `old_id`/`new_id`, so the unqualified span columns stay
+        # unambiguous under the join. `resolved_id_expr` is the zero-uuid-guarded map
+        # (NOT a COALESCE). Pre-flip NO span matches a `new_id` → resolved id == own
+        # id → byte-identical no-op (gate B).
+        from tracer.services.clickhouse.v2.id_remap_sql import (
+            remap_left_join,
+            resolved_id_expr,
+        )
+
+        ts_remap_join = remap_left_join(
+            "spans.trace_session_id", "trace_session_id_remap", "ts_remap"
+        )
+        ts_resolved = resolved_id_expr("spans.trace_session_id", "ts_remap")
+
         # Get session-level aggregates from CH
-        agg_query = """
+        agg_query = f"""
             SELECT
                 min(start_time) AS start_time,
                 max(end_time) AS end_time,
@@ -626,8 +674,9 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                 sum(total_tokens) AS total_tokens,
                 count(DISTINCT trace_id) AS total_traces
             FROM spans
+            {ts_remap_join}
             WHERE project_id = %(project_id)s
-              AND trace_session_id = %(session_id)s
+              AND {ts_resolved} = %(session_id)s
               AND is_deleted = 0
         """
         agg_result = analytics.execute_ch_query(
@@ -656,8 +705,9 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
             "total_tokens": agg.get("total_tokens", 0),
         }
 
-        # Get paginated trace data from CH
-        trace_query = """
+        # Get paginated trace data from CH (same id-remap resolution as the agg so
+        # a straddler's new-id traces appear in the unified session's trace list).
+        trace_query = f"""
             SELECT
                 toString(trace_id) AS trace_id,
                 any(input) AS input,
@@ -669,8 +719,9 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                 sum(prompt_tokens) AS input_tokens,
                 sum(completion_tokens) AS output_tokens
             FROM spans
+            {ts_remap_join}
             WHERE project_id = %(project_id)s
-              AND trace_session_id = %(session_id)s
+              AND {ts_resolved} = %(session_id)s
               AND is_deleted = 0
             GROUP BY trace_id
             ORDER BY trace_min_start_time ASC
@@ -1633,15 +1684,44 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         if not ids:
             return {}
 
-        # Step 1 — session → end_user_id from CH spans (latest span with a user).
+        # P3b step1.5 — SESSION-id re-key (DESIGN §3 / id_remap_sql). This label
+        # (latest end_user per session) is fed the session-list page's session ids,
+        # which post-cutover can carry BOTH a straddler's old id AND its (phantom)
+        # new id (the no-filter browse list stays bare — gate B). Resolve each
+        # span's `trace_session_id` new→old through `trace_session_id_remap` and
+        # GROUP on the RESOLVED id, so `argMaxIf` picks the latest user across the
+        # UNIFIED old+new span set; then — mirroring `end_user_dict_reader` (commit
+        # 9e4ba4f7e: "result key stays the caller's input id") — re-key the output
+        # so EVERY caller input id (old or new) maps to its canonical session's
+        # label. The query filters the resolved id against the CANONICAL ids of the
+        # inputs. Pre-flip NO span matches a `new_id` (resolved == own) AND no input
+        # is a new_id, so this is a byte-identical no-op (gate B). NB the
+        # `end_user_id` label is itself remap-resolved downstream in
+        # `resolve_end_user_fields` (prior slice), so a straddler whose user label
+        # also straddles still resolves to one user.
+        from tracer.services.clickhouse.v2.id_remap_sql import (
+            remap_left_join,
+            resolved_id_expr,
+        )
+
+        ts_remap_join = remap_left_join(
+            "rs.trace_session_id", "trace_session_id_remap", "ts_remap"
+        )
+        ts_resolved = resolved_id_expr("rs.trace_session_id", "ts_remap")
+
+        # input id -> canonical (old) id; an OLD id maps to itself, a NEW id to its
+        # old_id. Used to (a) scope the resolved GROUP BY and (b) re-key the result.
+        input_to_canon = _resolve_session_ids_to_canonical(analytics, ids)
+        canonical_ids = {input_to_canon.get(i, i) for i in ids}
+
         proj_list = [str(p) for p in (project_ids or []) if p]
         proj_clause = ""
         params = {
-            "session_ids": tuple(ids),
+            "session_ids": tuple(canonical_ids),
             "nil": NIL_UUID,
         }
         if proj_list:
-            proj_clause = "AND project_id IN %(project_ids)s"
+            proj_clause = "AND rs.project_id IN %(project_ids)s"
             params["project_ids"] = tuple(proj_list)
 
         # ``argMaxIf`` carries the "span has an end_user" predicate INSIDE the
@@ -1649,10 +1729,12 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         # rather than in WHERE. Filtering on ``end_user_id`` in WHERE while it is
         # also the argMax target trips the CH 25.3 analyzer ("aggregate function
         # found in WHERE", Code 184). Sessions with no qualifying span yield the
-        # 0-UUID (NIL) default and are dropped in the Python pass below.
+        # 0-UUID (NIL) default and are dropped in the Python pass below. The
+        # resolved `trace_session_id` is the GROUP key (so old+new straddler spans
+        # land in ONE group keyed by the OLD/canonical id).
         eu_by_session_q = f"""
             SELECT
-                toString(trace_session_id) AS session_id,
+                toString(session_id) AS session_id,
                 toString(
                     argMaxIf(
                         end_user_id,
@@ -1660,20 +1742,35 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
                         end_user_id IS NOT NULL AND end_user_id != toUUID(%(nil)s)
                     )
                 ) AS end_user_id
-            FROM spans
-            WHERE trace_session_id IN %(session_ids)s
-              {proj_clause}
-              AND is_deleted = 0
-            GROUP BY trace_session_id
+            FROM (
+                SELECT
+                    {ts_resolved} AS session_id,
+                    rs.end_user_id AS end_user_id,
+                    rs.start_time AS start_time
+                FROM spans AS rs
+                {ts_remap_join}
+                WHERE rs.is_deleted = 0
+                  {proj_clause}
+            )
+            WHERE session_id IN %(session_ids)s
+            GROUP BY session_id
         """
         result = analytics.execute_ch_query(eu_by_session_q, params, timeout_ms=10000)
 
-        session_to_eu: dict[str, str] = {}
+        eu_by_canonical: dict[str, str] = {}
         for row in result.data:
             sid = str(row.get("session_id", "") if isinstance(row, dict) else row[0])
             euid = str(row.get("end_user_id", "") if isinstance(row, dict) else row[1])
             if sid and euid and euid != NIL_UUID:
-                session_to_eu[sid] = euid
+                eu_by_canonical[sid] = euid
+
+        # Re-key by every caller input id → its canonical session's end_user (so a
+        # bare-browse straddler row keyed by either the old OR the new id resolves).
+        session_to_eu: dict[str, str] = {}
+        for i in ids:
+            euid = eu_by_canonical.get(input_to_canon.get(i, i))
+            if euid:
+                session_to_eu[i] = euid
 
         if not session_to_eu:
             return {}

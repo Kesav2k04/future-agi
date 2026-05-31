@@ -57,6 +57,21 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
         params = dict(self.params)
         params["session_ids"] = session_ids
 
+        # P3b step1.5 (DESIGN §3 / id_remap_sql): the input `session_ids` are OLD
+        # curated `TraceSession.id`s (the caller passes `str(session.id)`). A
+        # cross-cutover straddler's NEW (deterministic-id) spans carry
+        # `trace_session_id = new_id`, so resolve each span's `trace_session_id`
+        # new→old through `trace_session_id_remap` BEFORE the membership check and
+        # the GROUP BY, so old + new spans aggregate under ONE (old) session key.
+        # The resolved id is projected AS `trace_session_id`, so the result-row
+        # contract is unchanged. The project predicate stays on the bare inner
+        # scan; only the identity match + grouping move to the resolved layer.
+        # `resolved_id_expr` is the zero-uuid-guarded map (NOT a COALESCE — an
+        # unmatched LEFT JOIN fills `old_id` with the zero-uuid, not NULL). Pre-
+        # flip NO span matches a `new_id` → resolved id == own id → byte-identical
+        # no-op (gate B).
+        remap_join = remap_left_join("rs.trace_session_id", "trace_session_id_remap")
+        resolved_ts = resolved_id_expr("rs.trace_session_id")
         query = f"""
         SELECT
             trace_session_id,
@@ -67,9 +82,23 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
             sum(cost) AS total_cost,
             min(start_time) AS started_at,
             max(COALESCE(end_time, start_time)) AS ended_at
-        FROM {self.TABLE}
-        {self.project_where()}
-          AND trace_session_id IN %(session_ids)s
+        FROM (
+            SELECT
+                {resolved_ts} AS trace_session_id,
+                rs.trace_id AS trace_id,
+                rs.start_time AS start_time,
+                rs.end_time AS end_time,
+                rs.total_tokens AS total_tokens,
+                rs.cost AS cost
+            FROM (
+                SELECT trace_session_id, trace_id, start_time, end_time,
+                       total_tokens, cost
+                FROM {self.TABLE}
+                {self.project_where()}
+            ) AS rs
+            {remap_join}
+        )
+        WHERE trace_session_id IN %(session_ids)s
         GROUP BY trace_session_id
         """
         return query, params
@@ -83,6 +112,22 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
 
         Returns:
             A ``(query_string, params)`` tuple.
+
+        P3b step1.5 — DORMANT, NOT id-remap-resolved (intentional). This CH query
+        ERRORS on the v2 spans schema (CH 25.3): `trace_session_id` is
+        `Nullable(UUID)` and the committed `AND trace_session_id != ''` raises
+        `Code 376 Cannot parse uuid : converting '' to UUID`, so its only caller
+        (`tracer/utils/session.py::_try_session_navigation_ch`) always hits the
+        `except` and falls back to the PG navigation path. A read that cannot
+        execute can produce neither a gate-B byte-identical proof nor a gate-C
+        straddler-unify, so adding remap resolution here would be untestable dead
+        SQL. Mirrors the end_user `dashboard.py` deferral (commit 9bcbff7e7).
+        SEQUENCING FLAG (human): when the `!= ''`→`Nullable(UUID)` bug is fixed to
+        make this CH path live, it MUST simultaneously resolve `trace_session_id`
+        new→old (mirror `build_session_metrics_query` above) BEFORE step2's
+        ingestion flip — else session prev/next-nav splits a cross-cutover
+        straddler. The transitively-reached `build_first_last_message_query` (fed
+        this query's session ids) is dormant for the same reason.
         """
         params = dict(self.params)
 
@@ -119,20 +164,27 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
         params = dict(self.params)
         params["user_id"] = user_id
 
-        # P3b step1.5 id-remap resolution (DESIGN §3 / id_remap_sql): `user_id`
-        # here is the OLD curated id (callers pass `str(EndUser.id)` /
-        # `str(user.id)` — tracer/tasks/session.py, tracer/utils/session.py). A
-        # cross-cutover straddler's NEW (deterministic-id) spans carry
-        # `end_user_id = new_id`, so resolve each span new→old through
-        # `end_user_id_remap` and match the OLD id on the RESOLVED value, so
-        # old + new spans roll into this per-user stat as ONE user. The project
-        # scope predicate stays on the bare inner scan; only the identity match
-        # moves to the resolved layer. `resolved_id_expr` is the zero-uuid-guarded
-        # map (NOT a COALESCE — an unmatched LEFT JOIN fills `old_id` with the
-        # zero-uuid; see id_remap_sql). Pre-flip NO span matches a `new_id`, so
-        # the resolved id == the span's own id and this is a no-op (gate B).
-        remap_join = remap_left_join("rs.end_user_id", "end_user_id_remap")
-        resolved_eu = resolved_id_expr("rs.end_user_id")
+        # P3b step1.5 — DUAL id-remap (DESIGN §3 / id_remap_sql): `user_id` here is
+        # the OLD curated id (callers pass `str(EndUser.id)` / `str(user.id)` —
+        # tracer/tasks/session.py, tracer/utils/session.py). This read filters by
+        # the user AND reports `count(DISTINCT trace_session_id)`, so a cross-
+        # cutover straddler would split on BOTH axes. Resolve BOTH columns new→old:
+        # `end_user_id` (match the OLD id) so old + new spans roll into this
+        # per-user stat as ONE user, AND `trace_session_id` so the distinct-session
+        # count treats a straddler's old+new session ids as ONE session (else
+        # `session_count` over-counts). The two joins hang off the SAME inner scan
+        # `rs` and so MUST carry DISTINCT aliases (the default `id_remap` would
+        # collide) — `eu_remap` / `ts_remap`. The project scope stays on the bare
+        # inner scan. `resolved_id_expr` is the zero-uuid-guarded map (NOT a
+        # COALESCE — an unmatched LEFT JOIN fills `old_id` with the zero-uuid; see
+        # id_remap_sql). Pre-flip NO span matches either `new_id`, so both resolved
+        # ids == own id and this is a no-op (gate B).
+        eu_join = remap_left_join("rs.end_user_id", "end_user_id_remap", "eu_remap")
+        ts_join = remap_left_join(
+            "rs.trace_session_id", "trace_session_id_remap", "ts_remap"
+        )
+        resolved_eu = resolved_id_expr("rs.end_user_id", "eu_remap")
+        resolved_ts = resolved_id_expr("rs.trace_session_id", "ts_remap")
         query = f"""
         SELECT
             count(DISTINCT trace_session_id) AS session_count,
@@ -143,7 +195,7 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
         FROM (
             SELECT
                 {resolved_eu} AS end_user_id,
-                rs.trace_session_id AS trace_session_id,
+                {resolved_ts} AS trace_session_id,
                 rs.total_tokens AS total_tokens,
                 rs.cost AS cost,
                 rs.start_time AS start_time
@@ -152,7 +204,8 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
                 FROM {self.TABLE}
                 {self.project_where()}
             ) AS rs
-            {remap_join}
+            {eu_join}
+            {ts_join}
         )
         WHERE end_user_id = %(user_id)s
         """
@@ -176,6 +229,12 @@ class SessionAnalyticsQueryBuilder(BaseQueryBuilder):
         Returns:
             A ``(first_query, last_query, params)`` tuple. Both queries share
             the same params dict.
+
+        P3b step1.5 — DORMANT, NOT id-remap-resolved: the only caller
+        (`_try_session_navigation_ch`) runs `build_session_navigation_query`
+        FIRST, which errors on the v2 schema (see that method) and short-circuits
+        to PG, so this never executes on CH. Resolve it together with the nav
+        query when that path is made live (same SEQUENCING FLAG).
         """
         params = dict(self.params)
         params["session_ids"] = session_ids

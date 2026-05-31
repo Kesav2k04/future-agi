@@ -948,8 +948,24 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                     resolved_id_expr,
                 )
 
-                eu_remap_join = remap_left_join("rs.end_user_id", "end_user_id_remap")
-                eu_resolved = resolved_id_expr("rs.end_user_id")
+                # P3b step1.5 — DUAL remap (DESIGN §3 / id_remap_sql): this per-user
+                # graph filters by the OLD curated end_user_id AND reports
+                # `uniqExactIf(trace_session_id)`. A cross-cutover straddler splits
+                # on BOTH axes, so resolve BOTH columns new→old. The two joins hang
+                # off the SAME inner scan `rs` and so MUST carry DISTINCT aliases
+                # (the default `id_remap` would collide) — `eu_remap` / `ts_remap`.
+                # Resolving the session id makes `uniqExactIf` count a straddler's
+                # old+new session ids as ONE session (else session_count inflates).
+                # Pre-flip NO span matches either `new_id`, so both resolved ids ==
+                # own id → byte-identical no-op (gate B).
+                eu_remap_join = remap_left_join(
+                    "rs.end_user_id", "end_user_id_remap", "eu_remap"
+                )
+                ts_remap_join = remap_left_join(
+                    "rs.trace_session_id", "trace_session_id_remap", "ts_remap"
+                )
+                eu_resolved = resolved_id_expr("rs.end_user_id", "eu_remap")
+                ts_resolved = resolved_id_expr("rs.trace_session_id", "ts_remap")
                 query = f"""
                 SELECT
                     {bucket_fn}(created_at) AS time_bucket,
@@ -962,13 +978,14 @@ class ProjectView(BaseModelViewSetMixinWithUserOrg, ModelViewSet):
                     SELECT
                         {eu_resolved} AS end_user_id,
                         rs.trace_id AS trace_id,
-                        rs.trace_session_id AS trace_session_id,
+                        {ts_resolved} AS trace_session_id,
                         rs.created_at AS created_at,
                         rs.cost AS cost,
                         rs.prompt_tokens AS prompt_tokens,
                         rs.completion_tokens AS completion_tokens
                     FROM spans AS rs
                     {eu_remap_join}
+                    {ts_remap_join}
                     WHERE rs.project_id = %(project_id)s
                       AND rs.is_deleted = 0
                       AND rs.created_at >= %(start_date)s

@@ -160,8 +160,20 @@ class UserListQueryBuilder(BaseQueryBuilder):
 
         # P3b step1.5 id-remap resolution (see id_remap_sql / DESIGN §3): map a
         # NEW-id span back to its OLD curated id so a straddler reads as ONE user.
-        remap_join = remap_left_join("rs.end_user_id", "end_user_id_remap")
-        resolved_eu = resolved_id_expr("rs.end_user_id")
+        # DUAL remap: `end_user_id` (the per-user grouping key) AND `trace_session_id`
+        # (the per-user `num_sessions` distinct-session count + `avg_session_duration`
+        # in the `session_durations`/`session_aggregates` CTEs below) — a straddler
+        # splits on BOTH, so resolve both. The two joins hang off the SAME `raw_spans`
+        # row `rs` and so MUST carry DISTINCT aliases (`eu_remap` / `ts_remap`; the
+        # default `id_remap` would collide).
+        eu_remap_join = remap_left_join(
+            "rs.end_user_id", "end_user_id_remap", "eu_remap"
+        )
+        ts_remap_join = remap_left_join(
+            "rs.trace_session_id", "trace_session_id_remap", "ts_remap"
+        )
+        resolved_eu = resolved_id_expr("rs.end_user_id", "eu_remap")
+        resolved_ts = resolved_id_expr("rs.trace_session_id", "ts_remap")
 
         query = f"""
         WITH
@@ -226,12 +238,15 @@ class UserListQueryBuilder(BaseQueryBuilder):
             -- the UNIFIED id with no further change. The raw scan above keeps the
             -- committed `{project_filter}`/`{span_extra}` predicates on the bare
             -- `spans` columns intact (the remap join is a thin outer layer).
+            -- `trace_session_id` is ALSO resolved new→old (its remap join), so the
+            -- per-user `num_sessions`/`avg_session_duration` below treat a
+            -- straddler's old+new session ids as ONE session.
             SELECT
                 rs.id AS id,
                 rs.trace_id AS trace_id,
                 rs.project_id AS project_id,
                 {resolved_eu} AS end_user_id,
-                rs.trace_session_id AS trace_session_id,
+                {resolved_ts} AS trace_session_id,
                 rs.observation_type AS observation_type,
                 rs.status AS status,
                 rs.start_time AS start_time,
@@ -242,7 +257,8 @@ class UserListQueryBuilder(BaseQueryBuilder):
                 rs.prompt_tokens AS prompt_tokens,
                 rs.completion_tokens AS completion_tokens
             FROM raw_spans AS rs
-            {remap_join}
+            {eu_remap_join}
+            {ts_remap_join}
             WHERE {resolved_eu}
                   IN (SELECT end_user_id FROM filtered_end_users)
         ),

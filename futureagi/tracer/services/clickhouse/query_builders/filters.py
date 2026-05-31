@@ -749,6 +749,18 @@ class ClickHouseFilterBuilder:
                 filter_value,
             )
 
+        # P3b step1.5: a session-id SET-membership filter (`session`/`session_id`/
+        # `trace_session_id`) resolves `trace_session_id` new→old through the remap
+        # (parallel to the end_user path) so a cross-cutover straddler unifies under
+        # the OLD curated session id. Only the membership ops route here; other ops
+        # (contains/null/…) keep the bare `_build_column_condition` + trace-wrap
+        # path below (their substring/null semantics don't id-resolve).
+        if (
+            col_id in self._SESSION_ID_FILTER_COLS
+            and filter_op in self._SESSION_MEMBERSHIP_OPS
+        ):
+            return self._build_session_membership_condition(filter_op, filter_value)
+
         # project_id belongs to the outer row scope; wrapping it inside a
         # trace_id subquery breaks org-scoped builders that bind project_ids.
         if col_id == "project_id":
@@ -856,6 +868,80 @@ class ClickHouseFilterBuilder:
             f"AND {resolved} {rhs} "
             f"AND is_deleted = 0)"
         )
+
+    # Filter `column_id`s that select a SET of session UUIDs against the spans
+    # `trace_session_id` column (all alias to the CH `trace_session_id` column).
+    # These route through `_resolved_session_membership` (id-remap-resolved) for
+    # the membership ops, parallel to the end_user `user`/`end_user_id` path.
+    _SESSION_ID_FILTER_COLS = frozenset({"session", "session_id", "trace_session_id"})
+    # Ops for which a session-id filter is a SET membership we can resolve via the
+    # remap subquery. Other ops (contains/starts_with/is_null/…) keep the bare
+    # `_build_column_condition` path (substring/null semantics don't id-resolve).
+    _SESSION_MEMBERSHIP_OPS = frozenset({"equals", "not_equals", "in", "not_in"})
+
+    def _resolved_session_membership(self, rhs: str, *, negate: bool) -> str:
+        """Build an id-remap-resolved session membership predicate.
+
+        Parallel to ``_resolved_enduser_membership`` (P3b step1.5, DESIGN §3 /
+        id_remap_sql). ``rhs`` is the positive right-hand side of the resolved-
+        column match, e.g. ``IN %(sess_1)s`` (a UUID set). The left side is
+        ``trace_session_id`` resolved new→old through ``trace_session_id_remap``:
+        a cross-cutover straddler's NEW (deterministic) span carries
+        ``trace_session_id = new_id``; resolving it back to the OLD curated id
+        lets the (old-id) ``rhs`` match it, so old + new spans select as ONE
+        session. Always emits a self-contained ``{entity} IN/NOT IN (SELECT
+        {entity} FROM spans {remap_join} WHERE … {resolved} {rhs} …)`` subquery,
+        even in span mode — the bare span-mode form cannot host the
+        ``LEFT JOIN trace_session_id_remap`` the resolve needs. ``entity`` is
+        ``id`` in span mode (one matched span does not pull siblings) and
+        ``trace_id`` in trace mode (trace-expansion semantics). Negation flips the
+        OUTER membership only (``NOT IN``); the INNER ``{resolved} {rhs}`` stays
+        POSITIVE so a straddler's new-id span resolves INTO the positive set and
+        is correctly excluded by ``NOT IN`` (id/trace_id are non-null → null-safe).
+        ``resolved_id_expr`` is the zero-uuid-guarded new→old map (NOT a COALESCE).
+        Pre-flip NO span matches a ``new_id`` → resolved id == own id → byte-
+        identical no-op (gate B).
+        """
+        entity = "id" if self.query_mode == self.QUERY_MODE_SPAN else "trace_id"
+        outer_op = "NOT IN" if negate else "IN"
+        remap_join = remap_left_join("trace_session_id", "trace_session_id_remap")
+        resolved = resolved_id_expr("trace_session_id")
+        return (
+            f"{entity} {outer_op} ("
+            f"SELECT {entity} FROM {self.table} "
+            f"{remap_join} "
+            f"WHERE {self._project_scope_predicate()} "
+            f"AND {resolved} {rhs} "
+            f"AND is_deleted = 0)"
+        )
+
+    def _build_session_membership_condition(
+        self,
+        filter_op: str | None,
+        filter_value: Any,
+    ) -> str | None:
+        """Filter by ``trace_session_id`` UUID set, resolved new→old via the remap.
+
+        Routes the session-id SET-membership ops (equals/in + negations) through
+        ``_resolved_session_membership`` so a cross-cutover straddler unifies under
+        the OLD curated session id (P3b step1.5). Trace mode expands to matching
+        parent trace rows; span mode matches the exact span. The ``trace_session_id``
+        values are compared as text (the spans column is ``Nullable(UUID)``; the
+        resolved id is stringified by the membership subquery's `toString`-free
+        UUID comparison — CH coerces the UUID set literal).
+        """
+        if filter_value is None:
+            return None
+        ids = filter_value if isinstance(filter_value, list) else [filter_value]
+        ids = [str(v) for v in ids if v]
+        if not ids:
+            # Empty SET: IN [] matches nothing; NOT IN [] does not restrict —
+            # mirror `_build_column_condition`'s explicit empty-set semantics.
+            return "0 = 1" if filter_op in ("equals", "in") else "1 = 1"
+        negate = filter_op in ("not_equals", "not_in")
+        param = self._next_param("sess")
+        self._params[param] = tuple(ids)
+        return self._resolved_session_membership(f"IN %({param})s", negate=negate)
 
     def _build_trace_end_user_condition(
         self,

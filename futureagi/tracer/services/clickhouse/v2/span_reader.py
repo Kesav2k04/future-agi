@@ -269,6 +269,55 @@ class CHSpanReader:
     def __exit__(self, *exc):
         self.close()
 
+    # ─── id-remap helper (P3b step1.5) ───────────────────────────────────────
+    def _resolve_session_ids_to_canonical(
+        self, session_ids: list[str]
+    ) -> dict[str, str]:
+        """Map ``{input trace_session_id (str) -> canonical (old) id (str)}``.
+
+        P3b step1.5 (DESIGN §3 / id_remap_sql): the remap is keyed
+        ``old_id -> new_id``; the resolve direction is new→old. So a caller id
+        that is a NEW (deterministic) id maps to its ``old_id`` (the still-primary
+        curated key); an OLD id (or any id absent from the map) maps to ITSELF.
+        Used by per-session-map readers to re-key their result by every caller
+        input id (mirrors ``end_user_dict_reader`` keeping the caller's input id).
+        Pre-flip the map has no row whose ``new_id`` is one of these ids, so every
+        id maps to itself (a no-op).
+        """
+        ids = {str(s) for s in session_ids if s}
+        if not ids:
+            return {}
+        rows = self._client.query(
+            "SELECT toString(new_id) AS new_id, toString(old_id) AS old_id "
+            "FROM trace_session_id_remap FINAL WHERE new_id IN %(ids)s",
+            parameters={"ids": tuple(ids)},
+        ).result_rows
+        new_to_old = {str(n): str(o) for (n, o) in rows}
+        return {i: new_to_old.get(i, i) for i in ids}
+
+    @staticmethod
+    def _session_filter_remap() -> tuple[str, str]:
+        """Return ``(join_clause, resolved_predicate)`` for a single-session
+        equality filter on the bare ``spans FINAL`` scan.
+
+        P3b step1.5 (DESIGN §3 / id_remap_sql): a flat (no per-session GROUP BY)
+        ``spans`` aggregation filtered by ONE OLD curated ``trace_session_id``
+        must also count a cross-cutover straddler's NEW-id spans. The caller adds
+        ``join_clause`` after ``FROM spans FINAL`` and the ``resolved_predicate``
+        (``<resolved> = %(sid)s``) to its WHERE list, binding ``%(sid)s`` to the
+        OLD id. Pre-flip NO span matches a ``new_id`` → resolved id == own id →
+        byte-identical no-op (gate B). The remap table only carries
+        ``old_id``/``new_id``, so the unqualified span columns the surrounding
+        query selects stay unambiguous under the join.
+        """
+        join = remap_left_join(
+            "spans.trace_session_id", "trace_session_id_remap", "ts_remap"
+        )
+        predicate = (
+            f"{resolved_id_expr('spans.trace_session_id', 'ts_remap')} = %(sid)s"
+        )
+        return join, predicate
+
     # ─── Single-row by id ────────────────────────────────────────────────────
     def get(self, span_id: str) -> CHSpan | None:
         """Equivalent to ObservationSpan.objects.get(id=span_id), returns None
@@ -299,10 +348,26 @@ class CHSpanReader:
 
     # ─── All spans in a session ──────────────────────────────────────────────
     def list_by_session(self, session_id: str) -> list[CHSpan]:
-        """For session-level evals (`EvalLogger.target_type='session'`)."""
+        """For session-level evals (`EvalLogger.target_type='session'`).
+
+        P3b step1.5 (DESIGN §3 / id_remap_sql): ``session_id`` is the OLD curated
+        ``TraceSession.id`` (still the primary key). A cross-cutover straddler's
+        NEW (deterministic-id) spans carry ``trace_session_id = new_id``; resolve
+        each span's ``trace_session_id`` new→old through ``trace_session_id_remap``
+        and match the OLD id on the RESOLVED value, so a session-level eval sees
+        old + new spans as ONE session. The returned ``trace_session_id`` column
+        stays the span's RAW id (these are real span rows). Pre-flip NO span
+        matches a ``new_id``, so the resolved id == the span's own id and this is
+        a byte-identical no-op (gate B).
+        """
+        remap_join = remap_left_join(
+            "spans.trace_session_id", "trace_session_id_remap", "ts_remap"
+        )
+        resolved_ts = resolved_id_expr("spans.trace_session_id", "ts_remap")
         rows = self._client.query(
             f"SELECT {_SELECT_SQL} FROM spans FINAL "
-            "WHERE trace_session_id = %(session_id)s AND is_deleted = 0 "
+            f"{remap_join} "
+            f"WHERE {resolved_ts} = %(session_id)s AND is_deleted = 0 "
             "ORDER BY start_time, id",
             parameters={"session_id": session_id},
         ).result_rows
@@ -405,14 +470,30 @@ class CHSpanReader:
     def session_aggregate(self, session_id: str) -> dict[str, Any]:
         """Same shape as trace_aggregate but scoped by trace_session_id. Used by
         get_session_analytics + the session detail view. Includes the start/end
-        bracket so callers can compute session duration."""
+        bracket so callers can compute session duration.
+
+        P3b step1.5 (DESIGN §3 / id_remap_sql): ``session_id`` is the OLD curated
+        ``TraceSession.id`` (still primary). A cross-cutover straddler's NEW
+        (deterministic-id) spans carry ``trace_session_id = new_id``; resolve each
+        span's ``trace_session_id`` new→old through ``trace_session_id_remap`` and
+        match the OLD id on the RESOLVED value so old + new spans aggregate as ONE
+        session. ``resolved_id_expr`` is the zero-uuid-guarded map (NOT a COALESCE
+        — an unmatched LEFT JOIN fills ``old_id`` with the zero-uuid, not NULL).
+        Pre-flip NO span matches a ``new_id`` → resolved id == the span's own id →
+        byte-identical no-op (gate B).
+        """
+        remap_join = remap_left_join(
+            "spans.trace_session_id", "trace_session_id_remap", "ts_remap"
+        )
+        resolved_ts = resolved_id_expr("spans.trace_session_id", "ts_remap")
         rows = self._client.query(
             "SELECT count() AS n, "
             "sum(prompt_tokens) AS pt, sum(completion_tokens) AS ct, "
             "sum(total_tokens) AS tt, sum(cost) AS cost, "
             "min(start_time) AS start_time, max(end_time) AS end_time "
             "FROM spans FINAL "
-            "WHERE trace_session_id = %(sid)s AND is_deleted = 0",
+            f"{remap_join} "
+            f"WHERE {resolved_ts} = %(sid)s AND is_deleted = 0",
             parameters={"sid": session_id},
         ).result_rows
         if not rows:
@@ -646,8 +727,22 @@ class CHSpanReader:
         if until:
             inner_where.append("start_time <  %(until)s")
             params["until"] = until
-        remap_join = remap_left_join("rs.end_user_id", "end_user_id_remap")
-        resolved_eu = resolved_id_expr("rs.end_user_id")
+        # P3b step1.5 — DUAL remap (DESIGN §3 / id_remap_sql): this read both
+        # filters by the OLD curated end_user_id AND reports `uniqExact(
+        # trace_session_id)`. A cross-cutover straddler would split on BOTH axes,
+        # so resolve BOTH columns new→old. The two joins hang off the SAME inner
+        # scan `rs` and so MUST carry DISTINCT aliases (the default `id_remap`
+        # would collide) — `eu_remap` for end_user, `ts_remap` for session. The
+        # session resolution makes `uniqExact` count the UNIFIED (old) session id,
+        # so a straddler's old+new spans count as ONE session, not two. Pre-flip
+        # NO span matches either `new_id`, so both resolved ids == own id and this
+        # is a byte-identical no-op (gate B).
+        eu_join = remap_left_join("rs.end_user_id", "end_user_id_remap", "eu_remap")
+        ts_join = remap_left_join(
+            "rs.trace_session_id", "trace_session_id_remap", "ts_remap"
+        )
+        resolved_eu = resolved_id_expr("rs.end_user_id", "eu_remap")
+        resolved_ts = resolved_id_expr("rs.trace_session_id", "ts_remap")
         rows = self._client.query(
             "SELECT count() AS n, "
             "uniqExact(trace_id) AS traces, "
@@ -658,7 +753,8 @@ class CHSpanReader:
             "FROM ("
             "  SELECT "
             f"    {resolved_eu} AS end_user_id, "
-            "    rs.trace_id AS trace_id, rs.trace_session_id AS trace_session_id, "
+            f"    {resolved_ts} AS trace_session_id, "
+            "    rs.trace_id AS trace_id, "
             "    rs.prompt_tokens AS prompt_tokens, "
             "    rs.completion_tokens AS completion_tokens, "
             "    rs.total_tokens AS total_tokens, rs.cost AS cost, "
@@ -668,7 +764,8 @@ class CHSpanReader:
             "           completion_tokens, total_tokens, cost, start_time, end_time "
             f"    FROM spans FINAL WHERE {' AND '.join(inner_where)}"
             "  ) AS rs "
-            f"  {remap_join}"
+            f"  {eu_join}"
+            f"  {ts_join}"
             ") WHERE end_user_id = %(uid)s",
             parameters=params,
         ).result_rows
@@ -789,6 +886,7 @@ class CHSpanReader:
         """
         where = ["is_deleted = 0"]
         params: dict[str, Any] = {}
+        session_join = ""
         if project_id:
             where.append("project_id = %(pid)s")
             params["pid"] = project_id
@@ -809,7 +907,11 @@ class CHSpanReader:
                 where.append("observation_type = %(otype)s")
                 params["otype"] = observation_type
         if session_id:
-            where.append("trace_session_id = %(sid)s")
+            # P3b step1.5 (id_remap_sql): resolve `trace_session_id` new→old so a
+            # straddler's new-id spans are counted under the OLD id (gate B no-op
+            # pre-flip). The eval-task filter feeds the OLD curated id.
+            session_join, session_pred = self._session_filter_remap()
+            where.append(session_pred)
             params["sid"] = session_id
         if created_at_gte:
             # CH v2 spans table has a real `created_at` column (schema
@@ -821,7 +923,8 @@ class CHSpanReader:
             where.append("created_at BETWEEN %(cr_s)s AND %(cr_e)s")
             params["cr_s"], params["cr_e"] = created_at_range
         rows = self._client.query(
-            f"SELECT count() FROM spans FINAL WHERE {' AND '.join(where)}",
+            f"SELECT count() FROM spans FINAL {session_join} "
+            f"WHERE {' AND '.join(where)}",
             parameters=params,
         ).result_rows
         return int(rows[0][0]) if rows else 0
@@ -955,6 +1058,7 @@ class CHSpanReader:
             )
         where = ["is_deleted = 0", "start_time >= %(since)s", "start_time <  %(until)s"]
         params: dict[str, Any] = {"since": since, "until": until}
+        session_join = ""
         if project_id:
             where.append("project_id = %(pid)s")
             params["pid"] = project_id
@@ -975,7 +1079,11 @@ class CHSpanReader:
                 where.append("observation_type = %(otype)s")
                 params["otype"] = observation_type
         if session_id:
-            where.append("trace_session_id = %(sid)s")
+            # P3b step1.5 (id_remap_sql): resolve `trace_session_id` new→old so a
+            # straddler's new-id spans roll into this monitor window under the OLD
+            # id (gate B no-op pre-flip). The bucketing is by time, not session.
+            session_join, session_pred = self._session_filter_remap()
+            where.append(session_pred)
             params["sid"] = session_id
         if status_filter:
             where.append("status = %(stat)s")
@@ -986,7 +1094,8 @@ class CHSpanReader:
             "countIf(lower(status) = 'error') AS error_count, "
             "sum(total_tokens) AS tokens, sum(cost) AS cost, "
             "avg(latency_ms) AS latency_ms "
-            f"FROM spans FINAL WHERE {' AND '.join(where)} "
+            f"FROM spans FINAL {session_join} "
+            f"WHERE {' AND '.join(where)} "
             f"GROUP BY {bucket_fn}(start_time) "
             f"ORDER BY {bucket_fn}(start_time)",
             parameters=params,
@@ -1019,6 +1128,7 @@ class CHSpanReader:
         """
         where = ["is_deleted = 0", "start_time >= %(since)s", "start_time <  %(until)s"]
         params: dict[str, Any] = {"since": since, "until": until}
+        session_join = ""
         if project_id:
             where.append("project_id = %(pid)s")
             params["pid"] = project_id
@@ -1050,7 +1160,11 @@ class CHSpanReader:
                 where.append("observation_type = %(otype)s")
                 params["otype"] = observation_type
         if session_id:
-            where.append("trace_session_id = %(sid)s")
+            # P3b step1.5 (id_remap_sql): resolve `trace_session_id` new→old so a
+            # straddler's new-id spans roll into this single-window number under
+            # the OLD id (gate B no-op pre-flip).
+            session_join, session_pred = self._session_filter_remap()
+            where.append(session_pred)
             params["sid"] = session_id
         if status_filter:
             where.append("status = %(stat)s")
@@ -1059,7 +1173,8 @@ class CHSpanReader:
             "SELECT count() AS n, countIf(lower(status) = 'error') AS errs, "
             "sum(total_tokens) AS toks, sum(cost) AS cost, "
             "avg(latency_ms) AS lat "
-            f"FROM spans FINAL WHERE {' AND '.join(where)}",
+            f"FROM spans FINAL {session_join} "
+            f"WHERE {' AND '.join(where)}",
             parameters=params,
         ).result_rows
         n, errs, toks, c, lat = rows[0] if rows else (0, 0, 0, 0.0, 0.0)
@@ -1131,26 +1246,57 @@ class CHSpanReader:
         """
         if not session_ids:
             return {}
-        where = [
-            "is_deleted = 0",
-            "trace_session_id IN %(sids)s",
-        ]
-        params: dict[str, Any] = {"sids": tuple(session_ids)}
+        # P3b step1.5 (DESIGN §3 / id_remap_sql): the input ``session_ids`` are
+        # OLD curated ``TraceSession.id``s (still primary). A cross-cutover
+        # straddler's NEW (deterministic-id) spans carry ``trace_session_id =
+        # new_id``; resolve each span's ``trace_session_id`` new→old through
+        # ``trace_session_id_remap`` and BOTH filter and GROUP BY the RESOLVED id
+        # so old + new spans roll up under ONE (old) session key. The non-id
+        # predicates (soft-delete / project) stay on the inner bare scan. Then —
+        # mirroring ``end_user_dict_reader`` (commit 9e4ba4f7e: "result key stays
+        # the caller's input id") — re-key the output by EVERY caller input id via
+        # the remap, so a caller indexing by either the old id OR a new id gets the
+        # unified row. Pre-flip NO span matches a ``new_id`` (resolved id == own
+        # id) AND no input id is a new_id, so this is a byte-identical no-op (gate
+        # B). ``resolved_id_expr`` is the zero-uuid-guarded map (NOT a COALESCE).
+        # Resolve every caller input id to its CANONICAL (old) id first, then bind
+        # the canonical set into the WHERE — the grouped `sid` IS the resolved
+        # (canonical) value, so a caller passing a NEW id still selects the right
+        # group (its spans resolve to the old id). An OLD id is its own canonical.
+        canon = self._resolve_session_ids_to_canonical(session_ids)
+        canonical_ids = {canon.get(str(s), str(s)) for s in session_ids if s}
+        inner_where = ["is_deleted = 0"]
+        params: dict[str, Any] = {"csids": tuple(canonical_ids)}
         if project_id:
-            where.append("project_id = %(pid)s")
+            inner_where.append("project_id = %(pid)s")
             params["pid"] = project_id
+        remap_join = remap_left_join(
+            "rs.trace_session_id", "trace_session_id_remap", "ts_remap"
+        )
+        resolved_ts = resolved_id_expr("rs.trace_session_id", "ts_remap")
         rows = self._client.query(
-            "SELECT toString(trace_session_id) AS sid, "
+            "SELECT toString(sid) AS sid, "
             "count() AS span_count, "
             "uniqExact(trace_id) AS traces_count, "
             "sum(total_tokens) AS tokens, sum(cost) AS cost, "
             "min(start_time) AS start_time, max(end_time) AS end_time "
-            f"FROM spans FINAL WHERE {' AND '.join(where)} "
-            "GROUP BY toString(trace_session_id)",
+            "FROM ("
+            f"  SELECT {resolved_ts} AS sid, rs.trace_id AS trace_id, "
+            "    rs.total_tokens AS total_tokens, rs.cost AS cost, "
+            "    rs.start_time AS start_time, rs.end_time AS end_time "
+            "  FROM ("
+            "    SELECT trace_session_id, trace_id, total_tokens, cost, "
+            "           start_time, end_time "
+            f"    FROM spans FINAL WHERE {' AND '.join(inner_where)}"
+            "  ) AS rs "
+            f"  {remap_join}"
+            ") "
+            "WHERE sid IN %(csids)s "
+            "GROUP BY sid",
             parameters=params,
         ).result_rows
-        return {
-            sid: {
+        by_canonical = {
+            str(sid): {
                 "span_count": int(sc or 0),
                 "traces_count": int(tc or 0),
                 "tokens": int(toks or 0),
@@ -1160,6 +1306,15 @@ class CHSpanReader:
             }
             for (sid, sc, tc, toks, c, st, et) in rows
         }
+        # Re-key by each caller input id → its canonical group (an input OLD id is
+        # its own canonical; a NEW id resolves to its old_id). Inputs with no spans
+        # are simply absent, matching the committed dict-comprehension behaviour.
+        out: dict[str, dict[str, Any]] = {}
+        for sid in session_ids:
+            metrics = by_canonical.get(canon.get(str(sid), str(sid)))
+            if metrics is not None:
+                out[str(sid)] = metrics
+        return out
 
     def has_root_spans_of_type(self, project_id: str, observation_type: str) -> bool:
         """Equivalent to:

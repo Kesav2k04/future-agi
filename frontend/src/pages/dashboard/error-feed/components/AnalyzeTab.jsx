@@ -717,6 +717,11 @@ SuggestionChips.propTypes = {
 // Sticky input bar at the bottom of the tab. Disabled until the main run
 // finishes (so the user can't fork a sub-agent mid-cluster-analysis) and
 // while a sub-agent is streaming (to avoid stacking parallel runs).
+//
+// The stroke is a purple gradient (Falcon brand) painted via the standard
+// `background-clip` trick — `border: transparent` + two stacked
+// backgrounds where the inner one is clipped to the padding-box and the
+// outer gradient fills the border-box.
 function FollowUpInput({ disabled, placeholder, onSubmit }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -727,20 +732,26 @@ function FollowUpInput({ disabled, placeholder, onSubmit }) {
     onSubmit?.(t);
     setText("");
   };
+  // Inner bg has to be opaque for the background-clip trick to work; pick a
+  // tone close to the surrounding container so the box still feels lifted.
+  const innerBg = isDark ? "#1a1a1d" : "#ffffff";
+  const gradientStroke = disabled
+    ? `linear-gradient(110deg, ${alpha("#7857FC", 0.35)}, ${alpha("#C084FC", 0.35)})`
+    : "linear-gradient(110deg, #7857FC 0%, #A78BFA 50%, #C084FC 100%)";
   return (
     <Box
       sx={{
         flexShrink: 0,
-        border: "1px solid",
-        borderColor: "divider",
+        border: "1.5px solid transparent",
         borderRadius: "10px",
-        bgcolor: isDark ? alpha("#fff", 0.025) : "background.paper",
+        background: `linear-gradient(${innerBg}, ${innerBg}) padding-box, ${gradientStroke} border-box`,
         px: 1.25,
         py: 0.5,
         display: "flex",
         alignItems: "center",
         gap: 0.75,
-        opacity: disabled ? 0.6 : 1,
+        opacity: disabled ? 0.75 : 1,
+        transition: "opacity 0.15s ease",
       }}
     >
       <Iconify

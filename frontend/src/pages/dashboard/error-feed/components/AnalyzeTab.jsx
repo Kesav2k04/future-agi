@@ -38,24 +38,55 @@ const ACCENT = "#7857FC";
 const STREAM_CHARS_PER_TICK = 3;
 const STREAM_TICK_MS = 16;
 
+// Per-tab-session memory of which streams have already finished. Keyed by
+// a caller-supplied `identityKey` (typically `${message.id}-${slot}`). Once
+// a stream completes, its key is recorded here; subsequent mounts (e.g.,
+// the user tabbed away and came back) start in instant mode so the
+// animation doesn't replay for content they've already seen.
+//
+// Resets on a hard reload of the page — that's the intended scope. The
+// shared analyze thread state lives in the zustand store, but stream
+// completion is a UI concern that's specific to the current session.
+const STREAMED_KEYS = new Set();
+
 // Reveal `text` one chunk per tick. Reset whenever the input text changes
 // (new message arrives). Returns the visible substring + whether more is
 // still incoming so the caller can render a cursor.
-function useStreamingText(text) {
+//
+// Options:
+//   - instant: jump straight to the full text (review mode)
+//   - identityKey: a stable id for "this particular stream". Once the
+//     stream completes, the key is remembered globally so re-mounts skip
+//     the animation. Without a key, the stream replays on every mount.
+function useStreamingText(text, options = {}) {
+  const { instant = false, identityKey } = options;
   const fullText = typeof text === "string" ? text : "";
-  const [revealedLen, setRevealedLen] = useState(0);
+  const skipFromMemory = !!identityKey && STREAMED_KEYS.has(identityKey);
+  const shouldSkip = instant || skipFromMemory;
+  const [revealedLen, setRevealedLen] = useState(
+    shouldSkip ? fullText.length : 0,
+  );
 
   useEffect(() => {
-    setRevealedLen(0);
-  }, [fullText]);
+    const skip =
+      instant || (!!identityKey && STREAMED_KEYS.has(identityKey));
+    setRevealedLen(skip ? fullText.length : 0);
+  }, [fullText, instant, identityKey]);
 
   useEffect(() => {
-    if (revealedLen >= fullText.length) return undefined;
+    if (revealedLen >= fullText.length) {
+      // Stream just hit the end — remember it so we don't replay on
+      // remount.
+      if (fullText.length > 0 && identityKey) {
+        STREAMED_KEYS.add(identityKey);
+      }
+      return undefined;
+    }
     const id = setInterval(() => {
       setRevealedLen((n) => Math.min(n + STREAM_CHARS_PER_TICK, fullText.length));
     }, STREAM_TICK_MS);
     return () => clearInterval(id);
-  }, [fullText, revealedLen]);
+  }, [fullText, revealedLen, identityKey]);
 
   return {
     revealed: fullText.slice(0, revealedLen),
@@ -101,26 +132,14 @@ function StreamingPlainText({
   instant,
   cursorColor,
   onComplete,
+  identityKey,
   ...typoProps
 }) {
   const fullText = typeof text === "string" ? text : "";
-  const [revealedLen, setRevealedLen] = useState(
-    instant ? fullText.length : 0,
-  );
-
-  useEffect(() => {
-    setRevealedLen(instant ? fullText.length : 0);
-  }, [fullText, instant]);
-
-  useEffect(() => {
-    if (revealedLen >= fullText.length) return undefined;
-    const id = setInterval(() => {
-      setRevealedLen((n) =>
-        Math.min(n + STREAM_CHARS_PER_TICK, fullText.length),
-      );
-    }, STREAM_TICK_MS);
-    return () => clearInterval(id);
-  }, [fullText, revealedLen]);
+  const { revealed, isStreaming } = useStreamingText(text, {
+    instant,
+    identityKey,
+  });
 
   // Fire onComplete exactly once when the stream reaches the end. Held in
   // a ref so changing the callback identity per render doesn't re-fire.
@@ -133,20 +152,15 @@ function StreamingPlainText({
     firedRef.current = false;
   }, [fullText]);
   useEffect(() => {
-    if (
-      revealedLen >= fullText.length &&
-      fullText.length > 0 &&
-      !firedRef.current
-    ) {
+    if (!isStreaming && fullText.length > 0 && !firedRef.current) {
       firedRef.current = true;
       onCompleteRef.current?.();
     }
-  }, [revealedLen, fullText.length]);
+  }, [isStreaming, fullText.length]);
 
-  const isStreaming = revealedLen < fullText.length;
   return (
     <Typography {...typoProps}>
-      {fullText.slice(0, revealedLen)}
+      {revealed}
       {isStreaming && <StreamCursor color={cursorColor} />}
     </Typography>
   );
@@ -156,6 +170,7 @@ StreamingPlainText.propTypes = {
   instant: PropTypes.bool,
   cursorColor: PropTypes.string,
   onComplete: PropTypes.func,
+  identityKey: PropTypes.string,
 };
 
 // Coordinates a sequence of N "phases". In review mode (live=false) all
@@ -196,7 +211,7 @@ FadeIn.propTypes = { children: PropTypes.node };
 
 // Internal — list items reveal one at a time in live mode. In review
 // mode every item shows in full from the start.
-function SequentialListItems({ items, live, onComplete }) {
+function SequentialListItems({ items, live, onComplete, identityPrefix }) {
   const { phase, advance } = useSequentialReveal(items.length, live);
 
   // When all items have streamed (or instantly on mount in review mode),
@@ -235,6 +250,9 @@ function SequentialListItems({ items, live, onComplete }) {
               text={it}
               instant={!active}
               onComplete={active ? advance : undefined}
+              identityKey={
+                identityPrefix ? `${identityPrefix}-item-${i}` : undefined
+              }
               fontSize="11.5px"
               color="text.secondary"
               sx={{ lineHeight: 1.55 }}
@@ -249,6 +267,7 @@ SequentialListItems.propTypes = {
   items: PropTypes.array.isRequired,
   live: PropTypes.bool,
   onComplete: PropTypes.func,
+  identityPrefix: PropTypes.string,
 };
 
 // One block of a step's expanded reasoning — Claude-Code-style. When
@@ -265,7 +284,7 @@ SequentialListItems.propTypes = {
 //   tool      → the `→ output` stream (or immediately if no output)
 //   list      → the last item's stream (via SequentialListItems)
 //   code      → its single text stream
-function StepDetailBlock({ block, live, onComplete }) {
+function StepDetailBlock({ block, live, onComplete, identityKey }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
 
@@ -289,6 +308,7 @@ function StepDetailBlock({ block, live, onComplete }) {
         text={block.text}
         instant={!live}
         onComplete={onComplete}
+        identityKey={identityKey}
         fontSize="11.5px"
         color="text.secondary"
         sx={{ lineHeight: 1.65 }}
@@ -343,6 +363,7 @@ function StepDetailBlock({ block, live, onComplete }) {
             text={`→ ${block.output}`}
             instant={!live}
             onComplete={onComplete}
+            identityKey={identityKey}
             fontSize="10.5px"
             sx={{
               fontFamily: "ui-monospace, SFMono-Regular, monospace",
@@ -375,6 +396,7 @@ function StepDetailBlock({ block, live, onComplete }) {
           items={block.items}
           live={live}
           onComplete={onComplete}
+          identityPrefix={identityKey}
         />
       </Box>
     );
@@ -386,6 +408,7 @@ function StepDetailBlock({ block, live, onComplete }) {
         text={block.text}
         instant={!live}
         onComplete={onComplete}
+        identityKey={identityKey}
         component="pre"
         sx={{
           m: 0,
@@ -409,6 +432,7 @@ StepDetailBlock.propTypes = {
   block: PropTypes.object.isRequired,
   live: PropTypes.bool,
   onComplete: PropTypes.func,
+  identityKey: PropTypes.string,
 };
 
 // Tiny helper — fire a callback exactly once after mount. Used by tool
@@ -424,15 +448,25 @@ SignalOnMount.propTypes = { fire: PropTypes.func };
 
 // Renders a step's details list with sequential reveal: in live mode
 // each block streams in turn (one finishes before the next appears); in
-// review mode every block shows at once.
-function StepDetailsPanel({ blocks, live }) {
+// review mode every block shows at once. `identityPrefix` is the
+// owning step's id; combined with the block index it gives each stream
+// a stable per-session identity so tab-away/tab-back doesn't replay.
+function StepDetailsPanel({ blocks, live, identityPrefix }) {
   const { phase, advance } = useSequentialReveal(blocks.length, live);
+
+  const keyForBlock = (i) =>
+    identityPrefix ? `${identityPrefix}-detail-${i}` : undefined;
 
   if (!live) {
     return (
       <Stack gap={1} sx={{ pt: 1 }}>
         {blocks.map((block, i) => (
-          <StepDetailBlock key={i} block={block} live={false} />
+          <StepDetailBlock
+            key={i}
+            block={block}
+            live={false}
+            identityKey={keyForBlock(i)}
+          />
         ))}
       </Stack>
     );
@@ -449,6 +483,7 @@ function StepDetailsPanel({ blocks, live }) {
               block={block}
               live={active}
               onComplete={active ? advance : undefined}
+              identityKey={keyForBlock(i)}
             />
           </FadeIn>
         );
@@ -459,6 +494,7 @@ function StepDetailsPanel({ blocks, live }) {
 StepDetailsPanel.propTypes = {
   blocks: PropTypes.array.isRequired,
   live: PropTypes.bool,
+  identityPrefix: PropTypes.string,
 };
 
 function StepCard({ step }) {
@@ -597,7 +633,11 @@ function StepCard({ step }) {
               borderColor: "divider",
             }}
           >
-            <StepDetailsPanel blocks={step.details} live={isRunning} />
+            <StepDetailsPanel
+              blocks={step.details}
+              live={isRunning}
+              identityPrefix={step.id}
+            />
           </Box>
         </Collapse>
       )}
@@ -610,11 +650,15 @@ function SynthesisCard({ synthesis }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   // Stream the headline first; once it finishes, stream the fix below it.
-  // This mirrors how an LLM emits one paragraph then another rather than
-  // dumping both at once.
-  const head = useStreamingText(synthesis.headline);
+  // identityKey is keyed off the synthesis message id so a re-mount (user
+  // tabbed away and came back) skips the animation if both already streamed.
+  const head = useStreamingText(synthesis.headline, {
+    identityKey: `${synthesis.id}-head`,
+  });
   const headDone = !head.isStreaming;
-  const fix = useStreamingText(headDone ? synthesis.fix : "");
+  const fix = useStreamingText(headDone ? synthesis.fix : "", {
+    identityKey: `${synthesis.id}-fix`,
+  });
   return (
     <Box
       sx={{
@@ -878,8 +922,8 @@ MiniMarkdown.propTypes = {
 // end until the stream completes. The partial text still goes through the
 // markdown parser; the regex tolerates unmatched `**` so styling pops in
 // as the closing marker appears — same way real LLM clients behave.
-function StreamingMarkdown({ text }) {
-  const { revealed, isStreaming } = useStreamingText(text);
+function StreamingMarkdown({ text, identityKey }) {
+  const { revealed, isStreaming } = useStreamingText(text, { identityKey });
   return (
     <MiniMarkdown
       text={revealed}
@@ -887,7 +931,10 @@ function StreamingMarkdown({ text }) {
     />
   );
 }
-StreamingMarkdown.propTypes = { text: PropTypes.string.isRequired };
+StreamingMarkdown.propTypes = {
+  text: PropTypes.string.isRequired,
+  identityKey: PropTypes.string,
+};
 
 // The sub-agent container: header strip + sub-step list + final answer.
 function SubagentCard({ msg }) {
@@ -974,7 +1021,12 @@ function SubagentCard({ msg }) {
 
       {/* Final answer — appears once all steps are done, then streams in
           LLM-style with a blinking cursor at the trailing edge. */}
-      {msg.answer && <StreamingMarkdown text={msg.answer} />}
+      {msg.answer && (
+        <StreamingMarkdown
+          text={msg.answer}
+          identityKey={`${msg.id}-answer`}
+        />
+      )}
     </Stack>
   );
 }

@@ -203,6 +203,9 @@ export default function ErrorFeedDetailView() {
                 bgcolor: "action.hover",
                 color: "text.secondary",
                 "& .MuiChip-label": { px: "7px" },
+                // Static badge — kill the default Chip hover/focus tinting.
+                "&:hover": { bgcolor: "action.hover" },
+                "&:focus": { bgcolor: "action.hover" },
               }}
             />
           </Stack>

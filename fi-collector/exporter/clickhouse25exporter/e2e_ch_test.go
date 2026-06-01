@@ -33,6 +33,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
 	"github.com/future-agi/future-agi/fi-collector/pkg/chwriter"
+	"github.com/future-agi/future-agi/fi-collector/pkg/detid"
 )
 
 // --------------------------------------------------------------------------
@@ -195,6 +196,35 @@ func buildLLMSpan(traceID [16]byte, spanID [8]byte) ptrace.Traces {
 	return traces
 }
 
+// buildEndUserSessionSpan builds an OBSERVE-project LLM span carrying a
+// user.id (no user.id.type → "" sentinel) and a session.id, so the converter
+// stamps the deterministic end_user_id / trace_session_id columns. Used by
+// the CH-derived-dimensions e2e assertion.
+func buildEndUserSessionSpan(traceID [16]byte, spanID [8]byte) ptrace.Traces {
+	traces := ptrace.NewTraces()
+	rs := traces.ResourceSpans().AppendEmpty()
+	rs.Resource().Attributes().PutStr("service.name", "e2e-enduser-service")
+	rs.Resource().Attributes().PutStr("fi.project_id", testProjectID)
+	rs.Resource().Attributes().PutStr("fi.org_id", testOrgID)
+	rs.Resource().Attributes().PutStr("fi.semconv", "openinference")
+	rs.Resource().Attributes().PutStr("project_type", "observe")
+
+	sp := rs.ScopeSpans().AppendEmpty().Spans().AppendEmpty()
+	sp.SetTraceID(traceID)
+	sp.SetSpanID(spanID)
+	sp.SetName("llm.chat.completion")
+	sp.SetStartTimestamp(pcommon.NewTimestampFromTime(time.Now().Add(-300 * time.Millisecond)))
+	sp.SetEndTimestamp(pcommon.NewTimestampFromTime(time.Now()))
+	sp.Status().SetCode(ptrace.StatusCodeOk)
+
+	a := sp.Attributes()
+	a.PutStr("openinference.span.kind", "LLM")
+	a.PutStr("gen_ai.system", "openai")
+	a.PutStr("user.id", "e2e-user@example.com")
+	a.PutStr("session.id", "e2e-session-001")
+	return traces
+}
+
 func buildErrorSpan(traceID [16]byte, spanID [8]byte) ptrace.Traces {
 	traces := ptrace.NewTraces()
 	rs := traces.ResourceSpans().AppendEmpty()
@@ -341,6 +371,28 @@ func TestE2E_LLMSpan_TypedMapSplit(t *testing.T) {
 
 	// semconv_source
 	assertField(t, row, "semconv_source", "openinference")
+}
+
+// TestE2E_DeterministicDimensions verifies the CH-derived-dimensions stamp
+// (P3b step2): an observe-project span with user.id + session.id lands the
+// deterministic end_user_id / trace_session_id in the CH `spans` row, and the
+// stored bytes equal the detid formula (which pkg/detid proves == Python).
+func TestE2E_DeterministicDimensions(t *testing.T) {
+	host := skipIfNoCH(t)
+	w := newWriter(t, host)
+	defer w.Close()
+
+	traceID, spanID := uniqueIDs(t, 0x20)
+	ingestSpans(t, w, buildEndUserSessionSpan(traceID, spanID))
+
+	spanIDHex := strings.ToLower(fmt.Sprintf("%016x", spanID))
+	row := waitForRow(t, host, spanIDHex, 5*time.Second)
+
+	wantEU := detid.EndUserID(testProjectID, testOrgID, "e2e-user@example.com", "").String()
+	assertField(t, row, "end_user_id", wantEU)
+
+	wantSess := detid.TraceSessionID(testProjectID, "e2e-session-001").String()
+	assertField(t, row, "trace_session_id", wantSess)
 }
 
 func TestE2E_JSONColumns_Parse(t *testing.T) {

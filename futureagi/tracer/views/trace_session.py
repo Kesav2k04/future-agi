@@ -2001,24 +2001,38 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         # a synthetic end_user_id IN(...) filter. Scope by org (and project
         # if we're in project mode).
         #
-        # P3b step1.5 (DESIGN §3 / id_remap_sql): `_ids` are intentionally the
-        # OLD curated `EndUser.id`s (still primary). The cross-cutover straddler
-        # split is resolved DOWNSTREAM in the CH read, NOT here: the
-        # SessionListQueryBuilder extracts this synthetic `end_user_id` filter
-        # (`_ENDUSER_ID_FILTER_COLS`) and binds it to the id-remap-RESOLVED
-        # `end_user_id` column (`_build_resolved_user_clause`), so a returning
-        # user's NEW (deterministic-id) spans resolve new→old and select under
-        # the same OLD id. Do NOT expand `_ids` with deterministic new ids here —
-        # the join-based resolution is the single canonical mechanism.
+        # P3b step2 precondition — the reverse-resolve is now CH `end_users`, not
+        # PG `EndUser.objects` (PG_ORM_READ_MIGRATION, Slice B). The old PG lookup
+        # FREEZES post-step2: a NET-NEW user (first seen after the ingest
+        # get_or_create is dropped) has NO `tracer_enduser` row, so PG returned []
+        # → `_ids = [NIL_UUID]` → a SILENTLY EMPTY session list for it. The curated
+        # CH `end_users` dimension instead yields the state-robust id-SET:
+        # historical OLD-id row + net-new DETERMINISTIC-id row + a straddler's
+        # BOTH. This is the `_ids` that gets the NET-NEW user its sessions.
+        #
+        # P3b step1.5 (DESIGN §3 / id_remap_sql) — still the downstream mechanism:
+        # `_ids` are the CURATED keys (OLD pre-sweep). The SessionListQueryBuilder
+        # extracts this synthetic `end_user_id` filter (`_ENDUSER_ID_FILTER_COLS`)
+        # and binds it to the id-remap-RESOLVED `end_user_id` column
+        # (`_build_resolved_user_clause`), so a STRADDLER's NEW (deterministic-id)
+        # spans resolve new→old and select under the same OLD id. The earlier
+        # "do NOT expand `_ids` with deterministic ids here" caveat was
+        # STRADDLER-scoped (a straddler already had an old id, so adding its new id
+        # was redundant with the join-resolve). NET-NEW is different: it has ONLY
+        # the deterministic id and NO old id, so that curated deterministic id MUST
+        # be in `_ids` or the list is silently empty — and `end_users` supplies it
+        # directly (no deterministic_id compute here), no double-count because a
+        # net-new id has no remap entry (resolves to itself).
         if user_id_raw:
-            _eu_qs = EndUser.objects.filter(
-                user_id=user_id_raw,
-                organization=org,
-                deleted=False,
+            from tracer.services.clickhouse.v2.end_user_dict_reader import (
+                resolve_end_user_ids_by_user_id,
             )
-            if not org_scope and project_id:
-                _eu_qs = _eu_qs.filter(project_id=project_id)
-            _ids = [str(u) for u in _eu_qs.values_list("id", flat=True)]
+
+            _ids = resolve_end_user_ids_by_user_id(
+                user_id_raw,
+                organization_id=org.id if org else None,
+                project_id=(project_id if (not org_scope and project_id) else None),
+            )
             if not _ids:
                 _ids = [NIL_UUID]
             filters.append(

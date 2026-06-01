@@ -62,6 +62,11 @@ _LABEL_ATTR = "user_id"
 _TYPE_ATTR = "user_id_type"
 _HASH_ATTR = "user_id_hash"
 
+# Sentinel distinguishing "user_id_type filter omitted" (match on user_id alone)
+# from an explicit ``user_id_type=None`` (match the NULL/'' type). A bare default
+# of ``None`` could not tell the two apart — and they mean different SQL.
+_UNSET = object()
+
 _client = None
 _client_lock = threading.Lock()
 
@@ -224,3 +229,97 @@ def resolve_end_user_fields(
             "user_id_hash": row[3] or None,
         }
     return out
+
+
+def resolve_end_user_ids_by_user_id(
+    user_id: object,
+    *,
+    project_id: object | None = None,
+    organization_id: object | None = None,
+    user_id_type: object | None = _UNSET,
+) -> list[str]:
+    """Reverse-resolve a human ``user_id`` label → the curated ``end_user_id``
+    SET from the CH ``end_users`` RMT (the state-robust reverse lookup,
+    PG_ORM_READ_MIGRATION §"The state-robust reverse-resolve pattern").
+
+    This is the CH replacement for the PG ``EndUser.objects.get/filter(
+    user_id=…, project_id=…/organization=…)`` natural-key→surrogate lookups that
+    go STALE for a NET-NEW user post-step2 (no PG row is ever written for an
+    identity first seen after the ingest ``get_or_create`` is dropped). Reading
+    the curated ``end_users`` dimension instead catches all three post-flip
+    cases in ONE query, with NO ``deterministic_id`` compute (so it works for a
+    ``user_id``-only filter where ``user_id_type`` is unavailable):
+
+      • historical user — its OLD-id ``end_users`` row,
+      • net-new user — its post-flip deterministic-id ``end_users`` row (rides
+        the best-effort ingest dual-write; filterable a few seconds late),
+      • straddler — BOTH rows pre-consolidation-sweep, the survivor after.
+
+    The returned ids are the CURATED keys (OLD pre-sweep, survivor post-sweep).
+    Callers feed them to a spans filter that resolves each span's stored
+    ``end_user_id`` new→old via ``end_user_id_remap`` and matches THIS set
+    (``resolved_id_expr(end_user_id) IN <set>``): a historical/net-new span
+    (no remap entry) resolves to itself and matches its own curated id; a
+    straddler's new-id span resolves to the old id and matches. This is exactly
+    the id-set the committed ``filters._build_enduser_string_condition`` builds
+    inline — exposed here so a VIEW-level resolve (which cannot embed a CH
+    subquery in a PG queryset) gets the same state-robust semantics. NO remap
+    is applied HERE: ``end_users`` already holds the curated keys; the remap
+    belongs on the SPANS side at filter time.
+
+    Scope (mirrors the PG queries' ``project_id`` / ``organization`` scoping —
+    ``end_users`` carries BOTH columns, schema 017): pass ``project_id`` for the
+    project-scoped lookup (1265/2768), or ``organization_id`` for the org-wide
+    session view's cross-project user filter (2014, org-scope mode), or both
+    (2014, project mode). At least one MUST be given — an unscoped reverse
+    lookup would leak ids across tenants; a missing scope raises ``ValueError``.
+
+    Parameters
+    ----------
+    user_id : the external user-id string (coerced to ``str``).
+    project_id : optional project UUID scope.
+    organization_id : optional organization UUID scope.
+    user_id_type : when supplied (including ``None``), adds an exact
+        ``user_id_type`` match — ``None``/``''`` map to the SQL ``''`` the
+        writer stores for a NULL type (schema 017 coerces NULL→'' on write), so
+        a typed filter round-trips faithfully. OMIT it (the default) to match
+        on ``user_id`` ALONE across every type — the common product filter,
+        and the form that avoids the ``user_id_type``-availability trap.
+
+    Returns a de-duplicated ``list[str]`` of ``end_user_id`` values (``[]`` when
+    nothing matches — the caller treats that as "no such user", an EMPTY id-set
+    that filters to zero rows). Read-only and NOT best-effort: a CH failure is a
+    real read error and re-raises (parity reads must surface problems).
+    """
+    if project_id is None and organization_id is None:
+        raise ValueError(
+            "resolve_end_user_ids_by_user_id requires project_id and/or "
+            "organization_id (an unscoped reverse lookup would cross tenants)"
+        )
+    if user_id is None or str(user_id) == "":
+        return []
+
+    client = _get_client()
+    conds = ["user_id = %(uid)s", "is_deleted = 0"]
+    params: dict[str, object] = {"uid": str(user_id)}
+    if project_id is not None:
+        conds.append("project_id = %(pid)s")
+        params["pid"] = str(project_id)
+    if organization_id is not None:
+        conds.append("organization_id = %(oid)s")
+        params["oid"] = str(organization_id)
+    if user_id_type is not _UNSET:
+        # NULL/'' type → the '' the writer stores for a PG-NULL type (017).
+        conds.append("user_id_type = %(utype)s")
+        params["utype"] = "" if user_id_type in (None, "") else str(user_id_type)
+    where = " AND ".join(conds)
+    try:
+        result = client.query(
+            f"SELECT DISTINCT toString(end_user_id) FROM end_users FINAL WHERE {where}",
+            parameters=params,
+        )
+    except Exception:
+        _reset_client()
+        raise
+
+    return [row[0] for row in result.result_rows if row[0]]

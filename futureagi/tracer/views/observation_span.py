@@ -1,18 +1,13 @@
 import concurrent.futures
 import io
 import json
-import traceback
 import uuid
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
-from datetime import datetime
-from time import time
-from typing import Dict, List
 
 import pandas as pd
 import structlog
-from django.db import close_old_connections, connection
+from django.db import close_old_connections
 from django.db.models import (
     Avg,
     Case,
@@ -31,20 +26,14 @@ from django.db.models import (
 from django.db.models.functions import JSONObject, Round
 from django.http import FileResponse
 from django.utils import timezone
-from drf_yasg.utils import swagger_auto_schema
-from litellm import cost_per_token
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 
 from agentic_eval.core.embeddings.embedding_manager import EmbeddingManager
-
-logger = structlog.get_logger(__name__)
 from analytics.utils import (
     MixpanelEvents,
-    MixpanelModes,
-    MixpanelSources,
     MixpanelTypes,
     get_mixpanel_properties,
     track_mixpanel_event,
@@ -67,7 +56,7 @@ from tfc.utils.base_viewset import BaseModelViewSetMixin
 from tfc.utils.error_codes import get_error_message
 from tfc.utils.general_methods import GeneralMethods
 from tracer.models.custom_eval_config import CustomEvalConfig
-from tracer.models.observation_span import EndUser, EvalLogger, ObservationSpan
+from tracer.models.observation_span import EvalLogger, ObservationSpan
 from tracer.models.project import Project
 from tracer.models.project_version import ProjectVersion
 from tracer.models.span_notes import SpanNotes
@@ -78,8 +67,8 @@ from tracer.serializers.filters import (
     ObserveGraphDataResponseSerializer,
 )
 from tracer.serializers.observation_span import (
-    ObservationAttributeListResponseSerializer,
     ObservationAttributeListQuerySerializer,
+    ObservationAttributeListResponseSerializer,
     ObservationSpanSerializer,
     SpanExportQuerySerializer,
     SpanIndexQuerySerializer,
@@ -102,11 +91,9 @@ from tracer.utils.eval import (
     evaluate_observation_span,
     evaluate_observation_span_observe,
 )
-from tracer.utils.eval_tasks import parsing_evaltask_filters
 from tracer.utils.filters import FilterEngine
 from tracer.utils.helper import (
     FieldConfig,
-    generate_timestamps,
     get_annotation_labels_for_project,
     get_default_span_config,
     update_column_config_based_on_eval_config,
@@ -114,10 +101,11 @@ from tracer.utils.helper import (
 )
 from tracer.utils.otel import (
     ResourceLimitError,
-    SpanAttributes,
     calculate_cost_from_tokens,
 )
 from tracer.utils.sql_queries import SQL_query_handler
+
+logger = structlog.get_logger(__name__)
 
 
 class AddObservationSpanAnnotationsSerializer(serializers.Serializer):
@@ -304,8 +292,10 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
     def get_queryset(self):
         observation_span_id = self.kwargs.get("pk")
         # Get base queryset with automatic filtering from mixin
-        query_Set = super().get_queryset().filter(
-            project__organization=_get_request_organization(self.request)
+        query_Set = (
+            super()
+            .get_queryset()
+            .filter(project__organization=_get_request_organization(self.request))
         )
 
         if observation_span_id:
@@ -363,9 +353,7 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # eval store, and the equivalent CH pivot lives in
             # `_retrieve_clickhouse`.
             analytics = AnalyticsQueryService()
-            return self._retrieve_clickhouse(
-                request, observation_span_id, analytics
-            )
+            return self._retrieve_clickhouse(request, observation_span_id, analytics)
         except Exception as e:
             logger.exception(f"Error in fetching observation span: {str(e)}")
             return self._gm.bad_request(
@@ -1253,23 +1241,39 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
         # helpers below (called as classmethods on the v1 name) work for
         # both — keep the v1 import for those static calls.
 
-        filters = validated_data.get("filters", [])
+        filters = list(validated_data.get("filters", []) or [])
         page_number = validated_data["page_number"]
         page_size = validated_data["page_size"]
 
+        # P3b step2 precondition — user_id → end_user reverse-resolve (CH, not PG).
+        # The old PG `EndUser.objects.get(user_id=…).id` FREEZES post-step2: a
+        # NET-NEW user (first seen after the ingest get_or_create is dropped) has
+        # NO `tracer_enduser` row, only a CH `end_users` row keyed by its
+        # deterministic id + spans carrying that id — so the PG lookup raised
+        # "User not found" and the list was empty for it. Instead, inject a
+        # synthetic `user_id` filter and let the SHIPPED, remap-aware
+        # `ClickHouseFilterBuilder._build_enduser_string_condition` resolve it:
+        # it builds the curated id-set from `end_users FINAL` (historical + net-new
+        # deterministic + straddler's both) and matches it against each span's
+        # `end_user_id` resolved new→old via `end_user_id_remap`. This REPLACES the
+        # bespoke `end_user_id=` builder arg (the only non-test caller of it) with
+        # the canonical filter path — zero duplicated SQL, and net-new now returns
+        # rows. Pre-flip a no-op vs the old single-id filter (gate B): historical /
+        # straddler resolve to the same curated id-set. An unknown user resolves to
+        # an EMPTY id-set → empty list (was an exception; net-new is no longer
+        # "not found", the intended fix).
         user_id = validated_data.get("user_id")
-        end_user_id = None
         if user_id:
-            try:
-                end_user_id = str(
-                    EndUser.objects.get(
-                        user_id=user_id,
-                        organization=request.user.organization,
-                        project_id=project_id,
-                    ).id
-                )
-            except EndUser.DoesNotExist:
-                raise Exception("User not found for the given user_id")
+            filters.append(
+                {
+                    "column_id": "user_id",
+                    "filter_config": {
+                        "filter_type": "text",
+                        "filter_op": "equals",
+                        "filter_value": str(user_id),
+                    },
+                }
+            )
 
         # Get eval config IDs from CH (fast) instead of PG EvalLogger scan
         eval_config_ids = []
@@ -1296,9 +1300,12 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
         # by span scores. Use the score-backed helper so span columns and
         # annotation filters match the actual data returned from ClickHouse.
         annotation_labels = get_annotation_labels_for_project(project_id)
-        annotation_label_ids = [str(l.id) for l in annotation_labels]
-        label_types = {str(l.id): l.type for l in annotation_labels}
+        annotation_label_ids = [str(lbl.id) for lbl in annotation_labels]
+        label_types = {str(lbl.id): lbl.type for lbl in annotation_labels}
 
+        # No `end_user_id=` arg: the user filter is now a synthetic `user_id`
+        # filter in `filters` (resolved via the remap-aware `end_users` path
+        # above), so the builder's bespoke single-id end_user path is unused here.
         builder = BuilderCls(
             project_id=str(project_id),
             filters=filters,
@@ -1306,7 +1313,6 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             page_size=page_size,
             eval_config_ids=eval_config_ids,
             annotation_label_ids=annotation_label_ids,
-            end_user_id=end_user_id,
         )
 
         # Phase 1: Paginated spans (light columns — no input/output)
@@ -1418,21 +1424,29 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             column_config, annotation_labels
         )
 
-        # Batch-resolve end_user UUIDs → (user_id, user_id_type,
-        # user_id_hash) so each row can surface the human-readable user
-        # identifier. CH only stores the UUID; the display fields live on
-        # the PG EndUser table.
+        # Batch-resolve end_user UUIDs → (user_id, user_id_type, user_id_hash)
+        # so each row can surface the human-readable user identifier. CH only
+        # stores the UUID; the curated display fields live on the v2 `end_users`
+        # dimension (its dict). P3b step2 precondition: swap the PG
+        # `EndUser.objects.filter(id__in=…)` lookup (which is EMPTY for a net-new
+        # user's id — no PG row post-flip) for the SHIPPED, remap-aware
+        # `end_user_dict_reader.resolve_end_user_fields`. It resolves each id
+        # new→old through `end_user_id_remap` then `dictGetOrNull`s the curated
+        # fields, so a net-new span's deterministic id (no remap entry → resolves
+        # to itself) still yields its `end_users` fields, a straddler's new-id
+        # span resolves to the old curated row, and a missing/orphan id → all-None
+        # (faithful to the old FK miss). Returns {id (str): {user_id,
+        # user_id_type, user_id_hash}}.
         end_user_ids = {
             str(r.get("end_user_id")) for r in result.data if r.get("end_user_id")
         }
         end_user_map = {}
         if end_user_ids:
-            end_user_map = {
-                str(eu.id): eu
-                for eu in EndUser.objects.filter(id__in=end_user_ids).only(
-                    "id", "user_id", "user_id_type", "user_id_hash"
-                )
-            }
+            from tracer.services.clickhouse.v2.end_user_dict_reader import (
+                resolve_end_user_fields,
+            )
+
+            end_user_map = resolve_end_user_fields(end_user_ids)
 
         # Format response matching PG format
         table_data = []
@@ -1452,9 +1466,12 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
                 "created_at": row.get("created_at"),
                 "node_type": row.get("observation_type", ""),
                 "span_name": row.get("name", ""),
-                "user_id": getattr(eu, "user_id", None) if eu else None,
-                "user_id_type": getattr(eu, "user_id_type", None) if eu else None,
-                "user_id_hash": getattr(eu, "user_id_hash", None) if eu else None,
+                # `eu` is now a {user_id, user_id_type, user_id_hash} dict from
+                # `resolve_end_user_fields` (was a PG EndUser instance) — read by
+                # key, defaulting to None (the all-None record for a missing id).
+                "user_id": eu.get("user_id") if eu else None,
+                "user_id_type": eu.get("user_id_type") if eu else None,
+                "user_id_hash": eu.get("user_id_hash") if eu else None,
                 "start_time": row.get("start_time"),
                 "status": row.get("status"),
                 "latency_ms": row.get("latency_ms"),
@@ -1562,8 +1579,8 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
         # by span scores. Use the score-backed helper so span columns and
         # annotation filters match the actual data returned from ClickHouse.
         annotation_labels = get_annotation_labels_for_project(project_id)
-        annotation_label_ids = [str(l.id) for l in annotation_labels]
-        label_types = {str(l.id): l.type for l in annotation_labels}
+        annotation_label_ids = [str(lbl.id) for lbl in annotation_labels]
+        label_types = {str(lbl.id): lbl.type for lbl in annotation_labels}
 
         builder = BuilderCls(
             project_id=project_id,
@@ -1710,7 +1727,7 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
                 raise Exception("Project should be of type observe")
 
             filters = body["filters"]
-            property = body["property"]
+            _property = body["property"]
             interval = body["interval"]
             req_data_config = body["req_data_config"]
 
@@ -2761,18 +2778,31 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             project_id = str(query["project_id"])
             user_id = query.get("user_id") or None
 
-            end_user_id = None
+            # P3b step2 precondition — user_id → end_user reverse-resolve (CH, not
+            # PG). The old PG `EndUser.objects.get(user_id=…).id` raised "User not
+            # found" for a NET-NEW user (no `tracer_enduser` row post-step2). Read
+            # the curated id-SET from CH `end_users` instead (historical + net-new
+            # deterministic + straddler's both — the state-robust reverse-resolve,
+            # PG_ORM_READ_MIGRATION). The id-set then filters the spans below via
+            # `end_user_id__in` so a straddler's old + new ids both match.
+            #
+            # NOTE this endpoint's prev/next WALK stays PG (a documented CH25-TODO
+            # reader-gap above): a span carrying a resolved end_user_id is matched
+            # in PG `tracer_observationspan`. Post-step2 in production the collector
+            # writes the deterministic end_user_id onto the PG span, so the walk
+            # finds a net-new user's spans; it only fails to in a CH-ONLY rehearsal
+            # where the net-new spans were manufactured in CH but not PG. An empty
+            # id-set (unknown user) now yields an empty walk instead of raising —
+            # net-new is no longer "User not found", the intended fix.
+            end_user_ids: list[str] = []
             if user_id:
-                try:
-                    end_user_id = str(
-                        EndUser.objects.get(
-                            user_id=user_id,
-                            organization=_get_request_organization(request),
-                            project_id=project_id,
-                        ).id
-                    )
-                except EndUser.DoesNotExist as e:
-                    raise Exception("User not found for the given user_id") from e
+                from tracer.services.clickhouse.v2.end_user_dict_reader import (
+                    resolve_end_user_ids_by_user_id,
+                )
+
+                end_user_ids = resolve_end_user_ids_by_user_id(
+                    user_id, project_id=project_id
+                )
 
             project = Project.objects.get(
                 _project_workspace_scope_q(request, project_prefix=""),
@@ -2795,8 +2825,10 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
                 user_id_hash=F("end_user__user_id_hash"),
             )
 
-            if end_user_id:
-                base_query = base_query.filter(end_user_id=end_user_id)
+            if end_user_ids:
+                # IN over the curated id-set so a straddler's old + new ids both
+                # match (single-id `=` would miss half its spans post-flip).
+                base_query = base_query.filter(end_user_id__in=end_user_ids)
 
             eval_configs = CustomEvalConfig.objects.filter(
                 id__in=EvalLogger.objects.filter(

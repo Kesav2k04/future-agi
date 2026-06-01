@@ -1,457 +1,598 @@
-// AnalyzeTab — Cluster RCA agent live-stream demo.
-//
-// Triggers POST /cluster-rca/stream/<cluster_id>/ which Server-Sent-Events
-// every tool_call / tool_result / finding / synthesis / done / error event
-// from the agent's loop. Renders them chronologically while the run is in
-// flight. No persistence — closing the tab kills the run.
-//
-// Production shape (run history, reconnect-after-close, chat surface) lands
-// when the designer hands over the real UI.
-
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
   Chip,
-  CircularProgress,
+  Collapse,
   Stack,
+  Tooltip,
   Typography,
   alpha,
   useTheme,
 } from "@mui/material";
 import PropTypes from "prop-types";
 import Iconify from "src/components/iconify";
-import { HOST_API } from "src/config-global";
-import { getAccessToken } from "src/auth/context/jwt/utils";
+import { useErrorFeedStore } from "../store";
 
-const STATUS = {
-  IDLE: "idle",
-  RUNNING: "running",
-  DONE: "done",
-  ERROR: "error",
-};
+// Run-sequence definitions + makeStepMessage / buildSynthesis live in
+// `../useAnalyzeRunner` now — that hook owns the actual streaming so
+// both the headline card and this tab observe the same thread state.
+// Follow-up Q&A is handed off to Falcon, so there's no in-tab chat input.
 
-const TYPE_COLORS = {
-  reasoning: "secondary.main",
-  tool_call: "info.main",
-  tool_result: "text.secondary",
-  finding: "warning.main",
-  synthesis: "success.main",
-  error: "error.main",
-  done: "primary.main",
-};
+// ── Visual primitives ─────────────────────────────────────────────────────
 
-export default function AnalyzeTab({ error }) {
+const ACCENT = "#7857FC";
+
+// One block of a step's expanded reasoning — Claude-Code-style.
+function StepDetailBlock({ block }) {
   const theme = useTheme();
-  const [status, setStatus] = useState(STATUS.IDLE);
-  const [events, setEvents] = useState([]);
-  const [synthesis, setSynthesis] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [doneMeta, setDoneMeta] = useState(null);
-  const abortRef = useRef(null);
-  const scrollRef = useRef(null);
+  const isDark = theme.palette.mode === "dark";
 
-  // Auto-scroll to the latest event whenever the list grows.
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [events]);
+  if (block.kind === "reasoning") {
+    return (
+      <Typography
+        fontSize="11.5px"
+        color="text.secondary"
+        sx={{ lineHeight: 1.65 }}
+      >
+        {block.text}
+      </Typography>
+    );
+  }
 
-  // Cleanup on unmount — abort the in-flight fetch.
-  useEffect(
-    () => () => {
-      if (abortRef.current) abortRef.current.abort();
-    },
-    [],
-  );
+  if (block.kind === "tool") {
+    return (
+      <Box
+        sx={{
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: "6px",
+          bgcolor: isDark ? alpha("#fff", 0.025) : alpha("#000", 0.02),
+          px: 1,
+          py: 0.75,
+        }}
+      >
+        <Stack direction="row" alignItems="center" gap={0.5}>
+          <Iconify
+            icon="mdi:wrench-outline"
+            width={11}
+            sx={{ color: ACCENT }}
+          />
+          <Typography
+            fontSize="11px"
+            fontWeight={600}
+            sx={{
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+              color: "text.primary",
+            }}
+          >
+            {block.name}
+          </Typography>
+        </Stack>
+        {block.input != null && (
+          <Typography
+            fontSize="10.5px"
+            sx={{
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+              color: "text.disabled",
+              mt: 0.3,
+              wordBreak: "break-word",
+            }}
+          >
+            {block.input}
+          </Typography>
+        )}
+        {block.output != null && (
+          <Typography
+            fontSize="10.5px"
+            sx={{
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+              color: "text.secondary",
+              mt: 0.3,
+              wordBreak: "break-word",
+            }}
+          >
+            → {block.output}
+          </Typography>
+        )}
+      </Box>
+    );
+  }
 
-  const handleEvent = (evt) => {
-    if (evt.type === "stream_end") {
-      setStatus((prev) => (prev === STATUS.RUNNING ? STATUS.DONE : prev));
-      return;
-    }
-    setEvents((prev) => [...prev, evt]);
-    if (evt.type === "synthesis") setSynthesis(evt.payload);
-    if (evt.type === "done") setDoneMeta(evt.payload);
-    if (evt.type === "error") {
-      setErrorMsg(evt.payload?.message ?? "Unknown error");
-      setStatus(STATUS.ERROR);
-    }
-  };
+  if (block.kind === "list") {
+    return (
+      <Box>
+        {block.title && (
+          <Typography
+            fontSize="9.5px"
+            fontWeight={700}
+            color="text.disabled"
+            sx={{ textTransform: "uppercase", letterSpacing: "0.06em", mb: 0.5 }}
+          >
+            {block.title}
+          </Typography>
+        )}
+        <Stack gap={0.4}>
+          {block.items.map((it, i) => (
+            <Stack key={i} direction="row" gap={0.75} alignItems="flex-start">
+              <Box
+                sx={{
+                  width: 4,
+                  height: 4,
+                  borderRadius: "50%",
+                  bgcolor: "text.disabled",
+                  mt: "7px",
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                fontSize="11.5px"
+                color="text.secondary"
+                sx={{ lineHeight: 1.55 }}
+              >
+                {it}
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
+      </Box>
+    );
+  }
 
-  const startRun = async () => {
-    setEvents([]);
-    setSynthesis(null);
-    setErrorMsg(null);
-    setDoneMeta(null);
-    setStatus(STATUS.RUNNING);
+  if (block.kind === "code") {
+    return (
+      <Box
+        component="pre"
+        sx={{
+          m: 0,
+          p: 1,
+          borderRadius: "6px",
+          bgcolor: isDark ? alpha("#fff", 0.03) : alpha("#000", 0.03),
+          fontFamily: "ui-monospace, SFMono-Regular, monospace",
+          fontSize: "10.5px",
+          lineHeight: 1.5,
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          color: "text.secondary",
+          overflow: "auto",
+        }}
+      >
+        {block.text}
+      </Box>
+    );
+  }
+  return null;
+}
+StepDetailBlock.propTypes = { block: PropTypes.object.isRequired };
 
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    const clusterId = error.clusterId || error.cluster_id || error.id;
-    if (!clusterId) {
-      setErrorMsg("No cluster_id on the row — cannot start analysis.");
-      setStatus(STATUS.ERROR);
-      return;
-    }
-
-    try {
-      const token = getAccessToken();
-      const response = await fetch(
-        `${HOST_API}/cluster-rca/stream/${clusterId}/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({}),
-          signal: controller.signal,
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} ${response.statusText}`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      // SSE frames are separated by \n\n; data lines start with "data: ".
-      // We accumulate, split on the frame separator, and parse each complete
-      // frame's JSON payload.
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const frames = buffer.split("\n\n");
-        buffer = frames.pop(); // last (possibly incomplete) frame
-
-        for (const frame of frames) {
-          const dataLine = frame
-            .split("\n")
-            .find((l) => l.startsWith("data:"));
-          if (!dataLine) continue;
-          const json = dataLine.slice(5).trim();
-          if (!json) continue;
-          try {
-            handleEvent(JSON.parse(json));
-          } catch (e) {
-            // eslint-disable-next-line no-console
-            console.warn("SSE parse error:", e, json);
-          }
-        }
-      }
-    } catch (e) {
-      if (e.name !== "AbortError") {
-        setErrorMsg(e.message ?? String(e));
-        setStatus(STATUS.ERROR);
-      }
-    }
-  };
-
-  const stop = () => {
-    if (abortRef.current) abortRef.current.abort();
-    abortRef.current = null;
-    setStatus(STATUS.IDLE);
-  };
-
-  const isRunning = status === STATUS.RUNNING;
-  const isDone = status === STATUS.DONE;
-  const isError = status === STATUS.ERROR;
+function StepCard({ step }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const isRunning = step.status === "running";
+  const isQueued = step.status === "queued";
+  const isDone = step.status === "done";
+  const hasDetails = (isRunning || isDone) && step.details?.length > 0;
+  // Done steps default collapsed; the actively-running step auto-expands so
+  // you watch the reasoning stream live (like Claude Code).
+  const [expanded, setExpanded] = useState(false);
+  const open = expanded || (isRunning && hasDetails);
 
   return (
     <Box
       sx={{
-        p: 2,
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        gap: 1.5,
+        border: "1px solid",
+        borderColor: isRunning ? alpha(ACCENT, 0.35) : "divider",
+        borderRadius: "8px",
+        bgcolor: isRunning
+          ? alpha(ACCENT, isDark ? 0.08 : 0.04)
+          : isDark
+            ? alpha("#fff", 0.02)
+            : "background.paper",
+        opacity: isQueued ? 0.55 : 1,
+        transition: "all 0.2s",
+        overflow: "hidden",
       }}
     >
-      {/* ── Header ── */}
       <Stack
         direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-      >
-        <Stack direction="row" alignItems="center" gap={1}>
-          <Typography typography="m3" fontWeight="fontWeightSemiBold">
-            Cluster Analysis
-          </Typography>
-          <Chip
-            label="Demo"
-            size="small"
-            sx={{ height: 18, fontSize: 10, bgcolor: "action.hover" }}
-          />
-          {isRunning && (
-            <Chip
-              size="small"
-              label="Running"
-              color="primary"
-              icon={
-                <CircularProgress
-                  size={12}
-                  sx={{ ml: 0.5, color: "inherit" }}
-                />
-              }
-              sx={{ height: 22 }}
-            />
-          )}
-          {isDone && (
-            <Chip
-              size="small"
-              label="Done"
-              color="success"
-              icon={<Iconify icon="mdi:check" width={14} />}
-              sx={{ height: 22 }}
-            />
-          )}
-          {isError && (
-            <Chip
-              size="small"
-              label="Error"
-              color="error"
-              icon={<Iconify icon="mdi:alert" width={14} />}
-              sx={{ height: 22 }}
-            />
-          )}
-        </Stack>
-        <Stack direction="row" gap={1}>
-          {isRunning ? (
-            <Button
-              size="small"
-              variant="outlined"
-              color="warning"
-              onClick={stop}
-              startIcon={<Iconify icon="mdi:stop" width={14} />}
-            >
-              Stop
-            </Button>
-          ) : (
-            <Button
-              size="small"
-              variant="contained"
-              onClick={startRun}
-              startIcon={<Iconify icon="mdi:play" width={14} />}
-            >
-              {isDone || isError ? "Re-run" : "Start Analysis"}
-            </Button>
-          )}
-        </Stack>
-      </Stack>
-
-      {/* ── Error banner ── */}
-      {errorMsg && (
-        <Box
-          sx={{
-            p: 1.5,
-            bgcolor: alpha(theme.palette.error.main, 0.08),
-            borderRadius: 1,
-            border: "1px solid",
-            borderColor: alpha(theme.palette.error.main, 0.3),
-          }}
-        >
-          <Typography variant="caption" color="error.main">
-            {errorMsg}
-          </Typography>
-        </Box>
-      )}
-
-      {/* ── Synthesis card (when present) ── */}
-      {synthesis && (
-        <Box
-          sx={{
-            p: 2,
-            border: "1px solid",
-            borderColor: "success.main",
-            borderRadius: 1,
-            bgcolor: alpha(theme.palette.success.main, 0.05),
-          }}
-        >
-          <Stack direction="row" alignItems="center" gap={1} mb={1}>
-            <Iconify
-              icon="mdi:check-circle"
-              width={18}
-              sx={{ color: "success.main" }}
-            />
-            <Typography typography="m3" fontWeight="fontWeightSemiBold">
-              Synthesis
-            </Typography>
-            <Chip
-              size="small"
-              label={`confidence: ${synthesis.confidence}`}
-              sx={{ height: 18, fontSize: 10 }}
-            />
-          </Stack>
-          <Typography variant="body2" mb={1}>
-            {synthesis.synthesis}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            <strong>Fix:</strong> {synthesis.fix}
-          </Typography>
-          {Array.isArray(synthesis.evidence_trace_ids) &&
-            synthesis.evidence_trace_ids.length > 0 && (
-              <Typography variant="caption" color="text.disabled" mt={1}>
-                Evidence: {synthesis.evidence_trace_ids.length} trace(s)
-              </Typography>
-            )}
-        </Box>
-      )}
-
-      {/* ── Done meta ── */}
-      {doneMeta && !synthesis && (
-        <Box
-          sx={{
-            p: 1.5,
-            bgcolor: alpha(theme.palette.primary.main, 0.05),
-            borderRadius: 1,
-          }}
-        >
-          <Typography variant="caption" color="text.secondary">
-            Run ended — {doneMeta.terminated_reason} after{" "}
-            {doneMeta.turn_count} turns, {doneMeta.finding_count} finding(s),
-            no synthesis.
-          </Typography>
-        </Box>
-      )}
-
-      {/* ── Event stream ── */}
-      <Box
-        ref={scrollRef}
+        gap={1.25}
+        onClick={hasDetails ? () => setExpanded((v) => !v) : undefined}
         sx={{
-          flex: 1,
-          overflow: "auto",
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: 1,
-          p: 1.25,
-          fontFamily:
-            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-          fontSize: 12,
-          bgcolor: "background.default",
+          px: 1.5,
+          py: 1.25,
+          cursor: hasDetails ? "pointer" : "default",
+          userSelect: "none",
+          "&:hover": hasDetails
+            ? { bgcolor: isDark ? alpha("#fff", 0.02) : alpha("#000", 0.015) }
+            : {},
         }}
       >
-        {events.length === 0 ? (
-          <Typography variant="caption" color="text.disabled">
-            {status === STATUS.IDLE
-              ? "Click Start Analysis to run the agent against this cluster."
-              : "Waiting for events…"}
+        <Box
+          sx={{
+            width: 18,
+            height: 18,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            mt: "1px",
+            bgcolor: isDone
+              ? alpha("#5ACE6D", isDark ? 0.18 : 0.14)
+              : isRunning
+                ? alpha(ACCENT, 0.18)
+                : isDark
+                  ? alpha("#fff", 0.06)
+                  : alpha("#000", 0.05),
+          }}
+        >
+          {isRunning ? (
+            <Box
+              sx={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                border: "2px solid",
+                borderColor: alpha(ACCENT, 0.25),
+                borderTopColor: ACCENT,
+                animation: "spin 0.8s linear infinite",
+                "@keyframes spin": { to: { transform: "rotate(360deg)" } },
+              }}
+            />
+          ) : isDone ? (
+            <Iconify icon="mdi:check" width={12} sx={{ color: "#5ACE6D" }} />
+          ) : (
+            <Iconify icon="mdi:dots-horizontal" width={12} sx={{ color: "text.disabled" }} />
+          )}
+        </Box>
+        <Stack gap={0.4} flex={1} minWidth={0}>
+          <Typography fontSize="12.5px" fontWeight={600} color="text.primary">
+            {step.title}
           </Typography>
-        ) : (
-          <Stack gap={0.5}>
-            {events.map((evt, idx) => (
-              <EventRow key={idx} event={evt} />
-            ))}
+          {(isRunning || isDone) && (
+            <Typography fontSize="11.5px" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+              {step.detail}
+            </Typography>
+          )}
+          {isDone && step.chips?.length > 0 && (
+            <Stack direction="row" gap={0.5} flexWrap="wrap" sx={{ mt: 0.25 }}>
+              {step.chips.map((c) => (
+                <Chip
+                  key={c}
+                  label={c}
+                  size="small"
+                  sx={{
+                    height: 18,
+                    fontSize: "10px",
+                    fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                    borderRadius: "4px",
+                    bgcolor: "action.hover",
+                    color: "text.secondary",
+                    "& .MuiChip-label": { px: "6px" },
+                  }}
+                />
+              ))}
+            </Stack>
+          )}
+        </Stack>
+        {hasDetails && (
+          <Stack direction="row" alignItems="center" gap={0.3} sx={{ flexShrink: 0, mt: "1px" }}>
+            <Typography fontSize="10px" color="text.disabled">
+              {open ? "Hide" : "Reasoning"}
+            </Typography>
+            <Iconify
+              icon={open ? "mdi:chevron-up" : "mdi:chevron-down"}
+              width={15}
+              sx={{ color: "text.disabled" }}
+            />
           </Stack>
         )}
-      </Box>
+      </Stack>
+
+      {hasDetails && (
+        <Collapse in={open} unmountOnExit>
+          <Box
+            sx={{
+              px: 1.5,
+              pb: 1.5,
+              pt: 0.25,
+              ml: "30px",
+              borderTop: "1px dashed",
+              borderColor: "divider",
+            }}
+          >
+            <Stack gap={1} sx={{ pt: 1 }}>
+              {step.details.map((block, i) => (
+                <StepDetailBlock key={i} block={block} />
+              ))}
+            </Stack>
+          </Box>
+        </Collapse>
+      )}
     </Box>
   );
 }
+StepCard.propTypes = { step: PropTypes.object.isRequired };
 
-AnalyzeTab.propTypes = {
-  error: PropTypes.shape({
-    // The FE row uses `clusterId` (camelCased from `cluster_id` CharField) —
-    // that's the per-project label like "C01". We fall back to `cluster_id`
-    // or `id` for forward-compat.
-    clusterId: PropTypes.string,
-    cluster_id: PropTypes.string,
-    id: PropTypes.string,
-  }).isRequired,
-};
-
-// ── Single event row ────────────────────────────────────────────────────────
-function EventRow({ event }) {
-  const { type, payload = {} } = event;
-  const color = TYPE_COLORS[type] ?? "text.primary";
-
-  // Reasoning is the model's native thinking — show it in full (wrapped,
-  // dimmed, italic) rather than the one-line truncated preview, so it reads
-  // like a thought bubble streaming in alongside the actions.
-  if (type === "reasoning") {
-    const text = payload.reasoning || payload.content || "";
-    if (!text) return null;
-    return (
-      <Stack direction="row" gap={1} alignItems="flex-start">
-        <Box sx={{ minWidth: 80, color, fontWeight: 600, flexShrink: 0, fontSize: 11 }}>
-          🧠 thinking{payload.turn ? ` t${payload.turn}` : ""}
-        </Box>
-        <Box
+function SynthesisCard({ synthesis }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  return (
+    <Box
+      sx={{
+        border: "1px solid",
+        borderColor: alpha("#7857FC", 0.3),
+        borderRadius: "8px",
+        bgcolor: alpha("#7857FC", isDark ? 0.06 : 0.03),
+        p: 1.5,
+        position: "relative",
+      }}
+    >
+      <Stack direction="row" alignItems="center" gap={0.5} sx={{ mb: 1 }}>
+        <Iconify icon="mdi:star-four-points" width={12} sx={{ color: "#7857FC" }} />
+        <Typography
+          fontSize="10.5px"
+          fontWeight={700}
           sx={{
-            flex: 1,
-            fontStyle: "italic",
-            color: "text.secondary",
-            fontSize: 12,
-            whiteSpace: "pre-wrap",
-            opacity: 0.85,
+            color: "#7857FC",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
           }}
         >
-          {text}
-        </Box>
+          Synthesis
+        </Typography>
       </Stack>
-    );
-  }
+      <Typography fontSize="13.5px" color="text.primary" sx={{ lineHeight: 1.55, mb: 1 }}>
+        {synthesis.headline}
+      </Typography>
+      <Stack direction="row" gap={1} alignItems="flex-start">
+        <Typography
+          fontSize="10px"
+          fontWeight={700}
+          sx={{
+            color: "#5ACE6D",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            mt: "3px",
+            flexShrink: 0,
+            px: 0.75,
+            py: 0.25,
+            borderRadius: "3px",
+            bgcolor: alpha("#5ACE6D", isDark ? 0.14 : 0.12),
+          }}
+        >
+          Fix
+        </Typography>
+        <Typography fontSize="12.5px" color="text.secondary" sx={{ lineHeight: 1.6, flex: 1 }}>
+          {synthesis.fix}
+        </Typography>
+      </Stack>
+    </Box>
+  );
+}
+SynthesisCard.propTypes = {
+  synthesis: PropTypes.object.isRequired,
+};
 
-  let preview;
-  if (type === "tool_call") {
-    const args = JSON.stringify(payload.args ?? {});
-    preview = `${payload.tool}(${args.length > 80 ? `${args.slice(0, 80)}…` : args})`;
-  } else if (type === "tool_result") {
-    const res = payload.result ?? {};
-    preview = res.is_error
-      ? `← ${payload.tool}  [error: ${res.code}] ${res.message ?? ""}`
-      : `← ${payload.tool}  [ok]`;
-  } else if (type === "finding") {
-    preview = `📌  ${payload.title}  (${payload.confidence}, ${payload.finding_type})`;
-  } else if (type === "synthesis") {
-    const s = payload.synthesis ?? "";
-    preview = `✅  ${s.length > 100 ? `${s.slice(0, 100)}…` : s}`;
-  } else if (type === "error") {
-    preview = `❌  ${payload.message}`;
-  } else if (type === "done") {
-    preview = `🏁  ${payload.terminated_reason}  (${payload.turn_count} turns, ${payload.finding_count} findings)`;
-  } else {
-    preview = JSON.stringify(payload);
-  }
+function RunHeader({ label, timestamp }) {
+  return (
+    <Stack direction="row" alignItems="center" gap={1.25} sx={{ py: 0.5 }}>
+      <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
+      <Stack direction="row" alignItems="center" gap={0.5}>
+        <Iconify
+          icon="mdi:star-four-points-outline"
+          width={11}
+          sx={{ color: "text.disabled" }}
+        />
+        <Typography
+          fontSize="10px"
+          fontWeight={600}
+          color="text.disabled"
+          sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+        >
+          {label} · {timestamp}
+        </Typography>
+      </Stack>
+      <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
+    </Stack>
+  );
+}
+RunHeader.propTypes = { label: PropTypes.string, timestamp: PropTypes.string };
+
+// ── Main AnalyzeTab ───────────────────────────────────────────────────────
+
+export default function AnalyzeTab({ error }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const clusterId = error?.clusterId;
+  const thread = useErrorFeedStore(
+    (s) => s.analyzeThreadsByCluster[clusterId] ?? null,
+  );
+  const setAnalyzePendingStart = useErrorFeedStore(
+    (s) => s.setAnalyzePendingStart,
+  );
+
+  const messages = thread?.messages ?? [];
+  const runState = thread?.runState ?? "idle";
+  const isStreaming = runState === "streaming";
+
+  // Render order: completed synthesis on top, then the steps / run headers
+  // below it. While streaming there's no synthesis yet, so it's just steps.
+  const orderedMessages = useMemo(
+    () => [
+      ...messages.filter((m) => m.type === "synthesis"),
+      ...messages.filter((m) => m.type !== "synthesis"),
+    ],
+    [messages],
+  );
+
+  const scrollerRef = useRef(null);
+
+  // While streaming, follow the latest step (scroll to bottom). Once the
+  // run finishes, jump to the top so the synthesis (now on top) is visible.
+  useEffect(() => {
+    if (!scrollerRef.current) return;
+    scrollerRef.current.scrollTop =
+      runState === "streaming" ? scrollerRef.current.scrollHeight : 0;
+  }, [messages.length, runState]);
+
+  // Both empty-state CTA and Re-run dispatch via the pending flag so the
+  // shared runner (and therefore the headline card) sees the same trigger.
+  const onTriggerRun = () => setAnalyzePendingStart(clusterId, true);
+
+  // Format the run-started timestamp once.
+  const startedLabel = useMemo(() => {
+    if (!thread?.startedAt) return null;
+    const d = new Date(thread.startedAt);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }, [thread?.startedAt]);
 
   return (
-    <Stack direction="row" gap={1} alignItems="flex-start">
-      <Box
+    <Stack
+      gap={1.5}
+      sx={{
+        width: "100%",
+        height: "calc(100vh - 320px)",
+        minHeight: 480,
+        py: 0.5,
+      }}
+    >
+      {/* Context strip */}
+      <Stack
+        direction="row"
+        alignItems="center"
+        gap={1}
         sx={{
-          minWidth: 80,
-          color,
-          fontWeight: 600,
+          px: 1.5,
+          py: 1,
+          borderRadius: "8px",
+          border: "1px solid",
+          borderColor: "divider",
+          bgcolor: isDark ? alpha("#fff", 0.02) : alpha("#000", 0.02),
           flexShrink: 0,
-          fontSize: 11,
         }}
       >
-        {type}
-        {payload.turn ? ` t${payload.turn}` : ""}
-      </Box>
+        <Iconify icon="mdi:layers-outline" width={14} sx={{ color: "text.disabled" }} />
+        <Typography fontSize="12px" fontWeight={600} color="text.primary" noWrap>
+          {error?.error?.name ?? "Cluster"}
+        </Typography>
+        <Typography fontSize="11.5px" color="text.disabled">
+          · {error?.traceCount?.toLocaleString() ?? "—"} traces
+        </Typography>
+        {startedLabel && (
+          <Typography fontSize="11.5px" color="text.disabled">
+            · started {startedLabel}
+          </Typography>
+        )}
+        <Box sx={{ flex: 1 }} />
+        <Tooltip title="Re-run with current cluster state (1 credit)" arrow>
+          <span>
+            <Button
+              size="small"
+              variant="text"
+              disabled={isStreaming}
+              onClick={onTriggerRun}
+              startIcon={<Iconify icon="mdi:refresh" width={12} />}
+              sx={{
+                height: 24,
+                fontSize: "11.5px",
+                textTransform: "none",
+                color: "text.secondary",
+                "&:hover": { color: "text.primary" },
+              }}
+            >
+              Re-run
+            </Button>
+          </span>
+        </Tooltip>
+      </Stack>
+
+      {/* Scrollable message stream */}
       <Box
+        ref={scrollerRef}
         sx={{
           flex: 1,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          fontSize: 12,
+          minHeight: 0,
+          overflowY: "auto",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: "8px",
+          bgcolor: isDark ? alpha("#fff", 0.012) : "background.paper",
         }}
       >
-        {preview}
+        <Stack gap={1.25} sx={{ p: 1.5 }}>
+          {messages.length === 0 ? (
+            <Stack
+              alignItems="center"
+              justifyContent="center"
+              gap={1.25}
+              sx={{ py: 6, px: 2, textAlign: "center", maxWidth: 460, mx: "auto" }}
+            >
+              <Box
+                sx={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  bgcolor: alpha("#7857FC", isDark ? 0.16 : 0.1),
+                }}
+              >
+                <Iconify
+                  icon="mdi:star-four-points-outline"
+                  width={20}
+                  sx={{ color: "#7857FC" }}
+                />
+              </Box>
+              <Typography fontSize="14px" fontWeight={600} color="text.primary">
+                No analysis yet
+              </Typography>
+              <Typography
+                fontSize="12px"
+                color="text.secondary"
+                sx={{ lineHeight: 1.55 }}
+              >
+                Kick off a cluster-level analysis. Sub-agents will sample
+                representative calls, compare against a passing baseline, and
+                synthesise the result here.
+              </Typography>
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<Iconify icon="mdi:star-four-points" width={13} />}
+                onClick={onTriggerRun}
+                sx={{
+                  mt: 0.5,
+                  height: 32,
+                  fontSize: "12.5px",
+                  fontWeight: 600,
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  // White button in dark theme, purple in light.
+                  bgcolor: isDark ? "#fff" : "#7857FC",
+                  color: isDark ? "#111" : "#fff",
+                  px: 1.75,
+                  "&:hover": { bgcolor: isDark ? "#e8e8e8" : "#6845E8" },
+                  boxShadow: "none",
+                }}
+              >
+                Analyze this cluster
+              </Button>
+            </Stack>
+          ) : (
+            orderedMessages.map((m) => {
+              if (m.type === "step") return <StepCard key={m.id} step={m} />;
+              if (m.type === "synthesis")
+                return <SynthesisCard key={m.id} synthesis={m} />;
+              if (m.type === "run_header")
+                return <RunHeader key={m.id} label={m.label} timestamp={m.timestamp} />;
+              return null;
+            })
+          )}
+        </Stack>
       </Box>
     </Stack>
   );
 }
-
-EventRow.propTypes = {
-  event: PropTypes.shape({
-    type: PropTypes.string.isRequired,
-    payload: PropTypes.object,
-  }).isRequired,
-};
+AnalyzeTab.propTypes = { error: PropTypes.object };

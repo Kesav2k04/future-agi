@@ -22,17 +22,15 @@ import Iconify from "src/components/iconify";
 import { paths } from "src/routes/paths";
 import { useSnackbar } from "src/components/snackbar";
 import {
-  DEEP_ANALYSIS_STATUS,
   useCreateLinearIssue,
-  useErrorFeedDeepAnalysis,
   useErrorFeedSidebar,
   useLinearTeams,
-  useRunDeepAnalysis,
   useUpdateErrorFeedIssue,
 } from "src/api/errorFeed/error-feed";
 import { useOrgMembers } from "src/api/annotation-queues/annotation-queues";
 import { useAuthContext } from "src/auth/hooks";
 import { useErrorFeedStore } from "../store";
+import { isVoiceDemoCluster } from "../voiceDemoCluster";
 import PropTypes from "prop-types";
 
 const humanizeTime = (iso) => {
@@ -1151,199 +1149,6 @@ Integrations.propTypes = {
   externalIssueId: PropTypes.string,
 };
 
-// ── Deep Analysis Button ──────────────────────────────────────────────────────
-//
-// State machine driven entirely by backend:
-//   - GET /root-cause/ returns status: idle | running | done | failed
-//   - POST /deep-analysis/ dispatches a run (or no-ops if cached and not forced)
-//   - Running state survives navigation because it's derived from
-//     Trace.error_analysis_status on the server, not client memory.
-function DeepAnalysisButton({ clusterId, traceId }) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
-  const { enqueueSnackbar } = useSnackbar();
-
-  const { data: deepAnalysis, isLoading } = useErrorFeedDeepAnalysis(
-    clusterId,
-    traceId,
-  );
-  const runMutation = useRunDeepAnalysis();
-
-  const status = deepAnalysis?.status ?? DEEP_ANALYSIS_STATUS.IDLE;
-  const isDispatching = runMutation.isPending;
-  const isRunning = status === DEEP_ANALYSIS_STATUS.RUNNING || isDispatching;
-
-  const dispatch = (force) => {
-    if (!traceId) return;
-    runMutation.mutate(
-      { clusterId, traceId, force },
-      {
-        onSuccess: (res) => {
-          const newStatus = res?.data?.result?.status;
-          if (newStatus === DEEP_ANALYSIS_STATUS.RUNNING) {
-            enqueueSnackbar(
-              "Deep analysis started — takes about a minute. You can keep browsing; it'll show up here when ready.",
-              { variant: "info", autoHideDuration: 6000 },
-            );
-          } else if (newStatus === DEEP_ANALYSIS_STATUS.DONE) {
-            // Cached result; frontend will scroll on its own via the
-            // effect in OverviewTab that watches the done state.
-            enqueueSnackbar("Showing existing analysis results.", {
-              variant: "success",
-              autoHideDuration: 3000,
-            });
-          }
-        },
-        onError: () => {
-          enqueueSnackbar("Failed to start deep analysis. Please try again.", {
-            variant: "error",
-          });
-        },
-      },
-    );
-  };
-
-  // No trace selected yet (e.g. cluster has zero traces) — show disabled button
-  if (!traceId) {
-    return (
-      <Button
-        variant="contained"
-        fullWidth
-        disabled
-        startIcon={<Iconify icon="mdi:magnify-expand" width={14} />}
-        sx={{
-          height: 34,
-          fontSize: "12px",
-          fontWeight: 600,
-          borderRadius: "7px",
-          textTransform: "none",
-        }}
-      >
-        Run Deep Analysis
-      </Button>
-    );
-  }
-
-  // Initial query still loading — neutral placeholder
-  if (isLoading && !deepAnalysis) {
-    return (
-      <Box
-        sx={{
-          height: 34,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: "7px",
-        }}
-      >
-        <CircularProgress size={12} thickness={5} />
-      </Box>
-    );
-  }
-
-  if (isRunning) {
-    return (
-      <Box
-        sx={{
-          height: 34,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 1,
-          border: "1px solid",
-          borderColor: "primary.main",
-          borderRadius: "7px",
-          bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
-        }}
-      >
-        <CircularProgress size={12} thickness={5} />
-        <Typography fontSize="12px" fontWeight={600} color="primary.main">
-          Running analysis…
-        </Typography>
-      </Box>
-    );
-  }
-
-  if (status === DEEP_ANALYSIS_STATUS.DONE) {
-    return (
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Stack direction="row" alignItems="center" gap={0.5}>
-          <Iconify
-            icon="mdi:check-circle"
-            width={13}
-            sx={{ color: "#5ACE6D" }}
-          />
-          <Typography fontSize="11px" fontWeight={600} color="text.secondary">
-            Analysis complete
-          </Typography>
-        </Stack>
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<Iconify icon="mdi:refresh" width={10} />}
-          onClick={() => dispatch(true)}
-          disabled={isDispatching}
-          sx={{
-            height: 22,
-            fontSize: "10px",
-            fontWeight: 600,
-            px: 1,
-            borderRadius: "6px",
-            textTransform: "none",
-            bgcolor: isDark ? "#fff" : "#111",
-            color: isDark ? "#111" : "#fff",
-            boxShadow: "none",
-            "&:hover": {
-              bgcolor: isDark ? "#e8e8e8" : "#333",
-              boxShadow: "none",
-            },
-          }}
-        >
-          Re-run
-        </Button>
-      </Stack>
-    );
-  }
-
-  // idle or failed
-  const label =
-    status === DEEP_ANALYSIS_STATUS.FAILED
-      ? "Retry Deep Analysis"
-      : "Run Deep Analysis";
-  return (
-    <Button
-      variant="contained"
-      fullWidth
-      startIcon={<Iconify icon="mdi:magnify-expand" width={14} />}
-      onClick={() => dispatch(false)}
-      disabled={isDispatching}
-      sx={{
-        height: 34,
-        fontSize: "12px",
-        fontWeight: 600,
-        borderRadius: "7px",
-        textTransform: "none",
-        bgcolor: isDark ? "#fff" : "#111",
-        color: isDark ? "#111" : "#fff",
-        boxShadow: "none",
-        "&:hover": {
-          bgcolor: isDark ? "#e8e8e8" : "#333",
-          boxShadow: "none",
-        },
-      }}
-    >
-      {label}
-    </Button>
-  );
-}
-
-DeepAnalysisButton.propTypes = {
-  clusterId: PropTypes.string,
-  traceId: PropTypes.string,
-};
-
 // Backend returns `"llm_judge" | "deterministic"` — EvalRow expects
 // `"llm" | "pass" | "deterministic"`. Translate on the way in.
 const EVAL_TYPE_MAP = {
@@ -1375,9 +1180,12 @@ export default function ErrorMetadataPanel({ error }) {
   const selectedTraceId = useErrorFeedStore(
     (s) => s.selectedTraceIdByCluster[error?.clusterId] ?? null,
   );
+  // The synthetic voice demo cluster isn't on the backend — skip the
+  // sidebar fetch so it doesn't 404 with a "cluster not found" toast.
   const { data: sidebar, isLoading: isSidebarLoading } = useErrorFeedSidebar(
     error?.clusterId,
     selectedTraceId,
+    { enabled: !isVoiceDemoCluster(error?.clusterId) },
   );
   const sidebarPending = isSidebarLoading && !sidebar;
   // OverviewTab keys its deep-analysis query off `selectedTraceId` (with a
@@ -1518,14 +1326,6 @@ export default function ErrorMetadataPanel({ error }) {
               </Box>
             ))}
           </Box>
-        </Section>
-
-        {/* ── Deep Analysis ── */}
-        <Section title="Deep Analysis">
-          <DeepAnalysisButton
-            clusterId={error.clusterId}
-            traceId={effectiveTraceId}
-          />
         </Section>
 
         {/* ── Timeline ── */}

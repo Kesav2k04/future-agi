@@ -24,10 +24,12 @@ import ErrorSeverityBadge from "./components/ErrorSeverityBadge";
 import ErrorMetadataPanel from "./components/ErrorMetadataPanel";
 import OverviewTab from "./components/OverviewTab";
 import TracesTab from "./components/TracesTab";
-import StateGraphTab from "./components/StateGraphTab";
 import TrendsTab from "./components/TrendsTab";
+import ClusterHeadlineCard from "./components/ClusterHeadlineCard";
 import AnalyzeTab from "./components/AnalyzeTab";
 import { useErrorFeedStore } from "./store";
+import { useAnalyzeRunner } from "./useAnalyzeRunner";
+import { isVoiceDemoCluster, voiceDemoDetail } from "./voiceDemoCluster";
 
 // ── Detail page skeleton ─────────────────────────────────────────────────────
 function DetailSkeleton() {
@@ -83,12 +85,13 @@ TabLabel.propTypes = {
 };
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
+// State Graph is no longer a peer tab — per PRD §5.1 it's demoted to a
+// view-mode toggle inside the per-trace panel (Breadcrumb · State Graph · Agent Path).
 const TABS = [
   { key: "overview", label: "Overview", icon: "mdi:view-dashboard-outline" },
   { key: "traces", label: "Traces", icon: "mdi:timeline-text-outline" },
-  { key: "stategraph", label: "State Graph", icon: "mdi:graph-outline" },
   { key: "trends", label: "Trends", icon: "mdi:chart-line" },
-  { key: "analyze", label: "Analyze", icon: "mdi:brain" },
+  { key: "analyze", label: "Analyze", icon: "mdi:magnify" },
 ];
 
 // ── Main view ─────────────────────────────────────────────────────────────────
@@ -96,7 +99,18 @@ export default function ErrorFeedDetailView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { activeTab, setActiveTab } = useErrorFeedStore();
-  const { data: detail, isLoading } = useErrorFeedDetail(id);
+  const setAnalyzePendingStart = useErrorFeedStore(
+    (s) => s.setAnalyzePendingStart,
+  );
+  // The synthetic voice demo cluster isn't on the backend — short-circuit
+  // the fetch and use the local mock instead.
+  const isVoiceDemo = isVoiceDemoCluster(id);
+  const { data: fetchedDetail, isLoading: isFetchLoading } = useErrorFeedDetail(
+    id,
+    { enabled: !isVoiceDemo },
+  );
+  const detail = isVoiceDemo ? voiceDemoDetail : fetchedDetail;
+  const isLoading = isVoiceDemo ? false : isFetchLoading;
   const updateIssue = useUpdateErrorFeedIssue();
 
   const currentError = useMemo(() => {
@@ -108,6 +122,11 @@ export default function ErrorFeedDetailView() {
       representativeTrace: detail.representativeTrace,
     };
   }, [detail]);
+
+  // Single shared analyze run for this cluster. The hook owns the timers
+  // and patches the store-backed thread; the headline card and the
+  // Analyze tab both observe that thread state, so they stay in sync.
+  useAnalyzeRunner(currentError?.clusterId, currentError);
 
   if (isLoading || !currentError) {
     return <DetailSkeleton />;
@@ -279,8 +298,7 @@ export default function ErrorFeedDetailView() {
               </Tooltip>
               <Button
                 size="small"
-                variant="contained"
-                color="primary"
+                variant="outlined"
                 startIcon={<Iconify icon="mdi:check" width={13} />}
                 disabled={updateIssue.isPending}
                 onClick={() =>
@@ -294,6 +312,8 @@ export default function ErrorFeedDetailView() {
                   fontSize: "12px",
                   borderRadius: "6px",
                   textTransform: "none",
+                  borderColor: "divider",
+                  color: "text.secondary",
                 }}
               >
                 Resolve
@@ -402,11 +422,32 @@ export default function ErrorFeedDetailView() {
         {/* ── Scrollable tab content ── */}
         <Box sx={{ flex: 1, overflowY: "auto" }}>
           <Box sx={{ p: 2 }}>
+            {/* Cluster analysis card — shown only on the Overview tab.
+                The Traces / Trends tabs stay focused on their own content,
+                and the Analyze tab is the full live run itself. */}
+            {activeTab === "overview" && (
+              <Box sx={{ mb: 2 }}>
+                <ClusterHeadlineCard
+                  error={currentError}
+                  onOpenAnalyze={() => {
+                    // "View reasoning" — run already happened; just switch
+                    // to the Analyze tab to read the existing thread.
+                    setActiveTab("analyze");
+                  }}
+                  onStartAnalysis={() => {
+                    // "Debug this cluster" — the card already set the
+                    // pending-start flag (which kicks the run); jump to the
+                    // Analyze tab so the user watches the live status.
+                    setAnalyzePendingStart(currentError.clusterId, true);
+                    setActiveTab("analyze");
+                  }}
+                />
+              </Box>
+            )}
             {safeTabIndex === 0 && <OverviewTab _error={currentError} />}
             {safeTabIndex === 1 && <TracesTab error={currentError} />}
-            {safeTabIndex === 2 && <StateGraphTab error={currentError} />}
-            {safeTabIndex === 3 && <TrendsTab error={currentError} />}
-            {safeTabIndex === 4 && <AnalyzeTab error={currentError} />}
+            {safeTabIndex === 2 && <TrendsTab error={currentError} />}
+            {safeTabIndex === 3 && <AnalyzeTab error={currentError} />}
           </Box>
         </Box>
       </Box>

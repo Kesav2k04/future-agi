@@ -1,0 +1,191 @@
+import React, { useMemo } from "react";
+import { Box, Stack, Typography, alpha, useTheme } from "@mui/material";
+import PropTypes from "prop-types";
+import Iconify from "src/components/iconify";
+
+// ── Recovered EvalIOPanel ───────────────────────────────────────────────────
+// NOTE: The original file was lost in the `/tmp` wipe (2026-06-01). This is a
+// clean re-implementation that matches the call sites and the structural
+// pattern used by `VoiceEvalPanel.JudgeReasonCard`. It renders the trace's
+// input / output as labelled blobs and the judge's reason + score.
+// Replace with the richer original version if it's ever recovered from a
+// teammate's machine or an earlier git push.
+
+const PASS_COLOR = "#5ACE6D";
+const FAIL_COLOR = "#DB2F2D";
+
+// ── Format helpers ──────────────────────────────────────────────────────────
+function stringify(value) {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+// ── Single labelled blob (Input or Output) ──────────────────────────────────
+function IOBlock({ label, icon, value }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const text = stringify(value);
+  return (
+    <Box
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: "8px",
+        bgcolor: isDark ? alpha("#fff", 0.02) : alpha("#000", 0.02),
+        overflow: "hidden",
+      }}
+    >
+      <Stack
+        direction="row"
+        alignItems="center"
+        gap={0.75}
+        sx={{
+          px: 1.25,
+          py: 0.75,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          bgcolor: isDark ? alpha("#fff", 0.02) : alpha("#000", 0.015),
+        }}
+      >
+        <Iconify icon={icon} width={13} sx={{ color: "text.secondary" }} />
+        <Typography
+          fontSize="10.5px"
+          fontWeight={700}
+          color="text.secondary"
+          sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
+        >
+          {label}
+        </Typography>
+      </Stack>
+      <Box sx={{ p: 1.25, maxHeight: 260, overflowY: "auto" }}>
+        {text ? (
+          <Typography
+            component="pre"
+            sx={{
+              fontFamily:
+                'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
+              fontSize: "12px",
+              lineHeight: 1.55,
+              color: "text.primary",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              m: 0,
+            }}
+          >
+            {text}
+          </Typography>
+        ) : (
+          <Typography fontSize="12px" color="text.disabled" sx={{ fontStyle: "italic" }}>
+            No {label.toLowerCase()} captured.
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+}
+IOBlock.propTypes = {
+  label: PropTypes.string.isRequired,
+  icon: PropTypes.string.isRequired,
+  value: PropTypes.any,
+};
+
+// ── Judge reason card (same shape as VoiceEvalPanel.JudgeReasonCard) ────────
+function JudgeReasonCard({ reason, score }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const failed = score != null && score < 1;
+  const scoreColor = failed ? FAIL_COLOR : PASS_COLOR;
+  return (
+    <Box
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: "8px",
+        p: 1.5,
+        bgcolor: isDark ? alpha("#fff", 0.02) : alpha("#000", 0.02),
+      }}
+    >
+      <Stack direction="row" alignItems="center" gap={0.75} sx={{ mb: 0.75 }}>
+        <Iconify icon="mdi:scale-balance" width={13} sx={{ color: "text.secondary" }} />
+        <Typography
+          fontSize="10.5px"
+          fontWeight={700}
+          color="text.secondary"
+          sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
+        >
+          Judge reason
+        </Typography>
+        <Box sx={{ flex: 1 }} />
+        {score != null && (
+          <Box
+            sx={{
+              px: 0.75,
+              py: 0.15,
+              borderRadius: "4px",
+              bgcolor: alpha(scoreColor, isDark ? 0.16 : 0.12),
+            }}
+          >
+            <Typography
+              fontSize="10.5px"
+              fontWeight={700}
+              sx={{ color: scoreColor, fontFeatureSettings: "'tnum'" }}
+            >
+              {Number(score).toFixed(2)} / 1.00
+            </Typography>
+          </Box>
+        )}
+      </Stack>
+      <Typography
+        fontSize="12.5px"
+        color="text.primary"
+        sx={{ lineHeight: 1.6, whiteSpace: "pre-wrap" }}
+      >
+        {reason || (
+          <Box component="span" sx={{ color: "text.disabled", fontStyle: "italic" }}>
+            No judge reasoning recorded.
+          </Box>
+        )}
+      </Typography>
+    </Box>
+  );
+}
+JudgeReasonCard.propTypes = {
+  reason: PropTypes.string,
+  score: PropTypes.number,
+};
+
+// ── Main: EvalIOPanel ───────────────────────────────────────────────────────
+export default function EvalIOPanel({ trace, evalScore }) {
+  // Trace shape is resilient — both snake_case and camelCase are supported
+  // because the BE has been migrating away from a transform middleware.
+  const { input, output, judgeReason, score } = useMemo(() => {
+    const t = trace ?? {};
+    return {
+      input: t.input ?? t.input_text ?? t.inputs ?? null,
+      output: t.output ?? t.output_text ?? t.response ?? null,
+      judgeReason:
+        t.evalReason ?? t.eval_reason ?? t.judgeReason ?? t.judge_reason ?? null,
+      score: evalScore ?? t.evalScore ?? t.eval_score ?? null,
+    };
+  }, [trace, evalScore]);
+
+  return (
+    <Stack gap={1.25}>
+      <IOBlock label="Input" icon="mdi:arrow-down-bold-outline" value={input} />
+      <IOBlock label="Output" icon="mdi:arrow-up-bold-outline" value={output} />
+      <JudgeReasonCard
+        reason={judgeReason}
+        score={score != null ? Number(score) : null}
+      />
+    </Stack>
+  );
+}
+EvalIOPanel.propTypes = {
+  trace: PropTypes.object,
+  evalScore: PropTypes.number,
+};

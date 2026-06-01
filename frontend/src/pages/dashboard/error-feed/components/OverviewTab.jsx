@@ -913,22 +913,34 @@ TraceGraphView.propTypes = {
 // path mode we render a bare side-by-side (same data, no annotations) and
 // rely on the summary strip alone to communicate the diff.
 function CompareLegend({ summary }) {
+  // The failure marker is the headline — leads the strip when any node in
+  // the failing trace actually errored. Missing/added/regressed/shared
+  // then narrate the rest of the diff.
   const items = [
-    summary.added > 0 && {
+    summary.failed > 0 && {
       color: "#DB2F2D",
-      label: `+${summary.added} extra in failing`,
+      label: `${summary.failed} failed here`,
+      badge: "✕",
     },
     summary.missing > 0 && {
       color: "#5ACE6D",
-      label: `−${summary.missing} missing from failing`,
+      label: `−${summary.missing} skipped path`,
+      badge: "−",
+    },
+    summary.added > 0 && {
+      color: "#DB2F2D",
+      label: `+${summary.added} extra step${summary.added > 1 ? "s" : ""}`,
+      badge: "+",
     },
     summary.regressed > 0 && {
       color: "#F5A623",
       label: `${summary.regressed} regressed`,
+      badge: "Δ",
     },
     summary.shared > 0 && {
       color: "#9AA3AF",
       label: `${summary.shared} shared`,
+      badge: null,
     },
   ].filter(Boolean);
 
@@ -950,14 +962,36 @@ function CompareLegend({ summary }) {
           gap={0.5}
           sx={{ flexShrink: 0 }}
         >
-          <Box
-            sx={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              bgcolor: item.color,
-            }}
-          />
+          {item.badge ? (
+            <Box
+              sx={{
+                minWidth: 14,
+                height: 14,
+                px: 0.4,
+                borderRadius: "7px",
+                bgcolor: item.color,
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 9,
+                fontWeight: 700,
+                fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                lineHeight: 1,
+              }}
+            >
+              {item.badge}
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                bgcolor: item.color,
+              }}
+            />
+          )}
           <Typography
             fontSize="11px"
             fontWeight={600}

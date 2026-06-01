@@ -10,6 +10,7 @@ import statistics
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 
+import numpy as np
 import structlog
 from django.contrib.auth import get_user_model
 from django.db.models import (
@@ -26,7 +27,8 @@ from django.db.models import (
 )
 from django.db.models.functions import TruncDate
 from django.utils import timezone
-from sklearn.feature_extraction.text import TfidfVectorizer
+from scipy.stats import ks_2samp
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 from tracer.models.observation_span import EvalLogger
 from tracer.models.trace import Trace, TraceErrorAnalysisStatus
@@ -647,12 +649,6 @@ def _fetch_events_over_time(
     ]
 
 
-_FLOW_ANOMALY_RE = re.compile(
-    r"\b(skip|skipped|missing|out of order|before|after|fail at|stuck|loop|"
-    r"never|did not|didn't)\b",
-    re.IGNORECASE,
-)
-
 # Words that sklearn's default English stopword list doesn't catch but that
 # are scanner-template noise (every brief says "result"/"output"/"task",
 # every task says "asks"/"requires"/"returns"). Merged with the vectorizer's
@@ -855,146 +851,316 @@ def _cluster_highlight_terms(
     return [term for term, _ in _tfidf_distinctive_terms(target, corpus, top_k)]
 
 
+# ── Statistical helpers (effect-size vs the KNN-passing baseline) ──────────
+
+
+def _log_odds_distinctive(
+    fail_docs: list[str],
+    base_docs: list[str],
+    ngram_range: tuple[int, int] = (2, 3),
+    min_z: float = 1.96,
+    top_k: int = 8,
+) -> list[tuple[str, float, int, int]]:
+    """Monroe et al. "Fightin' Words": weighted log-odds-ratio with an
+    informative Dirichlet prior. Returns n-grams distinctive to ``fail_docs``
+    vs ``base_docs`` as ``(term, z, df_fail, df_base)`` tuples — where df_* is
+    the number of docs in each group containing the term, taken from the SAME
+    tokenization (callers must NOT re-match the n-gram against raw text; the
+    stopword-stripped n-gram won't appear verbatim there). z >= ``min_z``,
+    sorted by (z desc, longer-phrase-first).
+
+    The prior alpha_w is the *pooled* (fail+base) count per term — this is
+    what tames the rare-term inflation that makes raw TF-IDF junky on the
+    small-N clusters we deal with. For term w::
+
+        delta = log((y_f+a)/(n_f+a0-y_f-a)) - log((y_b+a)/(n_b+a0-y_b-a))
+        var   = 1/(y_f+a) + 1/(y_b+a)
+        z     = delta / sqrt(var)
+
+    where y_f/y_b = counts of w in fail/base, a = alpha_w (pooled count),
+    a0 = sum of pooled counts, n_f/n_b = total counts in fail/base.
+    """
+    if not fail_docs or not base_docs:
+        return []
+    try:
+        vec = CountVectorizer(
+            stop_words="english",
+            ngram_range=ngram_range,
+            lowercase=True,
+            token_pattern=r"(?u)\b[A-Za-z]{3,}\b",
+            min_df=2,
+        )
+        matrix = vec.fit_transform(fail_docs + base_docs)
+    except ValueError:
+        return []
+
+    n = len(fail_docs)
+    y_f = np.asarray(matrix[:n].sum(axis=0)).ravel().astype(float)
+    y_b = np.asarray(matrix[n:].sum(axis=0)).ravel().astype(float)
+    # Document frequencies from the same matrix (binarized) — the honest
+    # "how many docs contain this n-gram", immune to the stopword-gap regex
+    # mismatch a raw-text re-match would suffer.
+    binm = matrix > 0
+    df_f = np.asarray(binm[:n].sum(axis=0)).ravel().astype(int)
+    df_b = np.asarray(binm[n:].sum(axis=0)).ravel().astype(int)
+    alpha = y_f + y_b  # informative Dirichlet prior = pooled counts
+    a0 = float(alpha.sum())
+    n_f = float(y_f.sum())
+    n_b = float(y_b.sum())
+    if a0 <= 0 or n_f <= 0 or n_b <= 0:
+        return []
+
+    eps = 1e-9
+    f_num = y_f + alpha
+    b_num = y_b + alpha
+    # Denominators are >= 0 by construction (n>=y, alpha>=count); clamp the
+    # degenerate all-same-term case so log/sqrt never blow up.
+    f_den = np.maximum(n_f + a0 - f_num, eps)
+    b_den = np.maximum(n_b + a0 - b_num, eps)
+    delta = np.log(f_num / f_den) - np.log(b_num / b_den)
+    var = 1.0 / np.maximum(f_num, eps) + 1.0 / np.maximum(b_num, eps)
+    z = delta / np.sqrt(var)
+
+    terms = vec.get_feature_names_out()
+    scored = [
+        (str(terms[i]), float(z[i]), int(df_f[i]), int(df_b[i]))
+        for i in range(len(terms))
+        if z[i] >= min_z and str(terms[i]) not in _SCANNER_FILLER_STOPWORDS
+    ]
+    # z desc, then longer phrase first — when correlated n-grams tie on z,
+    # "billing api timed out" reads better than the "api timed" fragment.
+    scored.sort(key=lambda r: (round(r[1], 3), r[0].count(" ")), reverse=True)
+    return scored[:top_k]
+
+
+def _readable_phrase(
+    scored: list[tuple[str, float, int, int]],
+) -> tuple[str, float, int, int] | None:
+    """Pick the most readable phrase from log-odds output: among the terms
+    whose z is within 15% of the top, prefer the longest (most words) — turns
+    "api timed" into "billing api timed out" without dropping signal."""
+    if not scored:
+        return None
+    top_z = scored[0][1]
+    near = [r for r in scored if r[1] >= 0.85 * top_z]
+    return max(near, key=lambda r: r[0].count(" "))
+
+
+def _root_input_texts(trace_ids: list[str]) -> dict[str, str]:
+    """{trace_id: root-span ``input.value``} for the given traces. Powers the
+    failing-vs-passing input corpora for the distinctive-topic builder."""
+    if not trace_ids:
+        return {}
+    rows = (
+        ObservationSpan.objects.filter(trace_id__in=trace_ids)
+        .filter(models.Q(parent_span_id__isnull=True) | models.Q(parent_span_id=""))
+        .values_list("trace_id", "span_attributes")
+    )
+    out: dict[str, str] = {}
+    for tid, attrs in rows:
+        tid_s = str(tid)
+        if tid_s in out:
+            continue
+        text = (attrs or {}).get("input.value", "") or ""
+        if text:
+            out[tid_s] = str(text)
+    return out
+
+
+def _passing_baseline_trace_ids(
+    cluster_id: str, project_id: str, exclude: list[str], k: int = 120
+) -> list[str]:
+    """Up to ``k`` KNN-passing trace_ids for the cluster's representative input.
+
+    Computed live for now (Increment 1). Increment 4 caches this onto
+    ``TraceErrorGroup.passing_baseline_trace_ids`` via a Temporal activity; the
+    builders below are unchanged — only the call site moves.
+    """
+    # Lazy import: scan_clustering pulls the ClickHouse + embedding stack,
+    # which shouldn't load on every feed-query import.
+    from tracer.queries.scan_clustering import (
+        find_success_trace_baseline,
+        get_cluster_trace_embeddings,
+    )
+
+    rep = get_cluster_trace_embeddings(cluster_id, project_id)
+    if not rep:
+        return []
+    _rep_tid, embedding = rep
+    baseline = find_success_trace_baseline(
+        embedding, project_id, k=k, exclude_trace_ids=exclude
+    )
+    return [tid for tid, _dist in baseline]
+
+
+def _kfmt(n: float) -> str:
+    """Compact token count: 8200 -> '8.2k', 420 -> '420'."""
+    return f"{n / 1000:.1f}k" if n >= 1000 else f"{int(round(n))}"
+
+
 # ── Individual insight builders ───────────────────────────────────────────
 #
-# Each returns a PatternInsight or None. The calling function picks the
-# top-4 non-None ones, preserving priority order.
+# Each returns a PatternInsight | None. None = effect below the firing floor
+# (the stat test is the GATE, not the message). The picker ranks firing
+# builders by normalized ``effect`` (0..1) and renders the top 4. Card copy
+# is plain-English and number-light; stat rigor lives in ``evidence`` (tooltip
+# only), never in the headline/detail strings.
 
 
-def _insight_affected_scope(
-    cluster_id: str, project_id: str, trace_ids: list[str]
+def _insight_distinctive_topic(
+    cluster_id: str, project_id: str, trace_ids: list[str], baseline_ids: list[str]
 ) -> PatternInsight | None:
-    n = len(trace_ids)
-    total = TraceScanResult.objects.filter(project_id=project_id).count()
-    if n == 0 or total == 0:
+    """A topic these failing inputs share that working runs don't — log-odds
+    of failing root-inputs vs the KNN-passing baseline."""
+    if not baseline_ids:
         return None
-    pct = round(100 * n / total)
+    fail_texts = list(_root_input_texts(trace_ids).values())
+    base_texts = list(_root_input_texts(baseline_ids).values())
+    if len(fail_texts) < 2 or len(base_texts) < 2:
+        return None
+    picked = _readable_phrase(_log_odds_distinctive(fail_texts, base_texts, (2, 3)))
+    if not picked:
+        return None
+    term, z, hits, base_hits = picked
+    total = len(fail_texts)
+    # z (>=1.96) is the statistical gate; just require the phrase to actually
+    # recur (>=2 docs) so the rendered "X% of these" count isn't a single-doc
+    # fluke.
+    if hits < 2:
+        return None
+    fail_pct = round(100 * hits / total)
+    base_pct = round(100 * base_hits / len(base_texts))
     return PatternInsight(
-        value=f"{n} / {total}",
-        caption=f"traces affected ({pct}%)",
+        kind="shared_topic",
+        headline=f'These mostly involve "{term}"',
+        detail=f"{fail_pct}% of these vs {base_pct}% of working runs",
+        direction="more",
+        effect=min(1.0, float(z) / 10.0),
+        evidence={
+            "test": "log-odds w/ Dirichlet prior (Monroe)",
+            "z": round(float(z), 2),
+            "fail_pct": fail_pct,
+            "baseline_pct": base_pct,
+            "baseline": f"{len(base_texts)} KNN-passing traces",
+        },
     )
 
 
-def _insight_category_concentration(cluster_id: str) -> PatternInsight | None:
-    cats = list(
-        TraceScanIssue.objects.filter(cluster__cluster_id=cluster_id).values_list(
-            "category", flat=True
-        )
-    )
-    cats = [c for c in cats if c]
-    if not cats:
-        return None
-    counter = Counter(cats)
-    top, top_n = counter.most_common(1)[0]
-    pct = round(100 * top_n / len(cats))
-    if pct < 50:
-        return None
-    value = "All" if pct == 100 else f"{pct}%"
-    return PatternInsight(value=value, caption=top)
+def _insight_brief_phrase(cluster_id: str, project_id: str) -> PatternInsight | None:
+    """Phrase distinctive to this scanner cluster's briefs vs the rest of the
+    project's clusters (log-odds). Passing traces have no briefs, so the
+    contrast here is other clusters — not the passing baseline.
 
-
-def _insight_fix_layer_concentration(cluster_id: str) -> PatternInsight | None:
-    layers = list(
-        TraceScanIssue.objects.filter(cluster__cluster_id=cluster_id).values_list(
-            "fix_layer", flat=True
-        )
-    )
-    layers = [layer for layer in layers if layer]
-    if not layers:
-        return None
-    counter = Counter(layers)
-    top, top_n = counter.most_common(1)[0]
-    pct = round(100 * top_n / len(layers))
-    if pct < 50:
-        return None
-    value = "All" if pct == 100 else f"{pct}%"
-    return PatternInsight(value=value, caption=f"need {top} fix")
-
-
-def _insight_failure_phrase(cluster_id: str, project_id: str) -> PatternInsight | None:
-    """TF-IDF-distinctive word in this cluster's briefs vs the rest of the
-    project. A word with high score is frequent HERE but rare in other
-    clusters' briefs — that's signal, not boilerplate.
+    Briefs are fed as individual docs (NOT concatenated) so the log-odds
+    document-frequency prior is meaningful — concatenating to one-doc-per-side
+    would make ``min_df`` require a term in both sides and kill every
+    distinctive n-gram.
     """
-    cluster_ids, corpus = _project_cluster_briefs_corpus(project_id)
-    if cluster_id not in cluster_ids or len(corpus) < 2:
+    rows = (
+        TraceScanIssue.objects.filter(
+            scan_result__project_id=project_id, cluster__source=ClusterSource.SCANNER
+        )
+        .exclude(brief__isnull=True)
+        .exclude(brief="")
+        .values_list("cluster__cluster_id", "brief")
+    )
+    mine: list[str] = []
+    others: list[str] = []
+    for cid, brief in rows:
+        (mine if cid == cluster_id else others).append(brief)
+    if len(mine) < 2 or len(others) < 2:
         return None
-    target = corpus[cluster_ids.index(cluster_id)]
-    top = _tfidf_distinctive_terms(target, corpus, top_k=1)
-    if not top:
+    picked = _readable_phrase(_log_odds_distinctive(mine, others, (2, 3)))
+    if not picked:
         return None
-    term, _score = top[0]
-
-    # How many of this cluster's briefs actually mention the term?
-    # (TF-IDF picked it because it's distinctive, but we want to show a
-    # concrete count — "in 3/3 briefs".)
-    briefs = [
-        b
-        for b in TraceScanIssue.objects.filter(
-            cluster__cluster_id=cluster_id
-        ).values_list("brief", flat=True)
-        if b
-    ]
-    pattern = re.compile(rf"\b{re.escape(term)}\b", re.IGNORECASE)
-    hits = sum(1 for b in briefs if pattern.search(b))
-    total = len(briefs)
-    if total == 0 or hits < max(2, (total + 1) // 2):
+    term, z, hits, _base_hits = picked
+    total = len(mine)
+    if hits < 2:
         return None
     return PatternInsight(
-        value=f'"{term}"',
-        caption=f"in {hits}/{total} briefs",
+        kind="recurring_flag",
+        headline=f'Scans keep flagging "{term}"',
+        detail=f"in {hits} of {total} findings here, rare elsewhere",
+        direction="more",
+        effect=min(1.0, float(z) / 10.0),
+        evidence={
+            "test": "log-odds w/ Dirichlet prior (Monroe)",
+            "z": round(float(z), 2),
+            "hits": hits,
+            "total": total,
+            "baseline": "other clusters' briefs in this project",
+        },
     )
 
 
-def _insight_input_topic(cluster_id: str, project_id: str) -> PatternInsight | None:
-    """TF-IDF-distinctive word in this cluster's user inputs vs the rest of
-    the project. Signal: "these traces all share topic X".
-    """
-    cluster_ids, corpus, per_cluster_inputs = _project_cluster_inputs_corpus(project_id)
-    if cluster_id not in cluster_ids or len(corpus) < 2:
+def _insight_distribution_shift(
+    trace_ids: list[str], baseline_ids: list[str], metric: str
+) -> PatternInsight | None:
+    """KS two-sample on a per-trace numeric (``latency`` or ``tokens``) vs the
+    passing baseline. Fires when the distributions differ (p < 0.05) AND the
+    failing side is materially larger (median ratio >= 1.5)."""
+    if not baseline_ids:
         return None
-    target = corpus[cluster_ids.index(cluster_id)]
-    top = _tfidf_distinctive_terms(target, corpus, top_k=1)
-    if not top:
-        return None
-    term, _score = top[0]
+    fail_tot = _get_trace_totals_batch(trace_ids)
+    base_tot = _get_trace_totals_batch(baseline_ids)
 
-    inputs_map = per_cluster_inputs.get(cluster_id, {})
-    total = len(inputs_map)
-    if total == 0:
+    def _pick(totals: dict) -> list[float]:
+        vals = []
+        for lat, prompt, completion in totals.values():
+            v = lat if metric == "latency" else (prompt or 0) + (completion or 0)
+            if v:
+                vals.append(float(v))
+        return vals
+
+    fail_vals = _pick(fail_tot)
+    base_vals = _pick(base_tot)
+    if len(fail_vals) < 3 or len(base_vals) < 3:
         return None
-    pattern = re.compile(rf"\b{re.escape(term)}\b", re.IGNORECASE)
-    hits = sum(1 for text in inputs_map.values() if pattern.search(text))
-    if hits < max(2, (total + 1) // 2):
+    try:
+        ks = ks_2samp(fail_vals, base_vals)
+    except ValueError:
         return None
-    value = "All" if hits == total else f"{hits}/{total}"
+    if ks.pvalue > 0.05:
+        return None
+    fail_med = float(np.median(fail_vals))
+    base_med = float(np.median(base_vals))
+    if base_med <= 0 or fail_med / base_med < 1.5:
+        return None
+    ratio = fail_med / base_med
+    evidence = {
+        "test": "KS two-sample",
+        "p_value": round(float(ks.pvalue), 4),
+        "ks_stat": round(float(ks.statistic), 3),
+        "fail_median": round(fail_med, 1),
+        "baseline_median": round(base_med, 1),
+        "baseline": f"{len(base_vals)} KNN-passing traces",
+    }
+    if metric == "latency":
+        fs, bs = fail_med / 1000.0, base_med / 1000.0
+        detail = f"~{fs:.1f}s typical vs ~{bs:.1f}s on working runs"
+        if fs >= 10:
+            detail += " — likely timing out"
+        return PatternInsight(
+            kind="speed",
+            headline="These run slow",
+            detail=detail,
+            direction="slower",
+            effect=min(1.0, (ratio - 1.0) / 4.0),
+            evidence=evidence,
+        )
     return PatternInsight(
-        value=value,
-        caption=f'share topic: "{term}"',
+        kind="tokens",
+        headline="These burn far more tokens",
+        detail=f"~{_kfmt(fail_med)} vs ~{_kfmt(base_med)} tokens per run",
+        direction="more",
+        effect=min(1.0, (ratio - 1.0) / 4.0),
+        evidence=evidence,
     )
 
 
-def _insight_avg_turns(trace_ids: list[str]) -> PatternInsight | None:
-    if not trace_ids:
-        return None
-    metas = TraceScanResult.objects.filter(trace_id__in=trace_ids).values_list(
-        "meta", flat=True
-    )
-    turns = []
-    for meta in metas:
-        n = (meta or {}).get("turn_count") or 0
-        if n > 0:
-            turns.append(n)
-    if not turns or statistics.fmean(turns) < 1.5:
-        return None
-    avg = statistics.fmean(turns)
-    return PatternInsight(
-        value=f"{avg:.1f}",
-        caption="avg turns per trace",
-    )
-
-
-def _insight_missing_tools(trace_ids: list[str]) -> PatternInsight | None:
+def _insight_missing_tool(trace_ids: list[str]) -> PatternInsight | None:
+    """A tool the agent had available but didn't use — the most actionable
+    scanner signal ("the missing step")."""
     if not trace_ids:
         return None
     metas = TraceScanResult.objects.filter(trace_id__in=trace_ids).values_list(
@@ -1015,64 +1181,62 @@ def _insight_missing_tools(trace_ids: list[str]) -> PatternInsight | None:
     if not missing_counter or traces_with_tools == 0:
         return None
     top_tool, top_n = missing_counter.most_common(1)[0]
-    return PatternInsight(
-        value=f"{top_n}/{traces_with_tools}",
-        caption=f"missing tool: {top_tool}",
-    )
-
-
-def _insight_flow_anomaly(cluster_id: str) -> PatternInsight | None:
-    """Fraction of briefs mentioning flow / ordering / missing-step phrases."""
-    briefs = list(
-        TraceScanIssue.objects.filter(cluster__cluster_id=cluster_id).values_list(
-            "brief", flat=True
-        )
-    )
-    briefs = [b for b in briefs if b]
-    if not briefs:
+    if top_n < max(2, (traces_with_tools + 1) // 2):
         return None
-    hits = sum(1 for b in briefs if _FLOW_ANOMALY_RE.search(b))
-    total = len(briefs)
-    if hits < max(2, (total + 2) // 3):
-        return None
-    pct = round(100 * hits / total)
+    never = top_n == traces_with_tools
+    if never:
+        headline = f"The agent never used `{top_tool}`"
+        detail = (
+            f"available in all {traces_with_tools}, called in none "
+            "— could be the missing step"
+        )
+    else:
+        headline = f"The agent skips the `{top_tool}` tool"
+        detail = f"available but unused in {top_n} of {traces_with_tools}"
     return PatternInsight(
-        value=f"{hits}/{total}",
-        caption=f"flow anomaly briefs ({pct}%)",
+        kind="missing_step",
+        headline=headline,
+        detail=detail,
+        direction="missing",
+        effect=top_n / traces_with_tools,
+        evidence={
+            "tool": top_tool,
+            "missing_in": top_n,
+            "traces_with_tools": traces_with_tools,
+        },
     )
 
 
-def _eval_score_insights(trace_ids: list[str]) -> list[PatternInsight]:
-    """Build per-eval average score insight cards for eval-sourced clusters.
-
-    Returns one card per CustomEvalConfig that has scores on the cluster's traces,
-    sorted by lowest average first (worst evals surface first).
-    """
-    rows = (
-        EvalLogger.objects.filter(
-            trace_id__in=trace_ids,
-            custom_eval_config__isnull=False,
-            deleted=False,
-        )
-        .values("custom_eval_config__name")
-        .annotate(avg_score=Avg(EVAL_SCORE_EXPR))
-        .filter(avg_score__isnull=False)
-        .order_by("avg_score")
+def _scanner_key_moments(trace_ids: list[str]) -> list[KeyMoment]:
+    """Deduped kevinified key-moment pairs from the cluster's scan results
+    (max 8). Separate from the insight grid — rendered as its own list."""
+    rows = TraceScanResult.objects.filter(trace_id__in=trace_ids).values_list(
+        "key_moments", flat=True
     )
-    return [
-        PatternInsight(
-            value=f"{round(r['avg_score'] * 100)}%",
-            caption=f"avg {r['custom_eval_config__name']}",
-        )
-        for r in rows
-    ]
+    seen: set = set()
+    out: list[KeyMoment] = []
+    for km_list in rows:
+        for km in km_list or []:
+            kv = km.get("kevinified", "")
+            if not kv or kv in seen:
+                continue
+            seen.add(kv)
+            out.append(KeyMoment(kevinified=kv, verbatim=km.get("verbatim", "") or ""))
+            if len(out) >= 8:
+                return out
+    return out
 
 
 def _fetch_pattern_summary(cluster_id: str) -> PatternSummary:
-    """Build the adaptive 4-card Pattern Summary for a cluster.
+    """Adaptive Pattern Summary: effect-size cards vs the KNN-passing baseline.
 
-    For scanner clusters: runs scanner-specific insight builders.
-    For eval clusters: shows affected scope + per-eval average scores.
+    Runs all applicable builders, keeps the ones that clear their firing floor
+    (the stat test is the gate), ranks by normalized effect size, renders the
+    top 4. Fewer than 4 strong cards is fine — better than 4 with 2 weak.
+
+    Computed live (Increment 1). Increment 4 moves this into a Temporal
+    ``compute_pattern_insights`` activity that caches the result onto
+    ``TraceErrorGroup.pattern_insights``; the builders don't change.
     """
     cluster = TraceErrorGroup.objects.filter(cluster_id=cluster_id).first()
     if not cluster:
@@ -1080,50 +1244,26 @@ def _fetch_pattern_summary(cluster_id: str) -> PatternSummary:
 
     project_id = str(cluster.project_id)
     trace_ids = _trace_ids_for_cluster(cluster_id)
+    is_scanner = cluster.source == ClusterSource.SCANNER
 
-    MAX_INSIGHTS = 4
+    baseline_ids = _passing_baseline_trace_ids(cluster_id, project_id, exclude=trace_ids)
 
-    if cluster.source == ClusterSource.EVAL:
-        # Eval clusters: affected scope + eval score averages
-        scope = _insight_affected_scope(cluster_id, project_id, trace_ids)
-        score_cards = _eval_score_insights(trace_ids)
-        candidates = ([scope] if scope else []) + score_cards
-        insights = candidates[:MAX_INSIGHTS]
-        return PatternSummary(insights=insights, key_moments=[])
-
-    # Scanner clusters: original logic
-    scan_key_moments = TraceScanResult.objects.filter(
-        trace_id__in=trace_ids
-    ).values_list("key_moments", flat=True)
-
-    seen: set = set()
-    key_moments: list[KeyMoment] = []
-    for km_list in scan_key_moments:
-        for km in km_list or []:
-            kv = km.get("kevinified", "")
-            if not kv or kv in seen:
-                continue
-            seen.add(kv)
-            key_moments.append(
-                KeyMoment(kevinified=kv, verbatim=km.get("verbatim", "") or "")
-            )
-            if len(key_moments) >= 8:
-                break
-        if len(key_moments) >= 8:
-            break
-
-    candidates = [
-        _insight_affected_scope(cluster_id, project_id, trace_ids),
-        _insight_category_concentration(cluster_id),
-        _insight_fix_layer_concentration(cluster_id),
-        _insight_failure_phrase(cluster_id, project_id),
-        _insight_avg_turns(trace_ids),
-        _insight_missing_tools(trace_ids),
-        _insight_flow_anomaly(cluster_id),
-        _insight_input_topic(cluster_id, project_id),
+    # Shared builders (both sources) compare vs the KNN-passing baseline.
+    candidates: list[PatternInsight | None] = [
+        _insight_distinctive_topic(cluster_id, project_id, trace_ids, baseline_ids),
+        _insight_distribution_shift(trace_ids, baseline_ids, "latency"),
+        _insight_distribution_shift(trace_ids, baseline_ids, "tokens"),
     ]
-    insights = [i for i in candidates if i is not None][:MAX_INSIGHTS]
+    # Scanner-only builders (no passing counterpart for briefs / scan meta).
+    if is_scanner:
+        candidates.append(_insight_missing_tool(trace_ids))
+        candidates.append(_insight_brief_phrase(cluster_id, project_id))
 
+    firing = [c for c in candidates if c is not None]
+    firing.sort(key=lambda c: c.effect, reverse=True)
+    insights = firing[:4]
+
+    key_moments = _scanner_key_moments(trace_ids) if is_scanner else []
     return PatternSummary(insights=insights, key_moments=key_moments)
 
 

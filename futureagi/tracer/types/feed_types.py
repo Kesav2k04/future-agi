@@ -157,14 +157,33 @@ class KeyMoment:
 
 @dataclass
 class PatternInsight:
-    """One cluster-level insight card in the Overview's Pattern Summary grid.
+    """One effect-size insight card in the Overview Pattern Summary grid.
 
-    ``value`` is the punchy metric ("3 / 21", "All", "4.2").
-    ``caption`` is the descriptive text under it.
+    Sentence-first, not number-first. The card answers "what's distinct about
+    these failures vs working runs, in plain words a non-statistician can act
+    on":
+
+    - ``headline`` — the behaviour in plain language ("The agent never used
+      escalate_to_human"). Verb-led, names the thing, agent as subject.
+    - ``detail``   — the human-unit contrast ("available in all 20, called in
+      none"). Always %/seconds/counts, never z/p/lift/"baseline".
+    - ``kind``     — drives the FE kicker + icon (tool_usage | speed | tokens |
+      missing_step | recurring_flag | shared_topic | regression | related).
+    - ``direction``— more | less | slower | faster | missing | new | cooccur;
+      FE color/arrow.
+    - ``evidence`` — tooltip-only rigor (test name, p-value, lift, sample
+      sizes, baseline definition). NEVER rendered in the card text.
+
+    ``effect`` is the effect-size magnitude the adaptive picker ranks by; it is
+    not serialized to the wire.
     """
 
-    value: str
-    caption: str
+    kind: str
+    headline: str
+    detail: str
+    direction: str
+    effect: float = 0.0
+    evidence: dict = field(default_factory=dict)
 
 
 @dataclass

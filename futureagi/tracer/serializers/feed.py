@@ -180,8 +180,12 @@ class KeyMomentSerializer(serializers.Serializer):
 
 
 class PatternInsightSerializer(serializers.Serializer):
-    value = serializers.CharField()
-    caption = serializers.CharField()
+    kind = serializers.CharField()
+    headline = serializers.CharField()
+    detail = serializers.CharField(allow_blank=True)
+    direction = serializers.CharField()
+    # Tooltip-only stat rigor (test name, p-value, lift, sample sizes).
+    evidence = serializers.DictField(required=False)
 
 
 class PatternSummarySerializer(serializers.Serializer):

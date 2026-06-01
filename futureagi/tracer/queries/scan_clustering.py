@@ -500,15 +500,19 @@ def store_trace_input_embeddings(
         db.close()
 
 
-def find_nearest_success_trace(
+def find_success_trace_baseline(
     query_embedding: List[float],
     project_id: str,
+    k: int = 120,
     exclude_trace_ids: Optional[List[str]] = None,
-) -> Optional[Tuple[str, float]]:
+) -> List[Tuple[str, float]]:
     """
-    KNN: find the nearest success trace (has_issues=False) to the query embedding.
+    KNN: up to ``k`` nearest success traces (has_issues=False) to the query
+    embedding, sorted nearest-first.
 
-    Returns (trace_id, distance) or None if no success traces exist.
+    Powers the Pattern Summary "vs working runs" baseline AND the per-trace
+    Compare-with-passing match (build once, use twice). Returns a list of
+    (trace_id, cosine_distance) — empty if no success traces exist.
     """
     db = ClickHouseVectorDB()
     try:
@@ -530,16 +534,29 @@ def find_nearest_success_trace(
             AND has_issues = false
             {exclude_clause}
             ORDER BY distance ASC
-            LIMIT 1
+            LIMIT {int(k)}
             """,
             {"project_id": project_id},
         )
-
-        if rows:
-            return str(rows[0][0]), rows[0][1]
-        return None
+        return [(str(tid), dist) for tid, dist in rows]
     finally:
         db.close()
+
+
+def find_nearest_success_trace(
+    query_embedding: List[float],
+    project_id: str,
+    exclude_trace_ids: Optional[List[str]] = None,
+) -> Optional[Tuple[str, float]]:
+    """
+    KNN: find the nearest success trace (has_issues=False) to the query embedding.
+
+    Returns (trace_id, distance) or None if no success traces exist.
+    """
+    rows = find_success_trace_baseline(
+        query_embedding, project_id, k=1, exclude_trace_ids=exclude_trace_ids
+    )
+    return rows[0] if rows else None
 
 
 def get_cluster_trace_embeddings(

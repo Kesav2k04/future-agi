@@ -1014,6 +1014,67 @@ class CHSpanReader:
         ).result_rows
         return [str(r[0]) for r in rows]
 
+    # ─── Distinct trace ids of ONE session (the session→trace_ids fix) ────────
+    def session_trace_ids(self, project_id: str, session_id: str) -> list[str]:
+        """Distinct ``trace_id`` of every (live) span belonging to ``session_id``
+        — the CH re-derivation of the dead ``Trace.session`` reverse-FK walk
+        (Slice D, DESIGN §5 / PG_ORM_READ_MIGRATION).
+
+        Replaces ``Trace.objects.filter(session=session)`` /
+        ``trace_session.traces.annotate(...)`` — post-flip the ``Trace.session``
+        FK is ``None`` for EVERY trace (only spans carry ``trace_session_id``),
+        so the PG walk returns EMPTY for ALL sessions (net-new AND historical).
+        This reads the span fact directly: a span's ``trace_session_id`` is the
+        single source of session membership.
+
+        Remap-aware on BOTH sides (``id_remap_sql``), so a cross-cutover straddler
+        reads as ONE session whose trace set is its OLD-id spans' traces UNION its
+        NEW-id spans' traces:
+
+          • The INPUT ``session_id`` is resolved new→old first
+            (``_resolve_session_ids_to_canonical``): a straddler queried by EITHER
+            its old curated id or its new deterministic id collapses to the one
+            survivor (old) id; a net-new id (no remap row) resolves to itself; an
+            already-old id resolves to itself.
+          • Each SPAN's ``trace_session_id`` is then resolved new→old
+            (``_session_filter_remap`` — the same join/predicate
+            ``distinct_session_ids_with_filters`` uses) and matched against that
+            resolved input id. So a straddler's NEW-id spans (carrying the new id)
+            AND its OLD-id spans (carrying the old id) BOTH match the survivor →
+            their traces are returned as ONE complete set. Pre-flip every span is
+            old-id (no ``new_id`` match) → resolved == own id → byte-identical
+            no-op (gate B).
+
+        ``project_id`` is REQUIRED and pinned: the spans table is multi-tenant, so
+        an unscoped read could surface another tenant's traces if a session id
+        ever collided — mirrors ``session_exists`` /
+        ``distinct_session_ids_with_filters``. Returns ``[]`` when either argument
+        is falsy or the session has no live spans (the caller treats an empty set
+        the same as the old empty queryset).
+
+        The returned ids are the spans' RAW ``trace_id`` strings (a trace is never
+        re-keyed by the id-remap — only the session surrogate is), suitable for a
+        downstream ``Trace.objects.filter(id__in=…)``.
+        """
+        if not project_id or not session_id:
+            return []
+        # Resolve the INPUT id new→old so a straddler queried by either id, and a
+        # net-new id, both compare survivor==survivor against the span side below.
+        resolved_input = self._resolve_session_ids_to_canonical([str(session_id)])[
+            str(session_id)
+        ]
+        # The span-side remap join + ``<resolved> = %(sid)s`` predicate (same as
+        # the single-session filter ``distinct_session_ids_with_filters`` uses).
+        session_join, session_pred = self._session_filter_remap()
+        rows = self._client.query(
+            f"SELECT DISTINCT toString(spans.trace_id) AS tid "
+            f"FROM spans FINAL {session_join} "
+            f"WHERE spans.project_id = %(p)s AND {session_pred} "
+            f"  AND spans.is_deleted = 0",
+            parameters={"p": str(project_id), "sid": resolved_input},
+        ).result_rows
+        return [str(r[0]) for r in rows]
+
     # ─── Group-by name with aggregates (error_analysis tool patterns) ────────
     def per_project_group_by_name(
         self,

@@ -306,16 +306,20 @@ def resolve_session_fields(
     trace_session_ids: Iterable[object],
 ) -> dict[str, dict[str, object]]:
     """Batch-resolve ``{trace_session_id (str) -> {external_session_id,
-    first_seen, bookmarked, display_name}}`` — the curated CH identity overlaid
-    with the PG user fields (P3b step2, the Slice C/D building block).
+    first_seen, project_id, bookmarked, display_name}}`` — the curated CH identity
+    overlaid with the PG user fields (P3b step2, the Slice C/D building block).
 
     Replaces the PG ``TraceSession.objects.get(...)`` field reads that 404 a
     net-new / straddler-by-new-id session. The record unifies:
 
-      • ``external_session_id`` / ``first_seen`` — from the CH ``trace_sessions``
-        RMT (``FINAL``), resolved through ``trace_session_id_remap`` so a
-        straddler returns its (old) survivor row whether queried by old or new
-        id, and a net-new session returns its dual-write row.
+      • ``external_session_id`` / ``first_seen`` / ``project_id`` — from the CH
+        ``trace_sessions`` RMT (``FINAL``), resolved through
+        ``trace_session_id_remap`` so a straddler returns its (old) survivor row
+        whether queried by old or new id, and a net-new session returns its
+        dual-write row. ``project_id`` is the session's owning tenant (Slice D:
+        the eval-context detail org-scopes on it and feeds it to
+        ``session_trace_ids``, which has no other way to learn a net-new session's
+        project).
       • ``bookmarked`` / ``display_name`` — overlaid from PG ``TraceSessionOverlay``
         (DESIGN §5), one cheap soft-id query keyed by the **resolved** id. A
         session with no overlay row → ``bookmarked=False`` / ``display_name=None``
@@ -329,6 +333,7 @@ def resolve_session_fields(
         result — the caller decides 404 (mirrors the old ``.get`` raising).
       • ``external_session_id`` ``''`` (PG NULL ``name`` coerced on write) is
         normalized back to ``None`` — same as ``resolve_external_session_ids``.
+      • ``project_id`` is returned as a ``str``.
       • When several input ids resolve to the SAME survivor (straddler old+new
         both passed), each input id maps to its own copy of the one entity.
       • Returns ``{}`` for empty input (no CH round-trip).
@@ -343,12 +348,13 @@ def resolve_session_fields(
     try:
         # Resolve new→old in the inner subquery (plain (input_id, resolved_id)
         # columns), join the curated table on the resolved id as a plain column,
-        # and pull external_session_id/first_seen off the survivor row. FINAL for
-        # immediate visibility of the net-new dual-write + RMT latest-wins.
+        # and pull external_session_id/first_seen/project_id off the survivor row.
+        # FINAL for immediate visibility of the net-new dual-write + RMT
+        # latest-wins.
         result = client.query(
             (
                 f"SELECT toString(r.input_id), toString(r.resolved_id), "
-                f"ts.external_session_id, ts.first_seen "
+                f"ts.external_session_id, ts.first_seen, toString(ts.project_id) "
                 f"FROM ("
                 f"  SELECT ids.sid AS input_id, {resolved} AS resolved_id "
                 f"  FROM (SELECT arrayJoin(%(ids)s::Array(UUID)) AS sid) AS ids "
@@ -368,13 +374,14 @@ def resolve_session_fields(
     out: dict[str, dict[str, object]] = {}
     resolved_by_input: dict[str, str] = {}
     for row in result.result_rows:
-        input_id, resolved_id, external, first_seen = row
+        input_id, resolved_id, external, first_seen, project_id = row
         resolved_by_input[input_id] = resolved_id
         out[input_id] = {
             # '' (PG NULL name coerced on write) → None, parity with the old
             # PG-name read. Overlay defaults filled below.
             "external_session_id": external or None,
             "first_seen": first_seen,
+            "project_id": project_id,
             "bookmarked": False,
             "display_name": None,
         }

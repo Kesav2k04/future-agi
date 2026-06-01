@@ -290,7 +290,28 @@ def build_session_context(session) -> dict | None:
         from tracer.models.trace import Trace
         from tracer.services.clickhouse.v2 import get_reader
 
-        trace_qs = Trace.objects.filter(session=session, deleted=False)
+        # Derive the session's trace set from CH spans, NOT the ``Trace.session``
+        # reverse FK (Slice D, DESIGN §5 / PG_ORM_READ_MIGRATION): post-flip that
+        # FK is ``None`` for EVERY trace (only spans carry ``trace_session_id``),
+        # so ``Trace.objects.filter(session=session)`` returns EMPTY for ALL
+        # sessions. ``session_trace_ids`` resolves the input id AND each span's id
+        # new→old (remap-aware), so a straddler yields its old∪new spans' traces as
+        # ONE set and a net-new session (no PG row) yields its real trace set.
+        # ``session`` here is either a saved PG ``TraceSession`` (span/trace-level
+        # callers) or the unsaved vehicle ``evaluate_trace_session_observe`` builds
+        # — both carry ``.id`` and ``.project_id`` (the vehicle's is the eval
+        # config's project). Trace itself is still PG, so the ids drive a PG
+        # ``id__in`` filter (Trace is never re-keyed; only the session surrogate).
+        session_id = getattr(session, "id", None)
+        project_id = getattr(session, "project_id", None)
+        if session_id is None or project_id is None:
+            _session_trace_ids: list[str] = []
+        else:
+            with get_reader() as reader:
+                _session_trace_ids = reader.session_trace_ids(
+                    str(project_id), str(session_id)
+                )
+        trace_qs = Trace.objects.filter(id__in=_session_trace_ids, deleted=False)
         # Cap at 100 traces for the in-prompt summary; the agent uses
         # explore_trace for deeper drill-down.
         traces_page = list(trace_qs.order_by("created_at")[:100])
@@ -310,8 +331,16 @@ def build_session_context(session) -> dict | None:
         # aggregate which was not capped); the per-trace breakdown and
         # the inline span list are only populated for traces in the
         # 100-trace page so trace_summaries below still iterates the
-        # capped set.
-        session_id = getattr(session, "id", None)
+        # capped set. (``session_id`` resolved once at the top of the try.)
+        # ``list_by_session`` matches the RAW input ``session_id`` (it resolves
+        # each span new→old and compares to this id), whereas ``session_trace_ids``
+        # above resolves the INPUT id too. They agree because every caller of this
+        # path hands a SURVIVOR (old) or NET-NEW id, never a straddler's raw NEW id
+        # (the session list/detail surfaces resolved/old ids — trace_session.py — and
+        # the eval session vehicle is built with the survivor/net-new id); for those
+        # the input resolves to itself, so both reads see the same session. (A
+        # straddler's NEW id would split here — empty span-agg vs full trace set —
+        # but no entry point produces one.)
         if session_id is None:
             _ch_spans = []
         else:
@@ -2427,15 +2456,34 @@ def _resolve_session_path(trace_session: TraceSession, path: str):
         from django.db.models import OuterRef, Subquery
         from django.db.models.functions import Coalesce
 
+        from tracer.services.clickhouse.v2 import get_reader
+
+        # Derive the session's trace ids from CH spans, NOT the
+        # ``trace_session.traces`` reverse FK (Slice D, DESIGN §5 /
+        # PG_ORM_READ_MIGRATION): post-flip the ``Trace.session`` FK is ``None``
+        # for EVERY trace, so the reverse accessor returns EMPTY for ALL sessions
+        # (and ``trace_session`` here is the UNSAVED vehicle
+        # ``evaluate_trace_session_observe`` builds — it has no DB rows pointing at
+        # it at all). ``session_trace_ids`` is remap-aware on the input id AND each
+        # span's id, so a straddler yields its old∪new traces as one set and a
+        # net-new session yields its real set. The vehicle carries ``.id`` and
+        # ``.project_id`` (the eval config's project). Trace stays PG → ``id__in``.
+        _project_id = getattr(trace_session, "project_id", None)
+        _session_id = getattr(trace_session, "id", None)
+        if _project_id is None or _session_id is None:
+            _trace_ids: list[str] = []
+        else:
+            with get_reader() as reader:
+                _trace_ids = reader.session_trace_ids(
+                    str(_project_id), str(_session_id)
+                )
+
         root_start = (
-            # CH25-TODO(needs: root-span-per-trace fetch): this is a
-            # Django Subquery correlated against the outer Trace.id; the
-            # CHSpanReader API as of 2026-05-26 has no equivalent. To
-            # migrate we would need a reader method that takes a list
-            # of trace_ids and returns {trace_id: earliest_root_start},
-            # e.g. earliest_root_span_by_trace_ids(trace_ids). Deferred
-            # per ch25 chunk Rule 1 (no new reader methods without a
-            # request).
+            # The earliest-root-span ordering stays a PG ``ObservationSpan``
+            # Subquery correlated against the outer Trace.id (CH25-TODO: no
+            # CHSpanReader equivalent for a correlated per-trace earliest-root
+            # fetch as of 2026-05-26; the trace SET is now CH-derived above, the
+            # ORDERING remains PG — deferred per ch25 chunk Rule 1).
             ObservationSpan.objects.filter(
                 trace_id=OuterRef("id"), parent_span_id__isnull=True
             )
@@ -2443,9 +2491,9 @@ def _resolve_session_path(trace_session: TraceSession, path: str):
             .values("start_time")[:1]
         )
         traces = list(
-            trace_session.traces.annotate(
-                _root_start=Coalesce(Subquery(root_start), "created_at")
-            ).order_by("_root_start", "id")
+            Trace.objects.filter(id__in=_trace_ids, deleted=False)
+            .annotate(_root_start=Coalesce(Subquery(root_start), "created_at"))
+            .order_by("_root_start", "id")
         )
         return _resolve_collection_path(traces, rest, _resolve_trace_path)
 

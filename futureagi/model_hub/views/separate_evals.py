@@ -118,9 +118,9 @@ from model_hub.utils.function_eval_params import (
 )
 from model_hub.utils.SQL_queries import SQLQueryHandler
 from model_hub.views.utils.evals import run_eval_func, run_eval_func_task
+from tfc.middleware.workspace_context import get_current_workspace
 from tfc.settings.settings import BASE_URL
 from tfc.telemetry import wrap_for_thread
-from tfc.middleware.workspace_context import get_current_workspace
 from tfc.utils.api_contracts import validated_request
 from tfc.utils.error_codes import get_error_message
 from tfc.utils.functions import calculate_eval_average
@@ -138,7 +138,7 @@ except ImportError:
 
 logger = structlog.get_logger(__name__)
 
-from tfc.constants.api_calls import APICallStatusChoices
+from tfc.constants.api_calls import APICallStatusChoices  # noqa: E402
 
 try:
     from ee.usage.models.usage import APICallLog
@@ -1415,12 +1415,12 @@ class GetEvalTemplates(APIView):
                 logs = []
             else:
                 logs = APICallLog.objects.filter(
-                organization=getattr(request, "organization", None)
-                or request.user.organization,
-                deleted=False,
-                created_at__gte=start_date,
-                source_id__in=paginated_template_ids,
-            ).values("source_id", "created_at", "status", "config", "updated_at")
+                    organization=getattr(request, "organization", None)
+                    or request.user.organization,
+                    deleted=False,
+                    created_at__gte=start_date,
+                    source_id__in=paginated_template_ids,
+                ).values("source_id", "created_at", "status", "config", "updated_at")
 
             template_logs_map = defaultdict(list)
             for log in logs:
@@ -2762,9 +2762,7 @@ class EvalTemplateVersionListView(APIView):
                         eval_tags=list(v.eval_tags or []),
                         # Derived; tolerate camelCase from older FE round-trips.
                         choices=cs.get("choices") or [],
-                        choices_map=cs.get("choices_map")
-                        or cs.get("choicesMap")
-                        or {},
+                        choices_map=cs.get("choices_map") or cs.get("choicesMap") or {},
                         multi_choice=bool(cs.get("multi_choice", False)),
                     )
                 )
@@ -3201,9 +3199,7 @@ def _request_workspace_filter(request, field_name="workspace"):
     return Q(**{field_name: workspace})
 
 
-def _get_accessible_eval_template_for_request(
-    template_id, request, template_type=None
-):
+def _get_accessible_eval_template_for_request(template_id, request, template_type=None):
     organization = _request_organization(request)
     queryset = EvalTemplate.no_workspace_objects.filter(id=template_id, deleted=False)
     if template_type:
@@ -3880,7 +3876,9 @@ class CompositeEvalDetailView(APIView):
                     ),
                     weight=link.weight,
                     config=link.config or {},
-                    required_keys=list((link.child.config or {}).get("required_keys") or []),
+                    required_keys=list(
+                        (link.child.config or {}).get("required_keys") or []
+                    ),
                 )
                 for link in links
             ]
@@ -4710,7 +4708,6 @@ class GroundTruthConfigView(APIView):
     )
     def get(self, request, template_id, *args, **kwargs):
         try:
-            organization = _request_organization(request)
             try:
                 template = _get_accessible_eval_template_for_request(
                     template_id, request
@@ -4764,7 +4761,6 @@ class GroundTruthConfigView(APIView):
                 return self._gm.bad_request(format_request_error(e))
 
             try:
-                organization = _request_organization(request)
                 template = _get_accessible_eval_template_for_request(
                     template_id, request
                 )
@@ -4928,9 +4924,7 @@ class GroundTruthTriggerEmbeddingView(APIView):
             if workflow_run_id is None:
                 gt.embedding_status = "failed"
                 gt.save(update_fields=["embedding_status", "updated_at"])
-                return self._gm.bad_request(
-                    "Failed to trigger embedding generation."
-                )
+                return self._gm.bad_request("Failed to trigger embedding generation.")
 
             return self._gm.success_response(
                 {
@@ -5072,7 +5066,7 @@ class EvalUsageStatsView(APIView):
                         if isinstance(output, dict):
                             is_composite = config.get("composite") is True
                             score = output.get("output")
-                            if isinstance(score, (int, float)):
+                            if isinstance(score, int | float):
                                 buckets_scores[bucket_key].append(float(score))
                                 # Composite logs carry aggregate_pass
                                 if is_composite:
@@ -5199,7 +5193,7 @@ class EvalUsageStatsView(APIView):
                 if isinstance(mappings, dict):
                     for k, v in mappings.items():
                         if k not in _skip_keys and v is not None:
-                            val_str = str(v) if not isinstance(v, (dict, list)) else ""
+                            val_str = str(v) if not isinstance(v, dict | list) else ""
                             if not val_str or val_str.startswith("There seems to be"):
                                 continue
                             # Truncate URLs to just show [image] or [url]
@@ -5255,7 +5249,7 @@ class EvalUsageStatsView(APIView):
                         # Choice object
                         result_label = raw_output.get("label", "")
                         score = raw_output.get("score")
-                    elif isinstance(raw_output, (int, float)):
+                    elif isinstance(raw_output, int | float):
                         score = raw_output
                     elif isinstance(raw_output, str):
                         result_label = raw_output
@@ -5912,9 +5906,12 @@ class EvalPlayGroundAPIView(APIView):
 
                     with get_reader() as reader:
                         _s = reader.get(str(_span_id))
-                    if _s and Project.objects.filter(
-                        id=_s.project_id, organization=org
-                    ).exists():
+                    if (
+                        _s
+                        and Project.objects.filter(
+                            id=_s.project_id, organization=org
+                        ).exists()
+                    ):
                         span_context = _build_span_context(
                             _chspan_to_eval_playground_view(_s)
                         )
@@ -6006,17 +6003,50 @@ class EvalPlayGroundAPIView(APIView):
                     logger.warning(f"Failed to fetch trace {_trace_id}: {_e}")
             if session_context is None and _session_id:
                 try:
+                    from tracer.models.project import Project
                     from tracer.models.trace import Trace
-                    from tracer.models.trace_session import TraceSession
                     from tracer.services.clickhouse.v2 import get_reader
+                    from tracer.services.clickhouse.v2.trace_session_dict_reader import (
+                        resolve_session_fields,
+                    )
 
-                    # Codex P1: scope TraceSession lookup to org.
-                    _ss = TraceSession.objects.filter(
-                        id=_session_id, project__organization=org
-                    ).first()
-                    if _ss:
-                        # Get trace IDs for this session (Trace still PG)
-                        _trace_qs = Trace.objects.filter(session=_ss, deleted=False)
+                    # Resolve the session identity from CH (Slice D, DESIGN §5 /
+                    # PG_ORM_READ_MIGRATION), NOT PG ``TraceSession``: a net-new
+                    # session (first seen post-flip) has no PG row, and a straddler
+                    # queried by its NEW deterministic id would 404 the old
+                    # ``.first()``. ``resolve_session_fields`` is remap-aware
+                    # (straddler old|new id → ONE survivor) and returns
+                    # external_session_id / first_seen / project_id / bookmarked /
+                    # display_name. Absent → ``_ss_fields`` is None → behave like
+                    # the old ``.first()`` returning None (session_context stays
+                    # None, no error). The org-scope the old ``project__organization
+                    # =org`` filter enforced is reproduced by validating the
+                    # CH-derived project_id belongs to ``org`` (mirrors the span_id
+                    # / Project.exists() guard above) — so a net-new session in
+                    # another tenant cannot leak.
+                    _ss_fields = resolve_session_fields([_session_id]).get(
+                        str(_session_id)
+                    )
+                    _ss_project_id = (
+                        _ss_fields.get("project_id") if _ss_fields else None
+                    )
+                    _ss_in_org = (
+                        bool(_ss_project_id)
+                        and Project.objects.filter(
+                            id=_ss_project_id, organization=org
+                        ).exists()
+                    )
+                    if _ss_fields and _ss_in_org:
+                        # Trace SET via CH spans, NOT the dead ``Trace.session`` FK
+                        # (None post-flip → empty for ALL sessions). Trace stays PG
+                        # → the CH-derived ids drive a PG ``id__in`` filter.
+                        with get_reader() as reader:
+                            _trace_id_list = reader.session_trace_ids(
+                                str(_ss_project_id), str(_session_id)
+                            )
+                        _trace_qs = Trace.objects.filter(
+                            id__in=_trace_id_list, deleted=False
+                        )
 
                         # CH read replaces two ObservationSpan ORM queries:
                         #   1. .filter(trace__in=_trace_qs, deleted=False).aggregate(...)
@@ -6029,8 +6059,15 @@ class EvalPlayGroundAPIView(APIView):
                         # Sessions are bounded by product semantics (a single
                         # conversation/workflow), so the in-process scan is
                         # cheaper than two CH round-trips.
+                        # ``list_by_session`` matches the RAW ``_session_id``; the
+                        # ``session_trace_ids`` trace set above resolves the input
+                        # id. They agree because the eval-context ``session_id`` is
+                        # always a SURVIVOR (old) or NET-NEW id (the session
+                        # list/detail surfaces resolved/old ids), never a
+                        # straddler's raw NEW id — for those the input resolves to
+                        # itself, so both reads see the same session.
                         with get_reader() as reader:
-                            _ch_session_spans = reader.list_by_session(str(_ss.id))
+                            _ch_session_spans = reader.list_by_session(str(_session_id))
                         _total_spans = len(_ch_session_spans)
                         _sess_error_count = sum(
                             1 for s in _ch_session_spans if s.status == "ERROR"
@@ -6100,15 +6137,24 @@ class EvalPlayGroundAPIView(APIView):
                         if _start and _end:
                             _duration = (_end - _start).total_seconds()
 
+                        # Session identity fields now come from the CH record +
+                        # PG overlay (``resolve_session_fields``), NOT a PG
+                        # TraceSession row: name = display_name override else the
+                        # external session id (DESIGN §5.2 COALESCE); created_at =
+                        # first_seen (the session's first observed activity).
+                        _ss_first_seen = _ss_fields["first_seen"]
                         session_context = {
-                            "id": str(_ss.id),
-                            "name": _ss.name,
-                            "project_id": (
-                                str(_ss.project_id) if _ss.project_id else None
+                            "id": str(_session_id),
+                            "name": (
+                                _ss_fields["display_name"]
+                                or _ss_fields["external_session_id"]
                             ),
-                            "bookmarked": _ss.bookmarked,
+                            "project_id": (
+                                str(_ss_project_id) if _ss_project_id else None
+                            ),
+                            "bookmarked": bool(_ss_fields["bookmarked"]),
                             "created_at": (
-                                _ss.created_at.isoformat() if _ss.created_at else None
+                                _ss_first_seen.isoformat() if _ss_first_seen else None
                             ),
                             "trace_count": _trace_qs.count(),
                             "total_spans": _total_spans,
@@ -6150,11 +6196,35 @@ class EvalPlayGroundAPIView(APIView):
             )
             if _session_id and isinstance(mapping_paths, dict) and mapping_paths:
                 from tracer.models.trace_session import TraceSession
+                from tracer.services.clickhouse.v2.trace_session_dict_reader import (
+                    resolve_session_fields,
+                )
                 from tracer.utils.eval import _process_session_mapping
 
-                _ss_for_mapping = TraceSession.objects.filter(id=_session_id).first()
-                if _ss_for_mapping is None:
+                # Resolve the session identity from CH (Slice D, DESIGN §5 /
+                # PG_ORM_READ_MIGRATION) and build an UNSAVED ``TraceSession``
+                # vehicle, NOT ``TraceSession.objects.first()`` — the same shape
+                # ``evaluate_trace_session_observe`` uses (Slice C). A net-new
+                # session has no PG row (old ``.first()`` → None → 400) and a
+                # straddler-by-new-id would 404; CH resolves all three states.
+                # ``project_id`` is set on the vehicle so the downstream
+                # ``_resolve_session_path`` (``traces`` branch) can re-derive the
+                # session's trace set from CH spans (the dead ``Trace.session`` FK
+                # is None post-flip). Absent → 400, preserving the old contract.
+                _map_fields = resolve_session_fields([_session_id]).get(
+                    str(_session_id)
+                )
+                if _map_fields is None:
                     return self._gm.bad_request(f"Session {_session_id} not found")
+                _ss_for_mapping = TraceSession(
+                    id=_session_id,
+                    name=(
+                        _map_fields["display_name"]
+                        or _map_fields["external_session_id"]
+                    ),
+                    bookmarked=bool(_map_fields["bookmarked"]),
+                    project_id=_map_fields["project_id"],
+                )
                 try:
                     resolved_session_mapping = _process_session_mapping(
                         dict(mapping_paths),

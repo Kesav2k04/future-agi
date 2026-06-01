@@ -4365,9 +4365,10 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
             # combination, producing N×M CH round-trips. Precompute the
             # span lookup once with list_by_ids; the inner branches now
             # consult an in-memory dict.
-            _ch_span_by_id: dict[str, "object"] = {}
+            _ch_span_by_id: dict[str, object] = {}
             _span_source_ids = [
-                str(src["source_id"]) for src in sources
+                str(src["source_id"])
+                for src in sources
                 if src["source_type"] == "observation_span"
             ]
             if _span_source_ids:
@@ -4407,11 +4408,19 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
                                 dq.project_id
                             )
                         elif st == "trace_session":
-                            from tracer.models.trace_session import TraceSession
+                            # CH session existence (mirrors the obs_span branch
+                            # above): post-flip a net-new session has NO PG
+                            # ``TraceSession`` row, so a PG ``.exists()`` wrongly
+                            # rejects it. ``session_exists`` reads the CH
+                            # ``trace_sessions`` RMT (FINAL), is project-scoped,
+                            # remap-aware (straddler by old OR new id), and sees
+                            # the collector's net-new dual-write row. Its
+                            # ``is_deleted=0`` filter preserves ``deleted=False``.
+                            from tracer.services.clickhouse.v2.trace_session_dict_reader import (  # noqa: E501
+                                session_exists,
+                            )
 
-                            exists = TraceSession.objects.filter(
-                                id=sid, project_id=dq.project_id, deleted=False
-                            ).exists()
+                            exists = session_exists(dq.project_id, sid)
                         else:
                             exists = False
 
@@ -4472,13 +4481,28 @@ class AnnotationQueueViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelVie
                                 ).exists()
                             )
                         elif st == "trace_session":
-                            from tracer.models.trace_session import TraceSession
+                            # CH session existence under an agent-definition scope.
+                            # ``session_exists`` is project-scoped, so — unlike the
+                            # obs_span branch above which reads the span's project
+                            # off the CH row then PG-verifies the agent-definition
+                            # link — we INVERT the order: resolve the
+                            # agent-definition's project(s) in PG first (the same
+                            # ``project__observability_providers__agent_definition``
+                            # traversal the old PG ``.exists()`` used), then ask CH
+                            # whether the session lives in any of them. (No shipped
+                            # helper returns a session's project_id, so the CH-first
+                            # order obs_span uses isn't available here.) Remap-aware
+                            # + net-new-aware + ``is_deleted=0`` == ``deleted=False``.
+                            from tracer.services.clickhouse.v2.trace_session_dict_reader import (  # noqa: E501
+                                session_exists,
+                            )
 
-                            exists = TraceSession.objects.filter(
-                                id=sid,
-                                project__observability_providers__agent_definition=dq.agent_definition_id,
-                                deleted=False,
-                            ).exists()
+                            _ad_project_ids = Project.objects.filter(
+                                observability_providers__agent_definition=dq.agent_definition_id,
+                            ).values_list("id", flat=True)
+                            exists = any(
+                                session_exists(_pid, sid) for _pid in _ad_project_ids
+                            )
                         else:
                             exists = False
 
@@ -5310,6 +5334,7 @@ class QueueItemViewSet(BaseModelViewSetMixinWithUserOrg, viewsets.ModelViewSet):
             # are annotator commentary, not load-bearing; the operator gets
             # a warning log and the user still sees their annotation land.
             from django.db import IntegrityError
+
             from tracer.models.observation_span import ObservationSpan
 
             target_id = span_notes_target.id

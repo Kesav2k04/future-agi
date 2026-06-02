@@ -46,9 +46,7 @@ ERROR_RESPONSES = {
 }
 
 
-def _resolve_queue_item(
-    queue_item_id, source_type, source_obj, organization, user
-):
+def _resolve_queue_item(queue_item_id, source_type, source_obj, organization, user):
     """Return a ``QueueItem`` to attribute a score to.
 
     If the request includes ``queue_item_id``, validate and return it.
@@ -68,9 +66,8 @@ def _resolve_queue_item(
         queue_item_source_id = (
             getattr(queue_item, f"{fk_field}_id", None) if fk_field else None
         )
-        if (
-            queue_item.source_type != source_type
-            or str(queue_item_source_id) != str(source_obj.pk)
+        if queue_item.source_type != source_type or str(queue_item_source_id) != str(
+            source_obj.pk
         ):
             logger.warning(
                 "score_queue_item_source_mismatch",
@@ -478,7 +475,9 @@ class ScoreViewSet(viewsets.ModelViewSet):
                     continue
 
                 # Per-score notes: only saved if the label has allow_notes=True.
-                per_score_notes = score_data.get("notes", "") if label.allow_notes else ""
+                per_score_notes = (
+                    score_data.get("notes", "") if label.allow_notes else ""
+                )
 
                 # See comment in create() for why no_workspace_objects is used:
                 # avoids FOR UPDATE + nullable LEFT JOIN issue; workspace is
@@ -625,50 +624,66 @@ class ScoreViewSet(viewsets.ModelViewSet):
             # parent trace is semantically a "note on this span" for the
             # purposes of the trace-detail panel.
             from model_hub.models.annotation_queues import QueueItemNote
-            from tracer.models.observation_span import ObservationSpan
+            from tracer.models.project import Project
+            from tracer.services.clickhouse.v2 import get_reader
 
             # Resolve the parent trace, scoped to the requester's organization
             # so a direct call with another org's span id can't surface this
             # org's queue notes via the trace-level filter branch. If the
             # span doesn't belong to this org, ``span_belongs_to_org`` stays
             # False and we skip note enrichment entirely.
-            span_row = (
-                ObservationSpan.objects.filter(
-                    id=source_id,
-                    project__organization=request.organization,
-                )
-                .values_list("trace_id", flat=True)
-                .first()
-            )
-            span_belongs_to_org = span_row is not None
-            trace_id = span_row
+            #
+            # CH read replaces the PG path
+            #   ObservationSpan.objects.filter(id=, project__organization=)
+            #     .values_list("trace_id", flat=True).first()
+            # Org-tenant scope is verified by checking the span's project_id
+            # against the requesting org via Project (the only side of the
+            # FK that's still in PG).
+            with get_reader() as reader:
+                span = reader.get(str(source_id))
+            span_belongs_to_org = False
+            trace_id = None
+            if (
+                span is not None
+                and Project.objects.filter(
+                    id=span.project_id, organization=request.organization
+                ).exists()
+            ):
+                span_belongs_to_org = True
+                trace_id = span.trace_id or None
 
             queue_note_filter = Q(queue_item__observation_span_id=source_id)
             if trace_id:
                 queue_note_filter |= Q(queue_item__trace_id=trace_id)
 
             queue_notes = (
-                QueueItemNote.no_workspace_objects.filter(
-                    queue_note_filter,
-                    organization=request.organization,
-                    queue_item__organization=request.organization,
-                    queue_item__deleted=False,
-                    deleted=False,
+                (
+                    QueueItemNote.no_workspace_objects.filter(
+                        queue_note_filter,
+                        organization=request.organization,
+                        queue_item__organization=request.organization,
+                        queue_item__deleted=False,
+                        deleted=False,
+                    )
+                    .select_related(
+                        "annotator",
+                        "queue_item",
+                        "queue_item__queue",
+                    )
+                    .order_by("-updated_at", "-created_at")
                 )
-                .select_related(
-                    "annotator",
-                    "queue_item",
-                    "queue_item__queue",
-                )
-                .order_by("-updated_at", "-created_at")
-            ) if span_belongs_to_org else []
+                if span_belongs_to_org
+                else []
+            )
 
             payloads = []
             seen_user_queue = set()
             users_with_queue_notes = set()
             for note in queue_notes:
                 queue_name = (
-                    note.queue_item.queue.name if note.queue_item and note.queue_item.queue else None
+                    note.queue_item.queue.name
+                    if note.queue_item and note.queue_item.queue
+                    else None
                 )
                 annotator_label = (
                     note.annotator.name or note.annotator.email
@@ -697,11 +712,15 @@ class ScoreViewSet(viewsets.ModelViewSet):
             # org-scoped span check above so cross-org callers can't read
             # this org's legacy notes.
             legacy_notes = (
-                SpanNotes.objects.filter(span_id=source_id)
-                .exclude(created_by_user_id__in=users_with_queue_notes)
-                .select_related("created_by_user")
-                .order_by("-created_at")
-            ) if span_belongs_to_org else []
+                (
+                    SpanNotes.objects.filter(span_id=source_id)
+                    .exclude(created_by_user_id__in=users_with_queue_notes)
+                    .select_related("created_by_user")
+                    .order_by("-created_at")
+                )
+                if span_belongs_to_org
+                else []
+            )
             for note in legacy_notes:
                 payloads.append(
                     {

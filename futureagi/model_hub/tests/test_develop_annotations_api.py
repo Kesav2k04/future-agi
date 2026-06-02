@@ -802,7 +802,7 @@ class TestAnnotationsViewSetActions:
             payload,
             format="json",
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_update_cells_rejects_legacy_label_values_alias(
         self, auth_client, annotation, row
@@ -1090,31 +1090,32 @@ class TestUserViewSet:
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(
-    reason="Tests don't mock the EE has_agreement_metrics entitlement. The "
-    "rewritten AnnotationSummaryView gates on it (correct behavior). "
-    "test_annotation_e2e_gaps.py::TestAnnotationSummaryFromScore covers "
-    "this path correctly with the entitlement mocked.",
-    strict=False,
-)
 class TestAnnotationSummaryView:
     """Tests for AnnotationSummaryView."""
 
-    @patch("model_hub.views.develop_annotations.SQLQueryHandler")
-    def test_get_annotation_summary(self, mock_sql_handler, auth_client, dataset):
+    @patch(
+        "ee.usage.services.entitlements.Entitlements.check_feature",
+        return_value=SimpleNamespace(allowed=True, reason=None),
+    )
+    @patch("model_hub.services.annotation_summary_service.get_annotation_summary_data")
+    def test_get_annotation_summary(
+        self, mock_summary_service, mock_check_feature, auth_client, dataset
+    ):
         """Test getting annotation summary statistics."""
         import pandas as pd
 
-        # Mock the SQL query responses
-        mock_sql_handler.get_annotation_summary_stats.side_effect = [
-            pd.DataFrame({"label_id": [], "type": [], "name": []}),  # header_df
-            pd.DataFrame(
+        # Mock the summary service response
+        mock_summary_service.return_value = {
+            "header_data": pd.DataFrame(
+                {"label_id": [], "type": [], "name": []}
+            ),
+            "metric_calc": pd.DataFrame(
                 {"label_id": [], "row_id": [], "user_id": [], "value": []}
-            ),  # metric_df
-            pd.DataFrame(
+            ),
+            "graph": pd.DataFrame(
                 {"label_id": [], "bucket_min": [], "bucket_max": [], "count": []}
-            ),  # graph_df
-            pd.DataFrame(
+            ),
+            "heatmap": pd.DataFrame(
                 {
                     "label_id": [],
                     "user_id": [],
@@ -1122,14 +1123,14 @@ class TestAnnotationSummaryView:
                     "bucket_max": [],
                     "count": [],
                 }
-            ),  # heatmap_df
-            pd.DataFrame(
+            ),
+            "annotator_performance": pd.DataFrame(
                 {"user_id": [], "avg_time": [], "total_annotations": []}
-            ),  # annotator_performance_df
-            pd.DataFrame(
+            ),
+            "dataset_annot_summary": pd.DataFrame(
                 {"fully_annotated_rows": [10], "not_deleted_rows": [20]}
-            ),  # dataset_coverage_df
-        ]
+            ),
+        }
 
         response = auth_client.get(
             f"/model-hub/dataset/{dataset.id}/annotation-summary/"

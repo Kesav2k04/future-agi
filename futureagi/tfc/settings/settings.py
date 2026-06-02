@@ -329,35 +329,11 @@ CLICKHOUSE = {
     "CH_FLUSH_INTERVAL_SECONDS": int(os.getenv("CH_FLUSH_INTERVAL_SECONDS", "5")),
     "CH_MAX_RETRIES": int(os.getenv("CH_MAX_RETRIES", "3")),
     "CH_RETRY_DELAY_SECONDS": int(os.getenv("CH_RETRY_DELAY_SECONDS", "1")),
-    # Query routing: "clickhouse", "postgres", or "auto" (ClickHouse with PG fallback)
-    "CH_ANALYTICS_BACKEND": os.getenv("CH_ANALYTICS_BACKEND", "postgres"),
     # Connection pool settings
     "CH_POOL_SIZE": int(os.getenv("CH_POOL_SIZE", "10")),
     "CH_CONNECT_TIMEOUT": int(os.getenv("CH_CONNECT_TIMEOUT", "10")),
     "CH_SEND_TIMEOUT": int(os.getenv("CH_SEND_TIMEOUT", "300")),
     "CH_RECEIVE_TIMEOUT": int(os.getenv("CH_RECEIVE_TIMEOUT", "300")),
-    # Per-query-type routing for gradual rollout
-    # Values: "postgres", "clickhouse", "auto" (CH with PG fallback), "shadow" (both, compare, return PG)
-    "CH_ROUTE_TIME_SERIES": os.getenv("CH_ROUTE_TIME_SERIES", "postgres"),
-    "CH_ROUTE_TRACE_LIST": os.getenv("CH_ROUTE_TRACE_LIST", "postgres"),
-    "CH_ROUTE_SESSION_LIST": os.getenv("CH_ROUTE_SESSION_LIST", "postgres"),
-    "CH_ROUTE_EVAL_METRICS": os.getenv("CH_ROUTE_EVAL_METRICS", "postgres"),
-    "CH_ROUTE_ERROR_ANALYSIS": os.getenv("CH_ROUTE_ERROR_ANALYSIS", "postgres"),
-    "CH_ROUTE_SPAN_LIST": os.getenv("CH_ROUTE_SPAN_LIST", "postgres"),
-    "CH_ROUTE_TRACE_OF_SESSION_LIST": os.getenv(
-        "CH_ROUTE_TRACE_OF_SESSION_LIST", "postgres"
-    ),
-    "CH_ROUTE_SPAN_GRAPH": os.getenv("CH_ROUTE_SPAN_GRAPH", "postgres"),
-    "CH_ROUTE_VOICE_CALL_LIST": os.getenv("CH_ROUTE_VOICE_CALL_LIST", "postgres"),
-    "CH_ROUTE_SESSION_ANALYTICS": os.getenv("CH_ROUTE_SESSION_ANALYTICS", "postgres"),
-    "CH_ROUTE_ANNOTATION_GRAPH": os.getenv("CH_ROUTE_ANNOTATION_GRAPH", "postgres"),
-    "CH_ROUTE_TRACE_DETAIL": os.getenv("CH_ROUTE_TRACE_DETAIL", "postgres"),
-    "CH_ROUTE_MONITOR_METRICS": os.getenv("CH_ROUTE_MONITOR_METRICS", "postgres"),
-    "CH_ROUTE_ANNOTATION_DETAIL": os.getenv("CH_ROUTE_ANNOTATION_DETAIL", "postgres"),
-    "CH_ROUTE_VOICE_CALL_DETAIL": os.getenv("CH_ROUTE_VOICE_CALL_DETAIL", "postgres"),
-    # Shadow mode: run both PG+CH, compare results, return PG
-    "CH_SHADOW_MODE": os.getenv("CH_SHADOW_MODE", "false").lower()
-    in ("true", "1", "yes"),
 }
 
 # Password validation
@@ -798,3 +774,32 @@ WEBAUTHN_ORIGIN = os.getenv("WEBAUTHN_ORIGIN", "http://localhost:3031")
 # 2FA challenge token TTLs (seconds)
 TWO_FACTOR_CHALLENGE_TTL = 300  # 5 minutes
 WEBAUTHN_CHALLENGE_TTL = 120  # 2 minutes
+
+# ─── ClickHouse 25.3 (v2) span store ────────────────────────────────────────
+# The new spans cluster (typed Maps + typed JSON; PLAN_V2_NO_CDC). Falls back
+# to the legacy CLICKHOUSE dict above for connection details if not set
+# explicitly — see tracer/services/clickhouse/v2/__init__.py:get_v2_config().
+CLICKHOUSE_V2 = {
+    "CH25_HOST":      os.getenv("CH25_HOST"),
+    "CH25_HTTP_PORT": os.getenv("CH25_HTTP_PORT", "8123"),
+    "CH25_TCP_PORT":  os.getenv("CH25_TCP_PORT", "9000"),
+    "CH25_USER":      os.getenv("CH25_USER", "default"),
+    "CH25_PASSWORD":  os.getenv("CH25_PASSWORD", ""),
+    "CH25_DATABASE":  os.getenv("CH25_DATABASE", "default"),
+    # ─── Per-query-type routing for the shadow-mode rollout ──────────────────
+    # Comma-separated query type names. See tracer/services/clickhouse/v2/shadow.py
+    # for RoutingMode definitions. Anything not listed defaults to V1_ONLY.
+    "QUERY_TYPES_V2_PRIMARY": os.getenv("CH25_QUERY_TYPES_V2_PRIMARY", ""),
+    "QUERY_TYPES_V2_ONLY":    os.getenv("CH25_QUERY_TYPES_V2_ONLY", ""),
+    "QUERY_TYPES_SHADOW":     os.getenv("CH25_QUERY_TYPES_SHADOW", ""),
+    "QUERY_TYPES_DISABLED":   os.getenv("CH25_QUERY_TYPES_DISABLED", ""),
+}
+
+# Where the eval runner reads span data from.
+#   "postgres"   — current behavior; reads from tracer_observation_span (Django ORM)
+#   "clickhouse" — reads span data from CH 25.3 via the hybrid loader
+#                  (tracer/services/clickhouse/v2/eval_loader.py). Django FK
+#                  navigation (project, trace, end_user, …) still hits PG.
+# Default is "postgres" so cutover is opt-in. Flip to "clickhouse" only after
+# the backfill + validator pass and a soak period.
+EVAL_SPAN_READ_SOURCE = os.getenv("EVAL_SPAN_READ_SOURCE", "postgres").lower()

@@ -466,6 +466,11 @@ class TestVoiceAnnotationRegressionE2E:
         root_conversation_span,
         thumbs_label,
     ):
+        from tracer.tests._ch_seed import seed_ch_span
+
+        # _span_notes_target_for_queue_item reads root span from CH
+        seed_ch_span(root_conversation_span)
+
         queue = _queue(
             "TH-4055 trace call queue",
             organization,
@@ -570,6 +575,11 @@ class TestVoiceAnnotationRegressionE2E:
         root_conversation_span,
         thumbs_label,
     ):
+        from tracer.tests._ch_seed import seed_ch_span
+
+        # _span_notes_target_for_queue_item reads root span from CH
+        seed_ch_span(root_conversation_span)
+
         queue = _queue(
             "TH-4861 trace note separation queue",
             organization,
@@ -654,6 +664,11 @@ class TestVoiceAnnotationRegressionE2E:
         root_conversation_span,
         star_label,
     ):
+        from tracer.tests._ch_seed import seed_ch_span
+
+        # for-source span_notes reads span from CH to resolve org ownership
+        seed_ch_span(root_conversation_span)
+
         queue = _queue(
             "TH-4055 default observe queue",
             organization,
@@ -777,10 +792,8 @@ class TestVoiceAnnotationRegressionE2E:
         root_conversation_span,
         simulation_call_execution,
     ):
-        monkeypatch.setattr(
-            "tracer.services.clickhouse.query_service.AnalyticsQueryService.should_use_clickhouse",
-            lambda self, query_type: False,
-        )
+        from tracer.tests._ch_seed import seed_ch_span
+
         ScenarioGraph.objects.create(
             name="Order flow",
             scenario=simulation_call_execution.scenario,
@@ -812,6 +825,9 @@ class TestVoiceAnnotationRegressionE2E:
         root_conversation_span.save(
             update_fields=["span_attributes", "eval_attributes"]
         )
+
+        # Seed AFTER .save() so CH has the updated span_attributes/eval_attributes
+        seed_ch_span(root_conversation_span)
 
         resp = auth_client.get(
             "/tracer/trace/voice_call_detail/",

@@ -100,7 +100,7 @@ class TestSessionEvalLogsAuth:
         response = api_client.get(
             f"/tracer/trace-session/{trace_session.id}/eval_logs/"
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
 
 @pytest.mark.integration

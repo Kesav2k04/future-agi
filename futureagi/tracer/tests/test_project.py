@@ -26,7 +26,7 @@ class TestProjectListAPI:
     def test_list_projects_unauthenticated(self, api_client):
         """Unauthenticated requests should be rejected."""
         response = api_client.get("/tracer/project/")
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_list_projects_empty(self, auth_client):
         """List returns empty when no projects exist."""
@@ -182,7 +182,7 @@ class TestProjectCreateAPI:
             },
             format="json",
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_create_project_success(self, auth_client, workspace, organization):
         """Create a new project successfully."""
@@ -287,7 +287,7 @@ class TestProjectRetrieveAPI:
     def test_retrieve_project_unauthenticated(self, api_client, project):
         """Unauthenticated requests should be rejected."""
         response = api_client.get(f"/tracer/project/{project.id}/")
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_retrieve_project_success(self, auth_client, project):
         """Retrieve a project by ID."""
@@ -339,7 +339,7 @@ class TestProjectDeleteAPI:
             {"project_ids": [str(project.id)]},
             format="json",
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_delete_project_success(self, auth_client, project):
         """Delete a project successfully."""

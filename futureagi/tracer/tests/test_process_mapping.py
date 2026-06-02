@@ -91,7 +91,7 @@ def test_provider_transcript_alias_resolves(_span_with_attrs, missing_eval_templ
 
 def test_missing_attribute_raises(_span_with_attrs, missing_eval_template_id):
     span = _span_with_attrs({"unrelated": "value"})
-    with pytest.raises(ValueError, match="Required attribute 'input'"):
+    with pytest.raises(ValueError, match="Required attribute 'nonexistent_field'"):
         _process_mapping(
-            {"prompt": "input"}, span, eval_template_id=missing_eval_template_id
+            {"prompt": "nonexistent_field"}, span, eval_template_id=missing_eval_template_id
         )

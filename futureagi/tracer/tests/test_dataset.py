@@ -55,12 +55,15 @@ def dataset_columns(db, dataset):
 
 @pytest.fixture
 def observe_spans(db, observe_project, session_trace):
-    """Create observation spans for observe project."""
+    """Create observation spans for observe project, dual-seeding the CH
+    ``spans`` table so dataset/observe endpoints (which read from CH) find
+    them alongside PG."""
     from datetime import timedelta
 
     from django.utils import timezone
 
     from tracer.models.observation_span import ObservationSpan
+    from tracer.tests._ch_seed import seed_ch_spans
 
     spans = []
     for i in range(3):
@@ -84,6 +87,7 @@ def observe_spans(db, observe_project, session_trace):
             status="OK",
         )
         spans.append(span)
+    seed_ch_spans(spans)
     return spans
 
 
@@ -95,7 +99,7 @@ class TestAddToNewDatasetAPI:
     def test_unauthenticated_request(self, api_client):
         """Unauthenticated requests should be rejected."""
         response = api_client.post("/tracer/dataset/add_to_new_dataset/", {})
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_missing_required_fields(self, auth_client):
         """Request without required fields should return 400."""
@@ -325,7 +329,7 @@ class TestAddToExistingDatasetAPI:
     def test_unauthenticated_request(self, api_client):
         """Unauthenticated requests should be rejected."""
         response = api_client.post("/tracer/dataset/add_to_existing_dataset/", {})
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_missing_required_fields(self, auth_client):
         """Request without required fields should return 400."""

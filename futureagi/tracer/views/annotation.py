@@ -35,7 +35,6 @@ from tracer.serializers.annotation import (
 )
 from tracer.services.clickhouse.query_service import (
     AnalyticsQueryService,
-    QueryType,
 )
 
 logger = structlog.get_logger(__name__)
@@ -340,30 +339,24 @@ class TraceAnnotationView(ModelViewSet):
             )
             trace_id = str(trace_id) if trace_id else None
 
-            # ClickHouse dispatch for annotation data
+            # ClickHouse-only path for annotations. Legacy PG fallback removed
+            # post-migration — annotations live in CH (model_hub_score etc.
+            # mirrored via dual-write). Notes still come from PG because they
+            # weren't replicated; that's the only PG read this path makes.
             analytics = AnalyticsQueryService()
-            if analytics.should_use_clickhouse(QueryType.ANNOTATION_DETAIL):
-                try:
-                    ch_annotations = self._get_annotations_from_clickhouse(
-                        request,
-                        observation_span_id,
-                        trace_id,
-                        annotators_list,
-                        exclude_annotators_list,
-                    )
-                    # Notes are always fetched from PG (not replicated to CH)
-                    notes_details = self._get_notes_from_pg(
-                        request, observation_span_id
-                    )
-                    return self._gm.success_response(
-                        {"annotations": ch_annotations, "notes": notes_details}
-                    )
-                except Exception as e:
-                    logger.warning(
-                        "ClickHouse annotation-detail failed, falling back to PG",
-                        error=str(e),
-                    )
-                    # Fall through to existing PG code
+            ch_annotations = self._get_annotations_from_clickhouse(
+                request,
+                observation_span_id,
+                trace_id,
+                annotators_list,
+                exclude_annotators_list,
+            )
+            notes_details = self._get_notes_from_pg(
+                request, observation_span_id
+            )
+            return self._gm.success_response(
+                {"annotations": ch_annotations, "notes": notes_details}
+            )
 
             query_params = {
                 "deleted": False,

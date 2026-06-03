@@ -60,7 +60,7 @@ jobs:
       EE_REPO_READ_TOKEN: ${{ secrets.EE_REPO_READ_TOKEN || secrets.ORG_READ_TOKEN }}
       EE_REPO_BRANCH: ${{ github.head_ref || github.ref_name }}
       EE_BASE_REF: ${{ github.base_ref || github.ref_name || 'dev' }}
-      SDK_REPO_READ_TOKEN: ${{ secrets.SDK_REPO_READ_TOKEN || secrets.EE_REPO_READ_TOKEN || secrets.ORG_READ_TOKEN }}
+      SDK_REPO_READ_TOKEN: ${{ secrets.SDK_REPO_READ_TOKEN || secrets.ORG_READ_TOKEN || github.token }}
       SDK_REF_INPUT: ${{ github.event.inputs['sdk-ref'] || '' }}
       SDK_HEAD_REF: ${{ github.head_ref || github.ref_name }}
       SDK_BASE_REF: ${{ github.base_ref || github.ref_name }}
@@ -68,24 +68,28 @@ jobs:
       - name: Checkout future-agi
         uses: actions/checkout@v4
 
-      - name: Require private repository tokens
+      - name: Validate repository access tokens
         run: |
-          if [ -z "${EE_REPO_READ_TOKEN}" ]; then
-            echo "::error::EE_REPO_READ_TOKEN or ORG_READ_TOKEN is required to generate the backend OpenAPI contract with Enterprise routes."
+          if [ -z "${SDK_REPO_READ_TOKEN}" ]; then
+            echo "::error::SDK_REPO_READ_TOKEN, ORG_READ_TOKEN, or GITHUB_TOKEN is required to checkout SDK compatibility repositories."
             exit 1
           fi
-          if [ -z "${SDK_REPO_READ_TOKEN}" ]; then
-            echo "::error::SDK_REPO_READ_TOKEN, EE_REPO_READ_TOKEN, or ORG_READ_TOKEN is required to checkout SDK compatibility repositories."
-            exit 1
+          if [ -z "${EE_REPO_READ_TOKEN}" ]; then
+            echo "::notice::EE_REPO_READ_TOKEN or ORG_READ_TOKEN is not configured; generating the OSS OpenAPI contract only."
           fi
 
-      - name: Checkout EE package
+      - name: Checkout EE package when available
+        id: ee-checkout
         run: |
+          if [ -z "${EE_REPO_READ_TOKEN}" ]; then
+            echo "mode=oss" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           AUTH_HEADER="$(printf 'x-access-token:%s' "${EE_REPO_READ_TOKEN}" | base64 | tr -d '\n')"
           EE_REPO_URL="https://github.com/future-agi/ee.git"
-          mkdir -p futureagi/ee
-          git init futureagi/ee
-          cd futureagi/ee
+          EE_TMP_DIR="$(mktemp -d)"
+          git init "${EE_TMP_DIR}"
+          cd "${EE_TMP_DIR}"
           git remote add origin "${EE_REPO_URL}"
           for candidate in "${EE_REPO_BRANCH}" "${EE_BASE_REF}" dev main; do
             if [ -z "${candidate}" ]; then
@@ -96,12 +100,17 @@ jobs:
               git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH_HEADER}" \
                 fetch --depth=1 origin "${candidate}"
               git checkout --detach FETCH_HEAD
+              cd "${GITHUB_WORKSPACE}"
+              mkdir -p futureagi
+              rm -rf futureagi/ee
+              mv "${EE_TMP_DIR}" futureagi/ee
               echo "Using EE branch ${candidate}"
+              echo "mode=ee" >> "$GITHUB_OUTPUT"
               exit 0
             fi
           done
-          echo "::error::Could not checkout future-agi/ee with the configured read token."
-          exit 1
+          echo "::notice::Could not checkout future-agi/ee with the configured read token; generating the OSS OpenAPI contract only."
+          echo "mode=oss" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -129,7 +138,7 @@ jobs:
       - name: Generate backend OpenAPI contract
         run: |
           if ! ./scripts/generate-openapi-schema.sh > /tmp/openapi-generation.log 2>&1; then
-            echo "::error::OpenAPI generation failed with EE checked out. Logs are suppressed here to avoid printing private EE source context; run locally with futureagi/ee present for details."
+            echo "::error::OpenAPI generation failed. Logs are suppressed here because the workflow may include internal EE context; run locally for details."
             exit 1
           fi
           git diff --exit-code api_contracts/openapi/swagger.json

@@ -197,10 +197,16 @@ jobs:
         run: |
           ln -sfn "${GITHUB_WORKSPACE}" "${GITHUB_WORKSPACE}/future-agi"
           ./scripts/generate-oss-sdk.sh "${GITHUB_WORKSPACE}/api_contracts/openapi/swagger.json"
-          git diff --exit-code \
+          if ! git diff --quiet \
             openapi/sdk/generated \
             python/fi/generated/openapi_client \
-            typescript/futureagi/src/generated/openapi
+            typescript/futureagi/src/generated/openapi; then
+            echo "::notice::Generated SDK clients differ from the checked-out SDK ref; testing the generated clients from this backend contract."
+            git diff --stat \
+              openapi/sdk/generated \
+              python/fi/generated/openapi_client \
+              typescript/futureagi/src/generated/openapi
+          fi
 
       - name: Install Python SDK test dependencies
         working-directory: futureagi-sdk

@@ -173,6 +173,15 @@ const CONF_CATEGORY = { H: "high confidence", M: "medium confidence", L: "low co
 export async function startRun({ clusterId, projectId, token, workspaceId }) {
   if (!clusterId) return;
 
+  // Guard against duplicate kicks (rapid clicks / StrictMode double-invoke) —
+  // a run already in flight for this cluster owns the conversation.
+  if (
+    useErrorFeedStore.getState().analyzeThreadsByCluster[clusterId]?.runState ===
+    "streaming"
+  ) {
+    return;
+  }
+
   const isRerun =
     (useErrorFeedStore.getState().analyzeThreadsByCluster[clusterId]?.messages
       ?.length ?? 0) > 0;
@@ -190,7 +199,8 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
     patchThread(clusterId, (t) => ({ ...t, runState: "idle" }));
     return;
   }
-  const conversationId = conversation?.id;
+  // Create endpoint wraps the row: { status, result: { id, ... } }.
+  const conversationId = conversation?.result?.id ?? conversation?.id;
 
   patchThread(clusterId, (t) => ({
     ...t,

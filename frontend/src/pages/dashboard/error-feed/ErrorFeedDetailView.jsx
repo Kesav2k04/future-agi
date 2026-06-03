@@ -120,6 +120,7 @@ export default function ErrorFeedDetailView() {
       description: detail.description,
       successTrace: detail.successTrace,
       representativeTrace: detail.representativeTrace,
+      rca: detail.rca,
     };
   }, [detail]);
 

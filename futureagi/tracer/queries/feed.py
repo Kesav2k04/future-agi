@@ -51,6 +51,7 @@ from tracer.types.feed_types import (
     EvaluationResult,
     EventsOverTimePoint,
     FeedDetailCore,
+    RcaSummary,
     FeedListResponse,
     FeedListRow,
     FeedSidebar,
@@ -517,11 +518,21 @@ def get_cluster_detail(
                 output=_trace_output_str(rep.trace),
             )
 
+    rca = RcaSummary(
+        synthesis=cluster.rca_synthesis,
+        fix=cluster.rca_fix,
+        confidence=cluster.rca_confidence,
+        evidence_trace_ids=cluster.rca_evidence_trace_ids or [],
+        analyzed_at=cluster.rca_at,
+        failures_at_run=cluster.rca_failures_at_run,
+    )
+
     return FeedDetailCore(
         row=row,
         description=cluster.combined_description,
         success_trace=success_trace,
         representative_trace=representative_trace,
+        rca=rca,
     )
 
 

@@ -13,22 +13,34 @@ import PropTypes from "prop-types";
 import Iconify from "src/components/iconify";
 import { useErrorFeedStore } from "../store";
 
-// Inline stub — replace with real data once `useClusterRCA(clusterId)` lands.
-// PRD §7.1 specifies `rca_synthesis`, `rca_fix`, `rca_confidence`, `rca_at`,
-// `rca_failures_at_run` fields on TraceErrorGroup; this function fakes them
-// off the cluster name + size until that work ships.
-function buildStubRCA(error) {
-  const name = error?.error?.name ?? "this cluster";
-  const traceCount = error?.traceCount ?? 0;
+// Format the cached-analysis timestamp into a short relative label.
+function formatAnalyzedAt(iso) {
+  if (!iso) return null;
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return null;
+  const mins = Math.floor((Date.now() - then.getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return then.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+// Pull the cached cluster-RCA result (PRD §7.1) off the detail payload. Returns
+// null when the cluster has never been analyzed — the card shows its empty
+// state then, never a fabricated summary. snake_case is the canonical wire
+// form; the axios bridge also exposes camel aliases, so tolerate both.
+function cachedRcaFrom(error) {
+  const rca = error?.rca;
+  if (!rca || !rca.synthesis) return null;
   return {
-    confidence: "H",
-    category: "fix in prompt",
-    analyzedAt: "just now",
-    synthesis:
-      `${name} occurs when the agent drops critical user context across turns. ` +
-      `The model re-asks for already-provided inputs, degrading task completion in ~31% of the ${traceCount.toLocaleString()} affected traces.`,
-    fix:
-      "Add a one-line guard in the system prompt restating already-supplied user inputs before each tool dispatch.",
+    synthesis: rca.synthesis,
+    fix: rca.fix,
+    confidence: rca.confidence ?? "M",
+    analyzedAt: formatAnalyzedAt(rca.analyzed_at ?? rca.analyzedAt),
+    failuresAtRun: rca.failures_at_run ?? rca.failuresAtRun ?? null,
   };
 }
 
@@ -477,7 +489,7 @@ export default function ClusterHeadlineCard({
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const stubFallback = useMemo(() => buildStubRCA(error), [error]);
+  const cachedRca = useMemo(() => cachedRcaFrom(error), [error]);
   const clusterId = error?.clusterId;
 
   // Observe the SAME thread state the Analyze tab observes — both views
@@ -495,11 +507,9 @@ export default function ClusterHeadlineCard({
     (s) => s.toggleClusterAnalysisCollapsed,
   );
 
-  // Map the shared run state to the headline card's 3 display modes.
-  let state;
-  if (!thread) state = "not_analyzed";
-  else if (thread.runState === "streaming") state = "analyzing";
-  else state = "analyzed";
+  // The category pill comes from the cluster's fix layer (the agent's
+  // synthesis doesn't carry one), shared by the live and cached paths.
+  const category = error?.fixLayer ?? error?.fix_layer ?? "root cause";
 
   // Step pill progress is derived from how many of the runner's step
   // messages have advanced past "queued". The runner emits 5 steps; we
@@ -513,22 +523,40 @@ export default function ClusterHeadlineCard({
   ).length;
   const activeStepIdx = Math.min(2, Math.floor(advancedCount / 2));
 
-  // Synthesis content for the analyzed state — prefer the latest synthesis
-  // message produced by the runner; otherwise fall back to the static stub
-  // so the card never shows a blank.
+  // Synthesis content + display mode. Priority:
+  //   1. live synthesis from the current run (thread) — freshest
+  //   2. cached rca_* from a prior run (detail payload) — survives reload
+  //   3. nothing → genuine "not analyzed" empty state (never a fake summary)
   const synthesisMsg = [...(thread?.messages ?? [])]
     .reverse()
     .find((m) => m.type === "synthesis");
 
-  const data = synthesisMsg
-    ? {
-        synthesis: synthesisMsg.headline,
-        fix: synthesisMsg.fix,
-        confidence: synthesisMsg.confidence ?? "H",
-        category: synthesisMsg.category ?? "fix in prompt",
-        analyzedAt: "just now",
-      }
-    : stubFallback;
+  let state;
+  let data = null;
+  let newSinceAnalysis = 0;
+  if (thread?.runState === "streaming") {
+    state = "analyzing";
+  } else if (synthesisMsg) {
+    state = "analyzed";
+    data = {
+      synthesis: synthesisMsg.headline,
+      fix: synthesisMsg.fix,
+      confidence: synthesisMsg.confidence ?? "M",
+      category,
+      analyzedAt: "just now",
+    };
+    // Just ran against the current cluster state — nothing new since.
+  } else if (cachedRca) {
+    state = "analyzed";
+    data = { ...cachedRca, category };
+    const current = error?.traceCount ?? error?.occurrences ?? 0;
+    newSinceAnalysis =
+      cachedRca.failuresAtRun != null
+        ? Math.max(0, current - cachedRca.failuresAtRun)
+        : 0;
+  } else {
+    state = "not_analyzed";
+  }
 
   // Empty-state CTA: kick the shared run via the pending flag. The runner
   // (hooked at the parent level) will pick it up and start streaming.
@@ -724,7 +752,7 @@ export default function ClusterHeadlineCard({
             <AnalyzedState
               data={{
                 ...data,
-                newSinceAnalysis: state === "stale" ? 47 : 0,
+                newSinceAnalysis,
               }}
               onApplyFix={noop}
               onCreateLinear={noop}

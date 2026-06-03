@@ -108,6 +108,25 @@ class TracePreview:
 
 
 @dataclass
+class RcaSummary:
+    """Cached cluster-RCA result for the headline card (PRD §7.1).
+
+    Populated from the last cluster-rca agent run. ``synthesis`` is None when
+    the cluster has never been analyzed — the card shows its empty state then,
+    not a fabricated summary. ``failures_at_run`` is the cluster's error_count
+    at analysis time; the card compares it against the current count to show a
+    "N new since last analysis" stale nudge.
+    """
+
+    synthesis: str | None = None
+    fix: str | None = None
+    confidence: str | None = None  # H | M | L
+    evidence_trace_ids: list = field(default_factory=list)
+    analyzed_at: datetime | None = None
+    failures_at_run: int | None = None
+
+
+@dataclass
 class FeedDetailCore:
     """Detail view core payload — extends list row with trace previews."""
 
@@ -115,6 +134,7 @@ class FeedDetailCore:
     description: str | None = None
     success_trace: TracePreview | None = None
     representative_trace: TracePreview | None = None
+    rca: RcaSummary | None = None
 
 
 # ---------------------------------------------------------------------------

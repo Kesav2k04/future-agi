@@ -150,11 +150,23 @@ class TracePreviewSerializer(serializers.Serializer):
     output = serializers.CharField(allow_null=True)
 
 
+class RcaSummarySerializer(serializers.Serializer):
+    synthesis = serializers.CharField(allow_null=True, required=False)
+    fix = serializers.CharField(allow_null=True, required=False)
+    confidence = serializers.CharField(allow_null=True, required=False)
+    evidence_trace_ids = serializers.ListField(
+        child=serializers.CharField(), required=False
+    )
+    analyzed_at = serializers.DateTimeField(allow_null=True, required=False)
+    failures_at_run = serializers.IntegerField(allow_null=True, required=False)
+
+
 class FeedDetailCoreSerializer(serializers.Serializer):
     row = FeedListRowSerializer()
     description = serializers.CharField(allow_null=True)
     success_trace = TracePreviewSerializer(allow_null=True)
     representative_trace = TracePreviewSerializer(allow_null=True)
+    rca = RcaSummarySerializer(allow_null=True, required=False)
 
 
 class FeedDetailApiResponseSerializer(serializers.Serializer):

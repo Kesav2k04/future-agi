@@ -23,10 +23,63 @@ from agent_playground.models.node_template import NodeTemplate
 from agent_playground.utils.version_content import update_version_content
 from model_hub.models.choices import DatasetSourceChoices
 from model_hub.models.develop_dataset import Dataset
-from tracer.models.observation_span import ObservationSpan
 from tracer.models.trace import Trace
 
 logger = structlog.get_logger(__name__)
+
+
+def _chspan_to_legacy_dict(span) -> dict[str, Any]:
+    """Build the legacy ``.values(...)`` dict shape this module used to get
+    from Django ``ObservationSpan.no_workspace_objects.filter(...).values(...)``.
+
+    ``model_parameters`` and ``span_attributes`` aren't flat CHSpan fields:
+    they round-trip through ``attributes_extra`` (see adapter.py:330) and
+    the typed-maps respectively. ``input`` / ``output`` come back as JSON
+    strings from CH and are decoded so the downstream consumers see the
+    same Python dicts they did from PG's JSONField.
+
+    The ``no_workspace_objects`` legacy manager bypassed workspace filtering;
+    the CH spans store does not encode workspace at all, so the manager
+    semantics naturally match (no extra filter needed).
+    """
+    import json as _json
+
+    from tracer.services.clickhouse.v2.span_reader import CHSpanReader
+
+    extra = CHSpanReader.attributes_extra_as_dict(span)
+    # Defensive: attributes_extra_as_dict can yield a non-dict if the
+    # underlying CH column is a raw String (schema 013) rather than typed
+    # JSON. Treat anything that's not a dict as no overflow data.
+    if not isinstance(extra, dict):
+        extra = {}
+
+    span_attributes: dict = {}
+    span_attributes.update(span.attrs_string or {})
+    span_attributes.update(span.attrs_number or {})
+    span_attributes.update(span.attrs_bool or {})
+    for k, v in extra.items():
+        if k not in ("model_parameters", "input_images", "eval_input", "eval_attributes"):
+            span_attributes[k] = v
+
+    def _decode_json(s):
+        if not s:
+            return None
+        try:
+            return _json.loads(s)
+        except (_json.JSONDecodeError, TypeError):
+            return s
+
+    return {
+        "id": span.id,
+        "name": span.name,
+        "observation_type": span.observation_type,
+        "parent_span_id": span.parent_span_id or None,
+        "input": _decode_json(span.input),
+        "output": _decode_json(span.output),
+        "model": span.model,
+        "model_parameters": extra.get("model_parameters"),
+        "span_attributes": span_attributes,
+    }
 
 
 def convert_trace_to_graph(
@@ -43,23 +96,16 @@ def convert_trace_to_graph(
 
     Returns the created (Graph, GraphVersion) tuple.
     """
+    from tracer.services.clickhouse.v2 import get_reader
+
     trace_id = str(trace.id)
 
-    spans = list(
-        ObservationSpan.no_workspace_objects.filter(trace_id=trace_id)
-        .order_by("start_time")
-        .values(
-            "id",
-            "name",
-            "observation_type",
-            "parent_span_id",
-            "input",
-            "output",
-            "model",
-            "model_parameters",
-            "span_attributes",
-        )
-    )
+    with get_reader() as reader:
+        # list_by_trace orders by start_time, id — matching the prior
+        # `.order_by("start_time")` (ties on start_time previously broke
+        # by row order; here they break by id, which is stable).
+        chspans = reader.list_by_trace(trace_id)
+    spans = [_chspan_to_legacy_dict(s) for s in chspans]
 
     llm_spans = [s for s in spans if s["observation_type"] == "llm"]
     if not llm_spans:

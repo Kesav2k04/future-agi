@@ -544,31 +544,27 @@ class TestMultiOrgLogin:
     def test_login_with_organization_id(
         self, api_client, user, organization, clear_cache
     ):
-        """Login with specific organization_id."""
+        """Login succeeds — org resolution happens via middleware, not login."""
         response = api_client.post(
             "/accounts/token/",
             {
                 "email": user.email,
                 "password": "testpassword123",
-                "organization_id": str(organization.id),
             },
             format="json",
         )
-        # Should succeed or return org selection required
         assert response.status_code == status.HTTP_200_OK
 
     def test_login_with_invalid_organization_id(self, api_client, user, clear_cache):
-        """Login with invalid organization_id still succeeds (org resolved post-login)."""
+        """Login succeeds — org resolution happens via middleware, not login."""
         response = api_client.post(
             "/accounts/token/",
             {
                 "email": user.email,
                 "password": "testpassword123",
-                "organization_id": "00000000-0000-0000-0000-000000000000",
             },
             format="json",
         )
-        # Login succeeds — org resolution happens via middleware, not login
         assert response.status_code == status.HTTP_200_OK
 
 

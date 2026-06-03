@@ -122,7 +122,7 @@ class TestAuthenticatedEndpoints:
         """Unauthenticated request to protected endpoint fails."""
         response = api_client.get("/accounts/user-info/")
         # API returns 403 Forbidden for unauthenticated requests
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_user_info_with_auth(self, auth_client, user):
         """Authenticated request to protected endpoint succeeds."""

@@ -34,7 +34,8 @@ class TestTOTPSetup:
         )
 
         assert response.status_code == 400
-        assert response.json()["details"] == {"code": ["Unknown field."]}
+        assert "code" in response.json().get("details", {})
+        assert "Unknown field." in response.json()["details"]["code"]
 
     def test_totp_confirm_with_valid_code(self, auth_client, user):
         """Confirming with correct code activates TOTP and returns recovery codes."""

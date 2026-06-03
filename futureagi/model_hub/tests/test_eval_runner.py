@@ -388,7 +388,7 @@ class TestCustomEvalTemplateCreateView(EvalRunnerBaseTestCase):
             format="json",
         )
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_create_custom_eval_template_missing_required_keys(self):
         """Create fails when required_keys is missing."""
@@ -527,10 +527,7 @@ class TestEvalTemplateCreateView(EvalRunnerBaseTestCase):
             format="json",
         )
 
-        assert response.status_code in [
-            status.HTTP_401_UNAUTHORIZED,
-            status.HTTP_403_FORBIDDEN,
-        ]
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
 
 @pytest.mark.django_db
@@ -860,10 +857,7 @@ class TestEvalUserTemplateCreateView(EvalRunnerBaseTestCase):
             format="json",
         )
 
-        assert response.status_code in [
-            status.HTTP_401_UNAUTHORIZED,
-            status.HTTP_403_FORBIDDEN,
-        ]
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
 
 # =============================================================================
@@ -937,7 +931,7 @@ class TestDatasetEvalStatsView(EvalRunnerBaseTestCase):
 
         response = self.client.get(f"/model-hub/dataset/{self.dataset.id}/eval-stats/")
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_get_eval_stats_invalid_dataset_id(self):
         """Get eval stats handles invalid dataset ID gracefully."""

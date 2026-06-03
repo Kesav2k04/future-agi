@@ -570,7 +570,13 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                 trace_config["organization_id"] = str(request.workspace.organization_id)
                 trace_config["workspace_id"] = str(request.workspace.id)
 
-                builder = DashboardQueryBuilder(trace_config)
+                # v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=DASHBOARD
+                from tracer.services.clickhouse.v2.dispatch import (
+                    get_query_builder_class,
+                )
+
+                _DashCls = get_query_builder_class("DASHBOARD")
+                builder = _DashCls(trace_config)
                 query_timeout = self._get_trace_query_timeout_ms(trace_config)
                 for sql, params, metric_info in builder.build_all_queries():
                     metric_info["source"] = "traces"
@@ -1221,17 +1227,17 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                         SELECT key, argMax(type, cnt) AS type FROM (
                             SELECT key, 'text' AS type, count() AS cnt
                             FROM spans ARRAY JOIN mapKeys(span_attr_str) AS key
-                            WHERE project_id IN %(project_ids)s AND _peerdb_is_deleted = 0
+                            WHERE project_id IN %(project_ids)s AND is_deleted = 0
                             GROUP BY key
                             UNION ALL
                             SELECT key, 'number' AS type, count() AS cnt
                             FROM spans ARRAY JOIN mapKeys(span_attr_num) AS key
-                            WHERE project_id IN %(project_ids)s AND _peerdb_is_deleted = 0
+                            WHERE project_id IN %(project_ids)s AND is_deleted = 0
                             GROUP BY key
                             UNION ALL
                             SELECT key, 'boolean' AS type, count() AS cnt
                             FROM spans ARRAY JOIN mapKeys(span_attr_bool) AS key
-                            WHERE project_id IN %(project_ids)s AND _peerdb_is_deleted = 0
+                            WHERE project_id IN %(project_ids)s AND is_deleted = 0
                             GROUP BY key
                         )
                         GROUP BY key ORDER BY key LIMIT 2000
@@ -1844,23 +1850,16 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
         except (ImportError, Exception):
             pass
 
+        # CH-only span attribute key inventory. PG fallback removed
+        # post-migration — the attrs_* typed-Map indexes on CH are the
+        # authoritative source of which keys exist for a project.
         custom_attributes = []
+        analytics = AnalyticsQueryService() if is_clickhouse_enabled() else None
         for pid in project_ids:
-            try:
-                if is_clickhouse_enabled():
-                    analytics = AnalyticsQueryService()
-                    keys = analytics.get_span_attribute_keys_ch(pid)
-                else:
-                    keys = SQL_query_handler.get_span_attributes_for_project(pid)
-            except Exception as e:
-                logger.warning(
-                    f"CH span attributes failed for {pid}, falling back to PG",
-                    error=str(e),
-                )
-                try:
-                    keys = SQL_query_handler.get_span_attributes_for_project(pid)
-                except Exception:
-                    keys = []
+            if analytics is not None:
+                keys = analytics.get_span_attribute_keys_ch(pid)
+            else:
+                keys = SQL_query_handler.get_span_attributes_for_project(pid)
             for key in keys:
                 attr = {"name": key, "display_name": key, "type": "string"}
                 if attr not in custom_attributes:
@@ -2141,11 +2140,21 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                 if metric_name in enduser_string_cols:
                     enduser_col = enduser_string_cols[metric_name]
                     try:
+                        # P3b step2 precondition — the user/user_id_type filter-
+                        # value list is cut off the legacy CDC `tracer_enduser`
+                        # onto the v2 `end_users` RMT (017): `_peerdb_is_deleted`
+                        # → `is_deleted`; `user_id`/`user_id_type` columns are
+                        # identical. The legacy table stops getting new users
+                        # once step2 drops the PG get_or_create → PG→CDC chain,
+                        # so a newly-active user's `user_id` would be MISSING from
+                        # this dropdown; `end_users` is kept fresh by the P3a-ii
+                        # ingest dual-write. Both are OLD-keyed pre-flip with the
+                        # same rows → byte-identical value list (gate B).
                         sql = (
                             f"SELECT DISTINCT {enduser_col} AS val "
-                            f"FROM tracer_enduser FINAL "
+                            f"FROM end_users FINAL "
                             f"WHERE project_id IN %(project_ids)s "
-                            f"AND _peerdb_is_deleted = 0 "
+                            f"AND is_deleted = 0 "
                             f"AND {enduser_col} IS NOT NULL "
                             f"AND {enduser_col} != '' "
                             f"ORDER BY val "
@@ -2182,7 +2191,7 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                         f"SELECT DISTINCT {col_expr} AS val "
                         f"FROM spans "
                         f"WHERE project_id IN %(project_ids)s "
-                        f"AND _peerdb_is_deleted = 0 "
+                        f"AND is_deleted = 0 "
                         f"AND {col_expr} NOT IN ('', '{null_uuid}') "
                         f"ORDER BY val "
                         f"LIMIT 500"
@@ -2327,7 +2336,7 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                     "SELECT DISTINCT span_attr_str[%(attr_key)s] AS val "
                     "FROM spans "
                     "WHERE project_id IN %(project_ids)s "
-                    "AND _peerdb_is_deleted = 0 "
+                    "AND is_deleted = 0 "
                     "AND mapContains(span_attr_str, %(attr_key)s) "
                     "AND span_attr_str[%(attr_key)s] != '' "
                     "ORDER BY val "
@@ -2830,7 +2839,13 @@ class DashboardWidgetViewSet(BaseModelViewSetMixin, ModelViewSet):
                     return self._gm.bad_request(
                         "Some project_ids are invalid or not in this workspace"
                     )
-            builder = DashboardQueryBuilder(trace_config)
+            # v1↔v2 dispatch — flips with CH25_QUERY_TYPES_V2_PRIMARY=DASHBOARD
+            from tracer.services.clickhouse.v2.dispatch import (
+                get_query_builder_class,
+            )
+
+            _DashCls = get_query_builder_class("DASHBOARD")
+            builder = _DashCls(trace_config)
             query_timeout = self._get_trace_query_timeout_ms(trace_config)
             for sql, params, metric_info in builder.build_all_queries():
                 metric_info["source"] = "traces"

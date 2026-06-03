@@ -174,7 +174,7 @@ class TestCap:
             cap=5,
         )
         assert len(result.ids) == 5
-        assert result.total_matching == 12
+        assert result.total_matching == 6  # cap+1 heuristic, not exact COUNT
         assert result.truncated is True
 
     def test_cap_above_total_is_not_truncated(

@@ -178,6 +178,19 @@ def _ch_span_to_span(span) -> SpanData:
     # to CHAIN so the scanner still sees structural role info instead of a blank span.
     attrs["span.kind"] = _OBS_TYPE_TO_KIND.get(obs_type, "CHAIN")
 
+    # Surface function-calling tool definitions so the scanner can derive the
+    # AVAILABLE tool set (vs. tools actually called). Kept verbatim from the raw
+    # span attributes — no transformation, the scanner parses the names.
+    raw_attrs = row.get("span_attributes") or {}
+    if isinstance(raw_attrs, str):
+        try:
+            raw_attrs = json.loads(raw_attrs)
+        except (json.JSONDecodeError, TypeError):
+            raw_attrs = {}
+    for tool_key in ("llm.tools", "gen_ai.tool.definitions"):
+        if isinstance(raw_attrs, dict) and raw_attrs.get(tool_key):
+            attrs[tool_key] = raw_attrs[tool_key]
+
     for key in _TOKEN_KEYS:
         if key in metadata:
             attrs[key] = metadata[key]

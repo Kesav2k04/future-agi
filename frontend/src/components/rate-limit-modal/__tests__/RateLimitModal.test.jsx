@@ -2,6 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "src/utils/test-utils";
 import { createTheme } from "@mui/material/styles";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import UploadLimitNotification from "../RateLimitModal";
 
 const mocks = vi.hoisted(() => ({
@@ -40,6 +41,7 @@ vi.mock("src/utils/axios", () => ({
 
 vi.mock("notistack", () => ({
   enqueueSnackbar: vi.fn(),
+  closeSnackbar: vi.fn(),
 }));
 
 const theme = createTheme({
@@ -109,7 +111,15 @@ describe("UploadLimitNotification", () => {
   });
 
   it("opens pricing dialog from upgrade CTA without routing away", async () => {
-    render(<UploadLimitNotification />, { theme });
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={qc}>
+        <UploadLimitNotification />
+      </QueryClientProvider>,
+      { theme },
+    );
 
     act(() => {
       mocks.socket.dispatchEvent(

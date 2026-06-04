@@ -11,7 +11,11 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  usePlansAndAddons,
+  PLANS_QUERY_KEY,
+} from "src/hooks/use-plans-and-addons";
 import {
   Box,
   Typography,
@@ -553,7 +557,7 @@ export default function PricingPage() {
         .put(endpoints.settings.v2.upgradeToPayg, { session_id: sessionId })
         .then(() => {
           enqueueSnackbar("Upgraded to Pay-as-you-go!", { variant: "success" });
-          queryClient.invalidateQueries({ queryKey: ["v2-plans-and-addons"] });
+          queryClient.invalidateQueries({ queryKey: PLANS_QUERY_KEY });
         })
         .catch((err) => {
           enqueueSnackbar(
@@ -571,11 +575,7 @@ export default function PricingPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["v2-plans-and-addons"],
-    queryFn: () => axios.get(endpoints.settings.v2.plansAndAddons),
-    select: (res) => res.data?.result,
-  });
+  const { data, isLoading } = usePlansAndAddons();
 
   const closeDialog = () =>
     setAddonDialog({ open: false, plan: null, action: null });
@@ -598,7 +598,7 @@ export default function PricingPage() {
       enqueueSnackbar(`${res.data?.result?.plan} add-on activated!`, {
         variant: "success",
       });
-      queryClient.invalidateQueries({ queryKey: ["v2-plans-and-addons"] });
+      queryClient.invalidateQueries({ queryKey: PLANS_QUERY_KEY });
       closeDialog();
     },
     onError: () => {
@@ -614,7 +614,7 @@ export default function PricingPage() {
       enqueueSnackbar("Add-on will be removed at end of billing period", {
         variant: "info",
       });
-      queryClient.invalidateQueries({ queryKey: ["v2-plans-and-addons"] });
+      queryClient.invalidateQueries({ queryKey: PLANS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ["v2-billing-overview"] });
       queryClient.invalidateQueries({ queryKey: ["v2-usage-overview"] });
       closeDialog();
@@ -631,7 +631,7 @@ export default function PricingPage() {
       enqueueSnackbar("Add-on reinstated. Your plan stays active.", {
         variant: "success",
       });
-      queryClient.invalidateQueries({ queryKey: ["v2-plans-and-addons"] });
+      queryClient.invalidateQueries({ queryKey: PLANS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ["v2-billing-overview"] });
       queryClient.invalidateQueries({ queryKey: ["v2-usage-overview"] });
     },
@@ -646,7 +646,7 @@ export default function PricingPage() {
     mutationFn: () => axios.post(endpoints.settings.v2.downgradeToFree),
     onSuccess: () => {
       enqueueSnackbar("Downgraded to Free plan", { variant: "success" });
-      queryClient.invalidateQueries({ queryKey: ["v2-plans-and-addons"] });
+      queryClient.invalidateQueries({ queryKey: PLANS_QUERY_KEY });
     },
     onError: (err) =>
       enqueueSnackbar(err?.response?.data?.result || "Downgrade failed", {

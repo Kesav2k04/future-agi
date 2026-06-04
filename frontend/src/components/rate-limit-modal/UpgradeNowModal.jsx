@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -25,6 +25,8 @@ import { enqueueSnackbar } from "notistack";
 import { LoadingButton } from "@mui/lab";
 import { useNavigate } from "react-router";
 import logger from "src/utils/logger";
+import { formatFeatures } from "src/utils/planFormatters";
+import { usePlansAndAddons } from "src/hooks/use-plans-and-addons";
 
 const PLAN_TYPES = {
   FREE: "free",
@@ -86,7 +88,7 @@ function PlanCard({
   const handleContactSales = () => {
     trackEvent(Events.contactSalesClicked);
     window.open(
-      "https://calendly.com/nikhil-pareek/futureagi-demo?month=2024-12",
+      "https://meetings.hubspot.com/salil-kolhe/help-futureagi-app?uuid=3b9c0e31-9f37-4d63-ad15-88190748204a",
     );
   };
 
@@ -342,92 +344,32 @@ PlanCard.propTypes = {
 };
 
 const PricingDialog = ({ open, onClose, title, description }) => {
-  const [plansLoading, setPlanLoading] = useState(true);
-  const [currentPlan, setCurrentPlan] = useState(PLAN_TYPES.FREE);
-  const [businessMonthlyPrice, setBusinessMonthlyPrice] = useState(null);
-  const [data, setData] = useState(null);
   const theme = useTheme();
   const navigate = useNavigate();
+
+  const { data: result, isLoading: plansLoading } = usePlansAndAddons(open);
+
+  const plansByKey = [
+    ...(result?.tiers || []),
+    ...(result?.addons || []),
+  ].reduce((acc, plan) => {
+    acc[plan.key] = plan;
+    return acc;
+  }, {});
+
+  const currentPlan = result?.current_plan || PLAN_TYPES.FREE;
+  const data = {
+    ...plansByKey,
+    [PLAN_TYPES.CUSTOM]:
+      result?.customDetails || plansByKey.enterprise || plansByKey.scale,
+  };
+  const businessMonthlyPrice =
+    plansByKey[PLAN_TYPES.PRO]?.platform_fee_monthly || 0;
 
   const redirectToPlan = () => {
     onClose();
     navigate("/dashboard/settings/pricing");
   };
-
-  const formatCompact = (value) => {
-    if (value === -1) return "Unlimited";
-    if (value >= 1000000) return `${Number(value / 1000000).toPrecision(3)}M`;
-    if (value >= 10000) return `${Number(value / 1000).toPrecision(3)}K`;
-    return value?.toLocaleString?.() ?? value;
-  };
-
-  const formatFeatureLabel = (key) =>
-    key
-      .replace(/^has_/, "")
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-
-  const formatFeatures = (features) => {
-    if (Array.isArray(features)) return features;
-    if (!features) return [];
-
-    return Object.entries(features)
-      .filter(([, value]) => value === true || value === -1 || value > 0)
-      .map(([key, value]) => {
-        const label = formatFeatureLabel(key);
-        if (typeof value === "number")
-          return `${label}: ${formatCompact(value)}`;
-        return label;
-      })
-      .slice(0, 8);
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchAllData = async () => {
-      setPlanLoading(true);
-      try {
-        const planRes = await axios.get(endpoints.settings.v2.plansAndAddons);
-
-        if (!isMounted) return;
-
-        const result = planRes.data?.result || {};
-        const plansByKey = [
-          ...(result.tiers || []),
-          ...(result.addons || []),
-        ].reduce((acc, plan) => {
-          acc[plan.key] = plan;
-          return acc;
-        }, {});
-
-        setCurrentPlan(result.current_plan || PLAN_TYPES.FREE);
-        setData({
-          ...plansByKey,
-          [PLAN_TYPES.CUSTOM]:
-            result.customDetails || plansByKey.enterprise || plansByKey.scale,
-        });
-        setBusinessMonthlyPrice(
-          plansByKey[PLAN_TYPES.PRO]?.platform_fee_monthly || 0,
-        );
-      } catch (err) {
-        logger.error("Error fetching subscription or pricing details:", err);
-        if (isMounted) {
-          setData({});
-        }
-      } finally {
-        if (isMounted) setPlanLoading(false);
-      }
-    };
-
-    if (open) {
-      fetchAllData();
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [open]);
 
   return (
     <Dialog

@@ -9,6 +9,7 @@ import {
   Slide,
 } from "@mui/material";
 import PropTypes from "prop-types";
+import { closeSnackbar } from "notistack";
 import PricingDialog from "./UpgradeNowModal";
 import Iconify from "../iconify";
 import { useSocket } from "src/hooks/use-socket";
@@ -81,6 +82,7 @@ const UploadLimitNotification = () => {
   const handleOpenDialog = useCallback(() => {
     setDialogOpen(true);
     setShowRateLimiter(false);
+    closeSnackbar();
   }, []);
 
   const handleCloseDialog = useCallback(() => {

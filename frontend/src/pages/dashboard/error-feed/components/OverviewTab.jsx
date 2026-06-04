@@ -700,32 +700,6 @@ TraceList.propTypes = {
   onSelect: PropTypes.func.isRequired,
 };
 
-// Fallback stub matching the designer's screenshot — used until BE returns
-// `title` + bold-marked captions on each insight. Caption supports
-// **bold** markers parsed by `renderRichCaption` below.
-const STUB_PATTERN_INSIGHTS = [
-  {
-    title: "Common failure phrase",
-    value: "22 / 28",
-    caption: 'judges mention **"fabricated citation"**',
-  },
-  {
-    title: "Failure-correlated span",
-    value: "100%",
-    caption: "fail at span **answer_formation_llm**",
-  },
-  {
-    title: "Score severity tail",
-    value: "3 · 25",
-    caption: "3 traces at 0.0 (catastrophic), 25 in 0.1–0.5 range",
-  },
-  {
-    title: "Co-occurring evals",
-    value: "14 / 28",
-    caption: "also failed **CitationAccuracy**",
-  },
-];
-
 function renderRichCaption(text) {
   if (!text) return null;
   // Split on **bold** markers; alternate plain / bold spans.
@@ -749,13 +723,10 @@ function renderRichCaption(text) {
 function PatternSummary({ summary, clusterId }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const beInsights = summary?.insights ?? [];
-  // Use BE data only when it includes the richer `title` field. Until BE
-  // returns the {title, value, caption-with-**bold**} shape from the new
-  // builders (PRD §6.2), render the design-spec stub so the section
-  // always matches the intended look. Drop this fallback once BE catches up.
-  const hasRichBeData = beInsights.some((i) => i && i.title);
-  const insights = hasRichBeData ? beInsights : STUB_PATTERN_INSIGHTS;
+  // Real BE-computed insights only (PRD §6.2). No stub fallback — an
+  // un-analyzed / low-signal cluster shows the empty state below, never
+  // fabricated demo cards.
+  const insights = (summary?.insights ?? []).filter((i) => i && i.title);
 
   if (!insights.length) {
     const isEvalCluster =
@@ -1324,96 +1295,6 @@ RichText.propTypes = {
   isFailReel: PropTypes.bool,
 };
 
-// Mock-matching stub breadcrumb (PRD §6.3 Variant A). Used when the real
-// failReel/passReel lack the rich per-step fields (role/span/status/note);
-// lights up with real data once BE sends those. Mirrors the design mock.
-const STUB_FAIL_REEL = [
-  {
-    label: "User",
-    status: "ok",
-    span: "user.message.0",
-    raw: '{\n  "role": "user",\n  "content": "Search for GL accounts containing Kitchen Supplies"\n}',
-    text: [
-      { t: "asked: " },
-      { t: '"Search for GL accounts containing Kitchen Supplies"', em: true },
-    ],
-  },
-  {
-    label: "Tool",
-    span: "tool.resolve_entities.0",
-    text: [
-      { t: "resolve_entities", code: true },
-      { t: ' returned: no matches for "Kitchen Supplies" in any entity type' },
-    ],
-  },
-  {
-    label: "Agent",
-    span: "llm.response.0",
-    text: [{ t: "replied: asked the user to pick a different term or list all GL accounts" }],
-  },
-  {
-    label: "User",
-    isFailure: true,
-    span: "user.message.1",
-    text: [{ t: "retried with broader term: " }, { t: '"just Kitchen?"', em: true }],
-    note: [
-      { t: "Agent gave the " },
-      { t: "same response", b: true },
-      {
-        t: " instead of running a broader search → loop detected · 4 turns wasted before user gave up",
-      },
-    ],
-  },
-  {
-    label: "Call ended",
-    status: "fail",
-    span: "call.end",
-    text: [{ t: "user abandoned · finish_reason = user_hangup" }],
-  },
-];
-const STUB_PASS_REEL = [
-  {
-    label: "User",
-    status: "ok",
-    span: "user.message.0",
-    text: [
-      { t: "asked: " },
-      { t: '"Search for GL accounts containing Kitchen Supplies"', em: true },
-    ],
-  },
-  {
-    label: "Tool",
-    status: "ok",
-    span: "tool.resolve_entities.0",
-    text: [
-      { t: "resolve_entities", code: true },
-      { t: " returned: no matches — agent broadened the query automatically" },
-    ],
-  },
-  {
-    label: "Tool",
-    status: "ok",
-    span: "tool.search_accounts.0",
-    text: [
-      { t: "search_accounts", code: true },
-      { t: ' found 3 GL accounts matching ' },
-      { t: '"Kitchen"', em: true },
-    ],
-  },
-  {
-    label: "Agent",
-    status: "ok",
-    span: "llm.response.0",
-    text: [{ t: "listed the 3 matching accounts with codes and balances" }],
-  },
-  {
-    label: "Call ended",
-    status: "pass",
-    span: "call.end",
-    text: [{ t: "resolved · finish_reason = completed" }],
-  },
-];
-
 const FAIL_COLOR = "#DB2F2D";
 const PASS_COLOR = "#5ACE6D";
 
@@ -1948,16 +1829,10 @@ function TraceEvidence({ evidence, trace, traceId, workingTraceId }) {
     viewMode === "agentpath";
   const isGraphMode = viewMode === "agentgraph" || viewMode === "agentpath";
 
-  // Use the real reels when they carry rich per-step fields (role/span/
-  // status/note); otherwise fall back to the mock-matching stub so the
-  // breadcrumb shows the full designed experience until BE enriches steps.
-  // Prefer real evidence whenever we have any — rich (new, span-attributed)
-  // OR plain (old scans, kevinified-only). Only fall back to the design stub
-  // when there's genuinely no evidence, so we never fabricate a breadcrumb.
-  const rawFail = evidence.failReel || [];
-  const rawPass = evidence.passReel || [];
-  const failReel = rawFail.length ? rawFail : STUB_FAIL_REEL;
-  const passReel = rawPass.length ? rawPass : STUB_PASS_REEL;
+  // Real evidence only — rich (span-attributed) or plain (kevinified-only).
+  // Never fabricate a breadcrumb; an empty reel renders the empty state below.
+  const failReel = evidence.failReel || [];
+  const passReel = evidence.passReel || [];
   const hasPassing = passReel.length > 0;
 
   const steps = activeReel === "fail" ? failReel : passReel;
@@ -2180,8 +2055,7 @@ function TraceEvidence({ evidence, trace, traceId, workingTraceId }) {
               />
               <ReelColumn
                 title="Working trace"
-                // KNN match value is stubbed until the BE endpoint lands (PRD §6.4).
-                headerMeta={hasPassing ? "KNN match · cos 0.12" : undefined}
+                headerMeta={hasPassing ? "nearest passing run" : undefined}
                 accentColor={PASS_COLOR}
                 steps={passReel}
                 isFailReel={false}
@@ -2684,9 +2558,9 @@ export default function OverviewTab({ _error: currentError }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const clusterId = currentError?.clusterId;
-  // A cluster's modality (text vs voice) decides the per-trace surface —
-  // there's no manual toggle. Voice comes from the synthetic demo cluster
-  // today; real voice clusters will carry `modality: "voice"` from BE.
+  // A cluster's modality (text vs voice) decides the per-trace surface.
+  // Voice comes from the synthetic demo cluster today; real voice clusters
+  // will carry `modality: "voice"` from BE once the voice pipeline lands.
   const isVoice = currentError?.modality === "voice";
   const isVoiceDemo = isVoiceDemoCluster(clusterId);
   const { data: fetchedOverview, isLoading: isFetchOverviewLoading } =
@@ -2950,11 +2824,9 @@ export default function OverviewTab({ _error: currentError }) {
         ) : (
           <Stack gap={1.5} sx={{ p: 1.75 }}>
             {/* Per-trace surface — scanner clusters get breadcrumb-style
-                Trace Evidence (with Breadcrumb / Agent Graph / Agent Path
-                view-mode toggle, PRD §6.3 Variant A; Agent Graph + Agent Path
-                reuse the real Observe trace-graph components); eval clusters
-                get the I/O blob variant (Variant C) or voice playback
-                (Variant B), toggled manually until BE exposes project type. */}
+                Trace Evidence (Breadcrumb / Agent Graph / Agent Path toggle,
+                PRD §6.3 Variant A; the graph modes reuse the real Observe
+                trace-graph components); eval clusters get the I/O panel. */}
             {currentError?.source === "eval" ? (
               <SectionCard
                 title={isVoice ? "Voice call" : "Input / Output"}

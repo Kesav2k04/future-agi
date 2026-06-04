@@ -6,7 +6,7 @@ import Iconify from "src/components/iconify";
 // ── Recovered EvalIOPanel ───────────────────────────────────────────────────
 // NOTE: The original file was lost in the `/tmp` wipe (2026-06-01). This is a
 // clean re-implementation that matches the call sites and the structural
-// pattern used by `VoiceEvalPanel.JudgeReasonCard`. It renders the trace's
+// judge-reason card pattern. It renders the trace's
 // input / output as labelled blobs and the judge's reason + score.
 // Replace with the richer original version if it's ever recovered from a
 // teammate's machine or an earlier git push.
@@ -94,7 +94,7 @@ IOBlock.propTypes = {
   value: PropTypes.any,
 };
 
-// ── Judge reason card (same shape as VoiceEvalPanel.JudgeReasonCard) ────────
+// ── Judge reason card (judge reason card) ────────
 function JudgeReasonCard({ reason, score }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";

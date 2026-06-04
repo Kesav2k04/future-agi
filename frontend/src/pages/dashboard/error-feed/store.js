@@ -37,7 +37,8 @@ export const useErrorFeedStore = create((set, get) => ({
 
   // ── Analyze tab thread state (per-cluster) ─────────────────────────────
   // Shape: { [clusterId]: { messages: [...], runState: 'idle'|'streaming'|'done', startedAt } }
-  // Live streaming is mocked for now — replace once the BE agent endpoint lands.
+  // Streamed live from the cluster-RCA agent over Falcon's WebSocket
+  // (see clusterAnalyzeSocket.js); ephemeral per session.
   analyzeThreadsByCluster: {},
   // Set when the headline card's "Analyze cluster" button is clicked. The
   // Analyze tab consumes this flag on mount/visibility to auto-start a run,

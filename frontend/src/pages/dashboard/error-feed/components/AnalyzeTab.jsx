@@ -19,6 +19,8 @@ import {
   useTheme,
 } from "@mui/material";
 import PropTypes from "prop-types";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import Iconify from "src/components/iconify";
 import { useErrorFeedStore } from "../store";
 import { useFollowUpRunner } from "../useAnalyzeRunner";
@@ -32,6 +34,13 @@ import { useFollowUpRunner } from "../useAnalyzeRunner";
 // ── Visual primitives ─────────────────────────────────────────────────────
 
 const ACCENT = "#7857FC";
+
+// Confidence badge styling for the synthesis card (H/M/L from the agent).
+const CONF_META = {
+  H: { label: "High confidence", color: "#5ACE6D" },
+  M: { label: "Medium confidence", color: "#E8A13A" },
+  L: { label: "Low confidence", color: "#8A8A8A" },
+};
 
 // Tunes the LLM-style streaming feel. Faster than real LLMs since we have
 // the whole answer locally — should feel snappy but still "alive".
@@ -118,6 +127,116 @@ function StreamCursor({ color = ACCENT }) {
   );
 }
 StreamCursor.propTypes = { color: PropTypes.string };
+
+// Compact markdown renderer for agent prose (reasoning, synthesis). The model
+// emits real markdown — bold, `code`, headings, lists — so render it instead of
+// dumping the raw `**`/backtick syntax. Styling inherits the caller's font via
+// sx; element margins are tightened to chat density.
+function AnalyzeMarkdown({
+  text,
+  fontSize = "12px",
+  color = "text.secondary",
+  italic = false,
+  sx,
+}) {
+  return (
+    <Box
+      sx={{
+        fontSize,
+        color,
+        lineHeight: 1.6,
+        fontStyle: italic ? "italic" : "normal",
+        wordBreak: "break-word",
+        "& > :first-of-type": { mt: 0 },
+        "& > :last-child": { mb: 0 },
+        "& p": { m: 0, mb: 0.75 },
+        "& strong": { fontWeight: 700, color: "text.primary" },
+        "& em": { fontStyle: "italic" },
+        "& a": { color: ACCENT, textDecoration: "underline" },
+        "& ul, & ol": { m: 0, mb: 0.75, pl: 2.25 },
+        "& li": { mb: 0.2 },
+        "& h1, & h2, & h3, & h4, & h5, & h6": {
+          fontSize: "1.05em",
+          fontWeight: 700,
+          color: "text.primary",
+          m: 0,
+          mb: 0.4,
+        },
+        "& code": {
+          fontFamily: "ui-monospace, SFMono-Regular, monospace",
+          fontSize: "0.9em",
+          fontStyle: "normal",
+          px: 0.5,
+          py: "1px",
+          borderRadius: "3px",
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark"
+              ? alpha("#fff", 0.08)
+              : alpha("#000", 0.05),
+        },
+        "& pre": {
+          m: 0,
+          mb: 0.75,
+          p: 1,
+          borderRadius: "6px",
+          overflowX: "auto",
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark"
+              ? alpha("#fff", 0.05)
+              : alpha("#000", 0.04),
+        },
+        "& pre code": { bgcolor: "transparent", p: 0, fontSize: "11px" },
+        "& blockquote": {
+          m: 0,
+          mb: 0.75,
+          pl: 1,
+          borderLeft: "2px solid",
+          borderColor: "divider",
+          color: "text.secondary",
+        },
+        "& table": {
+          borderCollapse: "collapse",
+          width: "auto",
+          my: 0.75,
+          fontSize: "0.95em",
+          display: "block",
+          overflowX: "auto",
+        },
+        "& th, & td": {
+          border: "1px solid",
+          borderColor: "divider",
+          px: 1,
+          py: 0.5,
+          textAlign: "left",
+        },
+        "& th": {
+          fontWeight: 700,
+          color: "text.primary",
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark"
+              ? alpha("#fff", 0.04)
+              : alpha("#000", 0.03),
+        },
+        "& hr": {
+          border: "none",
+          borderTop: "1px solid",
+          borderColor: "divider",
+          my: 1,
+        },
+        ...sx,
+      }}
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text || ""}</ReactMarkdown>
+    </Box>
+  );
+}
+AnalyzeMarkdown.propTypes = {
+  text: PropTypes.string,
+  fontSize: PropTypes.string,
+  color: PropTypes.string,
+  italic: PropTypes.bool,
+  sx: PropTypes.object,
+};
 
 // Drop-in replacement for <Typography>{text}</Typography> that streams the
 // text in when `instant` is false. When `instant` is true (e.g., the user
@@ -610,7 +729,7 @@ function StepCard({ step }) {
         {hasDetails && (
           <Stack direction="row" alignItems="center" gap={0.3} sx={{ flexShrink: 0, mt: "1px" }}>
             <Typography fontSize="10px" color="text.disabled">
-              {open ? "Hide" : "Reasoning"}
+              {open ? "Hide" : "Details"}
             </Typography>
             <Iconify
               icon={open ? "mdi:chevron-up" : "mdi:chevron-down"}
@@ -649,7 +768,12 @@ StepCard.propTypes = { step: PropTypes.object.isRequired };
 // The agent's native thinking, streamed inline as its own block (Claude-Code
 // style) — a dim, rule-bordered "Thinking" passage between steps. Streaming is
 // keyed off the message id so tabbing away and back doesn't replay it.
-function ReasoningBlock({ id, text, instant }) {
+function ReasoningBlock({ text }) {
+  // Collapsed by default — the full thinking is a wall of text most people skim
+  // past. Header shows a faint one-line preview so it's scannable; click to
+  // expand the whole passage.
+  const [open, setOpen] = useState(false);
+  const preview = (text || "").replace(/\s+/g, " ").trim().slice(0, 100);
   return (
     <Stack direction="row" gap={1} sx={{ pl: 0.5 }}>
       <Iconify
@@ -666,35 +790,56 @@ function ReasoningBlock({ id, text, instant }) {
           pl: 1.25,
         }}
       >
-        <Typography
-          fontSize="9.5px"
-          fontWeight={700}
-          color="text.disabled"
-          sx={{ textTransform: "uppercase", letterSpacing: "0.07em", mb: 0.3 }}
+        <Stack
+          direction="row"
+          alignItems="center"
+          gap={0.75}
+          onClick={() => setOpen((v) => !v)}
+          sx={{ cursor: "pointer", userSelect: "none" }}
         >
-          Thinking
-        </Typography>
-        <StreamingPlainText
-          text={text}
-          instant={instant}
-          identityKey={`${id}-reasoning`}
-          fontSize="11.5px"
-          color="text.secondary"
-          sx={{
-            lineHeight: 1.6,
-            whiteSpace: "pre-wrap",
-            fontStyle: "italic",
-            opacity: 0.85,
-          }}
-        />
+          <Typography
+            fontSize="9.5px"
+            fontWeight={700}
+            color="text.disabled"
+            sx={{
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              flexShrink: 0,
+            }}
+          >
+            Thinking
+          </Typography>
+          {!open && preview && (
+            <Typography
+              fontSize="11px"
+              color="text.disabled"
+              noWrap
+              sx={{ flex: 1, minWidth: 0, fontStyle: "italic", opacity: 0.6 }}
+            >
+              {preview}…
+            </Typography>
+          )}
+          <Iconify
+            icon={open ? "mdi:chevron-up" : "mdi:chevron-down"}
+            width={14}
+            sx={{ color: "text.disabled", ml: "auto", flexShrink: 0 }}
+          />
+        </Stack>
+        <Collapse in={open} unmountOnExit>
+          <AnalyzeMarkdown
+            text={text}
+            italic
+            fontSize="11.5px"
+            color="text.secondary"
+            sx={{ opacity: 0.85, mt: 0.5 }}
+          />
+        </Collapse>
       </Box>
     </Stack>
   );
 }
 ReasoningBlock.propTypes = {
-  id: PropTypes.string,
   text: PropTypes.string,
-  instant: PropTypes.bool,
 };
 
 function SynthesisCard({ synthesis }) {
@@ -737,11 +882,34 @@ function SynthesisCard({ synthesis }) {
         >
           Synthesis
         </Typography>
+        {CONF_META[synthesis.confidence] && (
+          <Typography
+            fontSize="9.5px"
+            fontWeight={700}
+            sx={{
+              ml: "auto",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: CONF_META[synthesis.confidence].color,
+              px: 0.75,
+              py: 0.25,
+              borderRadius: "3px",
+              bgcolor: alpha(CONF_META[synthesis.confidence].color, isDark ? 0.16 : 0.12),
+            }}
+          >
+            {CONF_META[synthesis.confidence].label}
+          </Typography>
+        )}
       </Stack>
-      <Typography fontSize="13.5px" color="text.primary" sx={{ lineHeight: 1.55, mb: 1 }}>
-        {head.revealed}
+      <Box sx={{ mb: 1 }}>
+        <AnalyzeMarkdown
+          text={head.revealed}
+          fontSize="13.5px"
+          color="text.primary"
+          sx={{ lineHeight: 1.55 }}
+        />
         {head.isStreaming && <StreamCursor />}
-      </Typography>
+      </Box>
       {headDone && (
         <Stack direction="row" gap={1} alignItems="flex-start">
           <Typography
@@ -761,10 +929,15 @@ function SynthesisCard({ synthesis }) {
           >
             Fix
           </Typography>
-          <Typography fontSize="12.5px" color="text.secondary" sx={{ lineHeight: 1.6, flex: 1 }}>
-            {fix.revealed}
+          <Box sx={{ flex: 1 }}>
+            <AnalyzeMarkdown
+              text={fix.revealed}
+              fontSize="12.5px"
+              color="text.secondary"
+              sx={{ lineHeight: 1.6 }}
+            />
             {fix.isStreaming && <StreamCursor color="#5ACE6D" />}
-          </Typography>
+          </Box>
         </Stack>
       )}
     </Box>
@@ -914,75 +1087,17 @@ SubagentStepRow.propTypes = { step: PropTypes.object.isRequired };
 // Light **bold** parsing for the sub-agent answer body — minimal markdown.
 // `trailingNode` is rendered inline at the very end of the text (so a
 // streaming cursor sits next to the last revealed character).
-function MiniMarkdown({ text, trailingNode }) {
-  const segments = useMemo(() => {
-    const out = [];
-    const re = /\*\*([^*]+)\*\*|`([^`]+)`/g;
-    let last = 0;
-    let m;
-    while ((m = re.exec(text)) !== null) {
-      if (m.index > last) out.push({ t: text.slice(last, m.index) });
-      if (m[1] != null) out.push({ t: m[1], b: true });
-      else if (m[2] != null) out.push({ t: m[2], code: true });
-      last = re.lastIndex;
-    }
-    if (last < text.length) out.push({ t: text.slice(last) });
-    return out;
-  }, [text]);
-  return (
-    <Typography
-      component="div"
-      fontSize="13px"
-      color="text.primary"
-      sx={{ lineHeight: 1.6, whiteSpace: "pre-wrap" }}
-    >
-      {segments.map((s, i) =>
-        s.b ? (
-          <Box key={i} component="span" sx={{ fontWeight: 700 }}>
-            {s.t}
-          </Box>
-        ) : s.code ? (
-          <Box
-            key={i}
-            component="code"
-            sx={{
-              fontFamily: "ui-monospace, SFMono-Regular, monospace",
-              fontSize: "12px",
-              px: 0.5,
-              py: 0.1,
-              borderRadius: "3px",
-              bgcolor: (theme) =>
-                theme.palette.mode === "dark"
-                  ? alpha("#fff", 0.07)
-                  : alpha("#000", 0.05),
-            }}
-          >
-            {s.t}
-          </Box>
-        ) : (
-          <React.Fragment key={i}>{s.t}</React.Fragment>
-        ),
-      )}
-      {trailingNode}
-    </Typography>
-  );
-}
-MiniMarkdown.propTypes = {
-  text: PropTypes.string.isRequired,
-  trailingNode: PropTypes.node,
-};
-
-// Stream a markdown answer word-by-word + render a blinking cursor at the
-// end until the stream completes. The partial text still goes through the
-// markdown parser; the regex tolerates unmatched `**` so styling pops in
-// as the closing marker appears — same way real LLM clients behave.
+// Stream a markdown answer word-by-word + a blinking cursor until complete.
+// Falcon answers use full markdown (headings, tables, lists, code) — render
+// them through AnalyzeMarkdown, not the old bold/code-only mini parser. The
+// partial text is valid markdown at each step, so styling settles as it streams.
 function StreamingMarkdown({ text, identityKey }) {
   const { revealed, isStreaming } = useStreamingText(text, { identityKey });
   return (
-    <MiniMarkdown
-      text={revealed}
-      trailingNode={isStreaming ? <StreamCursor /> : null}
-    />
+    <Box>
+      <AnalyzeMarkdown text={revealed} fontSize="13px" color="text.primary" />
+      {isStreaming && <StreamCursor />}
+    </Box>
   );
 }
 StreamingMarkdown.propTypes = {
@@ -1308,6 +1423,9 @@ export default function AnalyzeTab({ error }) {
 
   const messages = thread?.messages ?? [];
   const runState = thread?.runState ?? "idle";
+  // Live setup-progress line (rca_status) shown in the loader before the first
+  // real frame lands, so the pre-LLM dead-air shows actual activity.
+  const setupStatus = thread?.status;
   const followUpRunState = thread?.followUpRunState ?? "idle";
   const isStreaming = runState === "streaming";
   const isFollowUpStreaming = followUpRunState === "streaming";
@@ -1508,7 +1626,7 @@ export default function AnalyzeTab({ error }) {
                 }}
               />
               <Typography fontSize="13px" fontWeight={600} color="text.primary">
-                Spinning up sub-agents…
+                {setupStatus || "Spinning up sub-agents…"}
               </Typography>
               <Typography fontSize="11.5px" color="text.secondary">
                 Sampling representative calls and reading the telemetry. The
@@ -1519,9 +1637,8 @@ export default function AnalyzeTab({ error }) {
             messages.map((m) => {
               const render = (() => {
                 if (m.type === "reasoning")
-                  return (
-                    <ReasoningBlock id={m.id} text={m.text} instant={m.instant} />
-                  );
+                  // Collapsed-by-default thinking, rendered as markdown.
+                  return <ReasoningBlock text={m.text} />;
                 if (m.type === "step") return <StepCard step={m} />;
                 if (m.type === "synthesis") return <SynthesisCard synthesis={m} />;
                 if (m.type === "run_header")

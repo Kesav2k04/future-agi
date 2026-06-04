@@ -22,6 +22,7 @@ import { useErrorFeedStore } from "./store";
 
 let socket = null;
 let socketReady = null; // Promise<WebSocket> while connecting/open
+let pingTimer = null; // keepalive interval; cleared on close
 // conversationId → handler(parsed) — routes inbound frames to the right run.
 const handlers = new Map();
 
@@ -48,9 +49,22 @@ function ensureSocket(token, workspaceId) {
     const ws = new WebSocket(buildWsUrl(token, workspaceId));
     socket = ws;
 
-    ws.onopen = () => resolve(ws);
+    ws.onopen = () => {
+      // Keep connection alive — proxies/granian drop idle WebSockets after
+      // ~100s, leaving the FE with a half-open socket whose send() succeeds
+      // silently into the void (run hangs forever in "streaming"). Mirrors
+      // the heartbeat in useFalconSocket.js.
+      clearInterval(pingTimer);
+      pingTimer = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "ping" }));
+        }
+      }, 30000);
+      resolve(ws);
+    };
     ws.onerror = () => reject(new Error("Falcon socket error"));
     ws.onclose = () => {
+      clearInterval(pingTimer);
       if (socket === ws) {
         socket = null;
         socketReady = null;
@@ -353,17 +367,29 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
     const { type, data } = parsed;
     if (!data) return;
 
+    if (type === "rca_status") {
+      // Setup progress ping (before the first LLM round-trip). Held on the
+      // thread as a transient status line so the loader shows real activity
+      // instead of dead-air; cleared once real frames start arriving.
+      patchThread(clusterId, (t) => ({ ...t, status: data.detail || data.phase }));
+      return;
+    }
+
     if (type === "rca_reasoning") {
-      // The agent's native thinking — render it as its own streaming block in
-      // the thread (not buried in a step's collapsed details, where fast
-      // tool calls would flash past it and trailing reasoning would be lost).
+      // The agent's native thinking — its own block in the thread. Rendered
+      // instant (no typewriter): the block arrives complete per turn, so a
+      // char-by-char animation only lags behind the real stream of turns.
       const text = data.reasoning || data.content;
       if (text) {
         const id = `rsn-${conversationId}-${reasoningSeq}`;
         reasoningSeq += 1;
         patchThread(clusterId, (t) => ({
           ...t,
-          messages: [...t.messages, { id, type: "reasoning", text }],
+          status: null,
+          messages: [
+            ...t.messages,
+            { id, type: "reasoning", text, instant: true },
+          ],
         }));
       }
       return;

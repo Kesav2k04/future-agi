@@ -91,7 +91,7 @@ const TABS = [
   { key: "overview", label: "Overview", icon: "mdi:view-dashboard-outline" },
   { key: "traces", label: "Traces", icon: "mdi:timeline-text-outline" },
   { key: "trends", label: "Trends", icon: "mdi:chart-line" },
-  { key: "analyze", label: "Analyze", icon: "mdi:magnify" },
+  { key: "analyze", label: "Fix", icon: "mdi:wrench-outline" },
 ];
 
 // ── Main view ─────────────────────────────────────────────────────────────────

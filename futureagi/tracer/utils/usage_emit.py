@@ -93,12 +93,21 @@ def emit_span_ingestion_usage(
                 UsageEvent(
                     org_id=org_id_str,
                     event_type=BillingEventType.TRACING_EVENT,
-                    amount=tracing_units,
-                    properties={
-                        "traces": num_traces,
-                        "spans": num_spans,
-                        "source": source,
-                    },
+                    amount=num_traces,
+                    properties={"traces": num_traces, "source": source},
+                )
+            )
+
+        if payload_bytes:
+            props = {"source": source}
+            if num_spans:
+                props["spans"] = num_spans
+            emit(
+                UsageEvent(
+                    org_id=org_id_str,
+                    event_type=BillingEventType.OBSERVE_ADD,
+                    amount=payload_bytes,
+                    properties=props,
                 )
             )
     except Exception:

@@ -228,6 +228,15 @@ jobs:
       - name: Install backend dependencies
         run: uv sync --frozen
 
+      - name: Apply ClickHouse test schema
+        run: >
+          uv run python -m tracer.services.clickhouse.v2.apply_schema
+          --schema-dir tracer/services/clickhouse/v2/schema
+          --ch-host localhost
+          --ch-http-port 18123
+          --ch-user default
+          --ch-database test_tfc
+
       - name: Check generated Swagger schema
         working-directory: .
         run: |

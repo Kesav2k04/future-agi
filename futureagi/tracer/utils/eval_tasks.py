@@ -33,7 +33,7 @@ from tracer.utils.eval import (
     evaluate_trace_session_observe,
 )
 from tracer.utils.annotations import build_annotation_subqueries
-from tracer.utils.filters import ColType, FilterEngine
+from tracer.utils.filters import FilterEngine
 from tracer.utils.helper import get_annotation_labels_for_project
 
 # Cron-side drain window — once the dispatcher has fired every
@@ -169,21 +169,12 @@ def parsing_evaltask_filters(filters: dict) -> tuple[Q, dict]:
             if q_sys:
                 combined_q &= q_sys
 
-            # ANNOTATION + my_annotations/annotator are routed through the
-            # voice annotation handler below; exclude them here so they
-            # don't double-match.
-            non_anno = [
-                f
-                for f in items
-                if _filter_col_type(f) != ColType.ANNOTATION.value
-                and _filter_column_id(f) not in ("my_annotations", "annotator")
-            ]
-            if non_anno:
-                q_eval = FilterEngine.get_filter_conditions_for_non_system_metrics(
-                    non_anno
-                )
-                if q_eval:
-                    combined_q &= q_eval
+            # ANNOTATION rows (incl. my_annotations/annotator pinned to
+            # col_type=ANNOTATION) are skipped inside the handler at
+            # filters.py:1386-1391 — no call-site pre-filter needed.
+            q_eval = FilterEngine.get_filter_conditions_for_non_system_metrics(items)
+            if q_eval:
+                combined_q &= q_eval
 
             # span_filter_kwargs re-targets the Score join to span scope
             # (filters.py:1683-1692); user_id=None because we're in a
@@ -288,24 +279,6 @@ def parsing_monitor_filters(filters: dict) -> Q:
             combined_q &= Q(project_id=value)
 
     return combined_q
-
-
-def _filter_col_type(item: dict) -> str:
-    """Read col_type from a filter item, tolerating both camel- and snake-case
-    keys at either the top level or nested in filter_config (mirrors the
-    normalisation in `_normalize_filter_params`)."""
-    cfg = item.get("filter_config") or item.get("filterConfig") or {}
-    return (
-        item.get("col_type")
-        or item.get("colType")
-        or cfg.get("col_type")
-        or cfg.get("colType")
-        or ""
-    )
-
-
-def _filter_column_id(item: dict) -> str:
-    return item.get("column_id") or item.get("columnId") or ""
 
 
 @temporal_activity(

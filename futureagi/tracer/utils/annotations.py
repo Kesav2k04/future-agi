@@ -93,10 +93,7 @@ def build_annotation_subqueries(
             )
             score_field = Cast(KeyTextTransform(value_key, "value"), FloatField())
 
-            # STAR is integer (1-5); Floor matches that. NUMERIC can be a
-            # continuous float (e.g. 0.0-1.0 with step 0.1) where Floor would
-            # destroy precision (0.5 → 0). Use Round to preserve sub-integer
-            # values.
+            # STAR is integer (Floor); NUMERIC can be sub-integer (Round to keep precision).
             avg_score = (
                 Floor(Avg(score_field))
                 if label.type == AnnotationTypeChoices.STAR.value

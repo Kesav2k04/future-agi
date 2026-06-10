@@ -617,15 +617,27 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
     }));
   };
 
-  // Delivery watchdog. A healthy run emits its first frame (rca_status) within
-  // ~1s — even a cold-start cluster-context build stays well under this — so if
-  // nothing arrives in 8s the frame was lost into a half-open/orphaned socket
-  // (and a dead socket means the chat never landed, so resending can't double-
-  // run). Rebuild + resend once, then fail visibly instead of spinning forever.
+  // Delivery watchdog. Only retry when the socket itself dies (readyState flips
+  // to CLOSED/CLOSING) before the first frame — NOT on mere silence, because a
+  // slow-but-healthy backend (cold gateway, queued worker) already received the
+  // chat and the backend deliberately survives disconnects, so resending would
+  // double-run the agent.
   let retried = false;
   const armWatchdog = () => {
     setTimeout(async () => {
       if (firstFrameSeen || !isActiveRun()) return;
+      // Only retry if the socket is actually dead.
+      const ws = socket;
+      const socketAlive =
+        ws &&
+        (ws.readyState === WebSocket.OPEN ||
+          ws.readyState === WebSocket.CONNECTING);
+      if (socketAlive) {
+        // Socket is fine — backend is just slow. Re-arm to check again, but
+        // never resend.
+        armWatchdog();
+        return;
+      }
       if (retried) {
         failVisibly();
         return;

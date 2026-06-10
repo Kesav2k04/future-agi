@@ -22,8 +22,8 @@ Notes on the schema:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Optional
 
 import structlog
 
@@ -126,9 +126,7 @@ def list_attribute_keys_for_project(project_id: str) -> list[AttributeKey]:
         query_time_ms=query_time_ms,
     )
 
-    return [
-        AttributeKey(key=row[0], type=row[1], count=row[2]) for row in rows
-    ]
+    return [AttributeKey(key=row[0], type=row[1], count=row[2]) for row in rows]
 
 
 def list_attributes_for_trace(trace_id: str) -> list[TraceAttribute]:
@@ -208,9 +206,75 @@ def list_attributes_for_trace(trace_id: str) -> list[TraceAttribute]:
     )
 
     return [
-        TraceAttribute(key=row[0], type=row[1], values=list(row[2]))
-        for row in rows
+        TraceAttribute(key=row[0], type=row[1], values=list(row[2])) for row in rows
     ]
+
+
+def list_attribute_keys_for_traces(
+    project_id: str, trace_ids: Iterable[str]
+) -> list[AttributeKey]:
+    """Distinct attribute keys across a set of traces (batched, one CH query).
+
+    Returns [{key, type, count}] where count = number of traces carrying
+    that key.  Replaces the per-trace loop in the RCA agent's
+    list(attribute_keys) handler.
+    """
+    ids = [str(t) for t in trace_ids if t]
+    if not ids or not is_clickhouse_enabled():
+        return []
+
+    query = """
+        WITH attrs AS (
+            SELECT toString(trace_id) AS tid,
+                   pair.1 AS key, 'string' AS type
+            FROM spans
+            ARRAY JOIN mapKeys(span_attr_str) AS pair
+            WHERE project_id = %(pid)s AND _peerdb_is_deleted = 0
+              AND toString(trace_id) IN %(tids)s
+
+            UNION ALL
+
+            SELECT toString(trace_id) AS tid,
+                   pair.1 AS key, 'number' AS type
+            FROM spans
+            ARRAY JOIN mapKeys(span_attr_num) AS pair
+            WHERE project_id = %(pid)s AND _peerdb_is_deleted = 0
+              AND toString(trace_id) IN %(tids)s
+
+            UNION ALL
+
+            SELECT toString(trace_id) AS tid,
+                   pair.1 AS key, 'boolean' AS type
+            FROM spans
+            ARRAY JOIN mapKeys(span_attr_bool) AS pair
+            WHERE project_id = %(pid)s AND _peerdb_is_deleted = 0
+              AND toString(trace_id) IN %(tids)s
+        )
+        SELECT key, any(type) AS type, uniqExact(tid) AS trace_count
+        FROM attrs
+        GROUP BY key
+        ORDER BY trace_count DESC
+    """
+    params = {"pid": str(project_id), "tids": ids}
+
+    try:
+        client = ClickHouseClient()
+        rows, _types, query_time_ms = client.execute_read(query, params)
+    except Exception as e:
+        logger.warning(
+            "ch_batch_attribute_keys_failed",
+            error=str(e),
+            trace_count=len(ids),
+        )
+        return []
+
+    logger.info(
+        "batch_attribute_keys_fetched",
+        trace_count=len(ids),
+        key_count=len(rows),
+        query_time_ms=query_time_ms,
+    )
+    return [AttributeKey(key=r[0], type=r[1], count=r[2]) for r in rows]
 
 
 @dataclass(frozen=True)
@@ -227,7 +291,7 @@ def scoped_trace_ids(
     project_id: str,
     trace_ids: Iterable[str],
     filters: list[dict],
-) -> Optional[list[str]]:
+) -> list[str] | None:
     """Narrow a trace-id set by canonical filters, evaluated in ClickHouse.
 
     The blast-radius pattern: callers pass the cluster's stored trace_ids
@@ -266,7 +330,7 @@ def scoped_trace_ids(
     params["_pid"] = str(project_id)
     params["_tids"] = ids
 
-    where_clause = (f" AND ({where})" if where else "")
+    where_clause = f" AND ({where})" if where else ""
     query = (
         "SELECT DISTINCT toString(trace_id) FROM spans "
         "WHERE project_id = %(_pid)s "
@@ -296,6 +360,7 @@ def scoped_trace_ids(
 
 
 def aggregate_attribute_over_traces(
+    project_id: str,
     trace_ids: Iterable[str],
     attr_key: str,
     distinct_traces: bool = True,
@@ -322,14 +387,13 @@ def aggregate_attribute_over_traces(
         return []
 
     count_expr = "uniqExact(trace_id)" if distinct_traces else "count()"
-    # Pull (trace_id, value) for the key from whichever typed Map holds it,
-    # then group by value. mapContains guards the key's presence per Map.
     query = f"""
         WITH vals AS (
             SELECT toString(trace_id) AS trace_id,
                    toString(span_attr_str[%(key)s]) AS value
             FROM spans
-            WHERE toString(trace_id) IN %(trace_ids)s
+            WHERE project_id = %(pid)s AND _peerdb_is_deleted = 0
+              AND toString(trace_id) IN %(trace_ids)s
               AND mapContains(span_attr_str, %(key)s)
 
             UNION ALL
@@ -337,7 +401,8 @@ def aggregate_attribute_over_traces(
             SELECT toString(trace_id) AS trace_id,
                    toString(span_attr_num[%(key)s]) AS value
             FROM spans
-            WHERE toString(trace_id) IN %(trace_ids)s
+            WHERE project_id = %(pid)s AND _peerdb_is_deleted = 0
+              AND toString(trace_id) IN %(trace_ids)s
               AND mapContains(span_attr_num, %(key)s)
 
             UNION ALL
@@ -345,7 +410,8 @@ def aggregate_attribute_over_traces(
             SELECT toString(trace_id) AS trace_id,
                    toString(span_attr_bool[%(key)s]) AS value
             FROM spans
-            WHERE toString(trace_id) IN %(trace_ids)s
+            WHERE project_id = %(pid)s AND _peerdb_is_deleted = 0
+              AND toString(trace_id) IN %(trace_ids)s
               AND mapContains(span_attr_bool, %(key)s)
         )
         SELECT value, {count_expr} AS cnt
@@ -353,7 +419,7 @@ def aggregate_attribute_over_traces(
         GROUP BY value
         ORDER BY cnt DESC
     """
-    params = {"key": attr_key, "trace_ids": ids}
+    params = {"key": attr_key, "trace_ids": ids, "pid": str(project_id)}
 
     try:
         client = ClickHouseClient()
@@ -489,7 +555,7 @@ def span_id_by_provider_log_id(
     project_id: str,
     provider: str,
     provider_log_id: str,
-) -> Optional[str]:
+) -> str | None:
     """Look up the most recent span id for a ``(project, provider, provider_log_id)``.
 
     Mirrors the OR-Q lookup in ``tracer/utils/observability_provider.py`` which

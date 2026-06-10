@@ -226,27 +226,27 @@ def list_attribute_keys_for_traces(
     query = """
         WITH attrs AS (
             SELECT toString(trace_id) AS tid,
-                   pair.1 AS key, 'string' AS type
+                   key, 'string' AS type
             FROM spans
-            ARRAY JOIN mapKeys(span_attr_str) AS pair
+            ARRAY JOIN mapKeys(span_attr_str) AS key
             WHERE project_id = %(pid)s AND _peerdb_is_deleted = 0
               AND toString(trace_id) IN %(tids)s
 
             UNION ALL
 
             SELECT toString(trace_id) AS tid,
-                   pair.1 AS key, 'number' AS type
+                   key, 'number' AS type
             FROM spans
-            ARRAY JOIN mapKeys(span_attr_num) AS pair
+            ARRAY JOIN mapKeys(span_attr_num) AS key
             WHERE project_id = %(pid)s AND _peerdb_is_deleted = 0
               AND toString(trace_id) IN %(tids)s
 
             UNION ALL
 
             SELECT toString(trace_id) AS tid,
-                   pair.1 AS key, 'boolean' AS type
+                   key, 'boolean' AS type
             FROM spans
-            ARRAY JOIN mapKeys(span_attr_bool) AS pair
+            ARRAY JOIN mapKeys(span_attr_bool) AS key
             WHERE project_id = %(pid)s AND _peerdb_is_deleted = 0
               AND toString(trace_id) IN %(tids)s
         )

@@ -715,6 +715,8 @@ function PropertyPicker({
               {visibleProperties.map((prop, idx) => (
                 <Box
                   key={`${prop.category}:${prop.id}:${idx}`}
+                  data-filter-property-option={prop.id}
+                  data-filter-property-label={prop.name}
                   onClick={() => {
                     onSelect(prop);
                     onClose();
@@ -941,6 +943,7 @@ function ValuePicker({
   return (
     <>
       <Box
+        data-filter-value-trigger={property?.id || ""}
         onClick={(e) => setAnchorEl(e.currentTarget)}
         sx={{
           display: "flex",
@@ -1122,6 +1125,7 @@ function ValuePicker({
             return (
               <Box
                 key={strVal}
+                data-filter-value-option={strVal}
                 onClick={() => toggleValue(opt)}
                 sx={{
                   display: "flex",
@@ -1179,6 +1183,7 @@ function ValuePicker({
             <>
               {filtered.length > 0 && <Divider />}
               <Box
+                data-filter-value-option={customSearchValue}
                 onClick={() => {
                   // singleSelect: replace the selection. Otherwise: append
                   // (but skip if the value is already selected).
@@ -2109,6 +2114,7 @@ const TraceFilterPanel = ({
               <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
                 <Button
                   size="small"
+                  data-filter-panel-action="clear"
                   onClick={handleClear}
                   sx={{ textTransform: "none", fontSize: 12 }}
                 >
@@ -2117,6 +2123,7 @@ const TraceFilterPanel = ({
                 <Button
                   size="small"
                   variant="contained"
+                  data-filter-panel-action="apply"
                   onClick={handleApply}
                   sx={{
                     textTransform: "none",
@@ -2169,6 +2176,7 @@ const TraceFilterPanel = ({
             >
               <Button
                 size="small"
+                data-filter-panel-action="clear"
                 onClick={handleClear}
                 sx={{ textTransform: "none", fontSize: 12 }}
               >
@@ -2177,6 +2185,7 @@ const TraceFilterPanel = ({
               <Button
                 size="small"
                 variant="contained"
+                data-filter-panel-action="apply"
                 onClick={handleApply}
                 sx={{ textTransform: "none", fontSize: 12, px: 2 }}
               >

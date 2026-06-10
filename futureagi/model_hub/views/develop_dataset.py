@@ -7668,6 +7668,7 @@ class DeleteEvalsView(APIView):
         try:
             delete_column = request.data.get("delete_column", False)
             experiment_id = request.data.get("experiment_id")
+            organization = _request_organization(request)
             dataset = _request_dataset_queryset(request).filter(id=dataset_id).first()
             if not dataset:
                 return self._gm.not_found("Dataset not found")
@@ -7778,7 +7779,7 @@ class DeleteEvalsView(APIView):
                         if _col_ids:
                             Cell.objects.filter(
                                 column_id__in=_col_ids, deleted=False,
-                            ).update(deleted=True)
+                            ).update(deleted=True, deleted_at=now)
 
                         # 2. Update column_order on the dataset
                         dataset = column.dataset

@@ -10,7 +10,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tracer.types.eval_cluster_types import ClusterableEvalResult
+    from tracer.types.eval_cluster_types import ClusterableEvalResult, EvalClusterMeta
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,20 @@ def generate_scan_cluster_severity(category: str, brief: str) -> str | None:
         return _generate_scan_cluster_severity(category, brief)
     except Exception:
         logger.warning("scan_cluster_severity_llm_failed", exc_info=True)
+        return None
+
+
+def generate_eval_cluster_meta(
+    eval_name: str, reasoning: str,
+) -> EvalClusterMeta | None:
+    """LLM-generated title + fix_layer + severity for an eval cluster.
+    Returns None on OSS or LLM failure (caller falls back to deterministic title)."""
+    if not _ee_available:
+        return None
+    try:
+        return _generate_eval_cluster_meta(eval_name, reasoning)
+    except Exception:
+        logger.warning("eval_cluster_meta_llm_failed", exc_info=True)
         return None
 
 

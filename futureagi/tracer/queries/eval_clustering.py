@@ -14,7 +14,6 @@ from datetime import timedelta
 from typing import List, Optional, Tuple
 
 import structlog
-from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -310,25 +309,10 @@ def _eval_cluster_meta(eval_name: str, reasoning: str) -> EvalClusterMeta:
     degrades independently; metadata is best-effort and must never break
     cluster creation.
     """
+    from tracer.ee_boundary import generate_eval_cluster_meta
+
     fallback = EvalClusterMeta(title=_extract_title(reasoning))
-    try:
-        from ee.agenthub.trace_scanner.eval_cluster_title import (
-            generate_eval_cluster_meta,
-        )
-    except ImportError:
-        if settings.DEBUG:
-            logger.warning(
-                "Could not import ee.agenthub.trace_scanner.eval_cluster_title",
-                exc_info=True,
-            )
-        return fallback
-
-    try:
-        meta = generate_eval_cluster_meta(eval_name, reasoning)
-    except Exception:
-        logger.warning("eval_cluster_meta_llm_failed", exc_info=True)
-        meta = None
-
+    meta = generate_eval_cluster_meta(eval_name, reasoning)
     if not meta:
         return fallback
     return EvalClusterMeta(

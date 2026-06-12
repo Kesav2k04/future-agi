@@ -19,7 +19,7 @@ from tfc.utils.api_contracts import validated_request
 from tfc.utils.api_serializers import ApiErrorResponseSerializer
 from tfc.utils.general_methods import GeneralMethods
 from tracer.models.trace_error_analysis import TraceErrorGroup
-from tracer.queries.feed import _trace_judge, priority_to_severity
+from tracer.queries.feed import trace_judge, priority_to_severity
 from tracer.views.feed._permissions import resolve_requested_project_ids
 
 logger = structlog.get_logger(__name__)
@@ -132,8 +132,9 @@ def _build_issue_description(cluster: TraceErrorGroup, trace_id: str | None) -> 
     # Eval clusters have no deep analysis; the evaluator's reasoning for the
     # sampled trace is the per-trace context worth shipping instead.
     try:
-        judge_reason, judge_score = _trace_judge(str(trace_id))
+        judge_reason, judge_score = trace_judge(str(trace_id))
     except Exception:
+        logger.warning("trace_judge_failed", exc_info=True)
         judge_reason, judge_score = None, None
     if judge_reason:
         score_sfx = f" ({judge_score:.2f}/1.00)" if judge_score is not None else ""

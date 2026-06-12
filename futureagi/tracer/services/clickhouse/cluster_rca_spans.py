@@ -68,7 +68,7 @@ def _ids_list(trace_ids: Iterable[str]) -> list[str]:
     return [str(t) for t in trace_ids if t]
 
 
-def _run(query: str, params: dict) -> list:
+def _execute_read(query: str, params: dict) -> list:
     try:
         client = ClickHouseClient()
         rows, _types, _ms = client.execute_read(query, params)
@@ -96,7 +96,7 @@ def spans_for_trace(project_id: str, trace_id: str) -> list[dict[str, Any]]:
         LIMIT 1 BY id
     """
     return _rows_to_dicts(
-        _run(query, {"pid": str(project_id), "tid": str(trace_id)}), _SPAN_COLS
+        _execute_read(query, {"pid": str(project_id), "tid": str(trace_id)}), _SPAN_COLS
     )
 
 
@@ -114,7 +114,7 @@ def read_span(project_id: str, span_id: str) -> dict[str, Any] | None:
         LIMIT 1
     """
     dicts = _rows_to_dicts(
-        _run(query, {"pid": str(project_id), "sid": str(span_id)}), _SPAN_COLS
+        _execute_read(query, {"pid": str(project_id), "sid": str(span_id)}), _SPAN_COLS
     )
     return dicts[0] if dicts else None
 
@@ -137,14 +137,14 @@ def list_spans_in_traces(
     )
     params = {"pid": str(project_id), "tids": ids, "limit": limit, "offset": offset}
     page = _rows_to_dicts(
-        _run(
+        _execute_read(
             f"SELECT {cols} {base} ORDER BY trace_id, start_time "
             "LIMIT 1 BY id LIMIT %(limit)s OFFSET %(offset)s",
             params,
         ),
         _SPAN_COLS,
     )
-    total_rows = _run(f"SELECT uniqExact(id) {base}", params)
+    total_rows = _execute_read(f"SELECT uniqExact(id) {base}", params)
     return page, (int(total_rows[0][0]) if total_rows else 0)
 
 
@@ -178,7 +178,7 @@ def search_spans_in_traces(
         LIMIT %(limit)s
     """
     params = {"pid": str(project_id), "tids": ids, "q": query_text, "limit": limit}
-    return _rows_to_dicts(_run(query, params), _SPAN_COLS)
+    return _rows_to_dicts(_execute_read(query, params), _SPAN_COLS)
 
 
 # group_by token → (CH column, extra predicate) for span_count aggregation.
@@ -215,7 +215,7 @@ def aggregate_span_field(
         )
         GROUP BY k ORDER BY c DESC
     """
-    rows = _run(query, {"pid": str(project_id), "tids": ids})
+    rows = _execute_read(query, {"pid": str(project_id), "tids": ids})
     buckets = [{"key": r[0] or "(none)", "count": r[1]} for r in rows]
     return buckets, sum(b["count"] for b in buckets)
 
@@ -249,7 +249,7 @@ def trace_roots(project_id: str, trace_ids: Iterable[str]) -> dict[str, dict[str
         )
         GROUP BY trace_id
     """
-    rows = _run(query, {"pid": str(project_id), "tids": ids})
+    rows = _execute_read(query, {"pid": str(project_id), "tids": ids})
     out: dict[str, dict[str, Any]] = {}
     for r in rows:
         out[str(r[0])] = {
@@ -293,7 +293,7 @@ def aggregate_trace_field(
         )
         GROUP BY k ORDER BY c DESC
     """
-    rows = _run(query, {"pid": str(project_id), "tids": ids})
+    rows = _execute_read(query, {"pid": str(project_id), "tids": ids})
     buckets = [{"key": r[0] or "(none)", "count": r[1]} for r in rows]
     return buckets, len(ids)
 
@@ -324,7 +324,7 @@ def timeline_trace_counts(
         )
         GROUP BY b ORDER BY b
     """
-    rows = _run(query, {"pid": str(project_id), "tids": ids})
+    rows = _execute_read(query, {"pid": str(project_id), "tids": ids})
     return [{"bucket_start": str(r[0]) if r[0] else None, "count": r[1]} for r in rows]
 
 
@@ -345,7 +345,7 @@ def search_trace_ids(
             OR positionCaseInsensitive(name, %(q)s) > 0)
         LIMIT %(limit)s
     """
-    rows = _run(
+    rows = _execute_read(
         query,
         {"pid": str(project_id), "tids": ids, "q": query_text, "limit": limit},
     )
@@ -365,7 +365,7 @@ def distinct_sessions(project_id: str, trace_ids: Iterable[str]) -> list[str]:
           AND trace_session_id IS NOT NULL
           AND toString(trace_session_id) != ''
     """
-    rows = _run(query, {"pid": str(project_id), "tids": ids})
+    rows = _execute_read(query, {"pid": str(project_id), "tids": ids})
     return [r[0] for r in rows if r[0]]
 
 
@@ -392,7 +392,7 @@ def traces_in_session(project_id: str, session_id: str) -> dict[str, dict[str, A
         GROUP BY trace_id
         ORDER BY first_start
     """
-    rows = _run(query, {"pid": str(project_id), "sid": str(session_id)})
+    rows = _execute_read(query, {"pid": str(project_id), "sid": str(session_id)})
     out: dict[str, dict[str, Any]] = {}
     for r in rows:
         out[str(r[0])] = {
@@ -430,7 +430,7 @@ def error_messages_in_traces(
         )
         GROUP BY k ORDER BY c DESC
     """
-    rows = _run(query, {"pid": str(project_id), "tids": ids})
+    rows = _execute_read(query, {"pid": str(project_id), "tids": ids})
     total = len(rows)
     page = rows[offset : offset + limit]
     return [{"key": r[0], "count": r[1]} for r in page], total

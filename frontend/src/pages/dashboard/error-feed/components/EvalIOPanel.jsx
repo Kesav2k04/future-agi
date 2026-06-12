@@ -172,46 +172,15 @@ JudgeReasonCard.propTypes = {
 
 // ── Main: EvalIOPanel ───────────────────────────────────────────────────────
 export default function EvalIOPanel({ trace, evalScore }) {
-  // Per the rest of OverviewTab, the BE returns the trace's I/O nested under
-  // `trace.evidence.*`. Top-level `input`/`output` is also supported as a
-  // fallback for resilience to either response shape, and both snake_case
-  // and camelCase are tolerated.
+  // evidence.* carries input/output/judgeReason/score from the serializer.
+  // Axios bridge adds camelCase aliases on top of snake_case wire fields.
   const { input, output, judgeReason, score } = useMemo(() => {
-    const t = trace ?? {};
-    const ev = t.evidence ?? {};
+    const ev = trace?.evidence ?? {};
     return {
-      input:
-        ev.input ??
-        ev.input_text ??
-        t.input ??
-        t.input_text ??
-        t.inputs ??
-        null,
-      output:
-        ev.output ??
-        ev.output_text ??
-        t.output ??
-        t.output_text ??
-        t.response ??
-        null,
-      judgeReason:
-        ev.judgeReason ??
-        ev.judge_reason ??
-        ev.evalReason ??
-        ev.eval_reason ??
-        t.evalReason ??
-        t.eval_reason ??
-        t.judgeReason ??
-        t.judge_reason ??
-        null,
-      score:
-        evalScore ??
-        ev.score ??
-        ev.evalScore ??
-        ev.eval_score ??
-        t.evalScore ??
-        t.eval_score ??
-        null,
+      input: ev.input ?? trace?.input ?? null,
+      output: ev.output ?? trace?.output ?? null,
+      judgeReason: ev.judgeReason ?? trace?.judgeReason ?? null,
+      score: evalScore ?? ev.score ?? null,
     };
   }, [trace, evalScore]);
 

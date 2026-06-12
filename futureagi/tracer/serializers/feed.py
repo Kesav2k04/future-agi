@@ -194,7 +194,7 @@ class KeyMomentSerializer(serializers.Serializer):
 
 
 class PatternInsightSerializer(serializers.Serializer):
-    title = serializers.CharField()
+    title = serializers.CharField(required=False, default="")
     value = serializers.CharField()
     # Caption supports **bold** markers, rendered by the FE renderRichCaption.
     caption = serializers.CharField(allow_blank=True)

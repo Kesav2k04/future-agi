@@ -74,7 +74,7 @@ def distill_eval_failure_phrases(
     return results
 
 
-def attribute_key_moments(key_moments: list, trace_id: str) -> list:
+def attribute_key_moments(key_moments: list[dict], trace_id: str) -> list[dict]:
     """Reconstruct span attribution for old scans whose stored key_moments
     predate role attribution. No-op on OSS or when spans are unavailable."""
     if not _ee_available:

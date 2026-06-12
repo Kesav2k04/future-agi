@@ -1676,7 +1676,7 @@ def _conversation_utterance(attrs: dict, *, last_agent: bool = False) -> str | N
     return best_text
 
 
-def _trace_judge(trace_id: str) -> tuple[str | None, float | None]:
+def trace_judge(trace_id: str) -> tuple[str | None, float | None]:
     """The evaluator's reasoning + score for this trace — the lowest-scoring
     eval (the one explaining the failure), so the reason and the score badge
     refer to the SAME eval. (None, None) for scanner traces with no eval rows.
@@ -1698,7 +1698,7 @@ def _trace_judge(trace_id: str) -> tuple[str | None, float | None]:
 def _trace_judges_batch(
     trace_ids: list[str],
 ) -> dict[str, tuple[str | None, float | None]]:
-    """Batch form of _trace_judge — one query for the whole rep-trace page
+    """Batch form of trace_judge — one query for the whole rep-trace page
     instead of one per trace. Lowest-scoring eval wins per trace (ordering
     guarantees the first row seen per trace_id is the explainer)."""
     if not trace_ids:
@@ -1825,7 +1825,7 @@ def _build_representative_trace(
         )
 
     if judge is None and not _prefetched:
-        judge = _trace_judge(str(trace.id))
+        judge = trace_judge(str(trace.id))
     judge_reason, judge_score = judge or (None, None)
 
     return RepresentativeTrace(

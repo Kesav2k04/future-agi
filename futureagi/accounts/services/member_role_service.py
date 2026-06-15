@@ -1,16 +1,4 @@
-"""
-Service layer for updating a member's org and workspace role assignments.
-
-Per ``coding-standards/03-architecture-and-layers``, views own request
-transport and (de)serialization; everything below — escalation guards,
-last-owner enforcement, workspace grant + revoke math, downstream syncs —
-lives in this service so any caller (DRF view, CLI, future Temporal
-activity) can drive the same business rules.
-
-Typed exceptions surface domain failures; the caller maps them to its own
-transport (DRF view → HTTP 400/403). The service knows nothing about
-``request``, status codes, or error-message strings.
-"""
+"""Service layer for ``MemberRoleUpdateAPIView``."""
 
 from typing import Any, Optional
 from uuid import UUID
@@ -28,27 +16,17 @@ from tfc.permissions.utils import can_invite_at_level, get_org_membership
 
 
 class MemberRoleUpdateError(Exception):
-    """Base class for domain errors raised by update_member_role."""
+    """Domain error raised by ``update_member_role``.
 
+    ``code`` is the ``error_codes`` key the caller maps to its transport.
+    ``status_code`` is the HTTP status to use (400 for input/state errors,
+    403 for authz).
+    """
 
-class MemberNotInOrgError(MemberRoleUpdateError):
-    """Target user has no OrganizationMembership for this organization."""
-
-
-class MemberDeactivatedError(MemberRoleUpdateError):
-    """Target member is deactivated and has no pending invite to re-activate."""
-
-
-class RoleAssignForbiddenError(MemberRoleUpdateError):
-    """Actor cannot assign the requested org level (escalation guard)."""
-
-
-class LastOwnerDemoteError(MemberRoleUpdateError):
-    """Cannot demote the last Owner of an organization."""
-
-
-class WorkspaceNotInOrgError(MemberRoleUpdateError):
-    """A workspace_id in workspace_access does not belong to this organization."""
+    def __init__(self, code: str, status_code: int = 400):
+        super().__init__(code)
+        self.code = code
+        self.status_code = status_code
 
 
 def update_member_role(
@@ -62,33 +40,12 @@ def update_member_role(
     workspace_access: Optional[list[dict]] = None,
     workspace_access_provided: bool = False,
 ) -> dict[str, Any]:
-    """
-    Apply an org-level and/or workspace-level role update for a target user.
+    """Apply an org-level and/or workspace-level role update for a target user.
 
-    Args:
-        organization: org the target user belongs to.
-        actor: user performing the update (for escalation guards + audit).
-        target_user_id: user being updated.
-        org_level: new integer org level (None = unchanged).
-        ws_level: new integer ws level for ``workspace_id`` (None = unchanged).
-        workspace_id: workspace the ``ws_level`` change targets.
-        workspace_access: authoritative list of ``{workspace_id, level}`` grants
-            when ``org_level`` is below Admin. Anything not in this list is
-            revoked from the user's active workspace memberships.
-        workspace_access_provided: True iff the caller explicitly sent the
-            ``workspace_access`` key. Distinguishes "omitted, keep existing"
-            from "sent empty list, revoke all" — the DRF serializer fills
-            ``[]`` by default so the caller has to tell us.
+    ``workspace_access_provided`` distinguishes "key omitted" from "key sent
+    empty"; the DRF serializer defaults to ``[]`` so the caller has to tell us.
 
-    Returns:
-        ``changes`` dict suitable for the audit log and API response:
-        ``{"org_level": {"old": ..., "new": ...}, "ws_level": {...},
-        "revoked_workspaces": N}``. Keys only appear for fields that
-        actually changed.
-
-    Raises:
-        MemberNotInOrgError, MemberDeactivatedError, RoleAssignForbiddenError,
-        LastOwnerDemoteError, WorkspaceNotInOrgError.
+    Returns a ``changes`` dict for audit log + response.
     """
     try:
         target_membership = OrganizationMembership.objects.get(
@@ -96,38 +53,14 @@ def update_member_role(
             organization=organization,
         )
     except OrganizationMembership.DoesNotExist as exc:
-        raise MemberNotInOrgError() from exc
+        raise MemberRoleUpdateError("MEMBER_NOT_IN_ORG") from exc
 
-    if not target_membership.is_active:
-        # Deactivated members are immutable unless they have a re-activatable
-        # pending invite — that path is owned by the invite endpoint.
-        target_user = User.objects.filter(id=target_user_id).first()
-        has_pending_invite = bool(
-            target_user
-            and OrganizationInvite.objects.filter(
-                organization=organization,
-                target_email__iexact=target_user.email,
-                status=InviteStatus.PENDING,
-            ).exists()
-        )
-        if not has_pending_invite:
-            raise MemberDeactivatedError()
+    if not target_membership.is_active and not _has_pending_invite(
+        organization, target_user_id
+    ):
+        raise MemberRoleUpdateError("MEMBER_DEACTIVATED_ROLE_UPDATE")
 
-    # Reject cross-org workspace_ids up front. Without this guard the code
-    # below would write a WorkspaceMembership row pointing at a workspace the
-    # actor's org does not own — silent privilege escalation.
-    if workspace_access:
-        provided_ws_ids = [
-            entry.get("workspace_id")
-            for entry in workspace_access
-            if entry.get("workspace_id")
-        ]
-        if provided_ws_ids:
-            valid_count = Workspace.objects.filter(
-                id__in=provided_ws_ids, organization=organization
-            ).count()
-            if valid_count != len(set(provided_ws_ids)):
-                raise WorkspaceNotInOrgError()
+    _validate_workspace_access_in_org(workspace_access, organization)
 
     changes: dict[str, Any] = {}
 
@@ -159,6 +92,38 @@ def update_member_role(
     return changes
 
 
+def _has_pending_invite(organization: Organization, target_user_id: UUID) -> bool:
+    target_user = User.objects.filter(id=target_user_id).first()
+    if not target_user:
+        return False
+    return OrganizationInvite.objects.filter(
+        organization=organization,
+        target_email__iexact=target_user.email,
+        status=InviteStatus.PENDING,
+    ).exists()
+
+
+def _validate_workspace_access_in_org(
+    workspace_access: Optional[list[dict]], organization: Organization
+) -> None:
+    """Reject cross-org workspace_ids; without this the writes below silently
+    create a row pointing at a foreign workspace."""
+    if not workspace_access:
+        return
+    ws_ids = [
+        entry.get("workspace_id")
+        for entry in workspace_access
+        if entry.get("workspace_id")
+    ]
+    if not ws_ids:
+        return
+    valid_count = Workspace.objects.filter(
+        id__in=ws_ids, organization=organization
+    ).count()
+    if valid_count != len(set(ws_ids)):
+        raise MemberRoleUpdateError("WS_NOT_IN_ORG")
+
+
 def _apply_org_level_change(
     *,
     organization: Organization,
@@ -172,38 +137,15 @@ def _apply_org_level_change(
     workspace_id: Optional[UUID],
     changes: dict[str, Any],
 ) -> None:
-    """Apply ``org_level`` change + cascaded workspace grants/revocations."""
     old_level = target_membership.level_or_legacy
 
     actor_membership = get_org_membership(actor)
     actor_level = actor_membership.level_or_legacy if actor_membership else 0
     if not can_invite_at_level(actor_level, new_level):
-        raise RoleAssignForbiddenError()
+        raise MemberRoleUpdateError("ROLE_ASSIGN_FORBIDDEN", status_code=403)
 
-    # Race-safe last-owner check: count owners under select_for_update so a
-    # concurrent demote can't push the org below one owner.
     if old_level >= Level.OWNER and new_level < Level.OWNER:
-        owner_count = (
-            OrganizationMembership.objects.select_for_update()
-            .filter(
-                organization=organization,
-                is_active=True,
-                level__gte=Level.OWNER,
-            )
-            .count()
-        )
-        legacy_owner_count = (
-            OrganizationMembership.objects.select_for_update()
-            .filter(
-                organization=organization,
-                is_active=True,
-                level__isnull=True,
-                role="Owner",
-            )
-            .count()
-        )
-        if (owner_count + legacy_owner_count) <= 1:
-            raise LastOwnerDemoteError()
+        _enforce_not_last_owner(organization)
 
     target_membership.level = new_level
     target_membership.role = Level.to_org_string(new_level)
@@ -230,14 +172,10 @@ def _apply_org_level_change(
             changes=changes,
         )
 
-    # Mirror to legacy User.organization_role field (still read elsewhere
-    # for backward compat).
     User.objects.filter(id=target_user_id).update(
         organization_role=Level.to_org_string(new_level)
     )
 
-    # Update OrganizationInvite if user has a pending invite so a re-invite
-    # accept lands on the new level.
     target_user = User.objects.filter(id=target_user_id).first()
     if target_user:
         OrganizationInvite.objects.filter(
@@ -247,6 +185,28 @@ def _apply_org_level_change(
         ).update(level=new_level)
 
 
+def _enforce_not_last_owner(organization: Organization) -> None:
+    """``select_for_update`` so a concurrent demote can't push the org below
+    one owner."""
+    owner_count = (
+        OrganizationMembership.objects.select_for_update()
+        .filter(organization=organization, is_active=True, level__gte=Level.OWNER)
+        .count()
+    )
+    legacy_owner_count = (
+        OrganizationMembership.objects.select_for_update()
+        .filter(
+            organization=organization,
+            is_active=True,
+            level__isnull=True,
+            role="Owner",
+        )
+        .count()
+    )
+    if (owner_count + legacy_owner_count) <= 1:
+        raise MemberRoleUpdateError("LAST_OWNER_DEMOTE")
+
+
 def _promote_to_workspace_admin_everywhere(
     *,
     organization: Organization,
@@ -254,10 +214,7 @@ def _promote_to_workspace_admin_everywhere(
     target_user_id: UUID,
     target_membership: OrganizationMembership,
 ) -> None:
-    """Grant ``WORKSPACE_ADMIN`` in every workspace of the org for symmetry
-    with the implicit "Org Admin sees all workspaces" rule."""
-    org_workspaces = Workspace.objects.filter(organization=organization)
-    for ws in org_workspaces:
+    for ws in Workspace.objects.filter(organization=organization):
         WorkspaceMembership._base_manager.update_or_create(
             workspace=ws,
             user_id=target_user_id,
@@ -285,9 +242,6 @@ def _apply_workspace_access(
     also_keep_ws_id: Optional[UUID],
     changes: dict[str, Any],
 ) -> None:
-    """Grant the workspaces listed in ``workspace_access`` and revoke any
-    other active workspace memberships when the list is authoritative.
-    """
     default_ws_level = (
         Level.WORKSPACE_MEMBER if new_level >= Level.MEMBER else Level.WORKSPACE_VIEWER
     )
@@ -310,7 +264,6 @@ def _apply_workspace_access(
             )
 
     if not workspace_access_provided:
-        # Caller omitted the key — keep all other workspaces as they are.
         return
 
     desired_ws_ids: set = {
@@ -318,9 +271,9 @@ def _apply_workspace_access(
         for entry in workspace_access
         if entry.get("workspace_id")
     }
-    # If the same request is targeting a workspace via ws_level / workspace_id
-    # below, treat it as part of the desired set so we don't revoke + resurrect
-    # it in one transaction (no behavior change, no audit noise).
+    # Block 2's workspace_id would be re-activated by _apply_ws_level_change
+    # below anyway; keep it in the desired set to avoid a revoke + resurrect
+    # in the same transaction.
     if also_keep_ws_id is not None:
         desired_ws_ids.add(also_keep_ws_id)
 
@@ -331,11 +284,7 @@ def _apply_workspace_access(
             is_active=True,
         )
         .exclude(workspace_id__in=desired_ws_ids)
-        .update(
-            is_active=False,
-            deleted=True,
-            deleted_at=timezone.now(),
-        )
+        .update(is_active=False, deleted=True, deleted_at=timezone.now())
     )
     if revoked:
         changes["revoked_workspaces"] = revoked
@@ -350,9 +299,6 @@ def _apply_ws_level_change(
     ws_level: int,
     changes: dict[str, Any],
 ) -> None:
-    """Set a single workspace membership's level (Block 2 in the legacy
-    request shape). Re-activates a soft-deleted row if one exists, so the
-    DB unique constraint on ``(workspace_id, user_id)`` is respected."""
     existing_ws = WorkspaceMembership.all_objects.filter(
         workspace_id=workspace_id,
         user_id=target_user_id,

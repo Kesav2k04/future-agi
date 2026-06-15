@@ -833,10 +833,6 @@ class MemberRoleUpdateAPIView(APIView):
 
         user_id = data["user_id"]
 
-        # Per 03-architecture-and-layers: the view only routes + (de)serializes
-        # and delegates everything else. Business logic — escalation guards,
-        # last-owner enforcement, workspace grant/revoke math, downstream
-        # syncs — lives in ``accounts.services.member_role_service``.
         try:
             changes = member_role_service.update_member_role(
                 organization=organization,
@@ -846,22 +842,12 @@ class MemberRoleUpdateAPIView(APIView):
                 ws_level=data.get("ws_level"),
                 workspace_id=data.get("workspace_id"),
                 workspace_access=data.get("workspace_access"),
-                # DRF serializer fills ``workspace_access`` with ``[]`` by
-                # default; pass through whether the caller actually sent the
-                # key so the service can tell "omit, keep existing" from
-                # "empty list, revoke all".
                 workspace_access_provided="workspace_access" in request.data,
             )
-        except member_role_service.MemberNotInOrgError:
-            return gm.bad_request(get_error_message("MEMBER_NOT_IN_ORG"))
-        except member_role_service.MemberDeactivatedError:
-            return gm.bad_request(get_error_message("MEMBER_DEACTIVATED_ROLE_UPDATE"))
-        except member_role_service.RoleAssignForbiddenError:
-            return gm.forbidden_response(get_error_message("ROLE_ASSIGN_FORBIDDEN"))
-        except member_role_service.LastOwnerDemoteError:
-            return gm.bad_request(get_error_message("LAST_OWNER_DEMOTE"))
-        except member_role_service.WorkspaceNotInOrgError:
-            return gm.bad_request(get_error_message("WS_NOT_IN_ORG"))
+        except member_role_service.MemberRoleUpdateError as exc:
+            if exc.status_code == 403:
+                return gm.forbidden_response(get_error_message(exc.code))
+            return gm.bad_request(get_error_message(exc.code))
 
         log_audit(
             organization=organization,

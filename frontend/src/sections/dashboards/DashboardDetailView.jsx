@@ -42,6 +42,8 @@ import {
   useCreateWidget,
 } from "src/hooks/useDashboards";
 import Iconify from "src/components/iconify";
+import { ConfirmDialog } from "src/components/custom-dialog";
+import { useSnackbar } from "src/components/snackbar";
 import WidgetChart from "./WidgetChart";
 import {
   DndContext,
@@ -671,6 +673,7 @@ function DragOverlayCard({ widget }) {
 export default function DashboardDetailView() {
   const navigate = useNavigate();
   const { dashboardId } = useParams();
+  const { enqueueSnackbar } = useSnackbar();
 
   const { data: dashboard, isLoading } = useDashboardDetail(dashboardId);
   const updateDashboard = useUpdateDashboard();
@@ -698,6 +701,9 @@ export default function DashboardDetailView() {
 
   // Dashboard more menu
   const [dashMenuAnchor, setDashMenuAnchor] = useState(null);
+
+  // Delete-dashboard confirmation
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // Grid container ref (for measuring column widths during resize)
   const gridContainerRef = useRef(null);
@@ -915,9 +921,17 @@ export default function DashboardDetailView() {
 
   const handleDeleteDashboard = () => {
     setDashMenuAnchor(null);
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDeleteDashboard = () => {
     deleteDashboard.mutate(dashboardId, {
-      onSuccess: () => navigate(paths.dashboard.dashboards.root),
+      onSuccess: () => {
+        enqueueSnackbar("Dashboard deleted", { variant: "success" });
+        navigate(paths.dashboard.dashboards.root);
+      },
     });
+    setConfirmDeleteOpen(false);
   };
 
   const handleRowResize = useCallback(
@@ -1513,6 +1527,23 @@ export default function DashboardDetailView() {
           <ListItemText>Delete Dashboard</ListItemText>
         </MenuItem>
       </Menu>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        title="Delete Dashboard"
+        content={`Are you sure you want to delete "${dashboard?.name}"? This action cannot be undone.`}
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            size="small"
+            onClick={confirmDeleteDashboard}
+          >
+            Delete
+          </Button>
+        }
+      />
     </Box>
   );
 }

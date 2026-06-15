@@ -26,7 +26,7 @@ import {
   Typography,
 } from "@mui/material";
 import PropTypes from "prop-types";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import Iconify from "src/components/iconify";
@@ -1881,7 +1881,11 @@ const TraceFilterPanel = ({
         setRows([{ ...effectiveDefaultRow }]);
       }
     }
-  }, [open, currentFilters]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Initialize rows only when the popover OPENS. With auto-apply, picking a
+    // value pushes to currentFilters; if this effect also re-ran on
+    // currentFilters it would reset rows and "unchoose" the value (feedback
+    // loop). While open, local rows are the source of truth.
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleQueryTokensChange = useCallback(
     (tokens) => {
@@ -1920,20 +1924,32 @@ const TraceFilterPanel = ({
     [effectiveDefaultRow],
   );
 
-  const handleApply = useCallback(() => {
-    const valid = rows.map(normalizeFilterRowOperator).filter((r) => {
-      if (!r.field) return false;
-      if (NO_VALUE_OPS.has(r.operator)) return true;
-      const ops = getOperatorsForFilter(r);
-      const opDef = ops.find((o) => o.value === r.operator);
-      if (opDef?.range)
-        return Array.isArray(r.value) && r.value[0] !== "" && r.value[1] !== "";
-      if (Array.isArray(r.value)) return r.value.length > 0;
-      return r.value !== "" && r.value !== undefined && r.value !== null;
-    });
-    onApply(valid.length ? valid : null);
-    onClose();
-  }, [rows, onApply, onClose]);
+  // Auto-apply: filters take effect as soon as a value is chosen (debounced),
+  // so there's no Apply button — only Clear all. We apply WITHOUT closing the
+  // popover so the user can keep adjusting filters and see them apply live.
+  const autoApplyTimerRef = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    if (autoApplyTimerRef.current) clearTimeout(autoApplyTimerRef.current);
+    autoApplyTimerRef.current = setTimeout(() => {
+      const valid = rows.map(normalizeFilterRowOperator).filter((r) => {
+        if (!r.field) return false;
+        if (NO_VALUE_OPS.has(r.operator)) return true;
+        const ops = getOperatorsForFilter(r);
+        const opDef = ops.find((o) => o.value === r.operator);
+        if (opDef?.range)
+          return (
+            Array.isArray(r.value) && r.value[0] !== "" && r.value[1] !== ""
+          );
+        if (Array.isArray(r.value)) return r.value.length > 0;
+        return r.value !== "" && r.value !== undefined && r.value !== null;
+      });
+      onApply(valid.length ? valid : null);
+    }, 350);
+    return () => {
+      if (autoApplyTimerRef.current) clearTimeout(autoApplyTimerRef.current);
+    };
+  }, [rows, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClear = useCallback(() => {
     setRows([{ ...effectiveDefaultRow }]);
@@ -2133,19 +2149,6 @@ const TraceFilterPanel = ({
                 >
                   Clear all
                 </Button>
-                <Button
-                  size="small"
-                  variant="contained"
-                  data-filter-panel-action="apply"
-                  onClick={handleApply}
-                  sx={{
-                    textTransform: "none",
-                    fontSize: 12,
-                    px: 2,
-                  }}
-                >
-                  Apply
-                </Button>
               </Stack>
             </Stack>
           </Box>
@@ -2194,15 +2197,6 @@ const TraceFilterPanel = ({
                 sx={{ textTransform: "none", fontSize: 12 }}
               >
                 Clear all
-              </Button>
-              <Button
-                size="small"
-                variant="contained"
-                data-filter-panel-action="apply"
-                onClick={handleApply}
-                sx={{ textTransform: "none", fontSize: 12, px: 2 }}
-              >
-                Apply
               </Button>
             </Stack>
             <Typography

@@ -98,5 +98,16 @@ class TraceListQueryBuilderV2(TraceListQueryBuilder):
         sql, params = super().build_span_count_query(*args, **kwargs)
         return rewrite_and_apply_v2_settings(sql), params
 
+    def build_user_id_query(self, trace_ids: List[str]) -> Tuple[str, Dict[str, Any]]:
+        """Route the inherited user-id query through the v2 rewriter so it hits
+        `end_users_dict` / `is_deleted` instead of the v1 `enduser_dict` /
+        `_peerdb_is_deleted`. Direct dictGet on the span's `end_user_id`; the
+        remap-aware `end_user_dict_reader.resolve_user_ids` is the fallback if a
+        future id re-key ever makes that lookup miss."""
+        sql, params = super().build_user_id_query(trace_ids)
+        if not sql:
+            return sql, params
+        return rewrite_and_apply_v2_settings(sql), params
+
 
 __all__ = ["TraceListQueryBuilderV2"]

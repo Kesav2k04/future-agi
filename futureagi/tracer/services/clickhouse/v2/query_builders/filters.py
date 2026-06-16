@@ -58,6 +58,15 @@ _COL_RENAME_RE = re.compile(
 )
 
 
+# Legacy CDC dict names → v2 CH-native dicts (same key/attrs, so a token rename).
+_DICT_RENAMES: Dict[str, str] = {
+    "enduser_dict": "end_users_dict",
+}
+_DICT_RENAME_RE = re.compile(
+    r"\b(" + "|".join(re.escape(k) for k in _DICT_RENAMES.keys()) + r")\b"
+)
+
+
 # ─── JSON-overflow access rewrites ────────────────────────────────────────────
 # v1 emits `JSONExtractType(span_attributes_raw, 'path.with.dots')`; v2 uses
 # CH 25.x typed JSON path access `attributes_extra.path.with.dots.:Type`.
@@ -244,6 +253,8 @@ def rewrite_v1_sql_to_v2(sql: str) -> str:
     # 5. Naked simple renames (must come last so we don't accidentally rewrite
     # inside the AS aliases we just produced).
     sql = _COL_RENAME_RE.sub(lambda m: _COL_RENAMES[m.group(1)], sql)
+    # 5b. Legacy CDC dictionary names → v2 CH-native dictionary names.
+    sql = _DICT_RENAME_RE.sub(lambda m: _DICT_RENAMES[m.group(1)], sql)
     # NOTE: this function does NOT append the v2 SETTINGS clause. The settings
     # are appended at the BUILDER boundary (v2 `build()`/`build_count_query()` etc)
     # via `_append_v2_settings()` — see ClickHouseFilterBuilderV2.translate.

@@ -103,7 +103,7 @@ SectionCard.propTypes = {
   defaultOpen: PropTypes.bool,
 };
 
-// ── (SparkRow removed — replaced by unified EventsUsersChart below) ──────────
+// ── SparkRow ─────────────────────────────────────────────────────────────────
 function SparkRow({
   label,
   total,
@@ -722,17 +722,11 @@ function renderRichCaption(text) {
 function PatternSummary({ summary }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  // Real BE-computed insights only (PRD §6.2). No stub fallback — an
-  // un-analyzed / low-signal cluster shows the empty state below, never
-  // fabricated demo cards.
+  // No stub fallback — un-analyzed clusters show the empty state, never fabricated cards.
   const insights = (summary?.insights ?? []).filter((i) => i && i.title);
 
-  // Parent hides the whole section when nothing fired; this is just a
-  // belt-and-braces guard for direct renders.
   if (!insights.length) return null;
 
-  // Render only the cards that fired — PRD §6.2: "Better to show 2 strong
-  // than 4 with 2 weak." No greyed-out placeholders.
   return (
     <Box
       sx={{
@@ -809,12 +803,6 @@ PatternSummary.propTypes = {
 };
 
 // ── Agent flow from real span tree ────────────────────────────────────────────
-
-// Renders the real Observe trace graphs for the selected trace:
-//   mode="graph" → AgentGraph (node graph)
-//   mode="path"  → AgentPath  (Sankey-style flow)
-// Both consume the same buildTraceGraph(spanTree) data, exactly as the
-// Observe tracing detail view does.
 function TraceGraphView({ traceId, mode }) {
   const { data, isLoading } = useGetTraceDetail(traceId);
   const spanTree = data?.observation_spans || data?.observationSpans;
@@ -868,18 +856,8 @@ TraceGraphView.propTypes = {
 };
 
 // ── Split-with-working graph compare ─────────────────────────────────────────
-// Fetches the failing AND the working trace, computes a node-level diff, and
-// renders the two AgentGraphs (or AgentPaths) side by side. A diff summary
-// strip above the pair surfaces the high-level "what changed" view.
-//
-// Per-node diff cues only land on the graph variant — the Sankey-style
-// AgentPath compresses each node so the colored rings would clutter it. For
-// path mode we render a bare side-by-side (same data, no annotations) and
-// rely on the summary strip alone to communicate the diff.
+// Diff cues only land on graph mode — AgentPath nodes are too compressed for colored rings.
 function CompareLegend({ summary }) {
-  // The failure marker is the headline — leads the strip when any node in
-  // the failing trace actually errored. Missing/added/regressed/shared
-  // then narrate the rest of the diff.
   const items = [
     summary.failed > 0 && {
       color: "#DB2F2D",
@@ -1031,9 +1009,7 @@ function CompareColumn({ title, accentColor, traceShortId, children }) {
           </Typography>
         )}
       </Stack>
-      {/* Graph-canvas area — pinned to a near-black bg in dark mode so the
-          colored node fills and the diff halos pop. Light mode stays close
-          to background.paper to preserve readability. */}
+      {/* Near-black bg in dark mode so diff halos pop */}
       <Box
         sx={{
           flex: 1,
@@ -1081,8 +1057,6 @@ function TraceGraphCompare({ failingTraceId, workingTraceId, mode }) {
     return buildGraphDiff(failGraph, passGraph);
   }, [failGraph, passGraph]);
 
-  // Loading & empty states. We render the legend strip even while loading so
-  // the layout doesn't reflow when data arrives.
   const failLoading = !!failingTraceId && failQ.isLoading && !failQ.data;
   const passLoading = !!workingTraceId && passQ.isLoading && !passQ.data;
 
@@ -1187,14 +1161,6 @@ TraceGraphCompare.propTypes = {
 };
 
 // ── Trace evidence reel (fail / pass tabs) ───────────────────────────────────
-
-// Renders a text value that may be a plain string or a rich [{t, hl}] array
-// Renders an array of text segments. Each segment can be:
-//   { t }                plain text
-//   { t, hl: "error"|"ok" }  highlighted chip (red/green tint)
-//   { t, code: true }    inline code (monospace, blue) — e.g. `resolve_entities`
-//   { t, em: true }      italic, muted — e.g. quoted user input
-//   { t, b: true }       bold (emphasis colour)
 function RichText({ text, isFailReel: _isFailReel }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -1281,8 +1247,6 @@ RichText.propTypes = {
 const FAIL_COLOR = "#DB2F2D";
 const PASS_COLOR = "#5ACE6D";
 
-// Span pointer (e.g. ⌖ user.message.0) — clickable, opens the span in the
-// trace drawer (wiring TBD). Blue accent matches the mock; theme-aware.
 function SpanPointer({ pointer }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -1309,16 +1273,11 @@ function SpanPointer({ pointer }) {
 }
 SpanPointer.propTypes = { pointer: PropTypes.string.isRequired };
 
-// Role label colour — uniformly dim (like the mock); failure rows go red.
-// The colour signal lives in the timeline dots, not the labels.
 function roleColor(isFailure, isDark) {
   if (isFailure) return isDark ? "#ff9a99" : "#c0322f";
   return isDark ? alpha("#fff", 0.42) : alpha("#000", 0.45);
 }
 
-// One breadcrumb item in the Evidence timeline (PRD §6.3 Variant A).
-// Reads real fields where present: status (dot colour), span/spanPointer
-// (pointer), isFailure|status==='fail' (red callout), note, raw|rawJson.
 function ReelStep({ step, isFailReel, isLast }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -1421,7 +1380,6 @@ function ReelStep({ step, isFailReel, isLast }) {
       )}
 
       {isFailure ? (
-        // Failure moment — red-bordered rounded callout, matching the mock.
         <Box
           sx={{
             border: "1px solid",
@@ -1495,7 +1453,6 @@ ReelStep.propTypes = {
   isLast: PropTypes.bool,
 };
 
-// Vertical-timeline wrapper for breadcrumb steps + the trace-drawer footer.
 function BreadcrumbList({ steps, isFailReel, showFooter = true }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -1563,7 +1520,6 @@ BreadcrumbList.propTypes = {
   showFooter: PropTypes.bool,
 };
 
-// One side of the side-by-side comparison: a labeled column with steps inside.
 function ReelColumn({
   title,
   headerMeta,
@@ -1673,7 +1629,6 @@ ReelColumn.propTypes = {
   emptyMessage: PropTypes.string,
 };
 
-// View-mode segmented control for the per-trace panel (PRD §6.3 Variant A).
 function ViewModeToggle({ value, onChange }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -1744,7 +1699,6 @@ ViewModeToggle.propTypes = {
   onChange: PropTypes.func.isRequired,
 };
 
-// Segmented Failing/Working tab control (grouped with the Split button).
 function ReelTabs({ value, onChange }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -1822,18 +1776,12 @@ function TraceEvidence({ evidence, trace, traceId, workingTraceId }) {
   const [activeReel, setActiveReel] = useState("fail");
   const [splitView, setSplitView] = useState(false);
 
-  // Split is available for every view mode now; the BE may still be catching
-  // up on KNN matching, so we let the compare component itself handle the
-  // "no working trace yet" empty state. The button stays clickable so the
-  // affordance is consistent.
   const supportsSplit =
     viewMode === "breadcrumb" ||
     viewMode === "agentgraph" ||
     viewMode === "agentpath";
   const isGraphMode = viewMode === "agentgraph" || viewMode === "agentpath";
 
-  // Real evidence only — rich (span-attributed) or plain (kevinified-only).
-  // Never fabricate a breadcrumb; an empty reel renders the empty state below.
   const failReel = evidence.failReel || [];
   const passReel = evidence.passReel || [];
   const hasPassing = passReel.length > 0;
@@ -1842,7 +1790,6 @@ function TraceEvidence({ evidence, trace, traceId, workingTraceId }) {
   const isFailActive = activeReel === "fail";
   const isBreadcrumb = viewMode === "breadcrumb";
 
-  // Trace-level metrics for the dense meta strip (observability style).
   const summary = trace?.summary ?? {};
   const tokens =
     (summary.inputTokens ?? 0) + (summary.outputTokens ?? 0) || null;
@@ -1908,10 +1855,6 @@ function TraceEvidence({ evidence, trace, traceId, workingTraceId }) {
 
         <Box sx={{ flex: 1 }} />
 
-        {/* Failing/Working tabs sit right next to the Split button. Only
-            meaningful in breadcrumb mode — the graph modes always render the
-            current trace and use the Split button to bring the working
-            counterpart in. */}
         {isBreadcrumb && !splitView && (
           <ReelTabs value={activeReel} onChange={setActiveReel} />
         )}
@@ -1937,9 +1880,7 @@ function TraceEvidence({ evidence, trace, traceId, workingTraceId }) {
               fontWeight: 600,
               borderRadius: "6px",
               textTransform: "none",
-              // Secondary button. In dark theme use a translucent lift + a
-              // clearer border so it reads cleanly against the header strip
-              // (solid background.paper looked like a flat mismatched block).
+              // Dark theme: translucent lift avoids flat mismatch against header strip.
               color: "text.primary",
               borderColor: isDark ? alpha("#fff", 0.16) : "divider",
               bgcolor: isDark ? alpha("#fff", 0.05) : "background.paper",
@@ -2177,10 +2118,7 @@ function RootCauses({ causes }) {
   return (
     <Stack gap={0.75}>
       {causes.map((c) => {
-        // Backend splits title vs description at first period/comma. When
-        // the agent produces a short single-clause string with no internal
-        // punctuation, both fields end up identical — skip the description
-        // line in that case so we're not rendering the same text twice.
+        // Skip description when identical to title (short single-clause strings).
         const hasDistinctDescription =
           c.description && c.description.trim() !== c.title?.trim();
         return (
@@ -2567,7 +2505,6 @@ DeepAnalysisResults.propTypes = {
 };
 
 // ── Main OverviewTab ──────────────────────────────────────────────────────────
-// Segmented pill toggle for eval per-trace view (text I/O vs voice playback).
 export default function OverviewTab({ _error: currentError }) {
   const [leftWidth, setLeftWidth] = useState(347);
   const containerRef = useRef(null);
@@ -2591,9 +2528,7 @@ export default function OverviewTab({ _error: currentError }) {
     overview?.representativeTotal ??
     traces.length;
 
-  // Selected trace is kept in the Zustand store (per-cluster) so the
-  // sidebar's AI Metadata / Evaluations / Deep Analysis sections stay in
-  // sync. Local ``traceIndex`` is derived from the store's trace id.
+  // Per-cluster in Zustand so sidebar stays in sync.
   const selectedTraceId = useErrorFeedStore(
     (s) => s.selectedTraceIdByCluster[clusterId] ?? null,
   );
@@ -2607,10 +2542,7 @@ export default function OverviewTab({ _error: currentError }) {
   }, [traces, selectedTraceId]);
   const trace = traces[traceIndex];
 
-  // Backfill the store on first overview load so the sidebar has a trace
-  // id to work with even before the user clicks anything. Without this,
-  // the sidebar would fall back to the cluster's "latest" trace which
-  // might not be what the Overview tab is showing at index 0.
+  // Seed store so sidebar reads the same trace the Overview shows at index 0.
   useEffect(() => {
     if (!clusterId) return;
     if (!traces.length) return;
@@ -2649,9 +2581,7 @@ export default function OverviewTab({ _error: currentError }) {
 
   return (
     <Stack gap={1.5} sx={{ minHeight: 0 }}>
-      {/* ── Patterns across the cluster (full-width, PRD §5.1) ──
-          No insights cleared their statistical floor → no section at all,
-          not an empty shell. */}
+      {/* ── Patterns across the cluster ── */}
       {(patternSummary?.insights ?? []).some((i) => i && i.title) && (
         <SectionCard
           title="Patterns across the cluster"
@@ -2856,10 +2786,6 @@ export default function OverviewTab({ _error: currentError }) {
             </Stack>
           ) : (
             <Stack gap={1.5} sx={{ p: 1.75 }}>
-              {/* Per-trace surface — scanner clusters get breadcrumb-style
-                Trace Evidence (Breadcrumb / Agent Graph / Agent Path toggle,
-                PRD §6.3 Variant A; the graph modes reuse the real Observe
-                trace-graph components); eval clusters get the I/O panel. */}
               {currentError?.source === "eval" ? (
                 <SectionCard
                   title={isVoice ? "Voice call" : "Input / Output"}
@@ -2880,7 +2806,6 @@ export default function OverviewTab({ _error: currentError }) {
                   )}
                 </SectionCard>
               ) : (
-                // Trace Evidence — dense, observability-style standout card.
                 <TraceEvidence
                   evidence={trace.evidence ?? {}}
                   trace={trace}

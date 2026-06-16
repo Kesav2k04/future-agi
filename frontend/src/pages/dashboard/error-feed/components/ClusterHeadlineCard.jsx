@@ -29,10 +29,7 @@ function formatAnalyzedAt(iso) {
   return then.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-// Pull the cached cluster-RCA result (PRD §7.1) off the detail payload. Returns
-// null when the cluster has never been analyzed — the card shows its empty
-// state then, never a fabricated summary. snake_case is the canonical wire
-// form; the axios bridge also exposes camel aliases, so tolerate both.
+// snake_case is the canonical wire form; the axios bridge also exposes camel aliases.
 function cachedRcaFrom(error) {
   const rca = error?.rca;
   if (!rca || !rca.synthesis) return null;
@@ -249,10 +246,6 @@ const ANALYSIS_STEP_LABELS = [
   "Synthesising",
 ];
 
-// Compact horizontal step chips. `activeStepIdx` marks progress: steps before
-// it are done, the one at it is active, after it queued. Pass a value ≥ the
-// step count to render them all as done (the analyzed state). Single-line,
-// wraps if needed — keeps the card height stable across states.
 function StepChips({ activeStepIdx }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -354,12 +347,6 @@ function AnalyzedState({
   const isDark = theme.palette.mode === "dark";
   return (
     <Stack gap={1.25}>
-      {/* MetaStrip (confidence dot + category + timestamp + rerun) used to
-          live here. Confidence + category are still readable from the
-          collapsed-summary text in the accordion header; the timestamp
-          and rerun control moved next to the chevron at the top so the
-          card stays compact post-analysis. */}
-
       <Typography
         fontSize="14px"
         fontWeight={500}
@@ -402,8 +389,6 @@ function AnalyzedState({
         gap={0.75}
         sx={{ mt: 0.25, flexWrap: "wrap" }}
       >
-        {/* One Linear issue per cluster — once linked, this is a link-out,
-            never a silent redirect dressed up as "create". */}
         <Button
           size="small"
           variant="outlined"
@@ -439,7 +424,6 @@ function AnalyzedState({
 
         <Box sx={{ flex: 1 }} />
 
-        {/* Secondary — jumps to the Analyze tab to read the full reasoning. */}
         <Button
           size="small"
           variant="outlined"
@@ -488,10 +472,6 @@ export default function ClusterHeadlineCard({
   const cachedRca = useMemo(() => cachedRcaFrom(error), [error]);
   const clusterId = error?.clusterId;
 
-  // Observe the SAME thread state the Analyze tab observes — both views
-  // are now driven by the single shared `useAnalyzeRunner` hook that the
-  // parent (ErrorFeedDetailView) mounts. Clicking any analyze button
-  // anywhere just sets the pending flag, which the runner consumes.
   const thread = useErrorFeedStore(
     (s) => s.analyzeThreadsByCluster[clusterId] ?? null,
   );
@@ -503,14 +483,9 @@ export default function ClusterHeadlineCard({
     (s) => s.toggleClusterAnalysisCollapsed,
   );
 
-  // The category pill comes from the cluster's fix layer (the agent's
-  // synthesis doesn't carry one), shared by the live and cached paths.
   const category = error?.fixLayer ?? error?.fix_layer ?? "root cause";
 
-  // Step pill progress is derived from how many of the runner's step
-  // messages have advanced past "queued". The runner emits 5 steps; we
-  // collapse them to 3 visual phases for the card (each phase covers
-  // ~2 of the runner's steps).
+  // Runner emits 5 steps; collapse to 3 visual phases (~2 runner steps each).
   const stepMessages = (thread?.messages ?? []).filter(
     (m) => m.type === "step",
   );
@@ -519,10 +494,7 @@ export default function ClusterHeadlineCard({
   ).length;
   const activeStepIdx = Math.min(2, Math.floor(advancedCount / 2));
 
-  // Synthesis content + display mode. Priority:
-  //   1. live synthesis from the current run (thread) — freshest
-  //   2. cached rca_* from a prior run (detail payload) — survives reload
-  //   3. nothing → genuine "not analyzed" empty state (never a fake summary)
+  // Priority: live thread > cached rca > not_analyzed.
   const synthesisMsg = [...(thread?.messages ?? [])]
     .reverse()
     .find((m) => m.type === "synthesis");
@@ -541,7 +513,6 @@ export default function ClusterHeadlineCard({
       category,
       analyzedAt: "just now",
     };
-    // Just ran against the current cluster state — nothing new since.
   } else if (cachedRca) {
     state = "analyzed";
     data = { ...cachedRca, category };
@@ -554,8 +525,6 @@ export default function ClusterHeadlineCard({
     state = "not_analyzed";
   }
 
-  // Empty-state CTA: kick the shared run via the pending flag. The runner
-  // (hooked at the parent level) will pick it up and start streaming.
   const runAnalysis = () => {
     setAnalyzePendingStart(clusterId, true);
     if (typeof onStartAnalysis === "function") onStartAnalysis();
@@ -563,8 +532,6 @@ export default function ClusterHeadlineCard({
 
   const noop = () => {};
 
-  // One-line summary shown next to the header when collapsed, so the card
-  // still communicates its state without being expanded.
   const collapsedSummary =
     state === "analyzing"
       ? "Debugging this cluster…"
@@ -663,9 +630,6 @@ export default function ClusterHeadlineCard({
 
         <Box sx={{ flex: 1 }} />
 
-        {/* Analyzed timestamp + rerun control — visible when expanded on
-            an analyzed state. Lives in the header now (replaces the old
-            MetaStrip that sat in the body) so the box stays compact. */}
         {!collapsed && state === "analyzed" && (
           <Stack
             direction="row"

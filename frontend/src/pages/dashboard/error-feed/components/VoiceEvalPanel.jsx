@@ -18,9 +18,7 @@ const FAIL_COLOR = "#DB2F2D";
 const PASS_COLOR = "#5ACE6D";
 const AMBER_COLOR = "#F5A623";
 
-// Cheap deterministic waveform — a series of bar heights derived from a hash
-// of the trace id, so each trace shows a stable but distinct scrub track.
-// Purely decorative: progress/seek map to the real audio element.
+// Deterministic decorative waveform — seeded from trace id for stable bars.
 function waveformBars(seed = "default", count = 80) {
   let h = 0;
   for (let i = 0; i < seed.length; i += 1)
@@ -469,9 +467,7 @@ JudgeReasonCard.propTypes = {
   score: PropTypes.number,
 };
 
-// Map the voice_call_detail payload to transcript lines {t, speaker, text}.
-// Prefer `messages` (they carry seconds_from_start for seek-sync); fall back
-// to `transcript` rows (role/content, no offsets → t null disables seek).
+// Prefer `messages` (carry seconds_from_start for seek); fall back to `transcript` (no offsets).
 function toTranscriptLines(detail) {
   const messages = detail?.messages ?? [];
   const fromMessages = messages
@@ -497,8 +493,6 @@ function toTranscriptLines(detail) {
     }));
 }
 
-// Fetch + map one call's voice evidence. Shared by the single view and each
-// side of the failing-vs-working comparison.
 function useVoiceCallData(traceId) {
   const { data: detail, isLoading } = useVoiceCallDetail(traceId, !!traceId);
   const lines = useMemo(() => toTranscriptLines(detail), [detail]);
@@ -515,7 +509,6 @@ function useVoiceCallData(traceId) {
   };
 }
 
-// One side of the failing-vs-working comparison.
 function CallColumn({
   title,
   accentColor,
@@ -610,7 +603,6 @@ export default function VoiceEvalPanel({ trace, evalScore, successTraceId }) {
   // Only fetched once the user opens the comparison.
   const passCall = useVoiceCallData(splitView ? successTraceId : null);
 
-  // Judge reason rides on the overview's trace evidence, same as EvalIOPanel.
   const evidence = trace?.evidence ?? {};
   const judgeReason = evidence.judgeReason ?? evidence.judge_reason ?? null;
   const judgeScore =

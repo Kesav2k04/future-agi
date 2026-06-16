@@ -3,14 +3,6 @@ import { Box, Stack, Typography, alpha, useTheme } from "@mui/material";
 import PropTypes from "prop-types";
 import Iconify from "src/components/iconify";
 
-// ── Recovered EvalIOPanel ───────────────────────────────────────────────────
-// NOTE: The original file was lost in the `/tmp` wipe (2026-06-01). This is a
-// clean re-implementation that matches the call sites and the structural
-// judge-reason card pattern. It renders the trace's
-// input / output as labelled blobs and the judge's reason + score.
-// Replace with the richer original version if it's ever recovered from a
-// teammate's machine or an earlier git push.
-
 const PASS_COLOR = "#5ACE6D";
 const FAIL_COLOR = "#DB2F2D";
 

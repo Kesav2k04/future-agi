@@ -827,8 +827,6 @@ CoOccurringList.propTypes = { issues: PropTypes.array.isRequired };
 
 // ── Integrations ──────────────────────────────────────────────────────────────
 
-// Exported: the ClusterHeadlineCard's "Create Linear issue" button reuses
-// this picker (cluster-level — no trace context, the BE attaches the RCA).
 export function LinearTeamPicker({ open, onClose, clusterId, traceId }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -1183,9 +1181,6 @@ export default function ErrorMetadataPanel({ error }) {
     updateIssue.mutate({ clusterId: error?.clusterId, assignee: val });
   };
 
-  // Selected trace drives the sidebar's trace-level sections (AI Metadata,
-  // Evaluations, Deep Analysis). When nothing's selected, backend falls
-  // back to the cluster's latest trace.
   const selectedTraceId = useErrorFeedStore(
     (s) => s.selectedTraceIdByCluster[error?.clusterId] ?? null,
   );
@@ -1194,12 +1189,7 @@ export default function ErrorMetadataPanel({ error }) {
     selectedTraceId,
   );
   const sidebarPending = isSidebarLoading && !sidebar;
-  // OverviewTab keys its deep-analysis query off `selectedTraceId` (with a
-  // `representativeTraces[0]` fallback inside the tab). The button has to
-  // use the same source or the two end up reading different cache entries:
-  // OverviewTab shows the done content, button keeps polling a different
-  // trace and stays stuck on loading. Prefer the store; fall back to the
-  // sidebar's resolved trace only while the store hasn't been backfilled.
+  // Must match OverviewTab's trace source or the two read different cache entries.
   const effectiveTraceId =
     selectedTraceId ?? sidebar?.aiMetadata?.traceId ?? null;
 
@@ -1223,9 +1213,6 @@ export default function ErrorMetadataPanel({ error }) {
   }));
   const coOccurringIssues = sidebar?.coOccurringIssues ?? [];
 
-  // Minimal activity trail built from what we actually know: first detection.
-  // Full audit log (status changes, assignment history) is out of scope —
-  // see feed-api-plan.md.
   const activityLog = error.firstSeen
     ? [
         {

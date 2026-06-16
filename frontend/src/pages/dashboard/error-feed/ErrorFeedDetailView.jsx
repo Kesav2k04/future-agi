@@ -86,8 +86,6 @@ TabLabel.propTypes = {
 };
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
-// State Graph is no longer a peer tab — per PRD §5.1 it's demoted to a
-// view-mode toggle inside the per-trace panel (Breadcrumb · State Graph · Agent Path).
 const TABS = [
   { key: "overview", label: "Overview", icon: "mdi:view-dashboard-outline" },
   { key: "traces", label: "Traces", icon: "mdi:timeline-text-outline" },
@@ -100,8 +98,6 @@ export default function ErrorFeedDetailView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { activeTab, setActiveTab } = useErrorFeedStore();
-  // Headline card's "Create Linear issue" — cluster-level (no trace), the
-  // backend attaches the full cluster RCA to the ticket body.
   const [linearPickerOpen, setLinearPickerOpen] = useState(false);
   const setAnalyzePendingStart = useErrorFeedStore(
     (s) => s.setAnalyzePendingStart,
@@ -120,9 +116,6 @@ export default function ErrorFeedDetailView() {
     };
   }, [detail]);
 
-  // Single shared analyze run for this cluster. The hook owns the timers
-  // and patches the store-backed thread; the headline card and the
-  // Analyze tab both observe that thread state, so they stay in sync.
   useAnalyzeRunner(currentError?.clusterId, currentError);
 
   if (isLoading || !currentError) {
@@ -419,14 +412,7 @@ export default function ErrorFeedDetailView() {
           </Tabs>
         </Box>
 
-        {/* ── Tab content ──
-            Two layout modes share this column:
-              - Overview / Traces / Trends → page-style scrolling (long content)
-              - Analyze → fixed-height flex column so the compose area can
-                dock at the bottom of the viewport, chat-style.
-            Each tab wraps itself in the right kind of container instead of
-            trying to share one — that keeps Analyze's bottom-anchored
-            compose area honest without breaking the others' overflow. */}
+        {/* ── Tab content ── */}
         <Box
           sx={{
             flex: 1,
@@ -437,8 +423,6 @@ export default function ErrorFeedDetailView() {
           }}
         >
           {safeTabIndex === 3 ? (
-            // Analyze: fixed-height flex column. AnalyzeTab fills the box
-            // and handles its own internal scroll.
             <Box
               sx={{
                 flex: 1,
@@ -451,22 +435,14 @@ export default function ErrorFeedDetailView() {
               <AnalyzeTab error={currentError} />
             </Box>
           ) : (
-            // Overview / Traces / Trends: classic page scroll. The cluster
-            // analysis accordion only renders on Overview.
             <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
               <Box sx={{ p: 2 }}>
                 {activeTab === "overview" && (
                   <Box sx={{ mb: 2 }}>
                     <ClusterHeadlineCard
                       error={currentError}
-                      onOpenAnalyze={() => {
-                        // "View reasoning" — run already happened; just
-                        // switch to the Analyze tab to read the thread.
-                        setActiveTab("analyze");
-                      }}
+                      onOpenAnalyze={() => setActiveTab("analyze")}
                       onStartAnalysis={() => {
-                        // "Debug this cluster" — kick the run and jump to
-                        // Analyze so the user watches the live status.
                         setAnalyzePendingStart(currentError.clusterId, true);
                         setActiveTab("analyze");
                       }}

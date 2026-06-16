@@ -39,8 +39,12 @@ const SENTINEL_TYPES = new Set(["start", "end"]);
 const GHOST_PREFIX = "ghost-";
 
 function keyOf(node) {
-  const type = String(node?.type ?? "").toLowerCase().trim();
-  const name = String(node?.name ?? "").toLowerCase().trim();
+  const type = String(node?.type ?? "")
+    .toLowerCase()
+    .trim();
+  const name = String(node?.name ?? "")
+    .toLowerCase()
+    .trim();
   return `${type}|${name}`;
 }
 
@@ -94,8 +98,7 @@ export function buildGraphDiff(failGraph, passGraph) {
   let shared = 0;
   let failed = 0;
 
-  // 1. Annotate the failing-side nodes. Failure point takes visual priority
-  //    over diff status — a failed node is the headline, not a diff cue.
+  // 1. Annotate failing-side nodes. Failure point takes priority over diff status.
   const annotatedFailNodes = failNodes.map((node) => {
     const isSentinel = SENTINEL_TYPES.has(node?.type);
     const isFailurePoint = !isSentinel && errorCountOf(node) > 0;
@@ -140,12 +143,8 @@ export function buildGraphDiff(failGraph, passGraph) {
     ghostIds.add(passNode.id);
   }
 
-  // 3. Synthetic "skipped path" edges. For each working-graph edge whose
-  //    TARGET is a missing/ghost node, mirror it into the failing graph.
-  //    Source resolves to: the failing-side equivalent if shared (entry into
-  //    the ghost branch), or another ghost (interior of a multi-hop missing
-  //    chain). Edges whose target is shared aren't mirrored — they'd rejoin
-  //    the real flow and create confusing duplicate connections.
+  // 3. Mirror working-graph edges whose target is a ghost into the failing graph.
+  //    Edges whose target is shared aren't mirrored — they'd create duplicate connections.
   const skippedEdges = [];
   const passNodeById = new Map();
   for (const n of passNodes) passNodeById.set(n.id, n);

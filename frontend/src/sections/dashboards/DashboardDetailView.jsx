@@ -600,7 +600,11 @@ function DraggableWidgetCard({
                 </IconButton>
               </Tooltip>
               <Tooltip title="More">
-                <IconButton size="small" onClick={(e) => onMenuOpen(e, widget)}>
+                <IconButton
+                  size="small"
+                  aria-label="Widget options"
+                  onClick={(e) => onMenuOpen(e, widget)}
+                >
                   <Iconify icon="mdi:dots-vertical" width={16} />
                 </IconButton>
               </Tooltip>
@@ -702,11 +706,11 @@ export default function DashboardDetailView() {
   // Dashboard more menu
   const [dashMenuAnchor, setDashMenuAnchor] = useState(null);
 
-  // Delete-dashboard confirmation
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-
-  // Delete-widget confirmation (target stashed since closeWidgetMenu clears menuWidget)
-  const [deleteWidgetTarget, setDeleteWidgetTarget] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const lastConfirmDeleteRef = useRef(null);
+  
+  if (confirmDelete) lastConfirmDeleteRef.current = confirmDelete;
+  const confirmDeleteView = confirmDelete ?? lastConfirmDeleteRef.current;
 
   // Grid container ref (for measuring column widths during resize)
   const gridContainerRef = useRef(null);
@@ -898,21 +902,8 @@ export default function DashboardDetailView() {
   };
 
   const handleDeleteWidget = () => {
-    setDeleteWidgetTarget(menuWidget);
+    setConfirmDelete({ type: "widget", target: menuWidget });
     closeWidgetMenu();
-  };
-
-  const confirmDeleteWidget = () => {
-    if (deleteWidgetTarget) {
-      deleteWidget.mutate(
-        { dashboardId, widgetId: deleteWidgetTarget.id },
-        {
-          onSuccess: () =>
-            enqueueSnackbar("Widget deleted", { variant: "success" }),
-        },
-      );
-    }
-    setDeleteWidgetTarget(null);
   };
 
   const handleDuplicateWidget = () => {
@@ -935,17 +926,31 @@ export default function DashboardDetailView() {
 
   const handleDeleteDashboard = () => {
     setDashMenuAnchor(null);
-    setConfirmDeleteOpen(true);
+    setConfirmDelete({ type: "dashboard" });
   };
 
-  const confirmDeleteDashboard = () => {
-    deleteDashboard.mutate(dashboardId, {
-      onSuccess: () => {
-        enqueueSnackbar("Dashboard deleted", { variant: "success" });
-        navigate(paths.dashboard.dashboards.root);
-      },
-    });
-    setConfirmDeleteOpen(false);
+  // Single confirm handler for both delete dialogs; branches on the key.
+  // Closes only once the request settles (not synchronously mid-flight).
+  const handleConfirmDelete = () => {
+    if (confirmDelete?.type === "widget") {
+      if (!confirmDelete.target) return;
+      deleteWidget.mutate(
+        { dashboardId, widgetId: confirmDelete.target.id },
+        {
+          onSuccess: () =>
+            enqueueSnackbar("Widget deleted", { variant: "success" }),
+          onSettled: () => setConfirmDelete(null),
+        },
+      );
+    } else if (confirmDelete?.type === "dashboard") {
+      deleteDashboard.mutate(dashboardId, {
+        onSuccess: () => {
+          enqueueSnackbar("Dashboard deleted", { variant: "success" });
+          navigate(paths.dashboard.dashboards.root);
+        },
+        onSettled: () => setConfirmDelete(null),
+      });
+    }
   };
 
   const handleRowResize = useCallback(
@@ -1130,6 +1135,7 @@ export default function DashboardDetailView() {
           <Tooltip title="More options">
             <IconButton
               size="small"
+              aria-label="Dashboard options"
               onClick={(e) => setDashMenuAnchor(e.currentTarget)}
             >
               <Iconify icon="mdi:dots-horizontal" width={20} />
@@ -1543,33 +1549,25 @@ export default function DashboardDetailView() {
       </Menu>
 
       <ConfirmDialog
-        open={confirmDeleteOpen}
-        onClose={() => setConfirmDeleteOpen(false)}
-        title="Delete Dashboard"
-        content={`Are you sure you want to delete "${dashboard?.name}"? This action cannot be undone.`}
-        action={
-          <Button
-            variant="contained"
-            color="error"
-            size="small"
-            onClick={confirmDeleteDashboard}
-          >
-            Delete
-          </Button>
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title={
+          confirmDeleteView?.type === "widget"
+            ? "Delete Widget"
+            : "Delete Dashboard"
         }
-      />
-
-      <ConfirmDialog
-        open={!!deleteWidgetTarget}
-        onClose={() => setDeleteWidgetTarget(null)}
-        title="Delete Widget"
-        content={`Are you sure you want to delete "${deleteWidgetTarget?.name}"? This action cannot be undone.`}
+        content={
+          confirmDeleteView?.type === "widget"
+            ? `Are you sure you want to delete "${confirmDeleteView.target?.name}"? This action cannot be undone.`
+            : `Are you sure you want to delete "${dashboard?.name}"? This action cannot be undone.`
+        }
         action={
           <Button
             variant="contained"
             color="error"
             size="small"
-            onClick={confirmDeleteWidget}
+            onClick={handleConfirmDelete}
+            disabled={deleteWidget.isPending || deleteDashboard.isPending}
           >
             Delete
           </Button>

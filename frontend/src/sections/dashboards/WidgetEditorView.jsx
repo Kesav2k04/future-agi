@@ -1123,8 +1123,10 @@ export default function WidgetEditorView() {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const confirmDeleteWidget = () => {
-    setConfirmDeleteOpen(false);
-    if (!isEditing) return;
+    if (!isEditing) {
+      setConfirmDeleteOpen(false);
+      return;
+    }
     deleteMutation.mutate(
       { dashboardId, widgetId: effectiveWidgetId },
       {
@@ -1132,6 +1134,8 @@ export default function WidgetEditorView() {
           enqueueSnackbar("Widget deleted", { variant: "success" });
           navigate(paths.dashboard.dashboards.detail(dashboardId));
         },
+        // Close once the request settles, not before it starts.
+        onSettled: () => setConfirmDeleteOpen(false),
       },
     );
   };
@@ -3130,6 +3134,7 @@ export default function WidgetEditorView() {
               color="error"
               size="small"
               onClick={confirmDeleteWidget}
+              disabled={deleteMutation.isPending}
             >
               Delete
             </Button>

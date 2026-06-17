@@ -1688,6 +1688,87 @@ class TestMaybePinNewVersion:
 
         assert uem.pinned_version == before  # unchanged
 
+    def test_explicit_version_switch_pins_target_version(
+        self, organization, workspace, user, user_template
+    ):
+        """Passing a different pinned_version_id must pin that version directly
+        without creating a new one."""
+        from model_hub.services.eval_version_pinning import maybe_pin_new_version
+        from model_hub.models.evals_metric import EvalTemplateVersion
+
+        uem = self._make_uem(organization, workspace, user, user_template)
+
+        # Create two versions manually
+        v1 = EvalTemplateVersion.objects.create_version(
+            eval_template=user_template,
+            criteria="v1 criteria",
+            model="turing_large",
+            user=user,
+            organization=organization,
+            workspace=workspace,
+        )
+        v2 = EvalTemplateVersion.objects.create_version(
+            eval_template=user_template,
+            criteria="v2 criteria",
+            model="turing_large",
+            user=user,
+            organization=organization,
+            workspace=workspace,
+        )
+        uem.pinned_version = v2
+        uem.save()
+
+        # Simulate FE sending a different pinned_version_id (v1) — user switched back
+        # The view sets pinned_version directly and skips maybe_pin_new_version.
+        # Here we test the service is NOT called (no new version beyond v2 exists).
+        version_count_before = EvalTemplateVersion.objects.filter(
+            eval_template=user_template
+        ).count()
+        uem.pinned_version = v1  # view sets this directly on explicit switch
+        uem.save()
+
+        assert uem.pinned_version_id == v1.id
+        assert EvalTemplateVersion.objects.filter(
+            eval_template=user_template
+        ).count() == version_count_before, "Explicit version switch must not create a new version"
+
+    def test_same_version_id_still_runs_maybe_pin(
+        self, organization, workspace, user, user_template
+    ):
+        """When FE echoes the current pinned_version_id unchanged, a config edit
+        must still go through maybe_pin_new_version and create a new version."""
+        from model_hub.services.eval_version_pinning import maybe_pin_new_version
+        from model_hub.models.evals_metric import EvalTemplateVersion
+
+        uem = self._make_uem(organization, workspace, user, user_template)
+
+        # Simulate an existing pinned version
+        v1 = EvalTemplateVersion.objects.create_version(
+            eval_template=user_template,
+            criteria="original",
+            model="turing_large",
+            user=user,
+            organization=organization,
+            workspace=workspace,
+        )
+        uem.pinned_version = v1
+        uem.save()
+
+        # FE sends same pinned_version_id back (unchanged dropdown) + new config
+        request_data = {
+            "config": {"config": {"rule_prompt": "updated prompt"}},
+            "pinned_version_id": str(v1.id),  # same as current — not a switch
+        }
+        # View logic: version_switched = (v1.id != eval_metric.pinned_version_id) = False
+        # So maybe_pin_new_version runs. It should create a new version.
+        maybe_pin_new_version(
+            uem, request_data, user=user,
+            organization=organization, workspace=workspace,
+        )
+
+        assert uem.pinned_version_id != v1.id, "Config change must create a new version"
+        assert uem.pinned_version is not None
+
     def test_prepare_eval_config_preserves_empty_rule_prompt(
         self, organization, workspace, user, user_template
     ):

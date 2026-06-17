@@ -8005,12 +8005,18 @@ class EditAndRunUserEvalView(APIView):
                             f"Missing required mapping keys: {', '.join(missing_keys)}"
                         )
 
-                # If the user explicitly selected an existing version from the
-                # version dropdown, pin it directly and skip automatic version
-                # creation — the user is reverting to a known snapshot, not
-                # creating a new one.
+                # If the user explicitly switched to a DIFFERENT version from
+                # the dropdown, pin it directly and skip auto-creation. The FE
+                # always echoes the current pinned_version_id on save; we only
+                # treat it as an explicit switch when it differs from what is
+                # already pinned — otherwise we'd skip version creation on every
+                # normal config edit.
                 explicit_version_id = request_data.get("pinned_version_id")
-                if explicit_version_id:
+                version_switched = (
+                    explicit_version_id
+                    and str(explicit_version_id) != str(eval_metric.pinned_version_id or "")
+                )
+                if version_switched:
                     from model_hub.models.evals_metric import EvalTemplateVersion as ETV
                     selected_ver = ETV.objects.filter(
                         id=explicit_version_id,

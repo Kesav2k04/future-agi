@@ -5222,6 +5222,7 @@ export type AIEvalWriterRequestApiOutputFormat = typeof AIEvalWriterRequestApiOu
 export const AIEvalWriterRequestApiOutputFormat = {
   prompt: 'prompt',
   messages: 'messages',
+  test_data: 'test_data',
 } as const;
 
 export interface AIEvalWriterRequestApi {

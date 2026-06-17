@@ -41453,7 +41453,8 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "type": "string",
           "enum": [
             "prompt",
-            "messages"
+            "messages",
+            "test_data"
           ],
           "default": "prompt"
         }

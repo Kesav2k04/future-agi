@@ -1215,6 +1215,7 @@ const EvalCreatePage = () => {
                   ref={testPlaygroundRef}
                   templateId={draftId}
                   model={model}
+                  evalName={name || ""}
                   instructions={
                     mode === "composite" || evalType === "code"
                       ? ""

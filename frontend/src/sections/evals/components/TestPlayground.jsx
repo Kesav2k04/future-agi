@@ -60,6 +60,7 @@ const CustomJsonInput = ({
   inputValues,
   onInputChange,
   instructions,
+  evalName,
   onColumnsLoaded,
 }) => {
   const [jsonText, setJsonText] = useState("");
@@ -208,12 +209,27 @@ const CustomJsonInput = ({
       const varList = variables.join(", ");
       const currentData =
         jsonText && jsonText.trim() !== "{}" ? jsonText : null;
-      const description = currentData
-        ? `Current test data JSON:\n${currentData}\n\nUser wants to: ${userPrompt}\n\nGenerate updated JSON with keys: ${varList}. Return ONLY valid JSON.`
-        : `Generate realistic test data as JSON for variables: ${varList}.\n${instructions ? `Eval context: ${instructions.slice(0, 300)}` : ""}\nUser request: ${userPrompt}\nReturn ONLY valid JSON.`;
+
+      // Context so the model knows the test data is for THIS evaluation.
+      const evalContext = [
+        "The test data you generate will be used to run the following evaluation.",
+        evalName ? `Evaluation name: ${evalName}` : "",
+        instructions
+          ? `Evaluation instruction:\n${instructions.slice(0, 4000)}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      const task = currentData
+        ? `Current test data JSON:\n${currentData}\n\nUser wants to: ${userPrompt}\n\nGenerate updated JSON with keys: ${varList}.`
+        : `User request: ${userPrompt}\n\nGenerate JSON with keys: ${varList}.`;
+
+      const description = `${evalContext}\n\n${task}`;
 
       const { data } = await axios.post(endpoints.develop.eval.aiEvalWriter, {
         description,
+        output_format: "test_data",
       });
       const raw = data?.result?.prompt;
       if (raw) {
@@ -222,7 +238,7 @@ const CustomJsonInput = ({
       }
       return null;
     },
-    [variables, jsonText, instructions],
+    [variables, jsonText, instructions, evalName],
   );
 
   // Submit prompt
@@ -607,6 +623,7 @@ CustomJsonInput.propTypes = {
   inputValues: PropTypes.object.isRequired,
   onInputChange: PropTypes.func.isRequired,
   instructions: PropTypes.string,
+  evalName: PropTypes.string,
   onColumnsLoaded: PropTypes.func,
 };
 
@@ -615,6 +632,7 @@ const TestPlayground = React.forwardRef(
     {
       templateId,
       instructions = "",
+      evalName = "",
       evalType,
       model = "turing_large",
       requiredKeys = [],
@@ -1218,6 +1236,7 @@ const TestPlayground = React.forwardRef(
                     inputValues={inputValues}
                     onInputChange={handleInputChange}
                     instructions={instructions}
+                    evalName={evalName}
                     onColumnsLoaded={onColumnsLoaded}
                   />
 
@@ -1866,6 +1885,7 @@ TestPlayground.displayName = "TestPlayground";
 TestPlayground.propTypes = {
   templateId: PropTypes.string,
   instructions: PropTypes.string,
+  evalName: PropTypes.string,
   evalType: PropTypes.string,
   requiredKeys: PropTypes.array,
   showVersions: PropTypes.bool,

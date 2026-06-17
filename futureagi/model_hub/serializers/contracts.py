@@ -259,7 +259,7 @@ class EvalSummaryTemplateDeleteResponseSerializer(serializers.Serializer):
 class AIEvalWriterRequestSerializer(serializers.Serializer):
     description = serializers.CharField()
     output_format = serializers.ChoiceField(
-        choices=["prompt", "messages"],
+        choices=["prompt", "messages", "test_data"],
         required=False,
         default="prompt",
     )

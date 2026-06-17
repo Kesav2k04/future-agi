@@ -11513,7 +11513,7 @@ export const modelHubAiEvalWriterCreateBodyOutputFormatDefault = `prompt`;
 
 export const ModelHubAiEvalWriterCreateBody = zod.object({
   "description": zod.string().min(1),
-  "output_format": zod.enum(['prompt', 'messages']).default(modelHubAiEvalWriterCreateBodyOutputFormatDefault)
+  "output_format": zod.enum(['prompt', 'messages', 'test_data']).default(modelHubAiEvalWriterCreateBodyOutputFormatDefault)
 })
 
 export const modelHubAiEvalWriterCreateResponseStatusDefault = true;

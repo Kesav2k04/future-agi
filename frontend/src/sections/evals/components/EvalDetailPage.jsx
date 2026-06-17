@@ -1859,6 +1859,7 @@ const EvalDetailPage = () => {
                     ref={testPlaygroundRef}
                     templateId={evalId}
                     model={model}
+                    evalName={evalData?.name || ""}
                     instructions={
                       evalType === "code"
                         ? ""

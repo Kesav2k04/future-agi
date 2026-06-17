@@ -71,9 +71,25 @@ Example output (return exactly this shape, no wrapping):
   {"role": "user", "content": "User question: {{input}}\\nChatbot response: {{output}}\\nReference answer: {{ground_truth}}\\n\\nEvaluate whether the chatbot response is (1) polite in tone and (2) factually consistent with the reference answer. Return 'Passed' only if both criteria are met, otherwise return 'Failed' with a brief reason."}
 ]"""
 
+TEST_DATA_SYSTEM_PROMPT = """You generate realistic test data as a JSON object for testing an LLM evaluation.
+
+Rules:
+1. Return ONLY a valid JSON object. No markdown fences, no explanation, no prose.
+2. The object's keys must be EXACTLY the variable names the user provides — no more, no fewer.
+3. Every value must be a realistic string appropriate to the eval's scenario.
+4. If the user supplies "Current test data JSON", treat it as the current draft and return an UPDATED object that applies the requested change while keeping the same keys.
+5. If the user asks for a "failing case", craft data that should FAIL the evaluation (e.g. an unsupported claim, a factual error, an off-topic response). If they ask for a "passing case", craft data that should PASS.
+
+Example user request:
+Generate realistic test data as JSON for variables: output, context. User request: a failing case
+
+Example output (return exactly this shape, no wrapping):
+{"output": "Our revenue grew 40% driven by strong demand in Europe.", "context": "Q3 revenue was flat year over year with no regional breakdown provided."}"""
+
 OUTPUT_FORMAT_PROMPTS = {
     "prompt": SYSTEM_PROMPT,
     "messages": MESSAGES_SYSTEM_PROMPT,
+    "test_data": TEST_DATA_SYSTEM_PROMPT,
 }
 
 

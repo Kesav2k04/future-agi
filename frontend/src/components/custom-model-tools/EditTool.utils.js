@@ -1,3 +1,32 @@
+export const tabOptions = [
+  { label: "JSON", value: "json", disabled: false },
+  { label: "YAML", value: "yaml", disabled: false },
+];
+
+export const editorOptions = {
+  selectOnLineNumbers: true,
+  roundedSelection: false,
+  readOnly: false,
+  cursorStyle: "line",
+  automaticLayout: true,
+  wordWrap: "on",
+  lineNumbers: "off",
+  folding: false,
+  minimap: { enabled: false },
+  glyphMargin: false,
+  lineDecorationsWidth: 0,
+  renderIndentGuides: true,
+  lineNumbersMinChars: 0,
+  scrollbar: {
+    vertical: "visible",
+    horizontal: "visible",
+    verticalScrollbarSize: 10,
+    horizontalScrollbarSize: 10,
+    alwaysConsumeMouseWheel: false,
+    useShadows: false,
+  },
+};
+
 export function getDefaultValues(editTool) {
   const defaultJson = `{
   "type": "function",

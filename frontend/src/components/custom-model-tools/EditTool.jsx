@@ -18,36 +18,11 @@ import { z } from "zod";
 import { ShowComponent } from "src/components/show";
 import YAML from "yaml";
 import FormTextFieldV2 from "../FormTextField/FormTextFieldV2";
-import { getDefaultValues } from "./EditTool.utils";
-
-const tabOptions = [
-  { label: "JSON", value: "json", disabled: false },
-  { label: "YAML", value: "yaml", disabled: false },
-];
-
-const editorOptions = {
-  selectOnLineNumbers: true,
-  roundedSelection: false,
-  readOnly: false,
-  cursorStyle: "line",
-  automaticLayout: true,
-  wordWrap: "on",
-  lineNumbers: "off",
-  folding: false,
-  minimap: { enabled: false },
-  glyphMargin: false,
-  lineDecorationsWidth: 0,
-  renderIndentGuides: true,
-  lineNumbersMinChars: 0,
-  scrollbar: {
-    vertical: "visible",
-    horizontal: "visible",
-    verticalScrollbarSize: 10,
-    horizontalScrollbarSize: 10,
-    alwaysConsumeMouseWheel: false,
-    useShadows: false,
-  },
-};
+import {
+  editorOptions,
+  getDefaultValues,
+  tabOptions,
+} from "./EditTool.utils";
 
 const toolSchema = z
   .object({

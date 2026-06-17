@@ -8005,16 +8005,31 @@ class EditAndRunUserEvalView(APIView):
                             f"Missing required mapping keys: {', '.join(missing_keys)}"
                         )
 
-                # Version creation on edit — business logic lives in the service.
-                from model_hub.services.eval_version_pinning import maybe_pin_new_version
+                # If the user explicitly selected an existing version from the
+                # version dropdown, pin it directly and skip automatic version
+                # creation — the user is reverting to a known snapshot, not
+                # creating a new one.
+                explicit_version_id = request_data.get("pinned_version_id")
+                if explicit_version_id:
+                    from model_hub.models.evals_metric import EvalTemplateVersion as ETV
+                    selected_ver = ETV.objects.filter(
+                        id=explicit_version_id,
+                        eval_template=eval_metric.template,
+                    ).first()
+                    if not selected_ver:
+                        return self._gm.bad_request("Selected version not found")
+                    eval_metric.pinned_version = selected_ver
+                else:
+                    # Version creation on edit — business logic lives in the service.
+                    from model_hub.services.eval_version_pinning import maybe_pin_new_version
 
-                maybe_pin_new_version(
-                    eval_metric,
-                    request_data,
-                    user=request.user,
-                    organization=getattr(request, "organization", None) or request.user.organization,
-                    workspace=getattr(request, "workspace", None),
-                )
+                    maybe_pin_new_version(
+                        eval_metric,
+                        request_data,
+                        user=request.user,
+                        organization=getattr(request, "organization", None) or request.user.organization,
+                        workspace=getattr(request, "workspace", None),
+                    )
 
                 # Update the config (already validated above)
                 if new_config:

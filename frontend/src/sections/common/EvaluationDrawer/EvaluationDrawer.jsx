@@ -692,6 +692,9 @@ const EvaluationDrawerChild = ({
                       evalConfig.composite_weight_overrides,
                   }
                 : {}),
+              ...(evalConfig.versionId
+                ? { pinned_version_id: evalConfig.versionId }
+                : {}),
             };
           }
           // Edit branch: POST directly to /edit_and_run_user_eval/{id} so the

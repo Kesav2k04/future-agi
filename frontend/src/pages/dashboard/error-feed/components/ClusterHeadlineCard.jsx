@@ -4,29 +4,30 @@ import {
   Button,
   Collapse,
   Stack,
-  Tooltip,
   Typography,
   alpha,
   useTheme,
 } from "@mui/material";
 import PropTypes from "prop-types";
+import { formatDistanceToNowStrict } from "date-fns";
 import Iconify from "src/components/iconify";
+import CustomTooltip from "src/components/tooltip/CustomTooltip";
+import { purple } from "src/theme/palette";
 import openExternal from "../openExternal";
 import { useErrorFeedStore } from "../store";
+import { CONFIDENCE, MESSAGE_TYPE, RUN_STATE, STEP_STATUS } from "../constants";
 
-// Format the cached-analysis timestamp into a short relative label.
+// Short relative label for the cached-analysis timestamp (date-fns, same
+// pattern as ErrorFeedTable / ErrorMetadataPanel).
 function formatAnalyzedAt(iso) {
   if (!iso) return null;
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return null;
-  const mins = Math.floor((Date.now() - then.getTime()) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return then.toLocaleDateString([], { month: "short", day: "numeric" });
+  try {
+    return `${formatDistanceToNowStrict(then)} ago`;
+  } catch {
+    return null;
+  }
 }
 
 // snake_case is the canonical wire form; the axios bridge also exposes camel aliases.
@@ -36,146 +37,19 @@ function cachedRcaFrom(error) {
   return {
     synthesis: rca.synthesis,
     fix: rca.fix,
-    confidence: rca.confidence ?? "M",
+    confidence: rca.confidence ?? CONFIDENCE.MEDIUM,
     analyzedAt: formatAnalyzedAt(rca.analyzed_at ?? rca.analyzedAt),
     failuresAtRun: rca.failures_at_run ?? rca.failuresAtRun ?? null,
   };
 }
 
 const CONFIDENCE_LABEL = {
-  H: "High confidence",
-  M: "Medium confidence",
-  L: "Low confidence",
+  [CONFIDENCE.HIGH]: "High confidence",
+  [CONFIDENCE.MEDIUM]: "Medium confidence",
+  [CONFIDENCE.LOW]: "Low confidence",
 };
-const CONFIDENCE_DOT = { H: "#5ACE6D", M: "#F5A623", L: "#DB2F2D" };
 
-const ACCENT = "#7857FC";
-
-// ── Meta strip (top-row pills) ───────────────────────────────────────────────
-function MetaStrip({
-  confidence,
-  category,
-  analyzedAt,
-  newSinceAnalysis,
-  onRerun,
-}) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
-  const stale = newSinceAnalysis > 0;
-
-  return (
-    <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-      <Stack direction="row" alignItems="center" gap={0.4}>
-        <Box
-          sx={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            bgcolor: CONFIDENCE_DOT[confidence] ?? "#888",
-          }}
-        />
-        <Typography
-          fontSize="10.5px"
-          fontWeight={600}
-          color="text.secondary"
-          sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
-        >
-          {CONFIDENCE_LABEL[confidence] ?? "—"}
-        </Typography>
-      </Stack>
-
-      {category && (
-        <>
-          <Box
-            sx={{
-              width: 3,
-              height: 3,
-              borderRadius: "50%",
-              bgcolor: "text.disabled",
-            }}
-          />
-          <Typography
-            fontSize="10.5px"
-            fontWeight={500}
-            color="text.disabled"
-            sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
-          >
-            {category}
-          </Typography>
-        </>
-      )}
-
-      <Box sx={{ flex: 1 }} />
-
-      <Stack direction="row" alignItems="center" gap={0.6}>
-        {stale ? (
-          <Tooltip title="Re-run analysis to include the new occurrences" arrow>
-            <Stack
-              direction="row"
-              alignItems="center"
-              gap={0.4}
-              onClick={onRerun}
-              sx={{
-                cursor: "pointer",
-                px: 0.75,
-                py: 0.2,
-                borderRadius: "4px",
-                bgcolor: alpha("#F5A623", isDark ? 0.16 : 0.12),
-                color: "#F5A623",
-                "&:hover": { bgcolor: alpha("#F5A623", isDark ? 0.24 : 0.18) },
-              }}
-            >
-              <Iconify icon="mdi:bell-outline" width={11} />
-              <Typography
-                fontSize="10.5px"
-                fontWeight={600}
-                sx={{ letterSpacing: "0.04em" }}
-              >
-                +{newSinceAnalysis} new · re-run
-              </Typography>
-            </Stack>
-          </Tooltip>
-        ) : (
-          <Typography
-            fontSize="10.5px"
-            color="text.disabled"
-            sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
-          >
-            Analyzed {analyzedAt}
-          </Typography>
-        )}
-        <Tooltip title="Re-run analysis (1 credit)" arrow>
-          <Box
-            onClick={onRerun}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 20,
-              height: 20,
-              borderRadius: "4px",
-              cursor: "pointer",
-              color: "text.disabled",
-              "&:hover": {
-                color: "text.primary",
-                bgcolor: isDark ? alpha("#fff", 0.06) : alpha("#000", 0.04),
-              },
-            }}
-          >
-            <Iconify icon="mdi:refresh" width={13} />
-          </Box>
-        </Tooltip>
-      </Stack>
-    </Stack>
-  );
-}
-MetaStrip.propTypes = {
-  confidence: PropTypes.string,
-  category: PropTypes.string,
-  analyzedAt: PropTypes.string,
-  newSinceAnalysis: PropTypes.number,
-  onRerun: PropTypes.func,
-};
+const ACCENT = purple[500];
 
 // ── State: not_analyzed (empty) ──────────────────────────────────────────────
 function NotAnalyzedState({ onAnalyze }) {
@@ -336,13 +210,7 @@ function AnalyzingState({ activeStepIdx }) {
 AnalyzingState.propTypes = { activeStepIdx: PropTypes.number };
 
 // ── State: analyzed (default after run) ──────────────────────────────────────
-function AnalyzedState({
-  data,
-  linkedIssue,
-  onCreateLinear,
-  onOpenAnalyze,
-  onRerun,
-}) {
+function AnalyzedState({ data, linkedIssue, onCreateLinear, onOpenAnalyze }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   return (
@@ -457,7 +325,6 @@ AnalyzedState.propTypes = {
   }),
   onCreateLinear: PropTypes.func,
   onOpenAnalyze: PropTypes.func,
-  onRerun: PropTypes.func,
 };
 
 // ── Main: ClusterHeadlineCard ────────────────────────────────────────────────
@@ -487,40 +354,36 @@ export default function ClusterHeadlineCard({
 
   // Runner emits 5 steps; collapse to 3 visual phases (~2 runner steps each).
   const stepMessages = (thread?.messages ?? []).filter(
-    (m) => m.type === "step",
+    (m) => m.type === MESSAGE_TYPE.STEP,
   );
   const advancedCount = stepMessages.filter(
-    (m) => m.status === "running" || m.status === "done",
+    (m) => m.status === STEP_STATUS.RUNNING || m.status === STEP_STATUS.DONE,
   ).length;
   const activeStepIdx = Math.min(2, Math.floor(advancedCount / 2));
 
-  // Priority: live thread > cached rca > not_analyzed.
+  // Priority: live thread > cached rca > not_analyzed. Re-runs append a fresh
+  // synthesis message, so reading the LAST one keeps multiple syntheses
+  // collapsed to the most recent result.
   const synthesisMsg = [...(thread?.messages ?? [])]
     .reverse()
-    .find((m) => m.type === "synthesis");
+    .find((m) => m.type === MESSAGE_TYPE.SYNTHESIS);
 
   let state;
   let data = null;
-  let newSinceAnalysis = 0;
-  if (thread?.runState === "streaming") {
+  if (thread?.runState === RUN_STATE.STREAMING) {
     state = "analyzing";
   } else if (synthesisMsg) {
     state = "analyzed";
     data = {
       synthesis: synthesisMsg.headline,
       fix: synthesisMsg.fix,
-      confidence: synthesisMsg.confidence ?? "M",
+      confidence: synthesisMsg.confidence ?? CONFIDENCE.MEDIUM,
       category,
       analyzedAt: "just now",
     };
   } else if (cachedRca) {
     state = "analyzed";
     data = { ...cachedRca, category };
-    const current = error?.traceCount ?? error?.occurrences ?? 0;
-    newSinceAnalysis =
-      cachedRca.failuresAtRun != null
-        ? Math.max(0, current - cachedRca.failuresAtRun)
-        : 0;
   } else {
     state = "not_analyzed";
   }
@@ -547,9 +410,9 @@ export default function ClusterHeadlineCard({
         border: "1px solid",
         borderColor: state === "analyzed" ? alpha(ACCENT, 0.25) : "divider",
         bgcolor: isDark ? alpha("#fff", 0.025) : "background.paper",
-        // Subtle gradient wash for analyzed/stale; flat for empty/analyzing.
+        // Subtle gradient wash for the analyzed state; flat for empty/analyzing.
         backgroundImage:
-          state === "analyzed" || state === "stale"
+          state === "analyzed"
             ? `linear-gradient(135deg, ${alpha(ACCENT, isDark ? 0.05 : 0.025)} 0%, transparent 55%)`
             : "none",
         px: 2.25,
@@ -644,7 +507,7 @@ export default function ClusterHeadlineCard({
             >
               Analyzed {data?.analyzedAt ?? "just now"}
             </Typography>
-            <Tooltip title="Re-run analysis (1 credit)" arrow>
+            <CustomTooltip show title="Re-run analysis (1 credit)" arrow>
               <Box
                 onClick={(e) => {
                   e.stopPropagation();
@@ -667,11 +530,11 @@ export default function ClusterHeadlineCard({
               >
                 <Iconify icon="mdi:refresh" width={13} />
               </Box>
-            </Tooltip>
+            </CustomTooltip>
           </Stack>
         )}
 
-        <Tooltip title={collapsed ? "Expand" : "Collapse"} arrow>
+        <CustomTooltip show title={collapsed ? "Expand" : "Collapse"} arrow>
           <Box
             sx={{
               display: "flex",
@@ -696,7 +559,7 @@ export default function ClusterHeadlineCard({
               }}
             />
           </Box>
-        </Tooltip>
+        </CustomTooltip>
       </Stack>
 
       {/* ── Accordion body ── */}
@@ -708,12 +571,9 @@ export default function ClusterHeadlineCard({
           {state === "analyzing" && (
             <AnalyzingState activeStepIdx={activeStepIdx} />
           )}
-          {(state === "analyzed" || state === "stale") && (
+          {state === "analyzed" && (
             <AnalyzedState
-              data={{
-                ...data,
-                newSinceAnalysis,
-              }}
+              data={data}
               linkedIssue={
                 error?.external_issue_url || error?.externalIssueUrl
                   ? {
@@ -727,7 +587,6 @@ export default function ClusterHeadlineCard({
               }
               onCreateLinear={onCreateLinear ?? noop}
               onOpenAnalyze={onOpenAnalyze ?? noop}
-              onRerun={runAnalysis}
             />
           )}
         </Box>

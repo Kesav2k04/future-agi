@@ -124,6 +124,10 @@ export default function ErrorFeedDetailView() {
 
   const tabIndex = TABS.findIndex((t) => t.key === activeTab);
   const safeTabIndex = tabIndex === -1 ? 0 : tabIndex;
+  // Gate tab content on the tab KEY, not the numeric index — reordering TABS
+  // must never silently swap which panel renders. `safeTabIndex` is only used
+  // to drive the MUI <Tabs> indicator.
+  const activeTabKey = TABS[safeTabIndex].key;
 
   return (
     <Box
@@ -422,7 +426,7 @@ export default function ErrorFeedDetailView() {
             flexDirection: "column",
           }}
         >
-          {safeTabIndex === 3 ? (
+          {activeTabKey === "analyze" ? (
             <Box
               sx={{
                 flex: 1,
@@ -437,7 +441,7 @@ export default function ErrorFeedDetailView() {
           ) : (
             <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
               <Box sx={{ p: 2 }}>
-                {activeTab === "overview" && (
+                {activeTabKey === "overview" && (
                   <Box sx={{ mb: 2 }}>
                     <ClusterHeadlineCard
                       error={currentError}
@@ -450,9 +454,15 @@ export default function ErrorFeedDetailView() {
                     />
                   </Box>
                 )}
-                {safeTabIndex === 0 && <OverviewTab _error={currentError} />}
-                {safeTabIndex === 1 && <TracesTab error={currentError} />}
-                {safeTabIndex === 2 && <TrendsTab error={currentError} />}
+                {activeTabKey === "overview" && (
+                  <OverviewTab _error={currentError} />
+                )}
+                {activeTabKey === "traces" && (
+                  <TracesTab error={currentError} />
+                )}
+                {activeTabKey === "trends" && (
+                  <TrendsTab error={currentError} />
+                )}
               </Box>
             </Box>
           )}

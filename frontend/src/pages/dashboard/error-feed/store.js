@@ -25,7 +25,7 @@ export const useErrorFeedStore = create((set, get) => ({
   pageSize: 25,
 
   // ── Detail view state ──────────────────────────────────────────────────
-  activeTab: "overview", // "overview" | "traces" | "stategraph" | "trends" | "analyze"
+  activeTab: "overview", // "overview" | "traces" | "trends" | "analyze"
   // Per-cluster selected trace id for the Overview list + sidebar sync.
   // { [clusterId]: traceId } — null / missing means "use cluster's latest".
   selectedTraceIdByCluster: {},
@@ -87,7 +87,9 @@ export const useErrorFeedStore = create((set, get) => ({
       },
     })),
 
-  clearAnalyzeThread: (clusterId) =>
+  // Drops the thread for one cluster (not a full state reset — hence
+  // "remove", not "clear").
+  removeAnalyzeThread: (clusterId) =>
     set((s) => {
       const next = { ...s.analyzeThreadsByCluster };
       delete next[clusterId];
@@ -101,7 +103,9 @@ export const useErrorFeedStore = create((set, get) => ({
         [clusterId]: value,
       },
     })),
-  clearAnalyzePendingStart: (clusterId) =>
+  // Drops the pending-start flag for one cluster (removes the key rather
+  // than resetting the whole map — hence "remove", not "clear").
+  removeAnalyzePendingStart: (clusterId) =>
     set((s) => {
       const next = { ...s.analyzePendingStartByCluster };
       delete next[clusterId];

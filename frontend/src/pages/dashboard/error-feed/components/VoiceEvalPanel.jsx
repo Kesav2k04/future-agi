@@ -13,9 +13,13 @@ import {
 import PropTypes from "prop-types";
 import Iconify from "src/components/iconify";
 import { useVoiceCallDetail } from "src/sections/agents/helper";
+import { error as errorPalette, success } from "src/theme/palette";
 
-const FAIL_COLOR = "#DB2F2D";
-const PASS_COLOR = "#5ACE6D";
+// Module-scoped (used outside component bodies), so read the palette export
+// rather than the theme hook.
+const FAIL_COLOR = errorPalette.main;
+const PASS_COLOR = success.main;
+// Amber marker pin — not a 1:1 palette token yet, kept local.
 const AMBER_COLOR = "#F5A623";
 
 // Deterministic decorative waveform — seeded from trace id for stable bars.

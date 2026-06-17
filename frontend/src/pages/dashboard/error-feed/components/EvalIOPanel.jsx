@@ -3,9 +3,6 @@ import { Box, Stack, Typography, alpha, useTheme } from "@mui/material";
 import PropTypes from "prop-types";
 import Iconify from "src/components/iconify";
 
-const PASS_COLOR = "#5ACE6D";
-const FAIL_COLOR = "#DB2F2D";
-
 // ── Format helpers ──────────────────────────────────────────────────────────
 function stringify(value) {
   if (value == null) return "";
@@ -46,7 +43,7 @@ function IOBlock({ label, icon, value }) {
       >
         <Iconify icon={icon} width={13} sx={{ color: "text.secondary" }} />
         <Typography
-          fontSize="10.5px"
+          variant="s3"
           fontWeight={700}
           color="text.secondary"
           sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
@@ -57,11 +54,11 @@ function IOBlock({ label, icon, value }) {
       <Box sx={{ p: 1.25, maxHeight: 260, overflowY: "auto" }}>
         {text ? (
           <Typography
+            variant="s2"
             component="pre"
             sx={{
               fontFamily:
                 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
-              fontSize: "12px",
               lineHeight: 1.55,
               color: "text.primary",
               whiteSpace: "pre-wrap",
@@ -73,7 +70,7 @@ function IOBlock({ label, icon, value }) {
           </Typography>
         ) : (
           <Typography
-            fontSize="12px"
+            variant="s2"
             color="text.disabled"
             sx={{ fontStyle: "italic" }}
           >
@@ -95,7 +92,9 @@ function JudgeReasonCard({ reason, score }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const failed = score != null && score < 1;
-  const scoreColor = failed ? FAIL_COLOR : PASS_COLOR;
+  const scoreColor = failed
+    ? theme.palette.error.main
+    : theme.palette.success.main;
   return (
     <Box
       sx={{
@@ -113,7 +112,7 @@ function JudgeReasonCard({ reason, score }) {
           sx={{ color: "text.secondary" }}
         />
         <Typography
-          fontSize="10.5px"
+          variant="s3"
           fontWeight={700}
           color="text.secondary"
           sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
@@ -131,7 +130,7 @@ function JudgeReasonCard({ reason, score }) {
             }}
           >
             <Typography
-              fontSize="10.5px"
+              variant="s3"
               fontWeight={700}
               sx={{ color: scoreColor, fontFeatureSettings: "'tnum'" }}
             >
@@ -141,7 +140,7 @@ function JudgeReasonCard({ reason, score }) {
         )}
       </Stack>
       <Typography
-        fontSize="12.5px"
+        variant="s2_1"
         color="text.primary"
         sx={{ lineHeight: 1.6, whiteSpace: "pre-wrap" }}
       >

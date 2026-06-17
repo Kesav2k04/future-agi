@@ -18,12 +18,17 @@ import AgentGraph from "src/sections/projects/LLMTracing/GraphSection/AgentGraph
 import AgentPath from "src/sections/projects/LLMTracing/GraphSection/AgentPath";
 import GraphSkeleton from "src/sections/projects/LLMTracing/GraphSection/GraphSkeleton";
 import { buildTraceGraph } from "src/components/traceDetail/buildTraceGraph";
+import { error as errorPalette, success } from "src/theme/palette";
 import { useGetTraceDetail } from "src/api/project/trace-detail";
 import { useErrorFeedOverview } from "src/api/errorFeed/error-feed";
 import EvalIOPanel from "./EvalIOPanel";
 import VoiceEvalPanel from "./VoiceEvalPanel";
 import { buildGraphDiff } from "./buildGraphDiff";
 import { useErrorFeedStore } from "../store";
+import { TOKEN_PRICE_USD, TRACE_STATUS } from "../constants";
+
+const estimateTraceCost = (inputTokens = 0, outputTokens = 0) =>
+  inputTokens * TOKEN_PRICE_USD.INPUT + outputTokens * TOKEN_PRICE_USD.OUTPUT;
 
 // ── Shared section card (collapsible) ────────────────────────────────────────
 function SectionCard({
@@ -584,18 +589,16 @@ function TraceList({ traces, selectedIndex, onSelect, loading = false }) {
   return (
     <Stack gap={0}>
       {traces.map((t, i) => {
-        const isFail = t.status === "fail";
         const isSelected = i === selectedIndex;
-        const statusColor = isFail ? "#DB2F2D" : "#5ACE6D";
         const time = new Date(t.timestamp).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         });
         const tokens =
           (t.summary.inputTokens ?? 0) + (t.summary.outputTokens ?? 0);
-        const cost = (
-          (t.summary.inputTokens ?? 0) * 0.000003 +
-          (t.summary.outputTokens ?? 0) * 0.000015
+        const cost = estimateTraceCost(
+          t.summary.inputTokens ?? 0,
+          t.summary.outputTokens ?? 0,
         ).toFixed(4);
 
         return (
@@ -1244,8 +1247,10 @@ RichText.propTypes = {
   isFailReel: PropTypes.bool,
 };
 
-const FAIL_COLOR = "#DB2F2D";
-const PASS_COLOR = "#5ACE6D";
+// Module-scoped (used outside component bodies), so read the palette export
+// rather than the theme hook.
+const FAIL_COLOR = errorPalette.main;
+const PASS_COLOR = success.main;
 
 function SpanPointer({ pointer }) {
   const theme = useTheme();
@@ -1795,11 +1800,11 @@ function TraceEvidence({ evidence, trace, traceId, workingTraceId }) {
     (summary.inputTokens ?? 0) + (summary.outputTokens ?? 0) || null;
   const cost =
     summary.cost ??
-    ((summary.inputTokens ?? 0) * 0.000003 +
-      (summary.outputTokens ?? 0) * 0.000015 ||
+    (estimateTraceCost(summary.inputTokens ?? 0, summary.outputTokens ?? 0) ||
       null);
   const shortId = traceId ? traceId.slice(0, 8) : null;
-  const isTraceFail = trace?.status !== "pass";
+  // Fail explicitly — an undefined/loading status must not read as "Failing".
+  const isTraceFail = trace?.status === TRACE_STATUS.FAIL;
 
   const metaItems = [
     shortId && { icon: "mdi:sitemap-outline", text: shortId, mono: true },

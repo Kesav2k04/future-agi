@@ -31,7 +31,41 @@ import "@xyflow/react/dist/style.css";
 import Dagre from "@dagrejs/dagre";
 import Iconify from "src/components/iconify";
 import CustomTooltip from "src/components/tooltip";
+import { error as errorPalette, success } from "src/theme/palette";
 import FullscreenGraphDialog from "./FullscreenGraphDialog";
+
+// ---------------------------------------------------------------------------
+// Diff-overlay status (set by buildGraphDiff for the error-feed split view)
+// ---------------------------------------------------------------------------
+const DIFF_STATUS = {
+  FAIL_ONLY: "fail-only",
+  PASS_ONLY: "pass-only",
+  PASS_ONLY_GHOST: "pass-only-ghost",
+  MATCHED_REGRESSED: "matched-regressed",
+  MATCHED: "matched",
+};
+
+// Amber regression accent — not a 1:1 palette token yet, kept local.
+const DIFF_REGRESSED_COLOR = "#F5A623";
+
+// `_isFailurePoint` is the headline and takes priority over diff status.
+const getDiffOverlay = (diffStatus, isFailurePoint) => {
+  if (isFailurePoint) {
+    return { ringColor: errorPalette.main, badge: "✕", label: "Failed" };
+  }
+  switch (diffStatus) {
+    case DIFF_STATUS.FAIL_ONLY:
+      return { ringColor: errorPalette.main, badge: "+", label: null };
+    case DIFF_STATUS.PASS_ONLY:
+      return { ringColor: success.main, badge: "+", label: null };
+    case DIFF_STATUS.PASS_ONLY_GHOST:
+      return { ringColor: success.main, badge: "−", label: "Missing" };
+    case DIFF_STATUS.MATCHED_REGRESSED:
+      return { ringColor: DIFF_REGRESSED_COLOR, badge: "Δ", label: null };
+    default:
+      return { ringColor: null, badge: null, label: null };
+  }
+};
 
 // ---------------------------------------------------------------------------
 // Node type → color + icon
@@ -108,31 +142,13 @@ const AgentNode = ({ data }) => {
   // over diff status (a failed node is the headline, not a diff cue).
   const diffStatus = data._diffStatus;
   const isFailurePoint = !!data._isFailurePoint;
-  const isGhost = diffStatus === "pass-only-ghost";
+  const isGhost = diffStatus === DIFF_STATUS.PASS_ONLY_GHOST;
 
-  const diffRingColor = isFailurePoint
-    ? "#DB2F2D"
-    : diffStatus === "fail-only"
-      ? "#DB2F2D"
-      : diffStatus === "pass-only" || diffStatus === "pass-only-ghost"
-        ? "#5ACE6D"
-        : diffStatus === "matched-regressed"
-          ? "#F5A623"
-          : null;
-  const diffBadge = isFailurePoint
-    ? "✕"
-    : diffStatus === "pass-only-ghost"
-      ? "−"
-      : diffStatus === "fail-only" || diffStatus === "pass-only"
-        ? "+"
-        : diffStatus === "matched-regressed"
-          ? "Δ"
-          : null;
-  const diffBadgeLabel = isFailurePoint
-    ? "Failed"
-    : diffStatus === "pass-only-ghost"
-      ? "Missing"
-      : null;
+  const {
+    ringColor: diffRingColor,
+    badge: diffBadge,
+    label: diffBadgeLabel,
+  } = getDiffOverlay(diffStatus, isFailurePoint);
 
   // Tooltip: name, duration/tokens side-by-side, cost, eval bars, annotations
   const evals = data.evals || [];
@@ -430,7 +446,11 @@ const AgentNode = ({ data }) => {
             bgcolor: isSentinel
               ? "transparent"
               : isFailurePoint
-                ? (theme) => alpha("#DB2F2D", theme.palette.mode === "dark" ? 0.12 : 0.06)
+                ? (theme) =>
+                    alpha(
+                      "#DB2F2D",
+                      theme.palette.mode === "dark" ? 0.12 : 0.06,
+                    )
                 : "background.paper",
             boxShadow: (theme) => {
               const base = isSentinel
@@ -476,7 +496,7 @@ const AgentNode = ({ data }) => {
                 gap: diffBadgeLabel ? 0.3 : 0,
                 borderRadius: "9px",
                 bgcolor: diffRingColor,
-                color: "#fff",
+                color: (theme) => theme.palette.common.white,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -608,7 +628,7 @@ export const buildFlowData = (graphData, direction = "LR", theme = null) => {
       // override the regular styling: dashed red stroke + a SKIPPED PATH
       // pill so the divergence is unmistakable. Inert in the Observe view.
       if (edge._skipped) {
-        const skippedColor = "#DB2F2D";
+        const skippedColor = errorPalette.main;
         return {
           id: `e-skipped-${idx}`,
           source: edge.source,

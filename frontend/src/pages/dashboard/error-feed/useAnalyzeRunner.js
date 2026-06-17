@@ -12,11 +12,22 @@ import {
 // Socket engine lives at module scope — runs keep progressing even when
 // the Analyze tab is unmounted.
 
-export function useAnalyzeRunner(clusterId, error) {
+// Shared { token, workspaceId, projectId } trio for both runner hooks so they
+// can't drift.
+function useRunnerContext(error) {
   const { user } = useAuthContext();
   const { currentWorkspaceId } = useWorkspace();
-  const clearAnalyzePendingStart = useErrorFeedStore(
-    (s) => s.clearAnalyzePendingStart,
+  return {
+    token: user?.accessToken,
+    workspaceId: currentWorkspaceId,
+    projectId: error?.projectId,
+  };
+}
+
+export function useAnalyzeRunner(clusterId, error) {
+  const { token, workspaceId, projectId } = useRunnerContext(error);
+  const removeAnalyzePendingStart = useErrorFeedStore(
+    (s) => s.removeAnalyzePendingStart,
   );
   const pendingStart = useErrorFeedStore(
     (s) => !!s.analyzePendingStartByCluster[clusterId],
@@ -27,13 +38,10 @@ export function useAnalyzeRunner(clusterId, error) {
 
   // Prewarm socket so first analyze doesn't pay 20-30s cold-start cost.
   useEffect(() => {
-    if (user?.accessToken) {
-      prewarmSocket({
-        token: user.accessToken,
-        workspaceId: currentWorkspaceId,
-      });
+    if (token) {
+      prewarmSocket({ token, workspaceId });
     }
-  }, [user?.accessToken, currentWorkspaceId]);
+  }, [token, workspaceId]);
 
   // Seed from cached synthesis on fresh load (no live thread).
   useEffect(() => {
@@ -43,40 +51,28 @@ export function useAnalyzeRunner(clusterId, error) {
 
   const startRun = useCallback(() => {
     if (!clusterId) return;
-    engineStartRun({
-      clusterId,
-      projectId: error?.projectId,
-      token: user?.accessToken,
-      workspaceId: currentWorkspaceId,
-    });
-  }, [clusterId, error?.projectId, user?.accessToken, currentWorkspaceId]);
+    engineStartRun({ clusterId, projectId, token, workspaceId });
+  }, [clusterId, projectId, token, workspaceId]);
 
   // Auto-fire when pending-start flag flips on.
   useEffect(() => {
     if (!clusterId || !pendingStart) return;
-    clearAnalyzePendingStart(clusterId);
+    removeAnalyzePendingStart(clusterId);
     startRun();
-  }, [clusterId, pendingStart, clearAnalyzePendingStart, startRun]);
+  }, [clusterId, pendingStart, removeAnalyzePendingStart, startRun]);
 
   return { startRun };
 }
 
 export function useFollowUpRunner(clusterId, error) {
-  const { user } = useAuthContext();
-  const { currentWorkspaceId } = useWorkspace();
+  const { token, workspaceId, projectId } = useRunnerContext(error);
 
   const runFollowUp = useCallback(
     (question) => {
       if (!clusterId) return;
-      engineRunFollowUp({
-        clusterId,
-        question,
-        projectId: error?.projectId,
-        token: user?.accessToken,
-        workspaceId: currentWorkspaceId,
-      });
+      engineRunFollowUp({ clusterId, question, projectId, token, workspaceId });
     },
-    [clusterId, error?.projectId, user?.accessToken, currentWorkspaceId],
+    [clusterId, projectId, token, workspaceId],
   );
 
   return { runFollowUp };

@@ -22,8 +22,18 @@ import PropTypes from "prop-types";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Iconify from "src/components/iconify";
+import { purple } from "src/theme/palette";
 import { useErrorFeedStore } from "../store";
 import { useFollowUpRunner } from "../useAnalyzeRunner";
+import {
+  CONF_META,
+  MESSAGE_TYPE,
+  RUN_STATE,
+  STEP_STATUS,
+  STREAM_CHARS_PER_TICK,
+  STREAM_STATUS,
+  STREAM_TICK_MS,
+} from "../constants";
 
 // Run-sequence definitions + makeStepMessage / buildSynthesis live in
 // `../useAnalyzeRunner` now — that hook owns the actual streaming so
@@ -33,19 +43,7 @@ import { useFollowUpRunner } from "../useAnalyzeRunner";
 
 // ── Visual primitives ─────────────────────────────────────────────────────
 
-const ACCENT = "#7857FC";
-
-// Confidence badge styling for the synthesis card (H/M/L from the agent).
-const CONF_META = {
-  H: { label: "High confidence", color: "#5ACE6D" },
-  M: { label: "Medium confidence", color: "#E8A13A" },
-  L: { label: "Low confidence", color: "#8A8A8A" },
-};
-
-// Tunes the LLM-style streaming feel. Faster than real LLMs since we have
-// the whole answer locally — should feel snappy but still "alive".
-const STREAM_CHARS_PER_TICK = 3;
-const STREAM_TICK_MS = 16;
+const ACCENT = purple[500];
 
 // Per-tab-session memory of which streams have already finished. Keyed by
 // a caller-supplied `identityKey` (typically `${message.id}-${slot}`). Once
@@ -77,8 +75,7 @@ function useStreamingText(text, options = {}) {
   );
 
   useEffect(() => {
-    const skip =
-      instant || (!!identityKey && STREAMED_KEYS.has(identityKey));
+    const skip = instant || (!!identityKey && STREAMED_KEYS.has(identityKey));
     setRevealedLen(skip ? fullText.length : 0);
   }, [fullText, instant, identityKey]);
 
@@ -92,7 +89,9 @@ function useStreamingText(text, options = {}) {
       return undefined;
     }
     const id = setInterval(() => {
-      setRevealedLen((n) => Math.min(n + STREAM_CHARS_PER_TICK, fullText.length));
+      setRevealedLen((n) =>
+        Math.min(n + STREAM_CHARS_PER_TICK, fullText.length),
+      );
     }, STREAM_TICK_MS);
     return () => clearInterval(id);
   }, [fullText, revealedLen, identityKey]);
@@ -506,7 +505,11 @@ function StepDetailBlock({ block, live, onComplete, identityKey }) {
             fontSize="9.5px"
             fontWeight={700}
             color="text.disabled"
-            sx={{ textTransform: "uppercase", letterSpacing: "0.06em", mb: 0.5 }}
+            sx={{
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              mb: 0.5,
+            }}
           >
             {block.title}
           </Typography>
@@ -619,9 +622,9 @@ StepDetailsPanel.propTypes = {
 function StepCard({ step }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const isRunning = step.status === "running";
-  const isQueued = step.status === "queued";
-  const isDone = step.status === "done";
+  const isRunning = step.status === STEP_STATUS.RUNNING;
+  const isQueued = step.status === STEP_STATUS.QUEUED;
+  const isDone = step.status === STEP_STATUS.DONE;
   const hasDetails = (isRunning || isDone) && step.details?.length > 0;
   // Done steps default collapsed; the actively-running step auto-expands so
   // you watch the reasoning stream live (like Claude Code).
@@ -693,7 +696,11 @@ function StepCard({ step }) {
           ) : isDone ? (
             <Iconify icon="mdi:check" width={12} sx={{ color: "#5ACE6D" }} />
           ) : (
-            <Iconify icon="mdi:dots-horizontal" width={12} sx={{ color: "text.disabled" }} />
+            <Iconify
+              icon="mdi:dots-horizontal"
+              width={12}
+              sx={{ color: "text.disabled" }}
+            />
           )}
         </Box>
         <Stack gap={0.4} flex={1} minWidth={0}>
@@ -701,7 +708,11 @@ function StepCard({ step }) {
             {step.title}
           </Typography>
           {(isRunning || isDone) && (
-            <Typography fontSize="11.5px" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+            <Typography
+              fontSize="11.5px"
+              color="text.secondary"
+              sx={{ lineHeight: 1.5 }}
+            >
               {step.detail}
             </Typography>
           )}
@@ -727,7 +738,12 @@ function StepCard({ step }) {
           )}
         </Stack>
         {hasDetails && (
-          <Stack direction="row" alignItems="center" gap={0.3} sx={{ flexShrink: 0, mt: "1px" }}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            gap={0.3}
+            sx={{ flexShrink: 0, mt: "1px" }}
+          >
             <Typography fontSize="10px" color="text.disabled">
               {open ? "Hide" : "Details"}
             </Typography>
@@ -870,7 +886,11 @@ function SynthesisCard({ synthesis }) {
       }}
     >
       <Stack direction="row" alignItems="center" gap={0.5} sx={{ mb: 1 }}>
-        <Iconify icon="mdi:star-four-points" width={12} sx={{ color: "#7857FC" }} />
+        <Iconify
+          icon="mdi:star-four-points"
+          width={12}
+          sx={{ color: "#7857FC" }}
+        />
         <Typography
           fontSize="10.5px"
           fontWeight={700}
@@ -894,7 +914,10 @@ function SynthesisCard({ synthesis }) {
               px: 0.75,
               py: 0.25,
               borderRadius: "3px",
-              bgcolor: alpha(CONF_META[synthesis.confidence].color, isDark ? 0.16 : 0.12),
+              bgcolor: alpha(
+                CONF_META[synthesis.confidence].color,
+                isDark ? 0.16 : 0.12,
+              ),
             }}
           >
             {CONF_META[synthesis.confidence].label}
@@ -910,7 +933,7 @@ function SynthesisCard({ synthesis }) {
         />
         {head.isStreaming && <StreamCursor />}
       </Box>
-      {headDone && (
+      {headDone && synthesis.fix && (
         <Stack direction="row" gap={1} alignItems="flex-start">
           <Typography
             fontSize="10px"
@@ -991,7 +1014,11 @@ function UserQuestionBubble({ text }) {
           borderColor: isDark ? alpha("#fff", 0.1) : alpha(ACCENT, 0.16),
         }}
       >
-        <Typography fontSize="13px" color="text.primary" sx={{ lineHeight: 1.55 }}>
+        <Typography
+          fontSize="13px"
+          color="text.primary"
+          sx={{ lineHeight: 1.55 }}
+        >
           {text}
         </Typography>
       </Box>
@@ -1025,9 +1052,9 @@ AssistantIntro.propTypes = { text: PropTypes.string.isRequired };
 // because we're nested inside a card already. Same status semantics
 // (queued / running / done).
 function SubagentStepRow({ step }) {
-  const status = step.status ?? "queued";
-  const isDone = status === "done";
-  const isRunning = status === "running";
+  const status = step.status ?? STEP_STATUS.QUEUED;
+  const isDone = status === STEP_STATUS.DONE;
+  const isRunning = status === STEP_STATUS.RUNNING;
   return (
     <Stack direction="row" alignItems="flex-start" gap={1} sx={{ py: 0.4 }}>
       <Box
@@ -1068,13 +1095,23 @@ function SubagentStepRow({ step }) {
         <Typography
           fontSize="12.5px"
           fontWeight={isRunning ? 600 : 500}
-          color={isRunning ? "text.primary" : isDone ? "text.primary" : "text.secondary"}
+          color={
+            isRunning
+              ? "text.primary"
+              : isDone
+                ? "text.primary"
+                : "text.secondary"
+          }
           sx={{ lineHeight: 1.4 }}
         >
           {step.title}
         </Typography>
         {isDone && step.detail && step.detail !== "—" && (
-          <Typography fontSize="11.5px" color="text.secondary" sx={{ lineHeight: 1.45 }}>
+          <Typography
+            fontSize="11.5px"
+            color="text.secondary"
+            sx={{ lineHeight: 1.45 }}
+          >
             {step.detail}
           </Typography>
         )}
@@ -1109,7 +1146,7 @@ StreamingMarkdown.propTypes = {
 function SubagentCard({ msg }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const isStreaming = msg.status === "streaming";
+  const isStreaming = msg.status === STREAM_STATUS.STREAMING;
   return (
     <Stack gap={1.25} sx={{ pl: 3 }}>
       <Box
@@ -1183,7 +1220,9 @@ function SubagentCard({ msg }) {
         {/* Sub-steps */}
         <Box sx={{ px: 1.5, py: 1 }}>
           <Stack gap={0}>
-            {msg.steps?.map((s) => <SubagentStepRow key={s.id} step={s} />)}
+            {msg.steps?.map((s) => (
+              <SubagentStepRow key={s.id} step={s} />
+            ))}
           </Stack>
         </Box>
       </Box>
@@ -1191,10 +1230,7 @@ function SubagentCard({ msg }) {
       {/* Final answer — appears once all steps are done, then streams in
           LLM-style with a blinking cursor at the trailing edge. */}
       {msg.answer && (
-        <StreamingMarkdown
-          text={msg.answer}
-          identityKey={`${msg.id}-answer`}
-        />
+        <StreamingMarkdown text={msg.answer} identityKey={`${msg.id}-answer`} />
       )}
     </Stack>
   );
@@ -1291,7 +1327,10 @@ function FollowUpInput({ disabled, placeholder, onSubmit }) {
           },
         }}
       />
-      <Tooltip title={disabled ? "Waiting for current run…" : "Send (Enter)"} arrow>
+      <Tooltip
+        title={disabled ? "Waiting for current run…" : "Send (Enter)"}
+        arrow
+      >
         <span>
           <IconButton
             size="small"
@@ -1333,7 +1372,13 @@ FollowUpInput.propTypes = {
 // bottom — so the compose affordance reads as a single unit at the foot
 // of the tab. The chip list is contextual: starter examples until the
 // user asks something, then the latest sub-agent's "Try asking" set.
-function ComposeArea({ suggestions, suggestionsHeader, disabled, placeholder, onSubmit }) {
+function ComposeArea({
+  suggestions,
+  suggestionsHeader,
+  disabled,
+  placeholder,
+  onSubmit,
+}) {
   return (
     <Stack gap={1} sx={{ flexShrink: 0 }}>
       {suggestions?.length > 0 && (
@@ -1422,32 +1467,32 @@ export default function AnalyzeTab({ error }) {
   const { runFollowUp } = useFollowUpRunner(clusterId, error);
 
   const messages = thread?.messages ?? [];
-  const runState = thread?.runState ?? "idle";
+  const runState = thread?.runState ?? RUN_STATE.IDLE;
   // Live setup-progress line (rca_status) shown in the loader before the first
   // real frame lands, so the pre-LLM dead-air shows actual activity.
   const setupStatus = thread?.status;
-  const followUpRunState = thread?.followUpRunState ?? "idle";
-  const isStreaming = runState === "streaming";
-  const isFollowUpStreaming = followUpRunState === "streaming";
-  const mainRunDone = runState === "done";
+  const followUpRunState = thread?.followUpRunState ?? RUN_STATE.IDLE;
+  const isStreaming = runState === RUN_STATE.STREAMING;
+  const isFollowUpStreaming = followUpRunState === RUN_STATE.STREAMING;
+  const mainRunDone = runState === RUN_STATE.DONE;
 
   // "Try asking" chips are a starter affordance — grounded questions to kick
   // off the conversation off the synthesis. Once the user has summoned Falcon
   // (asked any follow-up), get out of the way: it's a normal chat from there,
   // so the chips disappear rather than re-seeding after every answer.
   const hasFollowedUp = useMemo(
-    () => messages.some((m) => m.type === "user_question"),
+    () => messages.some((m) => m.type === MESSAGE_TYPE.USER_QUESTION),
     [messages],
   );
   const latestSuggestionsMsg = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
-      if (messages[i].type === "suggestions") return messages[i];
+      if (messages[i].type === MESSAGE_TYPE.SUGGESTIONS) return messages[i];
     }
     return null;
   }, [messages]);
   const composeSuggestions = hasFollowedUp
     ? []
-    : (latestSuggestionsMsg?.items ?? STARTER_SUGGESTIONS);
+    : latestSuggestionsMsg?.items ?? STARTER_SUGGESTIONS;
   const composeHeader = "Try asking";
 
   // Chronological order — the cluster steps build the case, the synthesis
@@ -1462,6 +1507,20 @@ export default function AnalyzeTab({ error }) {
     if (!scrollerRef.current) return;
     scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
   }, [messages.length, runState, followUpRunState]);
+
+  // While text is actively streaming, the reasoning / answer body grows
+  // char-by-char inside useStreamingText (internal state — message count and
+  // length don't change), so the effect above never re-fires and the live
+  // text overflows below the fold. Keep the scroller pinned to the bottom on
+  // an interval for as long as either side is streaming.
+  useEffect(() => {
+    if (!isStreaming && !isFollowUpStreaming) return undefined;
+    const id = setInterval(() => {
+      const el = scrollerRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }, STREAM_TICK_MS * 4);
+    return () => clearInterval(id);
+  }, [isStreaming, isFollowUpStreaming]);
 
   // Both empty-state CTA and Re-run dispatch via the pending flag so the
   // shared runner (and therefore the headline card) sees the same trigger.
@@ -1503,8 +1562,17 @@ export default function AnalyzeTab({ error }) {
           flexShrink: 0,
         }}
       >
-        <Iconify icon="mdi:layers-outline" width={14} sx={{ color: "text.disabled" }} />
-        <Typography fontSize="12px" fontWeight={600} color="text.primary" noWrap>
+        <Iconify
+          icon="mdi:layers-outline"
+          width={14}
+          sx={{ color: "text.disabled" }}
+        />
+        <Typography
+          fontSize="12px"
+          fontWeight={600}
+          color="text.primary"
+          noWrap
+        >
           {error?.error?.name ?? "Cluster"}
         </Typography>
         <Typography fontSize="11.5px" color="text.disabled">
@@ -1557,7 +1625,13 @@ export default function AnalyzeTab({ error }) {
               alignItems="center"
               justifyContent="center"
               gap={1.25}
-              sx={{ py: 6, px: 2, textAlign: "center", maxWidth: 460, mx: "auto" }}
+              sx={{
+                py: 6,
+                px: 2,
+                textAlign: "center",
+                maxWidth: 460,
+                mx: "auto",
+              }}
             >
               <Box
                 sx={{
@@ -1616,7 +1690,13 @@ export default function AnalyzeTab({ error }) {
               alignItems="center"
               justifyContent="center"
               gap={1.5}
-              sx={{ py: 6, px: 2, textAlign: "center", maxWidth: 460, mx: "auto" }}
+              sx={{
+                py: 6,
+                px: 2,
+                textAlign: "center",
+                maxWidth: 460,
+                mx: "auto",
+              }}
             >
               <Box
                 sx={{
@@ -1641,18 +1721,20 @@ export default function AnalyzeTab({ error }) {
           ) : (
             messages.map((m) => {
               const render = (() => {
-                if (m.type === "reasoning")
+                if (m.type === MESSAGE_TYPE.REASONING)
                   // Collapsed-by-default thinking, rendered as markdown.
                   return <ReasoningBlock text={m.text} />;
-                if (m.type === "step") return <StepCard step={m} />;
-                if (m.type === "synthesis") return <SynthesisCard synthesis={m} />;
-                if (m.type === "run_header")
+                if (m.type === MESSAGE_TYPE.STEP) return <StepCard step={m} />;
+                if (m.type === MESSAGE_TYPE.SYNTHESIS)
+                  return <SynthesisCard synthesis={m} />;
+                if (m.type === MESSAGE_TYPE.RUN_HEADER)
                   return <RunHeader label={m.label} timestamp={m.timestamp} />;
-                if (m.type === "user_question")
+                if (m.type === MESSAGE_TYPE.USER_QUESTION)
                   return <UserQuestionBubble text={m.text} />;
-                if (m.type === "assistant_intro")
+                if (m.type === MESSAGE_TYPE.ASSISTANT_INTRO)
                   return <AssistantIntro text={m.text} />;
-                if (m.type === "subagent") return <SubagentCard msg={m} />;
+                if (m.type === MESSAGE_TYPE.SUBAGENT)
+                  return <SubagentCard msg={m} />;
                 // suggestions are rendered in the bottom ComposeArea
                 // instead of inline in the thread.
                 return null;

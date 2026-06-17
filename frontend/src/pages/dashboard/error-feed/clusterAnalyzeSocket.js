@@ -17,6 +17,16 @@
 import { HOST_API } from "src/config-global";
 import { createConversation } from "src/sections/falcon-ai/hooks/useFalconAPI";
 import { useErrorFeedStore } from "./store";
+import {
+  CHAT_FRAME,
+  CONFIDENCE,
+  MESSAGE_TYPE,
+  RCA_FRAME,
+  RUN_STATE,
+  STEP_STATUS,
+  STREAM_STATUS,
+  TRAIL_FRAME,
+} from "./constants";
 
 // ── Connection (single shared socket) ──────────────────────────────────────
 
@@ -26,10 +36,12 @@ let pingTimer = null; // keepalive interval; cleared on close
 // conversationId → handler(parsed) — routes inbound frames to the right run.
 const handlers = new Map();
 
-// Tear the socket down so the next ensureSocket() builds a fresh one. Used when
-// a send lands on a dead-but-readyState-OPEN socket (half-open after a server
-// drop) or when the delivery watchdog fires.
-function forceReconnect() {
+// Close + drop the current socket so the next ensureSocket() builds a fresh
+// one. This only tears the connection down — it does NOT reconnect — so the
+// caller decides whether to re-open. Used when a send lands on a
+// dead-but-readyState-OPEN socket (half-open after a server drop) or when the
+// delivery watchdog fires.
+function closeConnection() {
   try {
     if (socket) socket.close();
   } catch {
@@ -46,7 +58,7 @@ function forceReconnect() {
 // Close it cleanly on dispose so dev gets one live socket, not a split-brain.
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
-    forceReconnect();
+    closeConnection();
     handlers.clear();
   });
 }
@@ -117,7 +129,7 @@ async function send(payload, token, workspaceId) {
   // server drop). Rebuild once if it isn't cleanly OPEN so the frame doesn't go
   // into the void.
   if (ws.readyState !== WebSocket.OPEN) {
-    forceReconnect();
+    closeConnection();
     ws = await ensureSocket(token, workspaceId);
   }
   ws.send(JSON.stringify(payload));
@@ -139,7 +151,7 @@ function patchThread(clusterId, mutator) {
   const current = store.analyzeThreadsByCluster[clusterId];
   const seed = current ?? {
     messages: [],
-    runState: "idle",
+    runState: RUN_STATE.IDLE,
     startedAt: null,
     conversationId: null,
   };
@@ -224,9 +236,9 @@ function summarizeResult(tool, result) {
 }
 
 const CONF_CATEGORY = {
-  H: "high confidence",
-  M: "medium confidence",
-  L: "low confidence",
+  [CONFIDENCE.HIGH]: "high confidence",
+  [CONFIDENCE.MEDIUM]: "medium confidence",
+  [CONFIDENCE.LOW]: "low confidence",
 };
 
 // ── Replay a persisted trail → thread messages ───────────────────────────────
@@ -240,22 +252,22 @@ function buildMessagesFromFrames(frames, clusterId) {
   let seq = 0;
   for (const f of frames || []) {
     if (!f || !f.type) continue;
-    if (f.type === "reasoning") {
+    if (f.type === TRAIL_FRAME.REASONING) {
       if (f.text) {
         messages.push({
           id: `h-rsn-${clusterId}-${seq}`,
-          type: "reasoning",
+          type: MESSAGE_TYPE.REASONING,
           text: f.text,
           instant: true, // replayed from cache — no typewriter
         });
         seq += 1;
       }
-    } else if (f.type === "step_start") {
+    } else if (f.type === TRAIL_FRAME.STEP_START) {
       stepIdxByCall.set(f.call_id, messages.length);
       messages.push({
         id: `h-step-${clusterId}-${f.call_id}`,
-        type: "step",
-        status: "done",
+        type: MESSAGE_TYPE.STEP,
+        status: STEP_STATUS.DONE,
         title: humanizeStepTitle(f.tool, f.args),
         detail: "",
         chips: [],
@@ -268,29 +280,29 @@ function buildMessagesFromFrames(frames, clusterId) {
           },
         ],
       });
-    } else if (f.type === "step_result") {
+    } else if (f.type === TRAIL_FRAME.STEP_RESULT) {
       const idx = stepIdxByCall.get(f.call_id);
-      if (idx != null) {
+      const m = idx != null ? messages[idx] : null;
+      if (m) {
         const { detail, chips } = summarizeResult(f.tool, f.result);
-        const m = messages[idx];
         messages[idx] = {
           ...m,
           detail,
           chips,
-          details: m.details.map((d) =>
+          details: (m.details ?? []).map((d) =>
             d.kind === "tool" && d.output == null
               ? { ...d, output: truncate(f.result, 200) }
               : d,
           ),
         };
       }
-    } else if (f.type === "synthesis") {
+    } else if (f.type === TRAIL_FRAME.SYNTHESIS && f.synthesis) {
       messages.push({
         id: `h-synth-${clusterId}`,
-        type: "synthesis",
+        type: MESSAGE_TYPE.SYNTHESIS,
         headline: f.synthesis,
         fix: f.fix,
-        confidence: f.confidence ?? "M",
+        confidence: f.confidence ?? CONFIDENCE.MEDIUM,
         category: "",
         instant: true, // replayed from cache — no typewriter
       });
@@ -318,17 +330,17 @@ export function hydrateFromCache({ clusterId, rca }) {
     : [
         {
           id: `synth-cached-${clusterId}`,
-          type: "synthesis",
+          type: MESSAGE_TYPE.SYNTHESIS,
           headline: rca.synthesis,
           fix: rca.fix,
-          confidence: rca.confidence ?? "M",
+          confidence: rca.confidence ?? CONFIDENCE.MEDIUM,
           category: "",
           instant: true,
         },
       ];
   store.setAnalyzeThread(clusterId, {
     conversationId: null,
-    runState: "done",
+    runState: RUN_STATE.DONE,
     cachedOnly: true,
     startedAt: analyzedAtIso ? new Date(analyzedAtIso).getTime() : null,
     messages,
@@ -344,7 +356,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
   // a run already in flight for this cluster owns the conversation.
   if (
     useErrorFeedStore.getState().analyzeThreadsByCluster[clusterId]
-      ?.runState === "streaming"
+      ?.runState === RUN_STATE.STREAMING
   ) {
     return;
   }
@@ -363,7 +375,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
   // instead of sitting idle until the first frame arrives.
   patchThread(clusterId, (t) => ({
     ...t,
-    runState: "streaming",
+    runState: RUN_STATE.STREAMING,
     startedAt: Date.now(),
     conversationId: null,
     messages: isRerun
@@ -371,7 +383,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
           ...t.messages,
           {
             id: `hdr-${Date.now()}`,
-            type: "run_header",
+            type: MESSAGE_TYPE.RUN_HEADER,
             label: "Re-run",
             timestamp: timeLabel,
           },
@@ -388,7 +400,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
       { hidden: true },
     );
   } catch {
-    patchThread(clusterId, (t) => ({ ...t, runState: "idle" }));
+    patchThread(clusterId, (t) => ({ ...t, runState: RUN_STATE.IDLE }));
     return;
   }
   // Create endpoint wraps the row: { status, result: { id, ... } }.
@@ -398,16 +410,15 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
     // would hang in the loader. Fail visibly instead.
     patchThread(clusterId, (t) => ({
       ...t,
-      runState: "done",
+      runState: RUN_STATE.DONE,
       messages: [
         ...t.messages,
         {
           id: `err-${Date.now()}`,
-          type: "synthesis",
-          headline:
-            "Couldn't start the analysis — the server didn't return a conversation id.",
+          type: MESSAGE_TYPE.SYNTHESIS,
+          headline: "Couldn't connect to the server. Please try again.",
           fix: "",
-          confidence: "L",
+          confidence: CONFIDENCE.LOW,
           category: "error",
         },
       ],
@@ -426,7 +437,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
     if (!data) return;
     firstFrameSeen = true; // any frame proves the run actually started
 
-    if (type === "rca_status") {
+    if (type === RCA_FRAME.STATUS) {
       // Setup progress ping (before the first LLM round-trip). Held on the
       // thread as a transient status line so the loader shows real activity
       // instead of dead-air; cleared once real frames start arriving.
@@ -437,7 +448,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
       return;
     }
 
-    if (type === "rca_reasoning") {
+    if (type === RCA_FRAME.REASONING) {
       // The agent's native thinking — its own block in the thread. Rendered
       // instant (no typewriter): the block arrives complete per turn, so a
       // char-by-char animation only lags behind the real stream of turns.
@@ -450,14 +461,14 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
           status: null,
           messages: [
             ...t.messages,
-            { id, type: "reasoning", text, instant: true },
+            { id, type: MESSAGE_TYPE.REASONING, text, instant: true },
           ],
         }));
       }
       return;
     }
 
-    if (type === "rca_step_start") {
+    if (type === RCA_FRAME.STEP_START) {
       const stepId = `step-${data.call_id}`;
       openStepByCall.set(data.call_id, stepId);
       const details = [
@@ -474,8 +485,8 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
           ...t.messages,
           {
             id: stepId,
-            type: "step",
-            status: "running",
+            type: MESSAGE_TYPE.STEP,
+            status: STEP_STATUS.RUNNING,
             title: humanizeStepTitle(data.tool, data.args),
             detail: "",
             chips: [],
@@ -486,7 +497,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
       return;
     }
 
-    if (type === "rca_step_result") {
+    if (type === RCA_FRAME.STEP_RESULT) {
       const stepId = openStepByCall.get(data.call_id);
       if (!stepId) return;
       const { detail, chips } = summarizeResult(data.tool, data.result);
@@ -496,10 +507,10 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
           m.id === stepId
             ? {
                 ...m,
-                status: "done",
+                status: STEP_STATUS.DONE,
                 detail,
                 chips,
-                details: m.details.map((d) =>
+                details: (m.details ?? []).map((d) =>
                   d.kind === "tool" && d.output == null
                     ? { ...d, output: truncate(data.result, 200) }
                     : d,
@@ -512,7 +523,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
       return;
     }
 
-    if (type === "rca_synthesis") {
+    if (type === RCA_FRAME.SYNTHESIS) {
       const suggestions = Array.isArray(data.suggested_questions)
         ? data.suggested_questions.filter(Boolean)
         : [];
@@ -522,7 +533,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
           ...t.messages,
           {
             id: `synth-${Date.now()}`,
-            type: "synthesis",
+            type: MESSAGE_TYPE.SYNTHESIS,
             headline: data.synthesis,
             fix: data.fix,
             confidence: data.confidence,
@@ -534,7 +545,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
             ? [
                 {
                   id: `sug-${Date.now()}`,
-                  type: "suggestions",
+                  type: MESSAGE_TYPE.SUGGESTIONS,
                   items: suggestions,
                 },
               ]
@@ -544,24 +555,24 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
       return;
     }
 
-    if (type === "done") {
-      patchThread(clusterId, (t) => ({ ...t, runState: "done" }));
+    if (type === RCA_FRAME.DONE) {
+      patchThread(clusterId, (t) => ({ ...t, runState: RUN_STATE.DONE }));
       handlers.delete(conversationId);
       return;
     }
 
-    if (type === "error") {
+    if (type === RCA_FRAME.ERROR) {
       patchThread(clusterId, (t) => ({
         ...t,
-        runState: "done",
+        runState: RUN_STATE.DONE,
         messages: [
           ...t.messages,
           {
             id: `err-${Date.now()}`,
-            type: "synthesis",
+            type: MESSAGE_TYPE.SYNTHESIS,
             headline: data.error || "The analysis run failed.",
             fix: "",
-            confidence: "L",
+            confidence: CONFIDENCE.LOW,
             category: "error",
           },
         ],
@@ -593,24 +604,27 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
   // new conversation, and a stale watchdog must not clobber it.
   const isActiveRun = () => {
     const t = useErrorFeedStore.getState().analyzeThreadsByCluster[clusterId];
-    return t?.runState === "streaming" && t?.conversationId === conversationId;
+    return (
+      t?.runState === RUN_STATE.STREAMING &&
+      t?.conversationId === conversationId
+    );
   };
 
   const failVisibly = () => {
     handlers.delete(conversationId);
     patchThread(clusterId, (t) => ({
       ...t,
-      runState: "done",
+      runState: RUN_STATE.DONE,
       status: null,
       messages: [
         ...t.messages,
         {
           id: `err-${Date.now()}`,
-          type: "synthesis",
+          type: MESSAGE_TYPE.SYNTHESIS,
           headline:
             "Couldn't reach the investigator — the connection dropped. Hit Re-run.",
           fix: "",
-          confidence: "L",
+          confidence: CONFIDENCE.LOW,
           category: "error",
         },
       ],
@@ -643,7 +657,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
         return;
       }
       retried = true;
-      forceReconnect();
+      closeConnection();
       try {
         await sendChat();
         armWatchdog();
@@ -658,7 +672,7 @@ export async function startRun({ clusterId, projectId, token, workspaceId }) {
     armWatchdog();
   } catch {
     handlers.delete(conversationId);
-    patchThread(clusterId, (t) => ({ ...t, runState: "done" }));
+    patchThread(clusterId, (t) => ({ ...t, runState: RUN_STATE.DONE }));
   }
 }
 
@@ -684,20 +698,20 @@ export async function runFollowUp({
 
   patchThread(clusterId, (t) => ({
     ...t,
-    followUpRunState: "streaming",
+    followUpRunState: RUN_STATE.STREAMING,
     messages: [
       ...t.messages,
-      { id: `${baseId}-q`, type: "user_question", text },
+      { id: `${baseId}-q`, type: MESSAGE_TYPE.USER_QUESTION, text },
       {
         id: `${baseId}-i`,
-        type: "assistant_intro",
+        type: MESSAGE_TYPE.ASSISTANT_INTRO,
         text: "Let me look into that.",
       },
       {
         id: subagentMsgId,
-        type: "subagent",
+        type: MESSAGE_TYPE.SUBAGENT,
         title: "Falcon",
-        status: "streaming",
+        status: STREAM_STATUS.STREAMING,
         steps: [],
         answer: null,
       },
@@ -711,7 +725,7 @@ export async function runFollowUp({
     const { type, data } = parsed;
     if (!data) return;
 
-    if (type === "tool_call_start") {
+    if (type === CHAT_FRAME.TOOL_CALL_START) {
       const stepId = `${subagentMsgId}-${data.call_id}`;
       openCalls.set(data.call_id, stepId);
       patchThread(clusterId, (t) => ({
@@ -726,7 +740,7 @@ export async function runFollowUp({
                     id: stepId,
                     title: data.tool_description || data.tool_name,
                     detail: "",
-                    status: "running",
+                    status: STEP_STATUS.RUNNING,
                   },
                 ],
               }
@@ -736,7 +750,7 @@ export async function runFollowUp({
       return;
     }
 
-    if (type === "tool_call_result") {
+    if (type === CHAT_FRAME.TOOL_CALL_RESULT) {
       const stepId = openCalls.get(data.call_id);
       patchThread(clusterId, (t) => ({
         ...t,
@@ -748,7 +762,7 @@ export async function runFollowUp({
                   s.id === stepId
                     ? {
                         ...s,
-                        status: "done",
+                        status: STEP_STATUS.DONE,
                         detail: truncate(data.result_summary, 90),
                       }
                     : s,
@@ -761,7 +775,7 @@ export async function runFollowUp({
       return;
     }
 
-    if (type === "text_delta") {
+    if (type === CHAT_FRAME.TEXT_DELTA) {
       answer += data.delta || "";
       patchThread(clusterId, (t) => ({
         ...t,
@@ -772,27 +786,27 @@ export async function runFollowUp({
       return;
     }
 
-    if (type === "done") {
+    if (type === CHAT_FRAME.DONE) {
       patchThread(clusterId, (t) => ({
         ...t,
-        followUpRunState: "done",
+        followUpRunState: RUN_STATE.DONE,
         messages: t.messages.map((m) =>
-          m.id === subagentMsgId ? { ...m, status: "done" } : m,
+          m.id === subagentMsgId ? { ...m, status: STREAM_STATUS.DONE } : m,
         ),
       }));
       handlers.delete(conversationId);
       return;
     }
 
-    if (type === "error") {
+    if (type === CHAT_FRAME.ERROR) {
       patchThread(clusterId, (t) => ({
         ...t,
-        followUpRunState: "done",
+        followUpRunState: RUN_STATE.DONE,
         messages: t.messages.map((m) =>
           m.id === subagentMsgId
             ? {
                 ...m,
-                status: "done",
+                status: STREAM_STATUS.DONE,
                 answer: answer || data.error || "Something went wrong.",
               }
             : m,
@@ -822,6 +836,6 @@ export async function runFollowUp({
     );
   } catch {
     handlers.delete(conversationId);
-    patchThread(clusterId, (t) => ({ ...t, followUpRunState: "done" }));
+    patchThread(clusterId, (t) => ({ ...t, followUpRunState: RUN_STATE.DONE }));
   }
 }

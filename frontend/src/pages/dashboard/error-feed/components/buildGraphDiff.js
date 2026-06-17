@@ -18,8 +18,11 @@
  *   `data._isFailurePoint` automatically — which is what AgentNode reads.
  *
  * Match key:
- *   `(type, name)` — both come from span attributes and are stable
- *   identifiers across traces of the same agent.
+ *   `node.id` — buildTraceGraph already assigns a unique id per node (either
+ *   the explicit `graph.node.id`, the inferred `type:name` group key, or a
+ *   `__start__` / `__end__` sentinel). Two distinct nodes that happen to share
+ *   a `(type, name)` pair therefore keep separate entries instead of one
+ *   silently overwriting the other in the lookup map.
  *
  * Status labels (written as `node._diffStatus`):
  *   "fail-only"          → extra step in failing trace
@@ -35,10 +38,16 @@
  */
 
 const SLOWER_RATIO = 1.5;
+// Sentinel `type` values are lowercased before the check, so this covers
+// "start"/"end" as well as capitalized "Start"/"End".
 const SENTINEL_TYPES = new Set(["start", "end"]);
 const GHOST_PREFIX = "ghost-";
 
+// Unique per-node key. buildTraceGraph guarantees a stable, unique `id`; we
+// fall back to `(type, name)` only for the (unexpected) case of a node with no
+// id so the map never collapses two real nodes onto one entry.
 function keyOf(node) {
+  if (node?.id != null) return String(node.id);
   const type = String(node?.type ?? "")
     .toLowerCase()
     .trim();
@@ -46,6 +55,15 @@ function keyOf(node) {
     .toLowerCase()
     .trim();
   return `${type}|${name}`;
+}
+
+// True when a node's `type` is a Start/End sentinel, case-insensitively.
+function isSentinel(node) {
+  return SENTINEL_TYPES.has(
+    String(node?.type ?? "")
+      .toLowerCase()
+      .trim(),
+  );
 }
 
 // Tolerate both camelCase (buildTraceGraph output) and snake_case (older
@@ -100,11 +118,11 @@ export function buildGraphDiff(failGraph, passGraph) {
 
   // 1. Annotate failing-side nodes. Failure point takes priority over diff status.
   const annotatedFailNodes = failNodes.map((node) => {
-    const isSentinel = SENTINEL_TYPES.has(node?.type);
-    const isFailurePoint = !isSentinel && errorCountOf(node) > 0;
+    const sentinel = isSentinel(node);
+    const isFailurePoint = !sentinel && errorCountOf(node) > 0;
     if (isFailurePoint) failed += 1;
 
-    if (isSentinel) {
+    if (sentinel) {
       return annotate(node, { _diffStatus: "matched" });
     }
     const match = passByKey.get(keyOf(node));
@@ -121,7 +139,8 @@ export function buildGraphDiff(failGraph, passGraph) {
     }
     return annotate(node, {
       _diffStatus: status,
-      _isFailurePoint: isFailurePoint || undefined,
+      // Always a boolean — non-failure nodes carry `false`, not `undefined`.
+      _isFailurePoint: isFailurePoint,
     });
   });
 
@@ -132,12 +151,16 @@ export function buildGraphDiff(failGraph, passGraph) {
   const ghostNodes = [];
   const ghostIds = new Set(); // working-trace ids whose ghost we created
   for (const passNode of passNodes) {
-    if (SENTINEL_TYPES.has(passNode?.type)) continue;
+    if (isSentinel(passNode)) continue;
     if (failByKey.has(keyOf(passNode))) continue;
     missing += 1;
     ghostNodes.push({
       ...passNode,
+      // React Flow needs a unique id within the merged graph, so the ghost
+      // gets a prefixed id — but keep the working-trace id on `_originalId`
+      // so callers can still trace it back to the pass-side node.
       id: `${GHOST_PREFIX}${passNode.id}`,
+      _originalId: passNode.id,
       _diffStatus: "pass-only-ghost",
     });
     ghostIds.add(passNode.id);
@@ -164,9 +187,12 @@ export function buildGraphDiff(failGraph, passGraph) {
     }
 
     skippedEdges.push({
+      // Preserve the source edge's id (prefixed to stay unique against the
+      // real fail-side edges) when one is present.
+      ...(edge.id != null ? { id: `${GHOST_PREFIX}${edge.id}` } : {}),
       source: sourceId,
       target: `${GHOST_PREFIX}${edge.target}`,
-      transitionCount: 1,
+      transitionCount: edge.transitionCount ?? 1,
       _skipped: true,
     });
   }
@@ -181,7 +207,7 @@ export function buildGraphDiff(failGraph, passGraph) {
   const passAnnotated = {
     ...passGraph,
     nodes: passNodes.map((node) => {
-      if (SENTINEL_TYPES.has(node?.type)) {
+      if (isSentinel(node)) {
         return annotate(node, { _diffStatus: "matched" });
       }
       const match = failByKey.get(keyOf(node));

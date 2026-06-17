@@ -47,10 +47,6 @@ export default function ErrorStatusChip({ status, size = "small", onClick }) {
   return (
     <Chip
       size={size}
-      // Only pass onClick when it's actually defined — MUI Chip applies
-      // its clickable styling (hover overlay, ripple) the moment an
-      // onClick handler is present, even if it's `undefined`. Skipping the
-      // prop keeps the static variant truly static.
       {...(onClick ? { onClick } : {})}
       icon={
         <Iconify
@@ -75,8 +71,6 @@ export default function ErrorStatusChip({ status, size = "small", onClick }) {
         borderColor: isDark ? `${cfg.darkColor}40` : `${cfg.color}30`,
         cursor: onClick ? "pointer" : "default",
         "& .MuiChip-label": { px: "6px", lineHeight: 1 },
-        // Belt-and-braces: pin hover/focus to the base bg so nothing
-        // re-tints the static badge.
         "&:hover": onClick ? { opacity: 0.85 } : { bgcolor: baseBg },
         "&:focus": { bgcolor: baseBg },
       }}

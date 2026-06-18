@@ -27,11 +27,7 @@ import {
 // directly: `equals`, `not_equals`, `in`, `not_in`, `contains`,
 // `not_contains`, `starts_with`, `ends_with`, `is_null`, `is_not_null`,
 // `greater_than`, `greater_than_or_equal`, `less_than`,
-// `less_than_or_equal`, `between`, `not_between`. The thumbs / categorical
-// / id-only dropdowns inside the panel still emit legacy `is`/`is_not` —
-// alias those to canonical so the wire is consistent.
-const LEGACY_OP_ALIAS = { is: "equals", is_not: "not_equals" };
-
+// `less_than_or_equal`, `between`, `not_between`.
 const RANGE_OPS = new Set(["between", "not_between"]);
 const LIST_OPS = new Set(["in", "not_in"]);
 const NO_VALUE_OPS = new Set(["is_null", "is_not_null"]);
@@ -104,7 +100,7 @@ function convertNewToOld(newFilters) {
         : fieldType === "boolean"
           ? "boolean"
           : "text";
-    const op = LEGACY_OP_ALIAS[f.operator] || f.operator || "equals";
+    const op = f.operator || "equals";
 
     const base = {
       property: isAttribute ? "attributes" : f.field,

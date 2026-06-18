@@ -86,7 +86,13 @@ export const extractAttributeFilters = (filters) => {
           ...(filterValue !== undefined && { filter_value: filterValue }),
         },
       };
-    });
+    })
+    // Drop value-less in/not_in (legacy/hand-edited)
+    .filter(
+      (entry) =>
+        !LIST_OPS.has(entry.filter_config.filter_op) ||
+        entry.filter_config.filter_value !== undefined,
+    );
 };
 
 // Sibling-key extraction: rows whose property maps to a top-level BE key

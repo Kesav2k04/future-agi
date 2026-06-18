@@ -99,7 +99,13 @@ export function buildApiFilterArray(oldFormatFilters, startDate, endDate) {
         },
       };
     })
-    .filter(Boolean);
+    // Drop value-less in/not_in (legacy/hand-edited)
+    .filter(
+      (entry) =>
+        entry &&
+        (!LIST_OPS.has(entry.filter_config.filter_op) ||
+          entry.filter_config.filter_value !== undefined),
+    );
 
   if (startDate && endDate) {
     userFilters.push({

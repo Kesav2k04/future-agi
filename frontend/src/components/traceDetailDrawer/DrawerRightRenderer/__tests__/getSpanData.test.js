@@ -195,4 +195,32 @@ describe("getLlmData / extractMessages (characterization)", () => {
   it("returns an empty list when no message attributes are present", () => {
     expect(input({ "some.other.attr": "x" }).inputMessage).toMatchInlineSnapshot(`[]`);
   });
+
+  it("keeps a flat content string when a message also has structured parts (no crash)", () => {
+    expect(() =>
+      input({
+        "llm.input_messages.0.message.role": "user",
+        "llm.input_messages.0.message.content": "[image: masked]",
+        "llm.input_messages.0.message.contents.0.message_content.image.url":
+          "data:image/png;base64,xxx",
+      }),
+    ).not.toThrow();
+    expect(
+      input({
+        "llm.input_messages.0.message.role": "user",
+        "llm.input_messages.0.message.content": "[image: masked]",
+        "llm.input_messages.0.message.contents.0.message_content.image.url":
+          "data:image/png;base64,xxx",
+      }).inputMessage,
+    ).toMatchInlineSnapshot(`
+      [
+        {
+          "content": [
+            "[image: masked]",
+          ],
+          "role": "user",
+        },
+      ]
+    `);
+  });
 });

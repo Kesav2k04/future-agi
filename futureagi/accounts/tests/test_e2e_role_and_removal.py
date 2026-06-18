@@ -1277,3 +1277,84 @@ class TestOrgRoleUpdateWorkspaceAccess:
         assert (
             second.json()["result"]["changes"].get("revoked_workspaces", 0) == 0
         ), second.json()
+
+    # Authz scope: the org-wide revoke is new in this PR and must not let an org
+    # member who is merely a workspace admin strip a user out of workspaces they
+    # don't administer. A workspace admin can only revoke within their own
+    # workspace; org-level revokes belong to org admins/owners.
+
+    def test_workspace_admin_member_cannot_revoke_outside_their_scope(
+        self, organization, workspace, second_workspace
+    ):
+        # Actor: org MEMBER, workspace admin in ``workspace`` only.
+        actor = _make_user(
+            organization, "wsacc-actor-wsadmin@futureagi.com", "Member", Level.MEMBER
+        )
+        _add_ws_membership(actor, workspace, organization, Level.WORKSPACE_ADMIN)
+        actor_client = _make_client(actor, workspace)
+
+        # Target: org VIEWER (manageable by the member actor) in both workspaces.
+        target = _make_user(
+            organization, "wsacc-target-scope@futureagi.com", "Viewer", Level.VIEWER
+        )
+        _add_ws_membership(target, workspace, organization, Level.WORKSPACE_MEMBER)
+        _add_ws_membership(
+            target, second_workspace, organization, Level.WORKSPACE_MEMBER
+        )
+
+        # workspace_access omits second_workspace — a naive org-wide revoke would
+        # strip the target out of it, but the actor doesn't administer it.
+        resp = self._update_role(
+            actor_client,
+            {
+                "user_id": str(target.id),
+                "org_level": Level.VIEWER,
+                "workspace_access": [
+                    {"workspace_id": str(workspace.id), "level": Level.WORKSPACE_VIEWER}
+                ],
+            },
+        )
+
+        assert resp.status_code == status.HTTP_200_OK, resp.json()
+        active = self._ws_member_ids(target, organization)
+        # second_workspace is outside the actor's admin scope → preserved.
+        assert workspace.id in active
+        assert second_workspace.id in active
+        assert resp.json()["result"]["changes"].get("revoked_workspaces", 0) == 0
+
+    # Positive side of the same rule: within the workspace the actor administers,
+    # the revoke is allowed.
+
+    def test_workspace_admin_member_can_revoke_within_their_scope(
+        self, organization, workspace, second_workspace
+    ):
+        actor = _make_user(
+            organization, "wsacc-actor-wsadmin2@futureagi.com", "Member", Level.MEMBER
+        )
+        _add_ws_membership(actor, workspace, organization, Level.WORKSPACE_ADMIN)
+        actor_client = _make_client(actor, workspace)
+
+        target = _make_user(
+            organization, "wsacc-target-scope2@futureagi.com", "Viewer", Level.VIEWER
+        )
+        _add_ws_membership(target, workspace, organization, Level.WORKSPACE_MEMBER)
+        _add_ws_membership(
+            target, second_workspace, organization, Level.WORKSPACE_MEMBER
+        )
+
+        # Empty list → revoke everything, but scoped to the actor's workspace.
+        resp = self._update_role(
+            actor_client,
+            {
+                "user_id": str(target.id),
+                "org_level": Level.VIEWER,
+                "workspace_access": [],
+            },
+        )
+
+        assert resp.status_code == status.HTTP_200_OK, resp.json()
+        active = self._ws_member_ids(target, organization)
+        # The actor's own workspace is revoked; the one they don't manage stays.
+        assert workspace.id not in active
+        assert second_workspace.id in active
+        assert resp.json()["result"]["changes"].get("revoked_workspaces", 0) == 1

@@ -207,6 +207,22 @@ def _enforce_not_last_owner(organization: Organization) -> None:
         raise MemberRoleUpdateError("LAST_OWNER_DEMOTE")
 
 
+def _active_ws_membership_defaults(
+    level: int, target_membership: OrganizationMembership, actor: User
+) -> dict[str, Any]:
+    """``defaults`` for an ``update_or_create`` that grants/refreshes an active
+    workspace membership at ``level`` (un-soft-deletes if it was revoked)."""
+    return {
+        "level": level,
+        "role": Level.to_ws_role(level),
+        "organization_membership": target_membership,
+        "granted_by": actor,
+        "is_active": True,
+        "deleted": False,
+        "deleted_at": None,
+    }
+
+
 def _promote_to_workspace_admin_everywhere(
     *,
     organization: Organization,
@@ -218,15 +234,9 @@ def _promote_to_workspace_admin_everywhere(
         WorkspaceMembership._base_manager.update_or_create(
             workspace=ws,
             user_id=target_user_id,
-            defaults={
-                "level": Level.WORKSPACE_ADMIN,
-                "role": Level.to_ws_role(Level.WORKSPACE_ADMIN),
-                "organization_membership": target_membership,
-                "granted_by": actor,
-                "is_active": True,
-                "deleted": False,
-                "deleted_at": None,
-            },
+            defaults=_active_ws_membership_defaults(
+                Level.WORKSPACE_ADMIN, target_membership, actor
+            ),
         )
 
 
@@ -252,15 +262,9 @@ def _apply_workspace_access(
             WorkspaceMembership._base_manager.update_or_create(
                 workspace_id=ws_id,
                 user_id=target_user_id,
-                defaults={
-                    "level": ws_level,
-                    "role": Level.to_ws_role(ws_level),
-                    "organization_membership": target_membership,
-                    "granted_by": actor,
-                    "is_active": True,
-                    "deleted": False,
-                    "deleted_at": None,
-                },
+                defaults=_active_ws_membership_defaults(
+                    ws_level, target_membership, actor
+                ),
             )
 
     if not workspace_access_provided:
@@ -277,17 +281,48 @@ def _apply_workspace_access(
     if also_keep_ws_id is not None:
         desired_ws_ids.add(also_keep_ws_id)
 
-    revoked = (
-        WorkspaceMembership._base_manager.filter(
-            user_id=target_user_id,
-            workspace__organization=organization,
-            is_active=True,
-        )
-        .exclude(workspace_id__in=desired_ws_ids)
-        .update(is_active=False, deleted=True, deleted_at=timezone.now())
-    )
+    revoke_qs = WorkspaceMembership._base_manager.filter(
+        user_id=target_user_id,
+        workspace__organization=organization,
+        is_active=True,
+    ).exclude(workspace_id__in=desired_ws_ids)
+
+    # The revoke is org-wide for org admins/owners, but an org member who is
+    # only a workspace admin may revoke access *only within the workspaces they
+    # administer* — never strip a user out of workspaces they don't manage.
+    revoke_scope = _revocable_workspace_ids(organization, actor)
+    if revoke_scope is not None:
+        revoke_qs = revoke_qs.filter(workspace_id__in=revoke_scope)
+
+    revoked = revoke_qs.update(is_active=False, deleted=True, deleted_at=timezone.now())
     if revoked:
         changes["revoked_workspaces"] = revoked
+
+
+def _revocable_workspace_ids(organization: Organization, actor: User) -> Optional[set]:
+    """Workspace ids the ``actor`` is authorized to revoke access within.
+
+    - Org admins/owners (``level >= ADMIN``) may revoke org-wide → ``None``
+      (no scope restriction; owners can revoke anyone, admins are already
+      limited to managing members/viewers by ``CanManageTargetUser``).
+    - Everyone else (an org member/viewer who happens to be a workspace admin)
+      may revoke only within the workspaces they themselves administer.
+    """
+    actor_membership = get_org_membership(actor)
+    actor_level = actor_membership.level_or_legacy if actor_membership else 0
+    if actor_level >= Level.ADMIN:
+        return None
+
+    memberships = WorkspaceMembership.objects.filter(
+        user=actor,
+        workspace__organization=organization,
+        is_active=True,
+    ).only("workspace_id", "level", "role")
+    return {
+        m.workspace_id
+        for m in memberships
+        if m.level_or_legacy >= Level.WORKSPACE_ADMIN
+    }
 
 
 def _apply_ws_level_change(
@@ -308,14 +343,6 @@ def _apply_ws_level_change(
     WorkspaceMembership.all_objects.update_or_create(
         workspace_id=workspace_id,
         user_id=target_user_id,
-        defaults={
-            "level": ws_level,
-            "role": Level.to_ws_role(ws_level),
-            "organization_membership": target_membership,
-            "granted_by": actor,
-            "is_active": True,
-            "deleted": False,
-            "deleted_at": None,
-        },
+        defaults=_active_ws_membership_defaults(ws_level, target_membership, actor),
     )
     changes["ws_level"] = {"old": old_ws, "new": ws_level}

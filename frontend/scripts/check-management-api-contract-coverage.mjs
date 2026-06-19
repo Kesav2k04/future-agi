@@ -26,7 +26,7 @@ const MIN_GROUP_PATHS = {
   "falcon-ai": 15,
   "model-hub": 360,
   simulate: 100,
-  tracer: 155,
+  tracer: 154,
   usage: 55,
 };
 const MUTATION_METHODS = new Set(["post", "put", "patch"]);

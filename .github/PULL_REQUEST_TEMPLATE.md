@@ -141,7 +141,6 @@ cd frontend && yarn contracts:check
 1. Start the stack and log in at **http://localhost:3031**.
 2. [Step-by-step to reach the affected screen]
 3. [What to verify]
-4. [What to verify]
 
 ---
 

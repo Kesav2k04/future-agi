@@ -43,4 +43,10 @@ describe("FixedTab", () => {
     await userEvent.hover(screen.getByRole("button"));
     expect(await screen.findByText("Press 3")).toBeInTheDocument();
   });
+
+  it("does not hint the shortcut on the active tab (pressing it is a no-op)", async () => {
+    render(<FixedTab {...defaultProps} shortcut="3" isActive />);
+    await userEvent.hover(screen.getByRole("button"));
+    expect(screen.queryByText("Press 3")).not.toBeInTheDocument();
+  });
 });

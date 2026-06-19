@@ -47712,8 +47712,11 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "x-nullable": true
         },
         "error_localizer_tasks": {
-          "title": "Error localizer tasks",
-          "type": "string",
+          "description": "Get error localizer tasks for this call execution.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CallExecutionErrorLocalizerTask"
+          },
           "readOnly": true
         },
         "call_summary": {
@@ -47897,7 +47900,11 @@ export const OPENAPI_CONTRACT = Object.freeze({
         },
         "eval_metrics": {
           "title": "Eval metrics",
-          "type": "string",
+          "description": "Get evaluation metrics in a format suitable for the UI",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/CallExecutionEvalMetric"
+          },
           "readOnly": true
         },
         "scenario_columns": {
@@ -76777,6 +76784,170 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "x-nullable": true
           },
           "default": {}
+        }
+      }
+    },
+    "CallExecutionErrorLocalizerTask": {
+      "required": [
+        "task_id",
+        "eval_config_id",
+        "status",
+        "eval_result"
+      ],
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "title": "Task id",
+          "type": "string",
+          "minLength": 1
+        },
+        "eval_config_id": {
+          "title": "Eval config id",
+          "type": "string",
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "eval_result": {
+          "title": "Eval result",
+          "type": "object",
+          "x-nullable": true
+        },
+        "eval_explanation": {
+          "title": "Eval explanation",
+          "type": "string",
+          "x-nullable": true
+        },
+        "input_data": {
+          "title": "Input data",
+          "type": "object",
+          "x-nullable": true
+        },
+        "input_keys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "input_types": {
+          "title": "Input types",
+          "type": "object",
+          "x-nullable": true
+        },
+        "rule_prompt": {
+          "title": "Rule prompt",
+          "type": "string",
+          "x-nullable": true
+        },
+        "error_analysis": {
+          "title": "Error analysis",
+          "type": "object",
+          "x-nullable": true
+        },
+        "selected_input_key": {
+          "title": "Selected input key",
+          "type": "string",
+          "x-nullable": true
+        },
+        "error_message": {
+          "title": "Error message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "created_at": {
+          "title": "Created at",
+          "type": "string",
+          "x-nullable": true
+        },
+        "updated_at": {
+          "title": "Updated at",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "CallExecutionEvalMetric": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "description": "number | bool | string | list[string] | null",
+          "type": "object",
+          "x-nullable": true
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "template_type": {
+          "title": "Template type",
+          "type": "string",
+          "x-nullable": true
+        },
+        "visible": {
+          "title": "Visible",
+          "type": "boolean"
+        },
+        "error": {
+          "title": "Error",
+          "type": "boolean"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "skipped": {
+          "title": "Skipped",
+          "type": "boolean"
+        },
+        "error_localizer": {
+          "title": "Error localizer",
+          "type": "boolean"
+        },
+        "error_analysis": {
+          "title": "Error analysis",
+          "type": "object",
+          "x-nullable": true
+        },
+        "error_localizer_status": {
+          "title": "Error localizer status",
+          "type": "string",
+          "x-nullable": true
+        },
+        "error_localizer_message": {
+          "title": "Error localizer message",
+          "type": "string",
+          "x-nullable": true
+        },
+        "selected_input_key": {
+          "title": "Selected input key",
+          "type": "string",
+          "x-nullable": true
+        },
+        "input_data": {
+          "title": "Input data",
+          "type": "object",
+          "x-nullable": true
+        },
+        "input_types": {
+          "title": "Input types",
+          "type": "object",
+          "x-nullable": true
         }
       }
     },

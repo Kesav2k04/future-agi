@@ -8806,7 +8806,37 @@ export interface DatasetTableMetadataApi {
   status?: DatasetTableMetadataApiStatus;
 }
 
-export type DatasetTableResultApiColumnConfigItem = { [key: string]: unknown };
+export type DatasetTableColumnApiEvalTag = { [key: string]: unknown };
+
+export type DatasetTableColumnApiMetadata = { [key: string]: unknown };
+
+export type DatasetTableColumnApiChoicesMap = { [key: string]: unknown };
+
+export interface DatasetTableColumnApi {
+  /** @minLength 1 */
+  id: string;
+  name: string;
+  /** @minLength 1 */
+  data_type: string;
+  is_visible: boolean;
+  is_frozen: boolean;
+  /** @minLength 1 */
+  source_type: string;
+  /** @minLength 1 */
+  origin_type: string;
+  /** @minLength 1 */
+  source_id: string;
+  order_index: number;
+  /** @minLength 1 */
+  status: string;
+  average_score: number;
+  reason_column: boolean;
+  is_numeric_eval: boolean;
+  is_numeric_eval_percentage: boolean;
+  eval_tag: DatasetTableColumnApiEvalTag;
+  metadata: DatasetTableColumnApiMetadata;
+  choices_map: DatasetTableColumnApiChoicesMap;
+}
 
 export type DatasetTableResultApiTableItem = { [key: string]: unknown };
 
@@ -8814,7 +8844,7 @@ export type DatasetTableResultApiDatasetConfig = { [key: string]: unknown };
 
 export interface DatasetTableResultApi {
   metadata?: DatasetTableMetadataApi;
-  column_config: DatasetTableResultApiColumnConfigItem[];
+  column_config: DatasetTableColumnApi[];
   table?: DatasetTableResultApiTableItem[];
   dataset_config?: DatasetTableResultApiDatasetConfig;
   synthetic_dataset?: boolean;

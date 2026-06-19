@@ -79011,7 +79011,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "column_config": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/definitions/DatasetTableColumn"
           }
         },
         "table": {
@@ -92142,6 +92142,110 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Curl add row",
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "DatasetTableColumn": {
+      "required": [
+        "id",
+        "name",
+        "data_type",
+        "is_visible",
+        "is_frozen",
+        "source_type",
+        "origin_type",
+        "source_id",
+        "order_index",
+        "status",
+        "average_score",
+        "reason_column",
+        "is_numeric_eval",
+        "is_numeric_eval_percentage",
+        "eval_tag",
+        "metadata",
+        "choices_map"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "data_type": {
+          "title": "Data type",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "is_visible": {
+          "title": "Is visible",
+          "type": "boolean"
+        },
+        "is_frozen": {
+          "title": "Is frozen",
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "source_type": {
+          "title": "Source type",
+          "type": "string",
+          "minLength": 1
+        },
+        "origin_type": {
+          "title": "Origin type",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "source_id": {
+          "title": "Source id",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "order_index": {
+          "title": "Order index",
+          "type": "integer"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "average_score": {
+          "title": "Average score",
+          "type": "number",
+          "x-nullable": true
+        },
+        "reason_column": {
+          "title": "Reason column",
+          "type": "boolean"
+        },
+        "is_numeric_eval": {
+          "title": "Is numeric eval",
+          "type": "boolean"
+        },
+        "is_numeric_eval_percentage": {
+          "title": "Is numeric eval percentage",
+          "type": "boolean"
+        },
+        "eval_tag": {
+          "title": "Eval tag",
+          "type": "object"
+        },
+        "metadata": {
+          "title": "Metadata",
+          "type": "object"
+        },
+        "choices_map": {
+          "title": "Choices map",
+          "type": "object"
         }
       }
     },

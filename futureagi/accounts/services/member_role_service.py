@@ -299,7 +299,9 @@ def _apply_workspace_access(
         changes["revoked_workspaces"] = revoked
 
 
-def _revocable_workspace_ids(organization: Organization, actor: User) -> Optional[set]:
+def _revocable_workspace_ids(
+    organization: Organization, actor: User
+) -> Optional[set[UUID]]:
     """Workspace ids the ``actor`` is authorized to revoke access within.
 
     - Org admins/owners (``level >= ADMIN``) may revoke org-wide → ``None``

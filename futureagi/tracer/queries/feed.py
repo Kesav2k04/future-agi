@@ -1020,24 +1020,31 @@ def _log_odds_distinctive(
     min_z: float = 1.96,
     top_k: int = 8,
 ) -> list[tuple[str, float, int, int]]:
-    """Monroe et al. "Fightin' Words": weighted log-odds-ratio with an
-    informative Dirichlet prior. Returns n-grams distinctive to ``fail_docs``
-    vs ``base_docs`` as ``(term, z, df_fail, df_base)`` tuples — where df_* is
-    the number of docs in each group containing the term, taken from the SAME
-    tokenization (callers must NOT re-match the n-gram against raw text; the
-    stopword-stripped n-gram won't appear verbatim there). z >= ``min_z``,
+    """Monroe et al. "Fightin' Words" weighted log-odds-ratio z-score, with an
+    informative Dirichlet prior, for n-grams distinctive to ``fail_docs`` vs
+    ``base_docs``. Returns ``(term, z, df_fail, df_base)`` tuples — where df_*
+    is the number of docs in each group containing the term, taken from the
+    SAME tokenization (callers must NOT re-match the n-gram against raw text;
+    the stopword-stripped n-gram won't appear verbatim there). z >= ``min_z``,
     sorted by (z desc, longer-phrase-first).
 
-    The prior alpha_w is the *pooled* (fail+base) count per term — this is
-    what tames the rare-term inflation that makes raw TF-IDF junky on the
-    small-N clusters we deal with. For term w::
+    The prior is the standard background-share allocation alpha_w = a0 * p_w,
+    where p_w is the term's frequency in the pooled (fail+base) corpus — our
+    empirical background — and a0 is the total prior mass / shrinkage strength.
+    We set a0 = |V| (~one pseudo-count per term): a light regularizer that
+    tames rare-term inflation on the small-N clusters we deal with without
+    swamping the signal. Larger a0 pulls every z toward the pooled baseline;
+    using the *raw* pooled count as the prior (a0 = corpus size — the heaviest
+    setting, which some reference impls default to) over-weights merely-
+    frequent terms, so the |V| scaling is what keeps distinctive phrases on
+    top. For term w::
 
         delta = log((y_f+a)/(n_f+a0-y_f-a)) - log((y_b+a)/(n_b+a0-y_b-a))
         var   = 1/(y_f+a) + 1/(y_b+a)
         z     = delta / sqrt(var)
 
-    where y_f/y_b = counts of w in fail/base, a = alpha_w (pooled count),
-    a0 = sum of pooled counts, n_f/n_b = total counts in fail/base.
+    where y_f/y_b = counts of w in fail/base, a = alpha_w, a0 = sum of alpha,
+    n_f/n_b = total counts in fail/base.
     """
     if not fail_docs or not base_docs:
         return []
@@ -1062,12 +1069,19 @@ def _log_odds_distinctive(
     binm = matrix > 0
     df_f = np.asarray(binm[:n].sum(axis=0)).ravel().astype(int)
     df_b = np.asarray(binm[n:].sum(axis=0)).ravel().astype(int)
-    alpha = y_f + y_b  # informative Dirichlet prior = pooled counts
-    a0 = float(alpha.sum())
+    # Informative Dirichlet prior (Monroe): alpha_w = a0 * background-share,
+    # the pooled (fail+base) corpus as the empirical background and prior mass
+    # a0 = |V| (~one pseudo-count per term) as a light regularizer. Scaling to
+    # |V| — rather than the raw pooled count (a0 = corpus size) — is what stops
+    # the prior from swamping the data and over-weighting frequent terms.
+    pooled = y_f + y_b
+    pooled_total = float(pooled.sum())
     n_f = float(y_f.sum())
     n_b = float(y_b.sum())
-    if a0 <= 0 or n_f <= 0 or n_b <= 0:
+    if pooled_total <= 0 or n_f <= 0 or n_b <= 0:
         return []
+    a0 = float(len(pooled))  # |V| — total prior mass / shrinkage strength
+    alpha = a0 * pooled / pooled_total  # sum(alpha) == a0
 
     eps = 1e-9
     f_num = y_f + alpha
@@ -1122,9 +1136,10 @@ def _passing_baseline_trace_ids(
 ) -> list[str]:
     """Up to ``k`` KNN-passing trace_ids for the cluster's representative input.
 
-    Computed live for now (Increment 1). Increment 4 caches this onto
-    ``TraceErrorGroup.passing_baseline_trace_ids`` via a Temporal activity; the
-    builders below are unchanged — only the call site moves.
+    Computed live on the read path today — a linear vector scan that scales with
+    project volume, not cluster size. No cache field exists yet; moving this to
+    an async precompute (write the baseline once at cluster time, read it here)
+    is a tracked follow-up. The builders below are unchanged when it moves.
     """
     # Lazy import: scan_clustering pulls the ClickHouse + embedding stack,
     # which shouldn't load on every feed-query import.
@@ -1417,9 +1432,11 @@ def _fetch_pattern_summary(cluster_id: str) -> PatternSummary:
     (the stat test is the gate), ranks by normalized effect size, renders the
     top 4. Fewer than 4 strong cards is fine — better than 4 with 2 weak.
 
-    Computed live (Increment 1). Increment 4 moves this into a Temporal
-    ``compute_pattern_insights`` activity that caches the result onto
-    ``TraceErrorGroup.pattern_insights``; the builders don't change.
+    Computed live on every overview request today — KNN baseline + several
+    CountVectorizer/KS fits over corpora that scale with project size. No cache
+    exists yet (no field reads or writes one); moving this to an async
+    precompute that materializes the result is a tracked follow-up. The builders
+    don't change when it moves.
     """
     cluster = TraceErrorGroup.objects.filter(cluster_id=cluster_id).first()
     if not cluster:
@@ -1686,7 +1703,9 @@ def trace_judge(trace_id: str) -> tuple[str | None, float | None]:
         .exclude(eval_explanation__isnull=True)
         .exclude(eval_explanation="")
         .annotate(_score=EVAL_SCORE_EXPR)
-        .order_by("_score")
+        # NULLS LAST: a scored eval outranks an explanation-only (null-score)
+        # eval on every backend, not just Postgres.
+        .order_by(F("_score").asc(nulls_last=True))
         .values("eval_explanation", "_score")
         .first()
     )
@@ -1708,7 +1727,8 @@ def _trace_judges_batch(
         .exclude(eval_explanation__isnull=True)
         .exclude(eval_explanation="")
         .annotate(_score=EVAL_SCORE_EXPR)
-        .order_by("trace_id", "_score")
+        # NULLS LAST per trace_judge: scored eval outranks null-score eval.
+        .order_by("trace_id", F("_score").asc(nulls_last=True))
         .values_list("trace_id", "eval_explanation", "_score")
     )
     out: dict[str, tuple[str | None, float | None]] = {}
@@ -1730,7 +1750,8 @@ def _session_judges_batch(
         .exclude(eval_explanation__isnull=True)
         .exclude(eval_explanation="")
         .annotate(_score=EVAL_SCORE_EXPR)
-        .order_by("trace_session_id", "_score")
+        # NULLS LAST per trace_judge: scored eval outranks null-score eval.
+        .order_by("trace_session_id", F("_score").asc(nulls_last=True))
         .values_list("trace_session_id", "eval_explanation", "_score")
     )
     out: dict[str, tuple[str | None, float | None]] = {}

@@ -151,6 +151,29 @@ class TracePreviewSerializer(serializers.Serializer):
     output = serializers.CharField(allow_null=True)
 
 
+class RcaTrailStepSerializer(serializers.Serializer):
+    """One frame of the persisted ``rca_trace`` trail (a type-discriminated
+    union keyed on ``type``: reasoning / step_start / step_result / synthesis).
+
+    Producer is the cluster-RCA agent in the companion ee PR #114 (not in this
+    checkout); these fields are the FE-consumed contract (clusterAnalyzeSocket
+    buildMessagesFromFrames) — reconcile when ee#114 lands. ``args``/``result``
+    are open, tool-dependent maps with unknown keys (JSONField, not a nested
+    serializer); JSONField also tolerates either object or pre-stringified JSON
+    without crashing or reprs.
+    """
+
+    type = serializers.CharField()
+    text = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    call_id = serializers.CharField(required=False, allow_null=True)
+    tool = serializers.CharField(required=False, allow_null=True)
+    args = serializers.JSONField(required=False)
+    result = serializers.JSONField(required=False)
+    synthesis = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    fix = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    confidence = serializers.CharField(required=False, allow_null=True)
+
+
 class RcaSummarySerializer(serializers.Serializer):
     synthesis = serializers.CharField(allow_null=True, required=False)
     fix = serializers.CharField(allow_null=True, required=False)
@@ -160,7 +183,7 @@ class RcaSummarySerializer(serializers.Serializer):
     )
     analyzed_at = serializers.DateTimeField(allow_null=True, required=False)
     failures_at_run = serializers.IntegerField(allow_null=True, required=False)
-    trace = serializers.JSONField(required=False)
+    trace = RcaTrailStepSerializer(many=True, required=False)
 
 
 class FeedDetailCoreSerializer(serializers.Serializer):
@@ -193,13 +216,39 @@ class KeyMomentSerializer(serializers.Serializer):
     verbatim = serializers.CharField(allow_blank=True)
 
 
+class PatternInsightEvidenceSerializer(serializers.Serializer):
+    """Stat rigor for an insight's hover tooltip. Heterogeneous across the five
+    insight builders in queries/feed.py (topic/brief/judge log-odds, KS shift,
+    missing-tool) — every key any builder emits must be declared, else DRF drops
+    it on output. All optional; each insight populates only its relevant subset.
+    """
+
+    # strings
+    test = serializers.CharField(required=False)
+    baseline = serializers.CharField(required=False)
+    tool = serializers.CharField(required=False)
+    # floats
+    z = serializers.FloatField(required=False)
+    p_value = serializers.FloatField(required=False)
+    ks_stat = serializers.FloatField(required=False)
+    fail_median = serializers.FloatField(required=False)
+    baseline_median = serializers.FloatField(required=False)
+    # ints
+    fail_pct = serializers.IntegerField(required=False)
+    baseline_pct = serializers.IntegerField(required=False)
+    hits = serializers.IntegerField(required=False)
+    total = serializers.IntegerField(required=False)
+    missing_in = serializers.IntegerField(required=False)
+    traces_with_tools = serializers.IntegerField(required=False)
+
+
 class PatternInsightSerializer(serializers.Serializer):
     title = serializers.CharField(required=False, default="")
     value = serializers.CharField()
     # Caption supports **bold** markers, rendered by the FE renderRichCaption.
     caption = serializers.CharField(allow_blank=True)
     # Stat rigor for a future hover tooltip (test, z/p, lift, sample sizes).
-    evidence = serializers.DictField(required=False)
+    evidence = PatternInsightEvidenceSerializer(required=False)
 
 
 class PatternSummarySerializer(serializers.Serializer):

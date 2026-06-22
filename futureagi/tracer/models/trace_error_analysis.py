@@ -535,6 +535,10 @@ class ErrorClusterTraces(BaseModel):
         related_name="error_cluster_sessions",
         null=True,
         blank=True,
+        # Decoupled like trace/span above: post-flip sessions are stamped with
+        # no PG tracer_trace_session row, so a real FK would IntegrityError at
+        # COMMIT for net-new sessions (see 0082_decouple_trace_session_fk).
+        db_constraint=False,  # CH scale: SCALE_ARCHITECTURE.md §9a
     )
     cluster = models.ForeignKey(
         TraceErrorGroup,

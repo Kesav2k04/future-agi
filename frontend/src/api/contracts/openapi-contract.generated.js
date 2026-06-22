@@ -49615,11 +49615,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Context page",
           "type": "string",
           "maxLength": 500
-        },
-        "hidden": {
-          "title": "Hidden",
-          "type": "boolean",
-          "default": false
         }
       }
     },
@@ -93648,8 +93643,10 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "x-nullable": true
         },
         "trace": {
-          "title": "Trace",
-          "type": "object"
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RcaTrailStep"
+          }
         }
       },
       "x-nullable": true
@@ -98273,6 +98270,60 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "RcaTrailStep": {
+      "required": [
+        "type"
+      ],
+      "type": "object",
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "title": "Text",
+          "type": "string",
+          "x-nullable": true
+        },
+        "call_id": {
+          "title": "Call id",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "args": {
+          "title": "Args",
+          "type": "object"
+        },
+        "result": {
+          "title": "Result",
+          "type": "object"
+        },
+        "synthesis": {
+          "title": "Synthesis",
+          "type": "string",
+          "x-nullable": true
+        },
+        "fix": {
+          "title": "Fix",
+          "type": "string",
+          "x-nullable": true
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
     "GatewayConfiguredProvider": {
       "required": [
         "name"
@@ -98420,12 +98471,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "type": "string"
         },
         "evidence": {
-          "title": "Evidence",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "x-nullable": true
-          }
+          "$ref": "#/definitions/PatternInsightEvidence"
         }
       }
     },
@@ -98834,6 +98880,70 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Avg score",
           "type": "number",
           "x-nullable": true
+        }
+      }
+    },
+    "PatternInsightEvidence": {
+      "type": "object",
+      "properties": {
+        "test": {
+          "title": "Test",
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline": {
+          "title": "Baseline",
+          "type": "string",
+          "minLength": 1
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string",
+          "minLength": 1
+        },
+        "z": {
+          "title": "Z",
+          "type": "number"
+        },
+        "p_value": {
+          "title": "P value",
+          "type": "number"
+        },
+        "ks_stat": {
+          "title": "Ks stat",
+          "type": "number"
+        },
+        "fail_median": {
+          "title": "Fail median",
+          "type": "number"
+        },
+        "baseline_median": {
+          "title": "Baseline median",
+          "type": "number"
+        },
+        "fail_pct": {
+          "title": "Fail pct",
+          "type": "integer"
+        },
+        "baseline_pct": {
+          "title": "Baseline pct",
+          "type": "integer"
+        },
+        "hits": {
+          "title": "Hits",
+          "type": "integer"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        },
+        "missing_in": {
+          "title": "Missing in",
+          "type": "integer"
+        },
+        "traces_with_tools": {
+          "title": "Traces with tools",
+          "type": "integer"
         }
       }
     },

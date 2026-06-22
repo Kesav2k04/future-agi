@@ -9593,12 +9593,11 @@ export const falconAiConversationsCreateBodyTitleMax = 255;
 
 export const falconAiConversationsCreateBodyContextPageMax = 500;
 
-export const falconAiConversationsCreateBodyHiddenDefault = false;
+
 
 export const FalconAiConversationsCreateBody = zod.object({
   "title": zod.string().max(falconAiConversationsCreateBodyTitleMax).optional(),
-  "context_page": zod.string().max(falconAiConversationsCreateBodyContextPageMax).optional(),
-  "hidden": zod.boolean().default(falconAiConversationsCreateBodyHiddenDefault)
+  "context_page": zod.string().max(falconAiConversationsCreateBodyContextPageMax).optional()
 })
 
 
@@ -35979,6 +35978,10 @@ export const tracerFeedIssuesReadResponseStatusDefault = true;
 
 
 
+
+
+
+
 export const TracerFeedIssuesReadResponse = zod.object({
   "status": zod.boolean().default(tracerFeedIssuesReadResponseStatusDefault),
   "result": zod.object({
@@ -36033,9 +36036,21 @@ export const TracerFeedIssuesReadResponse = zod.object({
   "evidence_trace_ids": zod.array(zod.string().min(1)).optional(),
   "analyzed_at": zod.string().datetime({"offset":true}).optional(),
   "failures_at_run": zod.number().optional(),
-  "trace": zod.object({
+  "trace": zod.array(zod.object({
+  "type": zod.string().min(1),
+  "text": zod.string().optional(),
+  "call_id": zod.string().min(1).optional(),
+  "tool": zod.string().min(1).optional(),
+  "args": zod.object({
 
-}).passthrough().optional()
+}).passthrough().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "synthesis": zod.string().optional(),
+  "fix": zod.string().optional(),
+  "confidence": zod.string().min(1).optional()
+})).optional()
 }).optional()
 })
 })
@@ -36059,6 +36074,10 @@ export const TracerFeedIssuesPartialUpdateBody = zod.object({
 })
 
 export const tracerFeedIssuesPartialUpdateResponseStatusDefault = true;
+
+
+
+
 
 
 
@@ -36141,9 +36160,21 @@ export const TracerFeedIssuesPartialUpdateResponse = zod.object({
   "evidence_trace_ids": zod.array(zod.string().min(1)).optional(),
   "analyzed_at": zod.string().datetime({"offset":true}).optional(),
   "failures_at_run": zod.number().optional(),
-  "trace": zod.object({
+  "trace": zod.array(zod.object({
+  "type": zod.string().min(1),
+  "text": zod.string().optional(),
+  "call_id": zod.string().min(1).optional(),
+  "tool": zod.string().min(1).optional(),
+  "args": zod.object({
 
-}).passthrough().optional()
+}).passthrough().optional(),
+  "result": zod.object({
+
+}).passthrough().optional(),
+  "synthesis": zod.string().optional(),
+  "fix": zod.string().optional(),
+  "confidence": zod.string().min(1).optional()
+})).optional()
 }).optional()
 })
 })
@@ -36238,6 +36269,9 @@ export const tracerFeedIssuesOverviewListResponseResultPatternSummaryInsightsIte
 
 
 
+
+
+
 export const tracerFeedIssuesOverviewListResponseResultRepresentativeTotalDefault = 0;
 
 export const TracerFeedIssuesOverviewListResponse = zod.object({
@@ -36254,7 +36288,22 @@ export const TracerFeedIssuesOverviewListResponse = zod.object({
   "title": zod.string().min(1).default(tracerFeedIssuesOverviewListResponseResultPatternSummaryInsightsItemTitleDefault),
   "value": zod.string().min(1),
   "caption": zod.string(),
-  "evidence": zod.record(zod.string(), zod.string()).optional()
+  "evidence": zod.object({
+  "test": zod.string().min(1).optional(),
+  "baseline": zod.string().min(1).optional(),
+  "tool": zod.string().min(1).optional(),
+  "z": zod.number().optional(),
+  "p_value": zod.number().optional(),
+  "ks_stat": zod.number().optional(),
+  "fail_median": zod.number().optional(),
+  "baseline_median": zod.number().optional(),
+  "fail_pct": zod.number().optional(),
+  "baseline_pct": zod.number().optional(),
+  "hits": zod.number().optional(),
+  "total": zod.number().optional(),
+  "missing_in": zod.number().optional(),
+  "traces_with_tools": zod.number().optional()
+}).optional()
 })),
   "key_moments": zod.array(zod.object({
   "kevinified": zod.string().min(1),

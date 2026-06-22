@@ -3946,7 +3946,6 @@ export interface ConversationCreateRequestApi {
   title?: string;
   /** @maxLength 500 */
   context_page?: string;
-  hidden?: boolean;
 }
 
 export type FalconMessageApiRole = typeof FalconMessageApiRole[keyof typeof FalconMessageApiRole];
@@ -18886,7 +18885,25 @@ export interface TracePreviewApi {
   output: string;
 }
 
-export type RcaSummaryApiTrace = { [key: string]: unknown };
+export type RcaTrailStepApiArgs = { [key: string]: unknown };
+
+export type RcaTrailStepApiResult = { [key: string]: unknown };
+
+export interface RcaTrailStepApi {
+  /** @minLength 1 */
+  type: string;
+  text?: string;
+  /** @minLength 1 */
+  call_id?: string;
+  /** @minLength 1 */
+  tool?: string;
+  args?: RcaTrailStepApiArgs;
+  result?: RcaTrailStepApiResult;
+  synthesis?: string;
+  fix?: string;
+  /** @minLength 1 */
+  confidence?: string;
+}
 
 export interface RcaSummaryApi {
   /** @minLength 1 */
@@ -18898,7 +18915,7 @@ export interface RcaSummaryApi {
   evidence_trace_ids?: string[];
   analyzed_at?: string;
   failures_at_run?: number;
-  trace?: RcaSummaryApiTrace;
+  trace?: RcaTrailStepApi[];
 }
 
 export interface FeedDetailCoreApi {
@@ -18993,7 +19010,25 @@ export interface EventsOverTimePointApi {
   users: number;
 }
 
-export type PatternInsightApiEvidence = {[key: string]: string};
+export interface PatternInsightEvidenceApi {
+  /** @minLength 1 */
+  test?: string;
+  /** @minLength 1 */
+  baseline?: string;
+  /** @minLength 1 */
+  tool?: string;
+  z?: number;
+  p_value?: number;
+  ks_stat?: number;
+  fail_median?: number;
+  baseline_median?: number;
+  fail_pct?: number;
+  baseline_pct?: number;
+  hits?: number;
+  total?: number;
+  missing_in?: number;
+  traces_with_tools?: number;
+}
 
 export interface PatternInsightApi {
   /** @minLength 1 */
@@ -19001,7 +19036,7 @@ export interface PatternInsightApi {
   /** @minLength 1 */
   value: string;
   caption: string;
-  evidence?: PatternInsightApiEvidence;
+  evidence?: PatternInsightEvidenceApi;
 }
 
 export interface KeyMomentApi {

@@ -1329,17 +1329,9 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # pivot now lives in `_list_spans_clickhouse` via
             # SpanListQueryBuilder.
             analytics = AnalyticsQueryService()
-            try:
-                return self._list_spans_clickhouse(
-                    request, project_id, validated_data, analytics
-                )
-            except Exception:
-                logger.warning(
-                    "list_spans_observe_clickhouse_failed, falling back to postgres",
-                    project_id=project_id,
-                    exc_info=True,
-                )
-                return self._list_spans_postgres(request, project_id, validated_data)
+            return self._list_spans_clickhouse(
+                request, project_id, validated_data, analytics
+            )
 
         except Exception as e:
             logger.exception(f"Error in fetching the spans list of observe: {str(e)}")
@@ -1355,6 +1347,7 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
         endpoint to the CH 25.3 schema. Defaults to v1 (CH 24.10) until
         flipped. See tracer/services/clickhouse/v2/dispatch.py.
         """
+        from tracer.services.clickhouse.eval_logger_table import eval_logger_source
         from tracer.services.clickhouse.query_builders import SpanListQueryBuilder
         from tracer.services.clickhouse.v2.dispatch import get_query_builder_class
 
@@ -1397,13 +1390,15 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
                 }
             )
 
-        # Get eval config IDs from CH (fast) instead of PG EvalLogger scan
+        # Get eval config IDs from CH (fast) instead of PG EvalLogger scan.
+        # Table resolved via eval_logger_source() so CH25 (tracer_eval_logger_v2)
+        # and legacy (tracer_eval_logger) deployments each read the right one.
         eval_config_ids = []
+        eval_table, eval_nd = eval_logger_source()
         ch_result = analytics.execute_ch_query(
             "SELECT DISTINCT toString(custom_eval_config_id) AS cid "
-            "FROM tracer_eval_logger FINAL "
-            "WHERE _peerdb_is_deleted = 0 "
-            "AND (deleted = 0 OR deleted IS NULL) "
+            f"FROM {eval_table} FINAL "
+            f"WHERE {eval_nd} "
             "AND dictGet('trace_dict', 'project_id', "
             "trace_id) = toUUID(%(pid)s)",
             {"pid": str(project_id)},

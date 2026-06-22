@@ -6,6 +6,13 @@ from pathlib import Path
 
 import structlog
 
+# Wire-contract caps live in the shared schema so the sender and receiver
+# can't disagree on them. Re-exported here for existing call sites.
+from tfc.deployment_telemetry.schema import (  # noqa: F401
+    MAX_PAYLOAD_BYTES,
+    MAX_REGISTRATION_USERS,
+)
+
 logger = structlog.get_logger(__name__)
 
 DEFAULT_INTERVAL_HOURS = 6
@@ -13,8 +20,6 @@ VALID_INTERVAL_HOURS = frozenset({1, 2, 3, 4, 6, 8, 12, 24})
 DEFAULT_JITTER_SECONDS = 30 * 60
 BUFFER_FLUSH_BATCH_SIZE = 10
 BUFFER_RETENTION_DAYS = 30
-MAX_PAYLOAD_BYTES = 512 * 1024
-MAX_REGISTRATION_USERS = 500
 REGISTRATION_CLAIM_TIMEOUT_SECONDS = 10 * 60
 
 

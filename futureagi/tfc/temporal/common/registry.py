@@ -77,6 +77,8 @@ TEMPORAL_ACTIVITY_MODULES = [
     "tfc.temporal.schedules.billing",
     # Self-hosted deployment registration and usage heartbeat
     "tfc.temporal.schedules.deployment_telemetry",
+    # Deployment telemetry receiver-side integrations (PostHog, HubSpot, Slack)
+    "ee.usage.services.deployment_telemetry_integrations",
 ]
 
 

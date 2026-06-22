@@ -8,10 +8,14 @@ from django.db.models import F
 
 from accounts.models.user import User
 from tfc.deployment_telemetry.config import (
-    MAX_PAYLOAD_BYTES,
-    MAX_REGISTRATION_USERS,
     detect_deployment_type,
     get_version,
+)
+from tfc.deployment_telemetry.schema import (
+    MAX_PAYLOAD_BYTES,
+    MAX_REGISTRATION_USERS,
+    SCHEMA_VERSION,
+    derive_domain,
 )
 
 
@@ -30,6 +34,7 @@ def build_minimal_registration_payload(
     timestamp: datetime | None = None,
 ) -> dict:
     return {
+        "schema_version": SCHEMA_VERSION,
         "instance_id": str(instance_id),
         "version": get_version(),
         "deployment_type": detect_deployment_type(),
@@ -43,6 +48,7 @@ def build_full_registration_payload(
     timestamp: datetime | None = None,
 ) -> dict | None:
     payload = {
+        "schema_version": SCHEMA_VERSION,
         "instance_id": str(instance_id),
         "version": get_version(),
         "deployment_type": detect_deployment_type(),
@@ -60,7 +66,7 @@ def build_full_registration_payload(
         email = user.email.strip().lower()
         if "@" not in email:
             continue
-        entry = {"email": email, "domain": email.rsplit("@", 1)[1]}
+        entry = {"email": email, "domain": derive_domain(email)}
         payload["users"].append(entry)
         if serialized_size(payload) > MAX_PAYLOAD_BYTES:
             payload["users"].pop()
@@ -75,9 +81,10 @@ def build_heartbeat_payload(
     instance_id: UUID,
     window_start: datetime,
     window_end: datetime,
-    counts: dict[str, int],
+    counts: dict[str, int | None],
 ) -> dict:
     return {
+        "schema_version": SCHEMA_VERSION,
         "instance_id": str(instance_id),
         "version": get_version(),
         "window_start": format_utc(window_start),

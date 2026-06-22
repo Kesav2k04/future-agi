@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import json
-import time
+import threading
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-import requests
 import structlog
 from django.db import close_old_connections, transaction
 from django.utils import timezone as django_timezone
@@ -20,10 +18,8 @@ from tfc.deployment_telemetry.buffer import (
 )
 from tfc.deployment_telemetry.collectors import collect_counts
 from tfc.deployment_telemetry.config import (
-    MAX_PAYLOAD_BYTES,
     REGISTRATION_CLAIM_TIMEOUT_SECONDS,
     get_telemetry_interval_hours,
-    get_telemetry_timeout_seconds,
     get_telemetry_url,
     is_self_hosted_deployment,
     telemetry_is_disabled,
@@ -35,54 +31,9 @@ from tfc.deployment_telemetry.payloads import (
     build_minimal_registration_payload,
 )
 from tfc.deployment_telemetry.state import get_or_create_telemetry_state
+from tfc.deployment_telemetry.transport import TelemetryClient
 
 logger = structlog.get_logger(__name__)
-
-_MAX_ATTEMPTS = 3
-_RETRY_DELAYS_SECONDS = (0.2, 0.5)
-
-
-def _post_payload(path: str, payload: dict) -> bool:
-    if not is_self_hosted_deployment():
-        return False
-
-    body = json.dumps(
-        payload,
-        separators=(",", ":"),
-        ensure_ascii=True,
-    ).encode("utf-8")
-    if len(body) > MAX_PAYLOAD_BYTES:
-        logger.warning("deployment_telemetry_payload_too_large", endpoint=path)
-        return False
-
-    url = f"{get_telemetry_url()}{path}"
-    timeout = get_telemetry_timeout_seconds()
-    for attempt in range(_MAX_ATTEMPTS):
-        try:
-            response = requests.post(
-                url,
-                data=body,
-                headers={"Content-Type": "application/json"},
-                timeout=timeout,
-            )
-            if 200 <= response.status_code < 300:
-                return True
-            logger.warning(
-                "deployment_telemetry_request_failed",
-                endpoint=path,
-                status_code=response.status_code,
-                attempt=attempt + 1,
-            )
-        except requests.RequestException:
-            logger.warning(
-                "deployment_telemetry_request_unreachable",
-                endpoint=path,
-                attempt=attempt + 1,
-            )
-
-        if attempt < len(_RETRY_DELAYS_SECONDS):
-            time.sleep(_RETRY_DELAYS_SECONDS[attempt])
-    return False
 
 
 def _claim_registration() -> tuple[DeploymentTelemetryState, bool, bool]:
@@ -99,8 +50,17 @@ def _claim_registration() -> tuple[DeploymentTelemetryState, bool, bool]:
     with transaction.atomic():
         state = DeploymentTelemetryState.objects.select_for_update().get(pk=state.pk)
         state.telemetry_disabled = current_disabled
+        # A FULL deployment with no stored signing secret can't sign its
+        # heartbeats, so force a re-registration to (re)obtain one rather
+        # than letting it emit heartbeats the receiver will reject.
+        missing_secret_for_full = (
+            desired_kind == DeploymentTelemetryState.RegistrationKind.FULL
+            and not state.instance_secret
+        )
         needs_registration = (
-            state.registered_at is None or state.registration_kind != desired_kind
+            state.registered_at is None
+            or state.registration_kind != desired_kind
+            or missing_secret_for_full
         )
         if not needs_registration:
             state.save(update_fields=["telemetry_disabled", "updated_at"])
@@ -161,6 +121,7 @@ def _complete_registration(
     instance_id: UUID,
     registration_kind: str,
     payload: dict,
+    instance_secret: str | None = None,
 ) -> None:
     now = django_timezone.now()
     with transaction.atomic():
@@ -178,19 +139,24 @@ def _complete_registration(
         state.registration_metadata = payload
         state.last_registration_error = ""
         state.last_reported_version = payload["version"]
-        state.save(
-            update_fields=[
-                "telemetry_disabled",
-                "registered_at",
-                "registration_kind",
-                "registration_status",
-                "registration_claimed_at",
-                "registration_metadata",
-                "last_registration_error",
-                "last_reported_version",
-                "updated_at",
-            ]
-        )
+        update_fields = [
+            "telemetry_disabled",
+            "registered_at",
+            "registration_kind",
+            "registration_status",
+            "registration_claimed_at",
+            "registration_metadata",
+            "last_registration_error",
+            "last_reported_version",
+            "updated_at",
+        ]
+        # The receiver mints the signing secret once and returns it on that
+        # registration. Persist it; never overwrite a stored secret with an
+        # empty value (re-registrations don't re-issue it).
+        if instance_secret and not state.instance_secret:
+            state.instance_secret = instance_secret
+            update_fields.append("instance_secret")
+        state.save(update_fields=update_fields)
 
 
 def ensure_registration() -> tuple[bool, UUID | None]:
@@ -217,12 +183,31 @@ def ensure_registration() -> tuple[bool, UUID | None]:
                 _release_registration_claim(state.instance_id)
                 return False, state.instance_id
 
-        if not _post_payload("/telemetry/register/", payload):
+        # Registration is unsigned: it's the TOFU first contact that
+        # establishes the secret. The response carries the minted secret.
+        response = TelemetryClient().post("/telemetry/register/", payload)
+        if not response.ok:
             _release_registration_claim(state.instance_id, "request_failed")
             return False, state.instance_id
 
-        _complete_registration(state.instance_id, registration_kind, payload)
+        issued_secret = (response.data or {}).get("instance_secret")
+        # A FULL registration must come away with a signing secret or every
+        # heartbeat it sends will be rejected (the receiver requires a valid
+        # HMAC). If the response carried none and we don't already have one
+        # stored, treat the registration as incomplete and retry next cycle
+        # rather than marking ourselves registered and emitting unsigned
+        # heartbeats forever.
         is_full = registration_kind == DeploymentTelemetryState.RegistrationKind.FULL
+        if is_full and not issued_secret and not state.instance_secret:
+            _release_registration_claim(state.instance_id, "missing_secret")
+            return False, state.instance_id
+
+        _complete_registration(
+            state.instance_id,
+            registration_kind,
+            payload,
+            instance_secret=issued_secret,
+        )
         return is_full, state.instance_id
     except Exception:
         logger.warning("deployment_telemetry_registration_failed")
@@ -230,10 +215,51 @@ def ensure_registration() -> tuple[bool, UUID | None]:
         return False, state.instance_id
 
 
+_disclosure_lock = threading.Lock()
+_disclosure_logged = False
+
+
+def _log_disclosure() -> None:
+    """Emit a once-per-process, human-readable disclosure of what telemetry
+    sends.
+
+    An opt-out feature that ships user emails to a CRM must be visible in
+    the logs of any operator who reads them, not only in the docs. This is
+    driven from the scheduled telemetry cycle (so an install with no new
+    signups still logs it) as well as the signup path, and guarded so it's
+    logged exactly once per process rather than on every signup or cycle.
+    """
+    global _disclosure_logged
+    with _disclosure_lock:
+        if _disclosure_logged:
+            return
+        _disclosure_logged = True
+
+    if telemetry_is_disabled():
+        logger.info(
+            "deployment_telemetry_disclosure",
+            mode="opt_out",
+            sends="one minimal registration ping (instance id + version); "
+            "no emails, no heartbeats",
+            opt_out_env="FUTURE_AGI_TELEMETRY_DISABLED=true (already set)",
+        )
+    else:
+        logger.info(
+            "deployment_telemetry_disclosure",
+            mode="enabled",
+            sends="registration (active user emails + domains) and periodic "
+            "usage-count heartbeats; never usage content",
+            url=get_telemetry_url(),
+            opt_out_env="FUTURE_AGI_TELEMETRY_DISABLED=true",
+        )
+
+
 def attempt_registration() -> bool:
     close_old_connections()
     try:
         try:
+            if is_self_hosted_deployment():
+                _log_disclosure()
             is_full, _ = ensure_registration()
             return is_full
         except Exception:
@@ -284,6 +310,12 @@ def _record_heartbeat_success(payload: dict) -> None:
 
 def _flush_buffer() -> tuple[int, bool]:
     sent_count = 0
+    # The signing secret is per-instance (single singleton state row), so
+    # load it once and reuse the signed client for every buffered window.
+    secret = DeploymentTelemetryState.objects.values_list(
+        "instance_secret", flat=True
+    ).first()
+    client = TelemetryClient(secret=secret or "")
     for path in pending_windows():
         payload = load_window(path)
         if payload is None:
@@ -297,7 +329,7 @@ def _flush_buffer() -> tuple[int, bool]:
             continue
 
         _record_heartbeat_attempt(instance_id)
-        if not _post_payload("/telemetry/heartbeat/", payload):
+        if not client.post("/telemetry/heartbeat/", payload).ok:
             return sent_count, False
 
         _record_heartbeat_success(payload)
@@ -309,6 +341,10 @@ def _flush_buffer() -> tuple[int, bool]:
 def _run_telemetry_cycle() -> dict:
     if not is_self_hosted_deployment():
         return {"skipped": True, "reason": "cloud"}
+
+    # Disclose from the scheduled cycle too (deduped once per process), so an
+    # install that never sees a fresh signup still logs what telemetry sends.
+    _log_disclosure()
 
     registration_is_full, instance_id = ensure_registration()
     if telemetry_is_disabled():

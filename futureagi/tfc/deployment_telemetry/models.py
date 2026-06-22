@@ -16,6 +16,10 @@ class DeploymentTelemetryState(models.Model):
 
     singleton_key = models.IntegerField(default=1, unique=True)
     instance_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    # Per-instance HMAC signing secret issued by the receiver on first
+    # registration (TOFU). Persisted here for the instance's lifetime and
+    # used to sign heartbeat bodies so the receiver can authenticate them.
+    instance_secret = models.CharField(max_length=64, blank=True, default="")
     telemetry_disabled = models.BooleanField(default=False)
     registered_at = models.DateTimeField(null=True, blank=True)
     registration_kind = models.CharField(

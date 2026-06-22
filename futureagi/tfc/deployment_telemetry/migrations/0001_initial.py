@@ -26,6 +26,10 @@ class Migration(migrations.Migration):
                     "instance_id",
                     models.UUIDField(default=uuid.uuid4, editable=False, unique=True),
                 ),
+                (
+                    "instance_secret",
+                    models.CharField(blank=True, default="", max_length=64),
+                ),
                 ("telemetry_disabled", models.BooleanField(default=False)),
                 ("registered_at", models.DateTimeField(blank=True, null=True)),
                 (

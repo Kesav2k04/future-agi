@@ -5,7 +5,7 @@ import Iconify from "src/components/iconify";
 import PropTypes from "prop-types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "react-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import axios, { endpoints } from "src/utils/axios";
 import { enqueueSnackbar } from "src/components/snackbar";
 import { ExtractJsonKeyValidationSchema } from "./validation";

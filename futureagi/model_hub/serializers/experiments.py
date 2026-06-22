@@ -1,6 +1,6 @@
 # serializers.py
 from rest_framework import serializers
-from tfc.utils.serializer_fields import JsonValueField
+from tfc.utils.serializer_fields import JsonValueField, StringOrObjectField
 
 from agentic_eval.core_evals.run_prompt.litellm_models import LiteLLMModelManager
 from model_hub.models.choices import ProviderLogoUrls
@@ -391,6 +391,16 @@ class EvalMetricEntrySerializer(serializers.Serializer):
     )
 
 
+class MessageItemSerializer(serializers.Serializer):
+    """A single prompt message: role + content (string or content-parts array)."""
+
+    role = serializers.CharField()
+    content = JsonValueField()
+    name = serializers.CharField(required=False)
+    tool_calls = JsonValueField(required=False)
+    tool_call_id = serializers.CharField(required=False)
+
+
 class PromptConfigEntrySerializer(serializers.Serializer):
     """
     Validates a single entry in the prompt_config array.
@@ -410,15 +420,16 @@ class PromptConfigEntrySerializer(serializers.Serializer):
     agent_id = serializers.UUIDField(required=False, allow_null=True)
     agent_version = serializers.UUIDField(required=False, allow_null=True)
 
-    # Model config (prompt entries only — single string or ModelSpec dict)
-    model = JsonValueField(required=False, default=None)
+    # Model config (prompt entries only — plain model name string or ModelSpec dict)
+    model = StringOrObjectField(required=False, default=None)
+    # Provider-specific params — keys vary per provider so shape is genuinely open
     model_params = JsonValueField(required=False, default=dict)
     configuration = JsonValueField(required=False, default=dict)
     output_format = serializers.CharField(required=False, default="string")
 
     # Inline messages (tts/stt/image experiments)
     messages = serializers.ListField(
-        child=JsonValueField(),
+        child=MessageItemSerializer(),
         required=False,
     )
 

@@ -80676,8 +80676,8 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "model": {
           "title": "Model",
           "type": "object",
-          "x-json-value": true,
-          "description": "Any valid JSON value."
+          "x-string-or-object": true,
+          "description": "String or JSON object."
         },
         "model_params": {
           "title": "Model params",
@@ -80702,9 +80702,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "messages": {
           "type": "array",
           "items": {
-            "type": "object",
-            "x-json-value": true,
-            "description": "Any valid JSON value."
+            "$ref": "#/definitions/MessageItem"
           }
         },
         "voice_input_column_id": {
@@ -93113,6 +93111,42 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Overall rating",
           "type": "number",
           "x-nullable": true
+        }
+      }
+    },
+    "MessageItem": {
+      "required": [
+        "role",
+        "content"
+      ],
+      "type": "object",
+      "properties": {
+        "role": {
+          "title": "Role",
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "title": "Content",
+          "type": "object",
+          "x-json-value": true,
+          "description": "Any valid JSON value."
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "tool_calls": {
+          "title": "Tool calls",
+          "type": "object",
+          "x-json-value": true,
+          "description": "Any valid JSON value."
+        },
+        "tool_call_id": {
+          "title": "Tool call id",
+          "type": "string",
+          "minLength": 1
         }
       }
     },

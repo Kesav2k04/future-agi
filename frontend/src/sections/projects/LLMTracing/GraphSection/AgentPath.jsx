@@ -466,6 +466,9 @@ const AgentPathInner = ({
   const chartHeight = isFullscreen ? Math.max(containerHeight, 320) : 200;
   const chartWidth = Math.max(320, Math.round(containerWidth * zoom));
   const scaledChartHeight = Math.max(120, Math.round(chartHeight * zoom));
+  const controlInset = isFullscreen ? 24 : 8;
+  const collapsedToolbarHeight = controlInset * 2 + 28;
+  const showToolbar = isHovering || isFullscreen || isCollapsed;
   const btnSx = {
     p: 0.5,
     borderRadius: 0,
@@ -485,19 +488,19 @@ const AgentPathInner = ({
         flexDirection: "column",
         position: "relative",
         bgcolor: "background.paper",
-        overflow: "hidden",
+        overflow: isCollapsed ? "visible" : "hidden",
         ...(isFullscreen
-          ? { height: "100%", width: "100%" }
-          : { mx: 2, my: 1 }),
+          ? { height: isCollapsed ? collapsedToolbarHeight : "100%", width: "100%" }
+          : { mx: 2, my: 1, minHeight: isCollapsed ? collapsedToolbarHeight : undefined }),
       }}
     >
       {/* Zoom controls, top right (matches AgentGraph) */}
-      {(isHovering || isFullscreen) && (
+      {showToolbar && (
         <Box
           sx={{
             position: "absolute",
-            top: isFullscreen ? 24 : 8,
-            right: isFullscreen ? 24 : 8,
+            top: controlInset,
+            right: controlInset,
             zIndex: isFullscreen ? (t) => t.zIndex.modal + 1 : 10,
             display: "flex",
             bgcolor: "background.paper",

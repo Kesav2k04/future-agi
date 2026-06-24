@@ -10453,6 +10453,51 @@ export const ExperimentCreateV2ApiExperimentType = {
 } as const;
 
 /**
+ * String or JSON object.
+ */
+export type PromptModelParamsApiResponseFormat = { [key: string]: unknown };
+
+/**
+ * Any valid JSON value.
+ */
+export type PromptModelParamsApiToolsItem = { [key: string]: unknown };
+
+export interface PromptModelParamsApi {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  /** String or JSON object. */
+  response_format?: PromptModelParamsApiResponseFormat;
+  tools?: PromptModelParamsApiToolsItem[];
+  tool_choice?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Any valid JSON value.
+ */
+export type PromptConfigurationApiToolsItem = { [key: string]: unknown };
+
+/**
+ * Any valid JSON value.
+ */
+export type PromptConfigurationApiModelDetail = { [key: string]: unknown };
+
+export interface PromptConfigurationApi {
+  tool_choice?: string;
+  template_format?: string;
+  tools?: PromptConfigurationApiToolsItem[];
+  output_format?: string;
+  model_type?: string;
+  /** Any valid JSON value. */
+  model_detail?: PromptConfigurationApiModelDetail;
+  voice_id?: string;
+  [key: string]: unknown;
+}
+
+/**
  * Plain text string or array of content-part objects.
  */
 export type MessageItemApiContent = { [key: string]: unknown };
@@ -10480,16 +10525,6 @@ export interface MessageItemApi {
  */
 export type PromptConfigEntryApiModel = { [key: string]: unknown };
 
-/**
- * Row with dynamic columns — cell values are any valid JSON.
- */
-export type PromptConfigEntryApiModelParams = {[key: string]: unknown};
-
-/**
- * Row with dynamic columns — cell values are any valid JSON.
- */
-export type PromptConfigEntryApiConfiguration = {[key: string]: unknown};
-
 export interface PromptConfigEntryApi {
   id?: string;
   name?: string;
@@ -10499,10 +10534,8 @@ export interface PromptConfigEntryApi {
   agent_version?: string;
   /** String or JSON object. */
   model?: PromptConfigEntryApiModel;
-  /** Row with dynamic columns — cell values are any valid JSON. */
-  model_params?: PromptConfigEntryApiModelParams;
-  /** Row with dynamic columns — cell values are any valid JSON. */
-  configuration?: PromptConfigEntryApiConfiguration;
+  model_params?: PromptModelParamsApi;
+  configuration?: PromptConfigurationApi;
   /** @minLength 1 */
   output_format?: string;
   messages?: MessageItemApi[];

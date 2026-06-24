@@ -20220,8 +20220,8 @@ export const ModelHubExperimentsReRunCreateResponse = zod.object({
 export const modelHubExperimentsV2CreateBodyNameMax = 255;
 
 export const modelHubExperimentsV2CreateBodyExperimentTypeDefault = `llm`;
-export const modelHubExperimentsV2CreateBodyPromptConfigItemModelParamsDefault = {  };
-export const modelHubExperimentsV2CreateBodyPromptConfigItemConfigurationDefault = {  };
+export const modelHubExperimentsV2CreateBodyPromptConfigItemModelParamsDefault = { temperature: null, max_tokens: null, top_p: null, frequency_penalty: null, presence_penalty: null, response_format: null, tool_choice: null };
+export const modelHubExperimentsV2CreateBodyPromptConfigItemConfigurationDefault = { tool_choice: null, model_detail: null, voice_id: null };
 export const modelHubExperimentsV2CreateBodyPromptConfigItemOutputFormatDefault = `string`;
 
 
@@ -20249,8 +20249,33 @@ export const ModelHubExperimentsV2CreateBody = zod.object({
   "model": zod.object({
 
 }).passthrough().optional().describe('String or JSON object.'),
-  "model_params": zod.record(zod.string(), zod.unknown()).default(modelHubExperimentsV2CreateBodyPromptConfigItemModelParamsDefault).describe('Row with dynamic columns — cell values are any valid JSON.'),
-  "configuration": zod.record(zod.string(), zod.unknown()).default(modelHubExperimentsV2CreateBodyPromptConfigItemConfigurationDefault).describe('Row with dynamic columns — cell values are any valid JSON.'),
+  "model_params": zod.object({
+  "temperature": zod.number().optional(),
+  "max_tokens": zod.number().optional(),
+  "top_p": zod.number().optional(),
+  "frequency_penalty": zod.number().optional(),
+  "presence_penalty": zod.number().optional(),
+  "response_format": zod.object({
+
+}).passthrough().optional().describe('String or JSON object.'),
+  "tools": zod.array(zod.object({
+
+}).passthrough().describe('Any valid JSON value.')).optional(),
+  "tool_choice": zod.string().optional()
+}).default(modelHubExperimentsV2CreateBodyPromptConfigItemModelParamsDefault),
+  "configuration": zod.object({
+  "tool_choice": zod.string().optional(),
+  "template_format": zod.string().optional(),
+  "tools": zod.array(zod.object({
+
+}).passthrough().describe('Any valid JSON value.')).optional(),
+  "output_format": zod.string().optional(),
+  "model_type": zod.string().optional(),
+  "model_detail": zod.object({
+
+}).passthrough().optional().describe('Any valid JSON value.'),
+  "voice_id": zod.string().optional()
+}).default(modelHubExperimentsV2CreateBodyPromptConfigItemConfigurationDefault),
   "output_format": zod.string().min(1).default(modelHubExperimentsV2CreateBodyPromptConfigItemOutputFormatDefault),
   "messages": zod.array(zod.object({
   "role": zod.string().min(1),
@@ -20442,8 +20467,8 @@ export const ModelHubExperimentsV2UpdateParams = zod.object({
   "experiment_id": zod.string()
 })
 
-export const modelHubExperimentsV2UpdateBodyPromptConfigItemModelParamsDefault = {  };
-export const modelHubExperimentsV2UpdateBodyPromptConfigItemConfigurationDefault = {  };
+export const modelHubExperimentsV2UpdateBodyPromptConfigItemModelParamsDefault = { temperature: null, max_tokens: null, top_p: null, frequency_penalty: null, presence_penalty: null, response_format: null, tool_choice: null };
+export const modelHubExperimentsV2UpdateBodyPromptConfigItemConfigurationDefault = { tool_choice: null, model_detail: null, voice_id: null };
 export const modelHubExperimentsV2UpdateBodyPromptConfigItemOutputFormatDefault = `string`;
 
 
@@ -20468,8 +20493,33 @@ export const ModelHubExperimentsV2UpdateBody = zod.object({
   "model": zod.object({
 
 }).passthrough().optional().describe('String or JSON object.'),
-  "model_params": zod.record(zod.string(), zod.unknown()).default(modelHubExperimentsV2UpdateBodyPromptConfigItemModelParamsDefault).describe('Row with dynamic columns — cell values are any valid JSON.'),
-  "configuration": zod.record(zod.string(), zod.unknown()).default(modelHubExperimentsV2UpdateBodyPromptConfigItemConfigurationDefault).describe('Row with dynamic columns — cell values are any valid JSON.'),
+  "model_params": zod.object({
+  "temperature": zod.number().optional(),
+  "max_tokens": zod.number().optional(),
+  "top_p": zod.number().optional(),
+  "frequency_penalty": zod.number().optional(),
+  "presence_penalty": zod.number().optional(),
+  "response_format": zod.object({
+
+}).passthrough().optional().describe('String or JSON object.'),
+  "tools": zod.array(zod.object({
+
+}).passthrough().describe('Any valid JSON value.')).optional(),
+  "tool_choice": zod.string().optional()
+}).default(modelHubExperimentsV2UpdateBodyPromptConfigItemModelParamsDefault),
+  "configuration": zod.object({
+  "tool_choice": zod.string().optional(),
+  "template_format": zod.string().optional(),
+  "tools": zod.array(zod.object({
+
+}).passthrough().describe('Any valid JSON value.')).optional(),
+  "output_format": zod.string().optional(),
+  "model_type": zod.string().optional(),
+  "model_detail": zod.object({
+
+}).passthrough().optional().describe('Any valid JSON value.'),
+  "voice_id": zod.string().optional()
+}).default(modelHubExperimentsV2UpdateBodyPromptConfigItemConfigurationDefault),
   "output_format": zod.string().min(1).default(modelHubExperimentsV2UpdateBodyPromptConfigItemOutputFormatDefault),
   "messages": zod.array(zod.object({
   "role": zod.string().min(1),

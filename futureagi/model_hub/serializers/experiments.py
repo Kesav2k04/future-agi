@@ -1,7 +1,6 @@
 # serializers.py
 from rest_framework import serializers
 from tfc.utils.serializer_fields import (
-    AnyValueDictField,
     JsonValueField,
     StringOrArrayField,
     StringOrObjectField,
@@ -401,12 +400,68 @@ class MessageItemSerializer(serializers.Serializer):
 
     role = serializers.CharField()
     # content is either a plain text string or an array of content-part objects
-    # (OpenAI multi-part format). StringOrArrayField emits oneOf(string, array)
-    # so orval generates the correct union type instead of narrowing to object.
+    # (OpenAI multi-part format). StringOrArrayField emits x-string-or-array
+    # so orval generates z.union([z.string(), z.array(z.unknown())]) — the
+    # correct union type instead of narrowing to object.
     content = StringOrArrayField()
     name = serializers.CharField(required=False)
     tool_calls = JsonValueField(required=False)
     tool_call_id = serializers.CharField(required=False)
+
+
+class _ExtraFieldsMixin:
+    """Pass unknown keys through to_internal_value unchanged.
+
+    Provides the typed-keys-plus-escape-hatch pattern: declared fields are
+    validated; any additional provider-specific key is accepted as-is.
+    """
+
+    def to_internal_value(self, data):
+        validated = super().to_internal_value(data)
+        for key, value in data.items():
+            if key not in self.fields:
+                validated[key] = value
+        return validated
+
+
+class PromptModelParamsSerializer(_ExtraFieldsMixin, serializers.Serializer):
+    """Known LLM sampling parameters for a prompt config entry.
+
+    Typed keys are validated; any additional provider-specific key is accepted
+    via _ExtraFieldsMixin.  The swagger schema adds additionalProperties:{}
+    so the generated contract is Record<string, unknown> for the extra keys.
+    """
+
+    temperature = serializers.FloatField(required=False, allow_null=True)
+    max_tokens = serializers.IntegerField(required=False, allow_null=True)
+    top_p = serializers.FloatField(required=False, allow_null=True)
+    frequency_penalty = serializers.FloatField(required=False, allow_null=True)
+    presence_penalty = serializers.FloatField(required=False, allow_null=True)
+    response_format = StringOrObjectField(required=False, allow_null=True)
+    tools = serializers.ListField(child=JsonValueField(), required=False)
+    tool_choice = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    class Meta:
+        # additionalProperties:{} lets unknown provider keys through in the schema
+        swagger_schema_fields = {"additionalProperties": {}}
+
+
+class PromptConfigurationSerializer(_ExtraFieldsMixin, serializers.Serializer):
+    """Additional configuration for a prompt config entry.
+
+    Typed keys are validated; any additional key is accepted via _ExtraFieldsMixin.
+    """
+
+    tool_choice = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    template_format = serializers.CharField(required=False, allow_blank=True)
+    tools = serializers.ListField(child=JsonValueField(), required=False)
+    output_format = serializers.CharField(required=False, allow_blank=True)
+    model_type = serializers.CharField(required=False, allow_blank=True)
+    model_detail = JsonValueField(required=False, allow_null=True)
+    voice_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    class Meta:
+        swagger_schema_fields = {"additionalProperties": {}}
 
 
 class PromptConfigEntrySerializer(serializers.Serializer):
@@ -430,12 +485,9 @@ class PromptConfigEntrySerializer(serializers.Serializer):
 
     # Model config (prompt entries only — plain model name string or ModelSpec dict)
     model = StringOrObjectField(required=False, default=None)
-    # Provider-specific params and configuration: keys vary by provider so the
-    # shape is genuinely open, but values must be valid JSON (not raw any).
-    # AnyValueDictField emits additionalProperties:{} → Record<string, unknown>
-    # so orval enforces "must be a valid object" while accepting any value types.
-    model_params = AnyValueDictField(required=False, default=dict)
-    configuration = AnyValueDictField(required=False, default=dict)
+    # Typed known keys + escape hatch for provider-specific extras
+    model_params = PromptModelParamsSerializer(required=False, default=dict)
+    configuration = PromptConfigurationSerializer(required=False, default=dict)
     output_format = serializers.CharField(required=False, default="string")
 
     # Inline messages (tts/stt/image experiments)

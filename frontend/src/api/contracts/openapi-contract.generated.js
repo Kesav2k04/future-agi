@@ -80680,20 +80680,10 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "description": "String or JSON object."
         },
         "model_params": {
-          "title": "Model params",
-          "type": "object",
-          "additionalProperties": {},
-          "default": {},
-          "x-json-value": true,
-          "description": "Row with dynamic columns — cell values are any valid JSON."
+          "$ref": "#/definitions/PromptModelParams"
         },
         "configuration": {
-          "title": "Configuration",
-          "type": "object",
-          "additionalProperties": {},
-          "default": {},
-          "x-json-value": true,
-          "description": "Row with dynamic columns — cell values are any valid JSON."
+          "$ref": "#/definitions/PromptConfiguration"
         },
         "output_format": {
           "title": "Output format",
@@ -93151,6 +93141,114 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "minLength": 1
         }
       }
+    },
+    "PromptConfiguration": {
+      "type": "object",
+      "properties": {
+        "tool_choice": {
+          "title": "Tool choice",
+          "type": "string",
+          "x-nullable": true
+        },
+        "template_format": {
+          "title": "Template format",
+          "type": "string"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-json-value": true,
+            "description": "Any valid JSON value."
+          }
+        },
+        "output_format": {
+          "title": "Output format",
+          "type": "string"
+        },
+        "model_type": {
+          "title": "Model type",
+          "type": "string"
+        },
+        "model_detail": {
+          "title": "Model detail",
+          "type": "object",
+          "x-nullable": true,
+          "x-json-value": true,
+          "description": "Any valid JSON value."
+        },
+        "voice_id": {
+          "title": "Voice id",
+          "type": "string",
+          "x-nullable": true
+        }
+      },
+      "default": {
+        "tool_choice": null,
+        "model_detail": null,
+        "voice_id": null
+      },
+      "additionalProperties": {}
+    },
+    "PromptModelParams": {
+      "type": "object",
+      "properties": {
+        "temperature": {
+          "title": "Temperature",
+          "type": "number",
+          "x-nullable": true
+        },
+        "max_tokens": {
+          "title": "Max tokens",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "top_p": {
+          "title": "Top p",
+          "type": "number",
+          "x-nullable": true
+        },
+        "frequency_penalty": {
+          "title": "Frequency penalty",
+          "type": "number",
+          "x-nullable": true
+        },
+        "presence_penalty": {
+          "title": "Presence penalty",
+          "type": "number",
+          "x-nullable": true
+        },
+        "response_format": {
+          "title": "Response format",
+          "type": "object",
+          "x-nullable": true,
+          "x-string-or-object": true,
+          "description": "String or JSON object."
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-json-value": true,
+            "description": "Any valid JSON value."
+          }
+        },
+        "tool_choice": {
+          "title": "Tool choice",
+          "type": "string",
+          "x-nullable": true
+        }
+      },
+      "default": {
+        "temperature": null,
+        "max_tokens": null,
+        "top_p": null,
+        "frequency_penalty": null,
+        "presence_penalty": null,
+        "response_format": null,
+        "tool_choice": null
+      },
+      "additionalProperties": {}
     },
     "ExperimentComparisonDatasetMetric": {
       "required": [

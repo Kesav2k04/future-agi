@@ -4,11 +4,17 @@ Called when org configs are created, activated, or deleted.
 """
 
 import copy
+from types import UnionType
+from typing import Union, get_args, get_origin
 
 import structlog
 from django.conf import settings as django_settings
+from pydantic import BaseModel
 
-from agentcc.contracts.gateway_admin import OrgConfig as GatewayOrgConfig
+from agentcc.contracts.gateway_admin import (
+    OrgConfig as GatewayOrgConfig,
+    ProviderConfig as GatewayProviderConfig,
+)
 from agentcc.models import AgentccOrgConfig
 from agentcc.org_config_defaults import normalize_cache_config
 from agentcc.services.gateway_client import GatewayClientError, get_gateway_client
@@ -53,6 +59,8 @@ _RULE_PROVIDER_DEFAULTS = {
     "mcp-security": "mcp_security",
 }
 
+_PROVIDER_FIELDS = frozenset(GatewayProviderConfig.model_fields)
+
 
 def _normalize_eval_ids(cfg):
     """
@@ -86,8 +94,8 @@ def _inject_guardrail_credentials(checks):
     "__encrypted__" sentinel values with actual secrets from the policy's
     encrypted_check_configs blob.
     """
-    from integrations.services.credentials import CredentialManager
     from agentcc.models.guardrail_policy import AgentccGuardrailPolicy
+    from integrations.services.credentials import CredentialManager
 
     ENCRYPTED_SENTINEL = "__encrypted__"
 
@@ -330,8 +338,8 @@ def _inject_fi_credentials(checks, org_id):
 
 def _assemble_providers(org_id):
     """Build providers dict from AgentccProviderCredential rows for an org."""
-    from integrations.services.credentials import CredentialManager
     from agentcc.models.provider_credential import AgentccProviderCredential
+    from integrations.services.credentials import CredentialManager
 
     credentials = AgentccProviderCredential.no_workspace_objects.filter(
         organization_id=org_id,
@@ -349,19 +357,90 @@ def _assemble_providers(org_id):
                 provider=cred.provider_name,
             )
             continue
-        providers[cred.provider_name] = {
+        raw = {
             **cred.extra_config,
+            **decrypted,
             "api_key": decrypted.get("api_key", ""),
-            **{k: v for k, v in decrypted.items() if k != "api_key"},
             "base_url": cred.base_url,
             "api_format": cred.api_format,
             "models": cred.models_list,
             "enabled": True,
-            "default_timeout": f"{cred.default_timeout_seconds}s",
+            "timeout": cred.default_timeout_seconds,
             "max_concurrent": cred.max_concurrent,
             "conn_pool_size": cred.conn_pool_size,
         }
+        providers[cred.provider_name] = {
+            k: v for k, v in raw.items() if k in _PROVIDER_FIELDS
+        }
     return providers
+
+
+def _snake_to_camel(value):
+    head, *tail = value.split("_")
+    return head + "".join(part[:1].upper() + part[1:] for part in tail)
+
+
+def _unwrap_optional(annotation):
+    origin = get_origin(annotation)
+    if origin not in (Union, UnionType):
+        return annotation
+
+    args = [arg for arg in get_args(annotation) if arg is not type(None)]
+    return args[0] if len(args) == 1 else annotation
+
+
+def _contract_model_type(annotation):
+    annotation = _unwrap_optional(annotation)
+    return (
+        annotation
+        if isinstance(annotation, type) and issubclass(annotation, BaseModel)
+        else None
+    )
+
+
+def _normalize_contract_value(value, annotation):
+    annotation = _unwrap_optional(annotation)
+    model_type = _contract_model_type(annotation)
+    if model_type is not None:
+        return _normalize_contract_aliases(value, model_type)
+
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+    if origin is list and args and isinstance(value, list):
+        return [_normalize_contract_value(item, args[0]) for item in value]
+    if origin is dict and len(args) == 2 and isinstance(value, dict):
+        return {
+            key: _normalize_contract_value(item, args[1]) for key, item in value.items()
+        }
+    return value
+
+
+def _normalize_contract_aliases(data, contract_model):
+    if not isinstance(data, dict):
+        return data
+
+    result = {**data}
+    for field_name, field in contract_model.model_fields.items():
+        aliases = []
+        if field.alias and field.alias != field_name:
+            aliases.append(field.alias)
+        camel_alias = _snake_to_camel(field_name)
+        if camel_alias != field_name and camel_alias not in aliases:
+            aliases.append(camel_alias)
+
+        source_key = field_name if field_name in data else None
+        if source_key is None:
+            source_key = next((alias for alias in aliases if alias in data), None)
+
+        if source_key is not None:
+            result[field_name] = _normalize_contract_value(
+                data[source_key], field.annotation
+            )
+
+        for alias in aliases:
+            result.pop(alias, None)
+
+    return result
 
 
 def _normalize_alerting(alerting):
@@ -498,6 +577,7 @@ def _build_payload(org_id, config):
         "model_database": config.model_database,
         "model_map": config.model_map,
     }
+    payload = _normalize_contract_aliases(payload, GatewayOrgConfig)
     return GatewayOrgConfig.model_validate(payload).model_dump(
         by_alias=True,
         exclude_none=True,

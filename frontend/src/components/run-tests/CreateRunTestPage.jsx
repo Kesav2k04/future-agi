@@ -807,8 +807,8 @@ const CreateRunTestPage = ({ open, onClose }) => {
       });
       return;
     }
-    const snapshot = agentVersionDetails?.configurationSnapshot;
-    if (!hasToolCallCredentials(snapshot) && value) {
+    const snapshot = agentVersionDetails?.configuration_snapshot;
+    if (!hasToolCallCredentials(agentVersionDetails, snapshot) && value) {
       setOpenUpdateKeysDialog(true);
       return;
     }

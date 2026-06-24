@@ -3,11 +3,9 @@ import ApexCharts from "apexcharts";
 import { format } from "date-fns";
 import {
   Box,
-  Button,
   Chip,
-  IconButton,
+  Skeleton,
   Stack,
-  Tooltip,
   Typography,
   alpha,
   useTheme,
@@ -17,7 +15,11 @@ import Iconify from "src/components/iconify";
 import AgentGraph from "src/sections/projects/LLMTracing/GraphSection/AgentGraph";
 import { buildTraceGraph } from "src/components/traceDetail/buildTraceGraph";
 import { useGetTraceDetail } from "src/api/project/trace-detail";
+import { useGetProjectDetails } from "src/api/project/project-detail";
+import { PROJECT_SOURCE } from "src/utils/constants";
+import TraceVoicePanel from "./TraceVoicePanel";
 import {
+  DEEP_ANALYSIS_STATUS,
   useErrorFeedDeepAnalysis,
   useErrorFeedOverview,
 } from "src/api/errorFeed/error-feed";
@@ -397,6 +399,7 @@ function EventsUsersChart({
   flat = false,
   data = null,
   deployMarkers: deployMarkersProp = null,
+  loading = false,
 }) {
   const chartRef = useRef(null);
   const theme = useTheme();
@@ -588,21 +591,33 @@ function EventsUsersChart({
                 {item.label}
               </Typography>
             </Stack>
-            <Typography
-              fontSize="13px"
-              fontWeight={700}
-              color="text.primary"
-              sx={{ fontFeatureSettings: "'tnum'", lineHeight: 1 }}
-            >
-              {item.total.toLocaleString()}
-            </Typography>
+            {loading ? (
+              <Skeleton width={28} height={14} sx={{ borderRadius: "3px" }} />
+            ) : (
+              <Typography
+                fontSize="13px"
+                fontWeight={700}
+                color="text.primary"
+                sx={{ fontFeatureSettings: "'tnum'", lineHeight: 1 }}
+              >
+                {item.total.toLocaleString()}
+              </Typography>
+            )}
           </Stack>
         ))}
       </Stack>
 
       {/* Chart — full width */}
       <Box sx={{ flex: 1, minWidth: 0, px: 0.5 }}>
-        <div ref={chartRef} style={{ width: "100%" }} />
+        {loading ? (
+          <Skeleton
+            variant="rectangular"
+            height={64}
+            sx={{ mx: 0.5, my: 1, borderRadius: "4px" }}
+          />
+        ) : (
+          <div ref={chartRef} style={{ width: "100%" }} />
+        )}
       </Box>
     </Box>
   );
@@ -628,12 +643,43 @@ EventsUsersChart.propTypes = {
   flat: PropTypes.bool,
   data: PropTypes.array,
   deployMarkers: PropTypes.array,
+  loading: PropTypes.bool,
 };
 
 // ── Trace list (left panel) ───────────────────────────────────────────────────
-function TraceList({ traces, selectedIndex, onSelect }) {
+function TraceList({ traces, selectedIndex, onSelect, loading = false }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+
+  if (loading) {
+    return (
+      <Stack gap={0}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Box
+            key={i}
+            sx={{
+              px: 1.5,
+              py: 1.1,
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              borderLeft: "3px solid transparent",
+            }}
+          >
+            <Stack direction="row" alignItems="center" gap={0.75} mb={0.4}>
+              <Skeleton width="55%" height={11} sx={{ borderRadius: "3px" }} />
+              <Box sx={{ flex: 1 }} />
+              <Skeleton width={36} height={10} sx={{ borderRadius: "3px" }} />
+            </Stack>
+            <Stack direction="row" gap={1.5}>
+              <Skeleton width={50} height={10} sx={{ borderRadius: "3px" }} />
+              <Skeleton width={42} height={10} sx={{ borderRadius: "3px" }} />
+              <Skeleton width={34} height={10} sx={{ borderRadius: "3px" }} />
+            </Stack>
+          </Box>
+        ))}
+      </Stack>
+    );
+  }
 
   return (
     <Stack gap={0}>
@@ -747,24 +793,31 @@ function TraceList({ traces, selectedIndex, onSelect }) {
   );
 }
 TraceList.propTypes = {
+  loading: PropTypes.bool,
   traces: PropTypes.array.isRequired,
   selectedIndex: PropTypes.number.isRequired,
   onSelect: PropTypes.func.isRequired,
 };
 
-function PatternSummary({ summary }) {
+function PatternSummary({ summary, clusterId }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const insights = summary?.insights ?? [];
 
   if (!insights.length) {
+    // Cluster ID prefix is canonical: E-* = eval-source, S-* = scanner-source.
+    const isEvalCluster =
+      typeof clusterId === "string" && clusterId.startsWith("E-");
+    const message = isEvalCluster
+      ? "No eval scores aggregated yet — this cluster's evaluations are still landing."
+      : "Not enough data yet — waiting for more scanner results.";
     return (
       <Typography
         fontSize="11px"
         color="text.disabled"
         sx={{ py: 2, textAlign: "center" }}
       >
-        Not enough data yet — waiting for more scanner results.
+        {message}
       </Typography>
     );
   }
@@ -776,7 +829,7 @@ function PatternSummary({ summary }) {
 
   return (
     <Box
-      sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1 }}
+      sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, overflowX: "auto" }}
     >
       {slots.map((insight, i) => (
         <Box
@@ -828,6 +881,7 @@ PatternSummary.propTypes = {
       }),
     ),
   }),
+  clusterId: PropTypes.string,
 };
 
 // ── Agent flow from real span tree ────────────────────────────────────────────
@@ -872,6 +926,7 @@ function TraceAgentFlow({ traceId }) {
   );
 }
 TraceAgentFlow.propTypes = { traceId: PropTypes.string };
+
 
 // ── Trace evidence reel (fail / pass tabs) ───────────────────────────────────
 
@@ -1552,7 +1607,12 @@ export default function OverviewTab({ _error: currentError }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const clusterId = currentError?.clusterId;
-  const { data: overview } = useErrorFeedOverview(clusterId);
+  const projectId = currentError?.projectId;
+  const { data: projectDetail } = useGetProjectDetails(projectId, !!projectId);
+  const isVoiceProject =
+    projectDetail?.source === PROJECT_SOURCE.SIMULATOR;
+  const { data: overview, isLoading: isOverviewLoading } =
+    useErrorFeedOverview(clusterId);
   const traces = useMemo(
     () => overview?.representativeTraces ?? [],
     [overview],
@@ -1592,11 +1652,14 @@ export default function OverviewTab({ _error: currentError }) {
   // currently-selected trace. When status flips to ``done`` we smooth-
   // scroll to the results panel.
   const { data: deepAnalysis } = useErrorFeedDeepAnalysis(clusterId, trace?.id);
-  const deepAnalysisState = deepAnalysis?.status ?? "idle";
+  const deepAnalysisState = deepAnalysis?.status ?? DEEP_ANALYSIS_STATUS.IDLE;
   const deepAnalysisRef = useRef(null);
 
   useEffect(() => {
-    if (deepAnalysisState === "done" && deepAnalysisRef.current) {
+    if (
+      deepAnalysisState === DEEP_ANALYSIS_STATUS.DONE &&
+      deepAnalysisRef.current
+    ) {
       deepAnalysisRef.current.scrollIntoView({
         behavior: "smooth",
         block: "start",
@@ -1660,7 +1723,12 @@ export default function OverviewTab({ _error: currentError }) {
             borderColor: "divider",
           }}
         >
-          <EventsUsersChart flat data={eventsOverTime} deployMarkers={[]} />
+          <EventsUsersChart
+            flat
+            data={eventsOverTime}
+            deployMarkers={[]}
+            loading={isOverviewLoading && !overview}
+          />
         </Box>
 
         {/* Traces heading */}
@@ -1679,19 +1747,30 @@ export default function OverviewTab({ _error: currentError }) {
           <Typography fontSize="11px" fontWeight={600} color="text.secondary">
             Traces affected
           </Typography>
-          <Typography
-            fontSize="11px"
-            fontWeight={600}
-            sx={{
-              color: "text.disabled",
-              bgcolor: isDark ? alpha("#fff", 0.06) : alpha("#000", 0.05),
-              px: 0.75,
-              py: 0.1,
-              borderRadius: "4px",
-            }}
-          >
-            {traces.length.toLocaleString()}
-          </Typography>
+          {isOverviewLoading && !overview ? (
+            <Skeleton
+              width={28}
+              height={14}
+              sx={{
+                borderRadius: "4px",
+                bgcolor: isDark ? alpha("#fff", 0.06) : alpha("#000", 0.05),
+              }}
+            />
+          ) : (
+            <Typography
+              fontSize="11px"
+              fontWeight={600}
+              sx={{
+                color: "text.disabled",
+                bgcolor: isDark ? alpha("#fff", 0.06) : alpha("#000", 0.05),
+                px: 0.75,
+                py: 0.1,
+                borderRadius: "4px",
+              }}
+            >
+              {traces.length.toLocaleString()}
+            </Typography>
+          )}
         </Stack>
 
         {/* Scrollable trace list */}
@@ -1700,6 +1779,7 @@ export default function OverviewTab({ _error: currentError }) {
             traces={traces}
             selectedIndex={traceIndex}
             onSelect={selectTrace}
+            loading={isOverviewLoading && !overview}
           />
         </Box>
       </Stack>
@@ -1758,7 +1838,30 @@ export default function OverviewTab({ _error: currentError }) {
 
       {/* ── RIGHT PANEL: trace detail ── */}
       <Box sx={{ flex: 1, minWidth: 0, overflow: "auto" }}>
-        {!trace ? (
+        {isOverviewLoading && !trace ? (
+          <Stack gap={1.5} sx={{ p: 1.75 }}>
+            <Skeleton
+              variant="rectangular"
+              height={56}
+              sx={{ borderRadius: "6px" }}
+            />
+            <Skeleton
+              variant="rectangular"
+              height={140}
+              sx={{ borderRadius: "8px" }}
+            />
+            <Skeleton
+              variant="rectangular"
+              height={260}
+              sx={{ borderRadius: "8px" }}
+            />
+            <Skeleton
+              variant="rectangular"
+              height={200}
+              sx={{ borderRadius: "8px" }}
+            />
+          </Stack>
+        ) : !trace ? (
           <Stack
             alignItems="center"
             justifyContent="center"
@@ -1792,16 +1895,19 @@ export default function OverviewTab({ _error: currentError }) {
               icon="mdi:information-outline"
               collapsible
             >
-              <PatternSummary summary={patternSummary} />
+              <PatternSummary summary={patternSummary} clusterId={clusterId} />
             </SectionCard>
 
-            {/* Agent Flow */}
             <SectionCard
-              title="Agent Flow"
-              icon="mdi:graph-outline"
+              title={isVoiceProject ? "Call Recording" : "Agent Flow"}
+              icon={isVoiceProject ? "mdi:phone-outline" : "mdi:graph-outline"}
               collapsible
             >
-              <TraceAgentFlow traceId={trace.id} />
+              {isVoiceProject ? (
+                <TraceVoicePanel traceId={trace.id} projectId={projectId} />
+              ) : (
+                <TraceAgentFlow traceId={trace.id} />
+              )}
             </SectionCard>
 
             {/* Trace Evidence — scanner clusters only (evals don't have scanner steps) */}
@@ -1816,7 +1922,7 @@ export default function OverviewTab({ _error: currentError }) {
             )}
 
             {/* Deep analysis results — shown only when done */}
-            {deepAnalysisState === "done" && (
+            {deepAnalysisState === DEEP_ANALYSIS_STATUS.DONE && (
               <Box ref={deepAnalysisRef}>
                 <Stack direction="row" alignItems="center" gap={1} mb={1.75}>
                   <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
@@ -1857,5 +1963,6 @@ OverviewTab.propTypes = {
   _error: PropTypes.shape({
     clusterId: PropTypes.string,
     source: PropTypes.string,
+    projectId: PropTypes.string,
   }),
 };

@@ -16,6 +16,7 @@ import {
   Pagination,
   PaginationItem,
   Select,
+  Skeleton,
   Stack,
   Typography,
   useTheme,
@@ -36,8 +37,55 @@ import PropTypes from "prop-types";
 import { ShowComponent } from "src/components/show";
 import { useShallowToggleAnnotationsStore } from "../store";
 import NoRowsOverlay from "src/sections/project-detail/CompareDrawer/NoRowsOverlay";
+import { APP_CONSTANTS } from "src/utils/constants";
 
 const CELL_HEIGHT_MAP = { Short: 40, Medium: 52, Large: 68, "Extra Large": 88 };
+
+// Padding matches CallLogsCellRenderer.jsx so custom-col cells align with
+// the rest of the row.
+const CustomColCellRenderer = (params) => {
+  const v = params?.value;
+  const display = v == null || v === "" ? "-" : v;
+  return (
+    <Box
+      sx={{
+        px: 1.5,
+        py: 0.5,
+        display: "flex",
+        alignItems: "center",
+        height: "100%",
+      }}
+    >
+      <Typography variant="body2" sx={{ fontSize: 13 }} noWrap>
+        {String(display)}
+      </Typography>
+    </Box>
+  );
+};
+
+const CustomColLoadingSkeleton = () => (
+  <Skeleton
+    variant="rectangular"
+    width="80%"
+    height={15}
+    sx={{ mx: 1, borderRadius: 0.5 }}
+  />
+);
+
+const TERMINAL_CALL_STATUSES = new Set([
+  "completed",
+  "dropped",
+  "ended",
+  "error",
+  "failed",
+  "not-connected",
+  "ok",
+]);
+
+const isSelectableForAnnotation = (row) => {
+  const status = String(row?.status || "").toLowerCase();
+  return TERMINAL_CALL_STATUSES.has(status);
+};
 
 const CallLogsGrid = React.forwardRef(function CallLogsGrid(
   {
@@ -48,14 +96,12 @@ const CallLogsGrid = React.forwardRef(function CallLogsGrid(
     onConfigLoaded = () => {},
     enabled = true,
     onSelectionChanged,
-    // Optional richer selection callback — fires alongside onSelectionChanged
-    // with {traceIds, isAllOnPageSelected, currentPageSize, totalPages,
-    // pageLimit}. Used by LLMTracingView's simulator branch to decide when
-    // to show the "select all matching filter" banner (Phase 9 of the
-    // annotation-queue-bulk-select revamp).
+    // Richer selection callback used by LLMTracingView's simulator branch
+    // to decide when to show the "select all matching filter" banner.
     onSelectionMeta,
     cellHeight = "Short",
     columnVisibility,
+    onColumnsChange,
     hideDrawer = false,
     showErrors = false,
   },
@@ -80,9 +126,7 @@ const CallLogsGrid = React.forwardRef(function CallLogsGrid(
       reset: state.reset,
     }));
 
-  // Highlight the row whose detail drawer is currently open. Mirrors the
-  // TraceGrid activeTraceId pattern so the experience matches the trace
-  // detail drawer the user referenced.
+  // Highlight the row whose detail drawer is open (mirrors TraceGrid).
   const { testDetailDrawerOpen } = useTestDetailSideDrawerStoreShallow(
     (state) => ({
       testDetailDrawerOpen: state.testDetailDrawerOpen,
@@ -118,7 +162,6 @@ const CallLogsGrid = React.forwardRef(function CallLogsGrid(
       suppressHeaderMenuButton: true,
       suppressHeaderContextMenu: true,
       minWidth: 180,
-      suppressMultiSort: true,
       cellStyle: {
         padding: "0px",
         display: "flex",
@@ -158,6 +201,12 @@ const CallLogsGrid = React.forwardRef(function CallLogsGrid(
     enabled,
   });
 
+  useEffect(() => {
+    if (!isLoading) {
+      setTotalPages(data?.total_pages || 1);
+    }
+  }, [data?.total_pages, isLoading]);
+
   const rows = useMemo(() => {
     if (isLoading) {
       return Array.from({ length: 10 }, (_, index) => ({
@@ -168,8 +217,6 @@ const CallLogsGrid = React.forwardRef(function CallLogsGrid(
         overall_score: "",
         status: "",
       }));
-    } else {
-      setTotalPages(data?.total_pages || 1);
     }
     return data?.results || [];
   }, [data, isLoading]);
@@ -247,19 +294,27 @@ const CallLogsGrid = React.forwardRef(function CallLogsGrid(
     if (!callLogsColumnDefs) return callLogsColumnDefs;
 
     const visMap = {};
+    const orderIndex = new Map();
     const customCols = [];
-    (columnVisibility || []).forEach((c) => {
-      if (c.field) visMap[c.field] = c.isVisible !== false;
+    (columnVisibility || []).forEach((c, i) => {
+      if (c.field) {
+        visMap[c.field] = c.isVisible !== false;
+        orderIndex.set(c.field, i);
+      }
       if (c.groupBy === "Custom Columns") customCols.push(c);
     });
 
-    // Toggle visibility on existing defs
-    const updated = callLogsColumnDefs.map((col) => {
-      if (col.field && col.field in visMap) {
-        return { ...col, hide: !visMap[col.field] };
-      }
-      return col;
-    });
+    const updated = callLogsColumnDefs
+      .map((col) => ({
+        ...col,
+        ...(col.field &&
+          col.field in visMap && { hide: !visMap[col.field] }),
+      }))
+      .sort((a, b) => {
+        const ai = orderIndex.get(a?.field) ?? Infinity;
+        const bi = orderIndex.get(b?.field) ?? Infinity;
+        return ai - bi;
+      });
 
     // Add column defs for custom columns not already in the grid
     const existingFields = new Set(callLogsColumnDefs.map((c) => c.field));
@@ -267,20 +322,85 @@ const CallLogsGrid = React.forwardRef(function CallLogsGrid(
       .filter((c) => !existingFields.has(c.id))
       .map((c) => ({
         headerName: c.name,
-        field: c.id,
+        // colId (not field) so AG Grid doesn't deep-resolve the dotted path
+        // — list_voice_calls returns flat rows; the valueGetter below handles
+        // the resolution.
+        colId: c.id,
         flex: 0,
         minWidth: 120,
         hide: c.isVisible === false,
-        valueGetter: (params) => params.data?.[c.id] ?? "-",
+        cellRenderer: isLoading
+          ? CustomColLoadingSkeleton
+          : CustomColCellRenderer,
+        valueGetter: (params) => {
+          if (!params.data) return null;
+          let value = params.data[c.id];
+          if (value === undefined && c.id.includes(".")) {
+            value = c.id
+              .split(".")
+              .reduce((obj, key) => obj?.[key], params.data);
+          }
+          // /eval-attributes serves Vapi attribute paths with namespace
+          // prefixes (call.*, vapi.*) but /list_voice_calls returns them
+          // as flat keys. Whitelisted — a generic "drop leading segments"
+          // would false-positive on paths like phone_number.id → row.id.
+          const VOICE_FLAT_NAMESPACE_PREFIXES = ["call.", "vapi."];
+          if (value === undefined) {
+            const matchedPrefix = VOICE_FLAT_NAMESPACE_PREFIXES.find((p) =>
+              c.id.startsWith(p),
+            );
+            if (matchedPrefix) {
+              value = params.data[c.id.slice(matchedPrefix.length)];
+            }
+          }
+          if (value === undefined || value === null) return null;
+          if (Array.isArray(value) || typeof value === "object") {
+            return JSON.stringify(value);
+          }
+          return String(value);
+        },
       }));
 
-    return [...updated, ...newCustomDefs];
-  }, [callLogsColumnDefs, columnVisibility]);
+    // Group under a "Custom Columns" header for parity with the other grids.
+    if (newCustomDefs.length > 0) {
+      return [
+        ...updated,
+        { headerName: "Custom Columns", children: newCustomDefs },
+      ];
+    }
+    return updated;
+  }, [callLogsColumnDefs, columnVisibility, isLoading]);
   useEffect(() => {
     return () => {
       resetToggleAnnotationsStore();
     };
   }, []);
+
+  // Propagate reorder to parent so the View columns dropdown stays in sync.
+  const onColumnMoved = useCallback(
+    (params) => {
+      if (!params?.finished || !params?.api || typeof onColumnsChange !== "function") return;
+      const newOrder = (params?.api?.getColumnState() ?? [])
+        .map((s) => s.colId)
+        .filter((id) => id !== APP_CONSTANTS.AG_GRID_SELECTION_COLUMN);
+
+      const cols = columnVisibility || [];
+      const byColId = new Map(cols.map((c) => [c.field || c.id, c]));
+      const reordered = newOrder.map((id) => byColId.get(id)).filter(Boolean);
+      const matched = new Set(newOrder);
+      const unmatched = cols.filter((c) => !matched.has(c.field || c.id));
+      const next = [...reordered, ...unmatched];
+
+      const sameOrder =
+        next.length === cols.length &&
+        next.every(
+          (c, i) =>
+            (c?.field || c?.id) === (cols[i]?.field || cols[i]?.id),
+        );
+      if (!sameOrder) onColumnsChange(next);
+    },
+    [columnVisibility, onColumnsChange],
+  );
 
   return (
     <Box sx={{ height: "78vh", display: "flex" }}>
@@ -319,18 +439,21 @@ const CallLogsGrid = React.forwardRef(function CallLogsGrid(
             })}
             rowHeight={CELL_HEIGHT_MAP[cellHeight] || 40}
             columnDefs={effectiveDefs}
+            onColumnMoved={onColumnMoved}
             defaultColDef={defaultColDef}
             rowData={rows}
             suppressServerSideFullWidthLoadingRow={true}
-            suppressRowClickSelection
-            rowSelection={onSelectionChanged ? { mode: "multiRow" } : undefined}
+            rowSelection={
+              onSelectionChanged
+                ? { mode: "multiRow", enableClickSelection: false }
+                : undefined
+            }
             selectionColumnDef={
               onSelectionChanged
                 ? { pinned: true, lockPinned: true }
                 : undefined
             }
             pagination={false}
-            serverSideInitialRowCount={5}
             noRowsOverlayComponent={() =>
               NoRowsOverlay(
                 <Typography
@@ -364,8 +487,14 @@ const CallLogsGrid = React.forwardRef(function CallLogsGrid(
                       // the banner by up to `pageLimit - 1` rows.
                       const totalMatching =
                         typeof data?.count === "number" ? data.count : null;
+                      const unavailableSelectedCount = selectedRows.filter(
+                        (row) =>
+                          row?.trace_id && !isSelectableForAnnotation(row),
+                      ).length;
                       onSelectionMeta({
                         traceIds,
+                        selectedCount: traceIds.length,
+                        unavailableSelectedCount,
                         isAllOnPageSelected:
                           currentPageSize > 0 &&
                           selectedRows.length === currentPageSize,
@@ -493,6 +622,7 @@ CallLogsGrid.propTypes = {
   onSelectionMeta: PropTypes.func,
   cellHeight: PropTypes.string,
   columnVisibility: PropTypes.array,
+  onColumnsChange: PropTypes.func,
   hideDrawer: PropTypes.bool,
   showErrors: PropTypes.bool,
 };

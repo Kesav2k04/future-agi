@@ -8,7 +8,6 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import _ from "lodash";
 import PropTypes from "prop-types";
 import { getRandomId } from "src/utils/utils";
 import TotalRowsStatusBar from "src/sections/develop-detail/Common/TotalRowsStatusBar";
@@ -20,17 +19,22 @@ import { getSessionListColumnDef } from "./common";
 import { Events, trackEvent } from "src/utils/Mixpanel";
 import { useUrlState } from "src/routes/hooks/use-url-state";
 import { userTraceRowHeightMapping } from "../UsersView/common";
-import { objectCamelToSnake } from "src/utils/utils";
 import { useSessionsGridStoreShallow } from "./ReplaySessions/store";
 import { APP_CONSTANTS } from "src/utils/constants";
 
-const SESSION_GRID_THEME_PARAMS = {
+const getSessionGridThemeParams = (theme) => ({
   columnBorder: false,
   rowVerticalPaddingScale: 2.6,
-  headerColumnBorder: { width: 0 },
+  headerColumnBorder: false,
   wrapperBorder: { width: 0 },
   wrapperBorderRadius: 0,
-};
+  rowBorder: { width: 1, color: "rgba(0,0,0,0.06)" },
+  headerFontSize: "13px",
+  headerFontWeight: theme.typography.fontWeightMedium,
+  headerBackgroundColor: "transparent",
+  headerTextColor: theme.palette.text.primary,
+  rowHoverColor: "rgba(120,87,252,0.04)",
+});
 
 const DATASET_ROWS_LIMIT = 30;
 
@@ -61,13 +65,14 @@ const SessionGrid = React.forwardRef(
       className,
       onGridReady,
       pendingCustomColumnsRef,
+      isOnSavedView = false,
     },
     gridApiRef,
   ) => {
     const [open, setOpen] = useState(false);
     const [currentRowData, setCurrentRowData] = useState(null);
     const theme = useTheme();
-    const agTheme = useAgThemeWith(SESSION_GRID_THEME_PARAMS);
+    const agTheme = useAgThemeWith(getSessionGridThemeParams(theme));
     const handleDrawerClose = () => {
       setOpen(false);
     };
@@ -83,6 +88,33 @@ const SessionGrid = React.forwardRef(
     useEffect(() => {
       columnsRef.current = columns;
     }, [columns]);
+
+    // Same trick for updateObj + isOnSavedView — dataSource closes over them
+    // once when memoized, but getRows fires on every scroll/refetch and needs
+    // the latest values. On a saved view we filter columns by `updateObj`
+    // (the view's visibleColumns); on a default tab we fall through to
+    // `res.config.isVisible` (the backend's per-project saved visibility).
+    // Without this gate the data-fetch overwrites the saved view's columns
+    // with the project default on every page load.
+    const updateObjRef = useRef(updateObj);
+    useEffect(() => {
+      updateObjRef.current = updateObj;
+    }, [updateObj]);
+
+    const isOnSavedViewRef = useRef(isOnSavedView);
+    useEffect(() => {
+      isOnSavedViewRef.current = isOnSavedView;
+    }, [isOnSavedView]);
+
+    // Mirror columnDefs into a ref so the dataSource's getRows always reads
+    // the latest. Without this, the dataSource memo (deps =
+    // [filters, projectId, dateInterval]) captures columnDefs ONCE — when
+    // columns is still []. That initial columnDefs uses the LoadingHeader
+    // skeleton branch (line 107-117), and every subsequent getRows call
+    // (page scroll, sort, etc.) writes those skeletons into filteredColumnDefs,
+    // causing the header skeletons to flash back in randomly even after
+    // proper headers had loaded.
+    const columnDefsRef = useRef([]);
 
     const [dateInterval] = useUrlState("dateInterval", "day");
 
@@ -131,21 +163,31 @@ const SessionGrid = React.forwardRef(
         }
       }
 
-      const columnDefsResult = Object.entries(grouping).map(([group, cols]) => {
-        if (cols.length === 1) {
-          const c = cols[0];
-          bottomRowObj[c?.id] = c?.average ? `${c?.average}` : null;
-          return getSessionListColumnDef(c);
-        } else {
-          return {
-            headerName: group,
-            children: cols.map((c) => {
-              bottomRowObj[c?.id] = c?.average ? `Average ${c?.average}` : null;
+      const columnDefsResult = Object.entries(grouping).flatMap(
+        ([group, cols]) => {
+          if (group === "Annotation Metrics") {
+            return cols.map((c) => {
+              bottomRowObj[c?.id] = c?.average ? `${c?.average}` : null;
               return getSessionListColumnDef(c);
-            }),
-          };
-        }
-      });
+            });
+          }
+          if (cols.length === 1) {
+            const c = cols[0];
+            bottomRowObj[c?.id] = c?.average ? `${c?.average}` : null;
+            return getSessionListColumnDef(c);
+          } else {
+            return {
+              headerName: group,
+              children: cols.map((c) => {
+                bottomRowObj[c?.id] = c?.average
+                  ? `Average ${c?.average}`
+                  : null;
+                return getSessionListColumnDef(c);
+              }),
+            };
+          }
+        },
+      );
 
       return {
         columnDefs: columnDefsResult,
@@ -156,6 +198,10 @@ const SessionGrid = React.forwardRef(
         ],
       };
     }, [columns, updateObj]);
+
+    useEffect(() => {
+      columnDefsRef.current = columnDefs;
+    }, [columnDefs]);
 
     const [filteredColumnDefs, setFilteredColumnDefs] = useState([]);
 
@@ -187,7 +233,7 @@ const SessionGrid = React.forwardRef(
                     direction: sort,
                   })),
                 ),
-                filters: JSON.stringify(objectCamelToSnake(filters)),
+                filters: JSON.stringify(filters),
                 ...(dateInterval && { interval: dateInterval }),
               });
 
@@ -207,29 +253,68 @@ const SessionGrid = React.forwardRef(
                 const currentNonCustom = (columnsRef.current || []).filter(
                   (c) => c.groupBy !== "Custom Columns",
                 );
-                if (!_.isEqual(newCols, currentNonCustom)) {
-                  const existingCustom = (columnsRef.current || []).filter(
-                    (c) => c.groupBy === "Custom Columns",
-                  );
-                  const pending = pendingCustomColumnsRef?.current || [];
-                  const existingIds = new Set(existingCustom.map((c) => c.id));
-                  const dedupedPending = pending.filter(
-                    (c) => !existingIds.has(c.id),
-                  );
+                const existingCustom = (columnsRef.current || []).filter(
+                  (c) => c.groupBy === "Custom Columns",
+                );
+                const pending = pendingCustomColumnsRef?.current || [];
+                const existingIds = new Set(existingCustom.map((c) => c.id));
+                const dedupedPending = pending.filter(
+                  (c) => !existingIds.has(c.id),
+                );
+                const newIds = new Set(newCols.map((c) => c.id));
+                const currentIdSet = new Set(currentNonCustom.map((c) => c.id));
+                const idSetChanged =
+                  newIds.size !== currentIdSet.size ||
+                  [...newIds].some((id) => !currentIdSet.has(id));
+                // hasPending ensures same-tab saved-view clicks still drain
+                // queued customs even when backend cols match.
+                const hasPending = dedupedPending.length > 0;
+                if (idSetChanged || hasPending) {
                   const allCustom = [...existingCustom, ...dedupedPending];
                   if (pending.length > 0 && pendingCustomColumnsRef) {
                     pendingCustomColumnsRef.current = [];
                   }
+                  let finalNonCustom;
+                  if (idSetChanged) {
+                    const newById = new Map(newCols.map((nc) => [nc.id, nc]));
+                    const seen = new Set();
+                    const kept = currentNonCustom
+                      .filter((cc) => newById.has(cc.id))
+                      .map((cc) => {
+                        seen.add(cc.id);
+                        return newById.get(cc.id);
+                      });
+                    const added = newCols.filter((nc) => !seen.has(nc.id));
+                    finalNonCustom = [...kept, ...added];
+                  } else {
+                    finalNonCustom = currentNonCustom;
+                  }
                   setColumns(
-                    allCustom.length > 0 ? [...newCols, ...allCustom] : newCols,
+                    allCustom.length > 0
+                      ? [...finalNonCustom, ...allCustom]
+                      : finalNonCustom,
                   );
                 }
               }
 
-              const filteredColumns = columnDefs.filter((column) => {
+              // Read columnDefs from the ref so this filter always sees the
+              // post-setColumns value, not the skeleton-headed default
+              // captured when dataSource was first memoized. Without the ref,
+              // every page-2+ scroll fetch wrote stale skeleton headers back
+              // into filteredColumnDefs.
+              const currentColumnDefs = columnDefsRef.current ?? columnDefs;
+              const filteredColumns = currentColumnDefs.filter((column) => {
                 // Grouped columns (e.g. Annotation Metrics) always visible
                 if (column.children) return true;
                 if (!column.field) return true;
+
+                // On a saved view, the view's visibleColumns (carried in
+                // updateObj) is the source of truth — ignore the backend's
+                // per-project default so view-specific hides don't get
+                // overwritten by the data-fetch response.
+                if (isOnSavedViewRef.current) {
+                  return updateObjRef.current?.[column.field] ?? true;
+                }
 
                 const columnConfig = (res?.config || []).find(
                   (config) => config.id === column.field,
@@ -378,7 +463,7 @@ const SessionGrid = React.forwardRef(
                   userTraceRowHeightMapping.Short.height
                 }
                 statusBar={statusBar}
-                rowSelection={{ mode: "multiRow" }}
+                rowSelection={{ mode: "multiRow", enableClickSelection: false }}
                 className="clean-data-table"
                 theme={agTheme}
                 rowModelType="serverSide"
@@ -390,7 +475,6 @@ const SessionGrid = React.forwardRef(
                 suppressServerSideFullWidthLoadingRow={true}
                 serverSideInitialRowCount={DATASET_ROWS_LIMIT}
                 defaultColDef={defaultColDef}
-                suppressRowClickSelection={true}
                 rowStyle={{ cursor: "pointer" }}
                 onRowClicked={onRowClicked}
                 onColumnMoved={onColumnMoved}
@@ -438,6 +522,7 @@ SessionGrid.propTypes = {
   onSelectionChanged: PropTypes.func,
   className: PropTypes.string,
   pendingCustomColumnsRef: PropTypes.object,
+  isOnSavedView: PropTypes.bool,
 };
 
 export default SessionGrid;

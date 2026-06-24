@@ -27,7 +27,6 @@ const PasswordSentLogin = ({
     mutationFn: (email) =>
       axios.post(endpoints.auth.passwordResetInitiate, {
         email,
-        resend_email: true,
       }),
     meta: {
       errorHandled: true,
@@ -97,22 +96,6 @@ const PasswordSentLogin = ({
             {email}
           </Typography>
         </Box>
-        {/* <Box sx={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-
-        <Typography
-          variant="body1"
-          sx={{ color: "text.primary", textAlign: "center" }}
-        >
-          {email}{" "}
-          <Iconify
-            icon="mynaui:pencil"
-            sx={{ cursor: "pointer", "&:hover": { color: "text.primary" } }}
-            width={16}
-            height={16}
-            onClick={() => setEditEmail(true)}
-          />
-        </Typography>
-      </Box> */}
         <Box width={"440px"} display={"flex"} flexDirection={"column"} gap={2}>
           <RHFTextField
             name="password"

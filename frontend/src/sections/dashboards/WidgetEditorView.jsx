@@ -40,6 +40,10 @@ import {
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import ReactApexChart from "react-apexcharts";
 import ChartLegend from "./ChartLegend";
+import {
+  buildTimeRangePayload,
+  resolveInitialTimeRange,
+} from "./dashboardDateRange";
 import { paths } from "src/routes/paths";
 import {
   useDashboardDetail,
@@ -54,18 +58,24 @@ import {
 } from "src/hooks/useDashboards";
 import Iconify from "src/components/iconify";
 import { useSnackbar } from "src/components/snackbar";
+import { ConfirmDialog } from "src/components/custom-dialog";
 import { format } from "date-fns";
 import CustomDateRangePicker from "src/components/custom-datepicker/DatePicker";
+import {
+  coerceFilterValue,
+  isAllowedFilterOperator,
+  normalizeColumnType,
+  normalizeFilterType,
+} from "src/api/contracts/filter-contract";
 
-const escapeHtml = (str) => {
-  if (typeof str !== "string") return str;
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-};
+import {
+  DEFAULT_DECIMALS,
+  escapeHtml,
+  formatValueWithConfig,
+  getAutoDecimals,
+  getSeriesAverage,
+  getSuggestedUnitConfig,
+} from "./widgetUtils";
 
 const escapeCsvField = (field) => {
   const str = String(field ?? "");
@@ -73,19 +83,6 @@ const escapeCsvField = (field) => {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
-};
-
-const getSeriesAverage = (points = []) => {
-  let total = 0;
-  let count = 0;
-  for (const pt of points) {
-    if (pt?.y == null) continue;
-    const y = Number(pt.y);
-    if (!Number.isFinite(y)) continue;
-    total += y;
-    count += 1;
-  }
-  return count > 0 ? total / count : null;
 };
 
 const TIME_PRESETS = [
@@ -203,6 +200,22 @@ const PERCENTILE_OPTIONS = [
 
 const ALL_AGGREGATIONS = [...AGGREGATION_OPTIONS, ...PERCENTILE_OPTIONS];
 
+// Curated list of unit presets shown in the widget editor's Unit
+// dropdown. Keep in sync with ``UNIT_RENDERING`` in ``widgetUtils.js``
+// (the formatter that places these as a prefix or suffix). "Custom" is
+// rendered separately by the editor and maps to an empty unit value.
+const UNIT_PRESETS = [
+  { label: "$", value: "$" },
+  { label: "%", value: "%" },
+  { label: "#", value: "#" },
+  { label: "ms", value: "ms" },
+  { label: "s", value: "s" },
+  { label: "tokens", value: "tokens" },
+  { label: "cents", value: "cents" },
+  { label: "wpm", value: "wpm" },
+  { label: "/min", value: "/min" },
+];
+
 const METRIC_CATEGORIES = [
   { key: "all", label: "All", icon: "mdi:view-grid-outline" },
   {
@@ -295,19 +308,39 @@ const NUMBER_FILTER_OPERATORS = [
   { label: "Less than or equal to", value: "less_than_or_equal" },
   { label: "Between", value: "between", range: true },
   { label: "Not between", value: "not_between", range: true },
-  { label: "Is numeric", value: "is_numeric", noValue: true },
-  { label: "Is not numeric", value: "is_not_numeric", noValue: true },
 ];
 
 const getFilterOperators = (dataType) =>
   dataType === "number" ? NUMBER_FILTER_OPERATORS : STRING_FILTER_OPERATORS;
 
-const NO_VALUE_OPERATORS = new Set([
-  "is_set",
-  "is_not_set",
-  "is_numeric",
-  "is_not_numeric",
-]);
+const NO_VALUE_OPERATORS = new Set(["is_set", "is_not_set"]);
+
+const DASHBOARD_FILTER_OP_TO_API = {
+  equal_to: "equals",
+  not_equal_to: "not_equals",
+  contains: "in",
+  not_contains: "not_in",
+  str_contains: "contains",
+  str_not_contains: "not_contains",
+  is_set: "is_not_null",
+  is_not_set: "is_null",
+};
+
+const DASHBOARD_TYPE_TO_COL_TYPE = {
+  system: "SYSTEM_METRIC",
+  eval_metric: "EVAL_METRIC",
+  annotation: "ANNOTATION",
+  custom_attribute: "SPAN_ATTRIBUTE",
+  custom_column: "CUSTOM_COLUMN",
+};
+
+const COL_TYPE_TO_DASHBOARD_TYPE = {
+  SYSTEM_METRIC: "system",
+  EVAL_METRIC: "eval_metric",
+  ANNOTATION: "annotation",
+  SPAN_ATTRIBUTE: "custom_attribute",
+  CUSTOM_COLUMN: "custom_column",
+};
 
 const METRIC_TYPE_ICONS = {
   system: "mdi:cog-outline",
@@ -461,17 +494,32 @@ function AxisSection({ title, config, onChange, theme, showReset, onReset }) {
         <Typography variant="body2" color="text.secondary">
           Unit
         </Typography>
-        <ToggleButtons
-          options={[
-            { label: "$", value: "$" },
-            { label: "%", value: "%" },
-            { label: "#", value: "#" },
-            { label: "Custom", value: "custom" },
-          ]}
-          value={config.unit || "custom"}
-          onChange={(v) => onChange("unit", v === "custom" ? "" : v)}
-          theme={theme}
-        />
+        <TextField
+          select
+          size="small"
+          value={
+            UNIT_PRESETS.some((u) => u.value === config.unit)
+              ? config.unit
+              : "custom"
+          }
+          onChange={(e) =>
+            onChange("unit", e.target.value === "custom" ? "" : e.target.value)
+          }
+          sx={{ width: 180, "& .MuiOutlinedInput-root": { fontSize: "13px" } }}
+        >
+          {UNIT_PRESETS.map((opt) => (
+            <MenuItem
+              key={opt.value}
+              value={opt.value}
+              sx={{ fontSize: "13px" }}
+            >
+              {opt.label}
+            </MenuItem>
+          ))}
+          <MenuItem value="custom" sx={{ fontSize: "13px" }}>
+            Custom
+          </MenuItem>
+        </TextField>
       </Stack>
 
       {/* Prefix / Suffix */}
@@ -530,9 +578,12 @@ function AxisSection({ title, config, onChange, theme, showReset, onReset }) {
           options={[
             {
               label: "\u2190 .0",
-              value: Math.max(0, (config.decimals || 1) - 1),
+              value: Math.max(0, (config.decimals ?? DEFAULT_DECIMALS) - 1),
             },
-            { label: ".00 \u2192", value: (config.decimals || 1) + 1 },
+            {
+              label: ".00 \u2192",
+              value: (config.decimals ?? DEFAULT_DECIMALS) + 1,
+            },
           ]}
           value={null}
           onChange={(v) => onChange("decimals", Math.max(0, Math.min(6, v)))}
@@ -553,18 +604,9 @@ function AxisSection({ title, config, onChange, theme, showReset, onReset }) {
         <Typography variant="body2" fontWeight={500}>
           {(() => {
             const sample = 1250000;
-            const abbr = config.abbreviation;
-            const dec = config.decimals ?? 1;
-            const val =
-              abbr && sample >= 1000000
-                ? `${(sample / 1000000).toFixed(dec)}M`
-                : abbr && sample >= 1000
-                  ? `${(sample / 1000).toFixed(dec)}K`
-                  : sample.toFixed(dec);
-            const unit = config.unit || "";
-            return config.prefixSuffix === "suffix"
-              ? `${val}${unit}`
-              : `${unit}${val}`;
+            return formatValueWithConfig(sample, config, {
+              fallbackDecimals: DEFAULT_DECIMALS,
+            });
           })()}
         </Typography>
       </Stack>
@@ -637,7 +679,13 @@ function AxisSection({ title, config, onChange, theme, showReset, onReset }) {
   );
 }
 
-function AggregationPicker({ value, onChange, theme, extraOptions }) {
+function AggregationPicker({
+  value,
+  onChange,
+  theme,
+  extraOptions,
+  allowedAggregations,
+}) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [showPercentiles, setShowPercentiles] = useState(false);
 
@@ -659,7 +707,22 @@ function AggregationPicker({ value, onChange, theme, extraOptions }) {
   const allAggs = extraOptions
     ? [...ALL_AGGREGATIONS, ...extraOptions]
     : ALL_AGGREGATIONS;
-  const current = allAggs.find((a) => a.value === value);
+  const allowedSet = allowedAggregations?.length
+    ? new Set(allowedAggregations)
+    : null;
+  const primaryAggs = allowedSet
+    ? AGGREGATION_OPTIONS.filter((opt) => allowedSet.has(opt.value))
+    : AGGREGATION_OPTIONS;
+  const allowedExtraOptions = allowedSet
+    ? (extraOptions || []).filter((opt) => allowedSet.has(opt.value))
+    : extraOptions;
+  const percentileAggs = allowedSet
+    ? PERCENTILE_OPTIONS.filter((opt) => allowedSet.has(opt.value))
+    : PERCENTILE_OPTIONS;
+  const visibleAggs = allowedSet
+    ? [...primaryAggs, ...(allowedExtraOptions || []), ...percentileAggs]
+    : allAggs;
+  const current = visibleAggs.find((a) => a.value === value);
   const open = Boolean(anchorEl);
 
   return (
@@ -691,7 +754,7 @@ function AggregationPicker({ value, onChange, theme, extraOptions }) {
           >
             {!showPercentiles ? (
               <List dense disablePadding>
-                {AGGREGATION_OPTIONS.map((opt) => (
+                {primaryAggs.map((opt) => (
                   <ListItemButton
                     key={opt.value}
                     selected={value === opt.value}
@@ -707,10 +770,10 @@ function AggregationPicker({ value, onChange, theme, extraOptions }) {
                     />
                   </ListItemButton>
                 ))}
-                {extraOptions && extraOptions.length > 0 && (
+                {allowedExtraOptions && allowedExtraOptions.length > 0 && (
                   <>
                     <Divider />
-                    {extraOptions.map((opt) => (
+                    {allowedExtraOptions.map((opt) => (
                       <ListItemButton
                         key={opt.value}
                         selected={value === opt.value}
@@ -728,29 +791,33 @@ function AggregationPicker({ value, onChange, theme, extraOptions }) {
                     ))}
                   </>
                 )}
-                <Divider />
-                <ListItemButton
-                  onClick={() => setShowPercentiles(true)}
-                  sx={{ py: 0.75 }}
-                >
-                  <ListItemText
-                    primary="Percentile"
-                    primaryTypographyProps={{
-                      variant: "body2",
-                      fontSize: "13px",
-                      fontWeight: PERCENTILE_OPTIONS.some(
-                        (p) => p.value === value,
-                      )
-                        ? 600
-                        : 400,
-                    }}
-                  />
-                  <Iconify
-                    icon="mdi:chevron-right"
-                    width={16}
-                    sx={{ color: "text.secondary" }}
-                  />
-                </ListItemButton>
+                {percentileAggs.length > 0 && (
+                  <>
+                    <Divider />
+                    <ListItemButton
+                      onClick={() => setShowPercentiles(true)}
+                      sx={{ py: 0.75 }}
+                    >
+                      <ListItemText
+                        primary="Percentile"
+                        primaryTypographyProps={{
+                          variant: "body2",
+                          fontSize: "13px",
+                          fontWeight: percentileAggs.some(
+                            (p) => p.value === value,
+                          )
+                            ? 600
+                            : 400,
+                        }}
+                      />
+                      <Iconify
+                        icon="mdi:chevron-right"
+                        width={16}
+                        sx={{ color: "text.secondary" }}
+                      />
+                    </ListItemButton>
+                  </>
+                )}
               </List>
             ) : (
               <List dense disablePadding>
@@ -773,7 +840,7 @@ function AggregationPicker({ value, onChange, theme, extraOptions }) {
                   />
                 </ListItemButton>
                 <Divider />
-                {PERCENTILE_OPTIONS.map((opt) => (
+                {percentileAggs.map((opt) => (
                   <ListItemButton
                     key={opt.value}
                     selected={value === opt.value}
@@ -1057,6 +1124,25 @@ export default function WidgetEditorView() {
   const [editingName, setEditingName] = useState(false);
   const [editingDesc, setEditingDesc] = useState(false);
   const [moreMenuAnchor, setMoreMenuAnchor] = useState(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+  const confirmDeleteWidget = () => {
+    if (!isEditing) {
+      setConfirmDeleteOpen(false);
+      return;
+    }
+    deleteMutation.mutate(
+      { dashboardId, widgetId: effectiveWidgetId },
+      {
+        onSuccess: () => {
+          enqueueSnackbar("Widget deleted", { variant: "success" });
+          navigate(paths.dashboard.dashboards.detail(dashboardId));
+        },
+        // Close once the request settles, not before it starts.
+        onSettled: () => setConfirmDeleteOpen(false),
+      },
+    );
+  };
   const [timePreset, setTimePreset] = useState(
     searchParams.get("timePreset") || "30D",
   );
@@ -1235,7 +1321,7 @@ export default function WidgetEditorView() {
       unit: "",
       prefixSuffix: "prefix",
       abbreviation: true,
-      decimals: 1,
+      decimals: DEFAULT_DECIMALS,
       min: "",
       max: "",
       outOfBounds: "visible",
@@ -1247,7 +1333,7 @@ export default function WidgetEditorView() {
       unit: "",
       prefixSuffix: "prefix",
       abbreviation: true,
-      decimals: 1,
+      decimals: DEFAULT_DECIMALS,
       min: "",
       max: "",
       outOfBounds: "hidden",
@@ -1256,6 +1342,14 @@ export default function WidgetEditorView() {
     xAxis: { visible: true, label: "" },
     seriesAxis: {}, // { [seriesIndex]: "left" | "right" }
   });
+  // Tracks the unit value we last auto-applied to ``axisConfig.leftY``.
+  // Stored (rather than a single boolean) so we can tell the difference
+  // between "user picked this manually" and "we set it on their behalf
+  // when the metric set last changed". When the suggested unit changes
+  // — e.g. swapping a ``duration`` (s) metric for an annotation (no
+  // unit) — we reconcile the axis only if the current axis unit is the
+  // one we last auto-applied; user-chosen units are never overwritten.
+  const [autoAppliedLeftAxisUnit, setAutoAppliedLeftAxisUnit] = useState(null);
   const updateAxis = (axis, key, val) =>
     setAxisConfig((prev) => ({
       ...prev,
@@ -1291,12 +1385,13 @@ export default function WidgetEditorView() {
         setChartDescription(widget.description || "");
         const qc = widget.queryConfig || widget.query_config || {};
         const cc = widget.chartConfig || widget.chart_config || {};
-        setTimePreset(
-          searchParams.get("timePreset") ||
-            qc.timeRange?.preset ||
-            qc.time_range?.preset ||
-            "30D",
-        );
+        const { timePreset: initialPreset, customDateRange: initialRange } =
+          resolveInitialTimeRange(
+            qc.timeRange || qc.time_range,
+            searchParams.get("timePreset"),
+          );
+        setTimePreset(initialPreset);
+        if (initialRange) setCustomDateRange(initialRange);
         setGranularity(qc.granularity || "day");
         setChartType(cc.chartType || cc.chart_type || "line");
         // Restore axis config if saved
@@ -1311,14 +1406,7 @@ export default function WidgetEditorView() {
         }
         // Restore metrics with frontend type keys + source
         const savedMetrics = (qc.metrics || []).map((m) => {
-          const typeMap = {
-            system_metric: "system",
-            annotation_metric: "annotation",
-            custom_column: "custom_column",
-            custom_attribute: "custom_attribute",
-            eval_metric: "eval_metric",
-          };
-          const frontendType = typeMap[m.type] || m.type || "system";
+          const frontendType = toDashboardFilterType(m.type);
           // Infer source from old workflow field if metric lacks source
           const source =
             m.source ||
@@ -1328,31 +1416,9 @@ export default function WidgetEditorView() {
                 ? "datasets"
                 : "traces");
           // Restore per-metric filters from saved backend format
-          const restoredFilters = (m.filters || []).map((f) => {
-            const fTypeMap = {
-              system_metric: "system",
-              annotation_metric: "annotation",
-              custom_column: "custom_column",
-              custom_attribute: "custom_attribute",
-              eval_metric: "eval_metric",
-            };
-            return {
-              id: f.metric_name || f.metricName || f.id,
-              name: f.metric_name || f.metricName || f.name || f.id || "",
-              type:
-                fTypeMap[f.metric_type || f.metricType] || f.type || "system",
-              dataType: f.dataType || f.data_type || "string",
-              source:
-                f.source ||
-                (qc.workflow === "simulation"
-                  ? "simulation"
-                  : qc.workflow === "dataset"
-                    ? "datasets"
-                    : "traces"),
-              operator: f.operator || "contains",
-              value: f.value ?? [],
-            };
-          });
+          const restoredFilters = (m.filters || []).map((f) =>
+            restoreFilterPayload(f, source),
+          );
           return {
             ...m,
             id: m.name || m.id,
@@ -1363,7 +1429,18 @@ export default function WidgetEditorView() {
           };
         });
         setMetrics(savedMetrics);
-        setFilters(qc.filters || []);
+        setFilters(
+          (qc.filters || []).map((f) =>
+            restoreFilterPayload(
+              f,
+              qc.workflow === "simulation"
+                ? "simulation"
+                : qc.workflow === "dataset"
+                  ? "datasets"
+                  : "traces",
+            ),
+          ),
+        );
         // Restore breakdowns — saved format uses "name" as the key,
         // but the frontend picker/filter logic expects "id".
         const bdTypeMap = {
@@ -1427,6 +1504,7 @@ export default function WidgetEditorView() {
           columnDataType: m.dataType || m.data_type,
           configIds: m.configIds || m.config_ids,
           evalKey: m.evalKey || m.eval_key,
+          allowedAggregations: m.allowedAggregations || m.allowed_aggregations,
           unit: m.unit,
         };
       });
@@ -1444,6 +1522,7 @@ export default function WidgetEditorView() {
         type: "system",
         source: "traces",
         dataType: m.type || "string",
+        allowedAggregations: m.allowedAggregations || m.allowed_aggregations,
       });
     });
     (
@@ -1458,6 +1537,7 @@ export default function WidgetEditorView() {
         source: "datasets",
         dataType: "number",
         outputType: m.outputType || m.output_type,
+        allowedAggregations: m.allowedAggregations || m.allowed_aggregations,
       });
     });
     (
@@ -1472,6 +1552,7 @@ export default function WidgetEditorView() {
         source: "traces",
         dataType: "number",
         outputType: m.outputType || m.output_type,
+        allowedAggregations: m.allowedAggregations || m.allowed_aggregations,
       });
     });
     (
@@ -1485,6 +1566,7 @@ export default function WidgetEditorView() {
         type: "custom_attribute",
         source: "traces",
         dataType: m.type || "string",
+        allowedAggregations: m.allowedAggregations || m.allowed_aggregations,
       });
     });
     (
@@ -1499,6 +1581,7 @@ export default function WidgetEditorView() {
         source: "datasets",
         dataType: m.type || "number",
         columnDataType: m.dataType || m.data_type,
+        allowedAggregations: m.allowedAggregations || m.allowed_aggregations,
       });
     });
     return opts;
@@ -1528,15 +1611,131 @@ export default function WidgetEditorView() {
     return map[type] || type;
   };
 
+  const toDashboardFilterType = (backendType) => {
+    const map = {
+      system_metric: "system",
+      eval_metric: "eval_metric",
+      annotation_metric: "annotation",
+      custom_attribute: "custom_attribute",
+      custom_column: "custom_column",
+    };
+    return map[backendType] || backendType || "system";
+  };
+
+  const toApiFilterOperator = (operator) =>
+    DASHBOARD_FILTER_OP_TO_API[operator] || operator;
+
+  const toDashboardFilterOperator = (operator, filterType) => {
+    if (operator === "in") return "contains";
+    if (operator === "not_in") return "not_contains";
+    if (operator === "contains") return "str_contains";
+    if (operator === "not_contains") return "str_not_contains";
+    if (operator === "is_not_null") return "is_set";
+    if (operator === "is_null") return "is_not_set";
+    if (operator === "equals")
+      return filterType === "number" || filterType === "datetime"
+        ? "equal_to"
+        : "contains";
+    if (operator === "not_equals")
+      return filterType === "number" || filterType === "datetime"
+        ? "not_equal_to"
+        : "not_contains";
+    return operator;
+  };
+
+  const normalizeDashboardDataType = (dataType) => {
+    const filterType = normalizeFilterType(dataType || "string");
+    if (filterType === "datetime") return "date";
+    if (filterType === "categorical") return "string";
+    return filterType;
+  };
+
+  const buildFilterPayload = (f) => {
+    const filterType = normalizeFilterType(f.dataType || "string");
+    const filterOp = toApiFilterOperator(f.operator);
+    if (!isAllowedFilterOperator(filterType, filterOp)) return null;
+
+    const filterValue = coerceFilterValue(f.value, filterOp, filterType);
+    const colType = normalizeColumnType(DASHBOARD_TYPE_TO_COL_TYPE[f.type]);
+
+    return {
+      column_id: f.id,
+      ...(f.name && { display_name: f.name }),
+      ...(f.source && { source: f.source }),
+      ...(f.outputType && { output_type: f.outputType }),
+      filter_config: {
+        filter_type: filterType,
+        filter_op: filterOp,
+        filter_value: filterValue,
+        ...(colType && { col_type: colType }),
+      },
+    };
+  };
+
+  const restoreFilterPayload = (f, fallbackSource = "traces") => {
+    const config = f?.filter_config;
+    if (!config) {
+      const backendType =
+        f.metric_type || f.metricType || f.type || "system_metric";
+      return {
+        id: f.metric_name || f.metricName || f.id,
+        name: f.metric_name || f.metricName || f.name || f.id || "",
+        type: toDashboardFilterType(backendType),
+        dataType: normalizeDashboardDataType(
+          f.dataType || f.data_type || "string",
+        ),
+        source: f.source || fallbackSource,
+        outputType: f.output_type || f.outputType,
+        operator:
+          f.operator === "is_numeric"
+            ? "is_set"
+            : f.operator === "is_not_numeric"
+              ? "is_not_set"
+              : f.operator || "contains",
+        value: f.value ?? [],
+      };
+    }
+
+    const filterType = normalizeFilterType(config.filter_type || "string");
+    const colType = normalizeColumnType(config.col_type);
+    const dashboardType =
+      COL_TYPE_TO_DASHBOARD_TYPE[colType] || toDashboardFilterType(f.type);
+    const operator = toDashboardFilterOperator(config.filter_op, filterType);
+    const isMulti = operator === "contains" || operator === "not_contains";
+    const value = NO_VALUE_OPERATORS.has(operator)
+      ? ""
+      : isMulti
+        ? Array.isArray(config.filter_value)
+          ? config.filter_value
+          : [config.filter_value].filter((v) => v !== null && v !== undefined)
+        : config.filter_value ?? (filterType === "number" ? "" : []);
+
+    return {
+      id: f.column_id,
+      name: f.display_name || f.column_id,
+      type: dashboardType,
+      dataType: normalizeDashboardDataType(filterType),
+      source: f.source || fallbackSource,
+      outputType: f.output_type,
+      operator,
+      value,
+    };
+  };
+
   const buildMetricPayload = (m, i) => {
     const backendType = toBackendType(m.type);
+    const aggregation =
+      m.allowedAggregations?.length &&
+      !m.allowedAggregations.includes(m.aggregation)
+        ? m.allowedAggregations[0]
+        : m.aggregation || "avg";
     const base = {
       id: m.id || `m${i}`,
       name: m.id,
-      displayName: m.name || m.id,
+      display_name: m.name || m.id,
       type: backendType,
       source: m.source || "traces",
-      aggregation: m.aggregation || "avg",
+      aggregation,
     };
     if (backendType === "eval_metric") {
       // m.id is eval_template_id from the metrics endpoint
@@ -1564,26 +1763,8 @@ export default function WidgetEditorView() {
                   ? f.value.length > 0
                   : f.value !== ""))),
         )
-        .map((f) => buildFilterPayload(f));
-    }
-    return base;
-  };
-
-  const buildFilterPayload = (f) => {
-    const backendType = toBackendType(f.type);
-    // f.id = backend key (e.g. "cost", UUID, span attr key)
-    const base = {
-      metric_type: backendType,
-      metric_name: f.id,
-      operator: f.operator,
-      value: f.value,
-      source: f.source || "traces",
-    };
-    if (backendType === "custom_attribute") {
-      base.attribute_type = "string";
-    }
-    if (backendType === "eval_metric" && f.outputType) {
-      base.output_type = f.outputType;
+        .map((f) => buildFilterPayload(f))
+        .filter(Boolean);
     }
     return base;
   };
@@ -1612,14 +1793,7 @@ export default function WidgetEditorView() {
   };
 
   const buildQueryConfig = useCallback(() => {
-    const timeRange =
-      timePreset === "custom" && customDateRange
-        ? {
-            preset: "custom",
-            custom_start: customDateRange[0].toISOString(),
-            custom_end: customDateRange[1].toISOString(),
-          }
-        : { preset: timePreset };
+    const timeRange = buildTimeRangePayload(timePreset, customDateRange);
     return {
       project_ids: [],
       time_range: timeRange,
@@ -1635,7 +1809,8 @@ export default function WidgetEditorView() {
                   ? f.value.length > 0
                   : f.value !== ""))),
         )
-        .map((f) => buildFilterPayload(f)),
+        .map((f) => buildFilterPayload(f))
+        .filter(Boolean),
       breakdowns: breakdowns
         .filter((b) => b.id)
         .map((b) => buildBreakdownPayload(b)),
@@ -1645,7 +1820,8 @@ export default function WidgetEditorView() {
   // Auto-preview when config changes (debounced)
   const previewTimerRef = useRef(null);
   useEffect(() => {
-    if (metrics.length > 0) {
+    const customWithoutRange = timePreset === "custom" && !customDateRange;
+    if (metrics.length > 0 && !customWithoutRange) {
       clearTimeout(previewTimerRef.current);
       previewTimerRef.current = setTimeout(() => {
         queryMutation.mutate(buildQueryConfig());
@@ -1702,6 +1878,12 @@ export default function WidgetEditorView() {
         defaultAgg = "count";
       } else if (option.source === "simulation" && option.id === "call_count") {
         defaultAgg = "count";
+      }
+      if (
+        option.allowedAggregations?.length &&
+        !option.allowedAggregations.includes(defaultAgg)
+      ) {
+        [defaultAgg] = option.allowedAggregations;
       }
       const newMetric = {
         ...option,
@@ -1911,8 +2093,9 @@ export default function WidgetEditorView() {
           data: { ...data, width: 12, height: 320, position: 999 },
         });
         // Track created ID so subsequent saves update instead of creating again
-        if (result?.data?.id) {
-          setCreatedWidgetId(result.data.id);
+        const newWidgetId = result?.data?.result?.id || result?.data?.id;
+        if (newWidgetId) {
+          setCreatedWidgetId(newWidgetId);
         }
       }
       setSaveStatus("saved");
@@ -2002,6 +2185,48 @@ export default function WidgetEditorView() {
     return previewSeries.filter((_, i) => visibleSeries.has(i));
   }, [previewSeries, visibleSeries]);
 
+  const autoDecimals = useMemo(
+    () => getAutoDecimals(chartSeries),
+    [chartSeries],
+  );
+  const suggestedLeftAxisUnit = useMemo(
+    () => getSuggestedUnitConfig(metrics),
+    [metrics],
+  );
+  const leftAxisFormatConfig = useMemo(() => {
+    const leftAxis = axisConfig.leftY || {};
+    return {
+      ...leftAxis,
+      unit: leftAxis.unit || suggestedLeftAxisUnit.unit,
+      prefixSuffix:
+        leftAxis.unit || !suggestedLeftAxisUnit.unit
+          ? leftAxis.prefixSuffix || "prefix"
+          : suggestedLeftAxisUnit.prefixSuffix,
+    };
+  }, [axisConfig.leftY, suggestedLeftAxisUnit]);
+
+  useEffect(() => {
+    const currentUnit = axisConfig.leftY.unit;
+    const suggested = suggestedLeftAxisUnit.unit;
+    // Skip if the user picked something different from what we
+    // auto-applied — that's their choice and we leave it alone.
+    if (currentUnit && currentUnit !== autoAppliedLeftAxisUnit) {
+      return;
+    }
+    if (suggested === currentUnit) return;
+    setAxisConfig((prev) => ({
+      ...prev,
+      leftY: {
+        ...prev.leftY,
+        unit: suggested,
+        prefixSuffix: suggested
+          ? suggestedLeftAxisUnit.prefixSuffix
+          : prev.leftY.prefixSuffix || "prefix",
+      },
+    }));
+    setAutoAppliedLeftAxisUnit(suggested || null);
+  }, [axisConfig.leftY.unit, autoAppliedLeftAxisUnit, suggestedLeftAxisUnit]);
+
   // Colors that match chartSeries — preserves original color assignment even when series are filtered out
   const chartColors = useMemo(() => {
     if (visibleSeries === null) return SERIES_COLORS;
@@ -2035,20 +2260,11 @@ export default function WidgetEditorView() {
 
   const isDark = theme.palette.mode === "dark";
   const formatValFn = useCallback(
-    (val) => {
-      if (val == null) return "-";
-      const cfg = axisConfig.leftY;
-      const dec = cfg.decimals ?? 1;
-      const unit = cfg.unit || "";
-      let str;
-      if (cfg.abbreviation && Math.abs(val) >= 1000000)
-        str = `${(val / 1000000).toFixed(dec)}M`;
-      else if (cfg.abbreviation && Math.abs(val) >= 1000)
-        str = `${(val / 1000).toFixed(dec)}K`;
-      else str = val.toFixed(dec);
-      return cfg.prefixSuffix === "suffix" ? `${str}${unit}` : `${unit}${str}`;
-    },
-    [axisConfig.leftY],
+    (val) =>
+      formatValueWithConfig(val, leftAxisFormatConfig, {
+        fallbackDecimals: autoDecimals,
+      }),
+    [autoDecimals, leftAxisFormatConfig],
   );
 
   const chartOptions = useMemo(() => {
@@ -2120,19 +2336,11 @@ export default function WidgetEditorView() {
         },
       };
     }
-    const makeFormatter = (cfg) => (val) => {
-      if (val == null) return "-";
-      const dec = cfg.decimals ?? 1;
-      const unit = cfg.unit || "";
-      let str;
-      if (cfg.abbreviation && Math.abs(val) >= 1000000)
-        str = `${(val / 1000000).toFixed(dec)}M`;
-      else if (cfg.abbreviation && Math.abs(val) >= 1000)
-        str = `${(val / 1000).toFixed(dec)}K`;
-      else str = val.toFixed(dec);
-      return cfg.prefixSuffix === "suffix" ? `${str}${unit}` : `${unit}${str}`;
-    };
-    const formatVal = makeFormatter(axisConfig.leftY);
+    const makeFormatter =
+      (cfg, fallbackDecimals = autoDecimals, includeUnit = true) =>
+      (val) =>
+        formatValueWithConfig(val, cfg, { fallbackDecimals, includeUnit });
+    const formatVal = makeFormatter(leftAxisFormatConfig);
     return {
       chart: {
         type: apexType,
@@ -2481,7 +2689,6 @@ export default function WidgetEditorView() {
           },
     };
   }, [
-    chartType,
     apexType,
     isStacked,
     isHorizontal,
@@ -2490,6 +2697,9 @@ export default function WidgetEditorView() {
     chartColors,
     theme,
     axisConfig,
+    autoDecimals,
+    isDark,
+    leftAxisFormatConfig,
     visibleSeries,
   ]);
 
@@ -2568,11 +2778,17 @@ export default function WidgetEditorView() {
     });
     const values = chartSeries.map((s) => {
       const avg = getSeriesAverage(s.data);
-      return avg == null ? 0 : avg;
+      return {
+        value: avg,
+        numericValue: avg == null ? 0 : avg,
+      };
     });
     return {
       categories,
-      series: [{ name: "Value", data: values }],
+      series: [
+        { name: "Value", data: values.map((item) => item.numericValue) },
+      ],
+      rows: values,
     };
   }, [isHorizontal, chartSeries]);
 
@@ -2768,40 +2984,24 @@ export default function WidgetEditorView() {
           transformOrigin={{ vertical: "top", horizontal: "right" }}
           slotProps={{ paper: { sx: { minWidth: 180 } } }}
         >
-          <MenuItem
-            onClick={() => {
-              setMoreMenuAnchor(null);
-              if (
-                !window.confirm("Are you sure you want to delete this widget?")
-              )
-                return;
-              if (effectiveWidgetId && effectiveWidgetId !== "new") {
-                deleteMutation
-                  .mutateAsync({ dashboardId, widgetId: effectiveWidgetId })
-                  .then(() => {
-                    enqueueSnackbar("Widget deleted", { variant: "success" });
-                    navigate(paths.dashboard.dashboards.detail(dashboardId));
-                  })
-                  .catch(() => {
-                    enqueueSnackbar("Failed to delete widget", {
-                      variant: "error",
-                    });
-                  });
-              } else {
-                navigate(paths.dashboard.dashboards.detail(dashboardId));
-              }
-            }}
-            sx={{ color: "error.main" }}
-          >
-            <ListItemIcon>
-              <Iconify
-                icon="mdi:delete-outline"
-                width={18}
-                sx={{ color: "error.main" }}
-              />
-            </ListItemIcon>
-            <ListItemText>Delete</ListItemText>
-          </MenuItem>
+          {isEditing && (
+            <MenuItem
+              onClick={() => {
+                setMoreMenuAnchor(null);
+                setConfirmDeleteOpen(true);
+              }}
+              sx={{ color: "error.main" }}
+            >
+              <ListItemIcon>
+                <Iconify
+                  icon="mdi:delete-outline"
+                  width={18}
+                  sx={{ color: "error.main" }}
+                />
+              </ListItemIcon>
+              <ListItemText>Delete</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem
             onClick={() => {
               setMoreMenuAnchor(null);
@@ -2923,6 +3123,24 @@ export default function WidgetEditorView() {
           </MenuItem>
         </Menu>
 
+        <ConfirmDialog
+          open={confirmDeleteOpen}
+          onClose={() => setConfirmDeleteOpen(false)}
+          title="Delete Widget"
+          content={`Are you sure you want to delete "${chartName || "this widget"}"? This action cannot be undone.`}
+          action={
+            <Button
+              variant="contained"
+              color="error"
+              size="small"
+              onClick={confirmDeleteWidget}
+              disabled={deleteMutation.isPending}
+            >
+              Delete
+            </Button>
+          }
+        />
+
         <Button
           onClick={() =>
             navigate(paths.dashboard.dashboards.detail(dashboardId))
@@ -3035,6 +3253,7 @@ export default function WidgetEditorView() {
               open={isDatePickerOpen}
               onClose={() => setIsDatePickerOpen(false)}
               anchorEl={customDateAnchorRef.current}
+              value={customDateRange}
               setDateFilter={(filter) => {
                 if (filter && filter[0] && filter[1]) {
                   setCustomDateRange([
@@ -3131,7 +3350,7 @@ export default function WidgetEditorView() {
                     alignItems: "center",
                   }}
                 >
-                  <Typography variant="body2" color="text.disabled">
+                  <Typography variant="body2" color="text.secondary">
                     Fill in the required fields to see preview
                   </Typography>
                 </Box>
@@ -3265,7 +3484,8 @@ export default function WidgetEditorView() {
                           </Box>
                           {/* Bar rows */}
                           <Box sx={{ flex: 1, overflow: "auto", px: 2 }}>
-                            {barData.series[0].data.map((val, i) => {
+                            {barData.rows.map((row, i) => {
+                              const val = row.numericValue;
                               const origIdx =
                                 visibleSeries === null
                                   ? i
@@ -3279,7 +3499,10 @@ export default function WidgetEditorView() {
                                 ];
                               const pct =
                                 maxVal > 0 ? (Math.abs(val) / maxVal) * 100 : 0;
-                              const fmtVal = formatValFn(val);
+                              const fmtVal =
+                                row.value == null
+                                  ? "—"
+                                  : formatValFn(row.value);
                               return (
                                 <Box
                                   key={i}
@@ -3537,11 +3760,7 @@ export default function WidgetEditorView() {
                                   color: chartColors[i % chartColors.length],
                                 }}
                               >
-                                {avg == null
-                                  ? "—"
-                                  : avg >= 1000
-                                    ? `${(avg / 1000).toFixed(1)}K`
-                                    : avg.toFixed(1)}
+                                {avg == null ? "—" : formatValFn(avg)}
                               </Typography>
                               <Typography
                                 variant="body2"
@@ -3822,7 +4041,7 @@ export default function WidgetEditorView() {
                     )}
                   </Box>
                 ) : (
-                  <Typography variant="body2" color="text.disabled">
+                  <Typography variant="body2" color="text.secondary">
                     Fill in the required fields to see preview
                   </Typography>
                 )}
@@ -4272,13 +4491,7 @@ export default function WidgetEditorView() {
                                     borderLeft: `1px solid ${theme.palette.divider}`,
                                   }}
                                 >
-                                  {avg == null
-                                    ? "—"
-                                    : avg >= 1000
-                                      ? avg.toLocaleString(undefined, {
-                                          maximumFractionDigits: 1,
-                                        })
-                                      : avg.toFixed(1)}
+                                  {avg == null ? "—" : formatValFn(avg)}
                                 </td>
                                 {s.data.map((pt, ci) => {
                                   if (!displayIndicesSet.has(ci)) return null;
@@ -4671,9 +4884,15 @@ export default function WidgetEditorView() {
                       </IconButton>
                     </Stack>
                     <AggregationPicker
-                      value={m.aggregation}
+                      value={
+                        m.allowedAggregations?.length &&
+                        !m.allowedAggregations.includes(m.aggregation)
+                          ? m.allowedAggregations[0]
+                          : m.aggregation
+                      }
                       onChange={(val) => handleUpdateMetricAggregation(i, val)}
                       theme={theme}
+                      allowedAggregations={m.allowedAggregations}
                       extraOptions={
                         m.source === "datasets" ||
                         m.source === "simulation" ||
@@ -5686,7 +5905,7 @@ export default function WidgetEditorView() {
               {isPie || isTable || isMetricCard ? (
                 <Typography
                   variant="body2"
-                  color="text.disabled"
+                  color="text.secondary"
                   sx={{ fontStyle: "italic", textAlign: "center", mt: 4 }}
                 >
                   {isPie
@@ -5722,7 +5941,7 @@ export default function WidgetEditorView() {
                           unit: "",
                           prefixSuffix: "prefix",
                           abbreviation: true,
-                          decimals: 1,
+                          decimals: DEFAULT_DECIMALS,
                           min: "",
                           max: "",
                           outOfBounds: "visible",
@@ -5750,7 +5969,7 @@ export default function WidgetEditorView() {
                           unit: "",
                           prefixSuffix: "prefix",
                           abbreviation: true,
-                          decimals: 1,
+                          decimals: DEFAULT_DECIMALS,
                           min: "",
                           max: "",
                           outOfBounds: "hidden",
@@ -5885,7 +6104,7 @@ export default function WidgetEditorView() {
                     {previewSeries.length === 0 && (
                       <Typography
                         variant="body2"
-                        color="text.disabled"
+                        color="text.secondary"
                         sx={{ fontStyle: "italic" }}
                       >
                         Add metrics to see axis assignments

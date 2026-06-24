@@ -7,6 +7,14 @@ import { dateValueFormatter } from "src/utils/dateTimeUtils";
 import { useQuery } from "@tanstack/react-query";
 import axios, { endpoints } from "src/utils/axios";
 import { formatDate } from "src/utils/report-utils";
+import { canonicalEntries } from "src/utils/utils";
+import { NULL_OPERATORS } from "src/components/ComplexFilter/common";
+
+// Operator categories shared by the task filter wire builders (validation.js,
+// TaskLivePreview) and TaskFilterBar.
+export const RANGE_OPS = new Set(["between", "not_between"]);
+export const LIST_OPS = new Set(["in", "not_in"]);
+export const NO_VALUE_OPS = new Set(NULL_OPERATORS);
 
 export const getEvalsTaskColumnConfig = (observeId) => {
   const columns = [
@@ -39,12 +47,16 @@ export const getEvalsTaskColumnConfig = (observeId) => {
           );
         }
 
+        // Canonical key is `filters`; `span_attributes_filters` is the
+        // legacy form still present on un-migrated rows.
         const spanAttributes =
-          params?.data?.filters_applied?.span_attributes_filters ?? [];
+          params?.data?.filters_applied?.filters ??
+          params?.data?.filters_applied?.span_attributes_filters ??
+          [];
 
         if (spanAttributes.length > 0) {
           const customAttributeString = `Custom attribute is ${spanAttributes
-            .map((f) => `(${f.columnId})`)
+            .map((f) => `(${f.column_id})`)
             .join(",")}`;
 
           filters.push(customAttributeString);
@@ -176,42 +188,81 @@ export const EvalTaskFilterDefinition = (observeId) => {
   return filters;
 };
 
-// span_attributes_filters
-// [
-//     {
-//         "columnId": "llm.output_messages.0.message.content",
-//         "filterConfig": {
-//             "colType": "SPAN_ATTRIBUTE",
-//             "filterOp": "equals",
-//             "filterType": "text",
-//             "filterValue": "asdasdasd"
-//         }
-//     }
-// ]
+// TraceFilterPanel `fieldCategory` → BE col_type enum. Fallback only —
+// the row's `apiColType` (set by TraceFilterPanel via metricToTraceFilterProperty)
+// is the source of truth when present.
+export const FIELD_CATEGORY_TO_COL_TYPE = {
+  attribute: "SPAN_ATTRIBUTE",
+  system: "SYSTEM_METRIC",
+  eval: "EVAL_METRIC",
+  annotation: "ANNOTATION",
+};
+
+// Column ids the BE always routes through its annotation handler regardless
+// of col_type. Pin them to ANNOTATION on the wire so the dispatcher doesn't
+// also feed them to SPAN_ATTRIBUTE / SYSTEM_METRIC handlers.
+export const ANNOTATION_COLUMN_IDS = new Set(["annotator", "my_annotations"]);
+
+// Reserved metadata keys on the saved BE filters dict — every other key
+// becomes a generic system filter row.
+const RESERVED_FILTER_KEYS = new Set([
+  "project_id",
+  "date_range",
+  "start_date",
+  "end_date",
+  "filters",
+  "span_attributes_filters",
+]);
+
+// Legacy → current vocabulary aliases for the system-filter hydration path.
+const FILTER_KEY_ALIAS = {
+  observation_type: "span_kind",
+};
 
 export const formatTaskFilters = (filters_applied) => {
-  const observation_type = filters_applied?.observation_type
-    ? filters_applied?.observation_type.map((i) => ({
-        property: "observation_type",
+  if (!filters_applied) return [];
+
+  // Attribute filters carry a {columnId, filterConfig} shape. Prefer the
+  // canonical `filters` key; fall back to legacy `span_attributes_filters`.
+  // `colType` round-trips as `apiColType` so the panel picks the right chip.
+  const span_attributes_filters = (
+    filters_applied.filters ||
+    filters_applied.span_attributes_filters ||
+    []
+  ).map((i) => ({
+    property: "attributes",
+    propertyId: i?.columnId,
+    apiColType: i?.filterConfig?.colType,
+    filterConfig: {
+      filterType: i?.filterConfig?.filterType,
+      filterOp: i?.filterConfig?.filterOp,
+      filterValue: i?.filterConfig?.filterValue,
+      colType: i?.filterConfig?.colType,
+    },
+  }));
+
+  // Every other top-level key → one generic system-filter row per value.
+  // canonicalEntries skips the camelCase aliases the axios interceptor adds
+  // (avoids duplicate chips + correctly filters reserved keys).
+  const systemFilters = [];
+  canonicalEntries(filters_applied).forEach(([key, vals]) => {
+    if (RESERVED_FILTER_KEYS.has(key)) return;
+    const field = FILTER_KEY_ALIAS[key] || key;
+    const arr = Array.isArray(vals) ? vals : [vals];
+    arr.forEach((v) => {
+      if (v === undefined || v === null || v === "") return;
+      systemFilters.push({
+        property: field,
         filterConfig: {
-          filterType: "text",
+          filterType: typeof v === "number" ? "number" : "text",
           filterOp: "equals",
-          filterValue: i,
+          filterValue: v,
         },
-      }))
-    : [];
-  const span_attributes_filters = filters_applied?.span_attributes_filters
-    ? filters_applied?.span_attributes_filters.map((i) => ({
-        property: "attributes",
-        propertyId: i?.columnId,
-        filterConfig: {
-          filterType: i?.filterConfig?.filterType,
-          filterOp: i?.filterConfig?.filterOp,
-          filterValue: i?.filterConfig?.filterValue,
-        },
-      }))
-    : [];
-  return [...observation_type, ...span_attributes_filters];
+      });
+    });
+  });
+
+  return [...systemFilters, ...span_attributes_filters];
 };
 
 export const getDefaultTaskValues = (data, observeId) => {
@@ -224,6 +275,7 @@ export const getDefaultTaskValues = (data, observeId) => {
       samplingRate: Number(data?.sampling_rate),
       evalsDetails: data?.evals_applied,
       runType: data?.run_type,
+      rowType: data?.row_type ?? "spans",
       startDate: formatDate(
         sub(new Date(), {
           months: 6,
@@ -257,6 +309,7 @@ export const getDefaultTaskValues = (data, observeId) => {
       spansLimit: "",
       samplingRate: 100,
       evalsDetails: [],
+      rowType: "spans",
       startDate: formatDate(
         sub(new Date(), {
           months: 6,
@@ -274,5 +327,10 @@ export const useGetTaskData = (taskId, options) => {
     queryKey: ["taskDetails", taskId],
     queryFn: () => axios.get(endpoints.project.getEvalTaskDetails(taskId)),
     select: (d) => d?.data?.result,
+    retry: (failureCount, error) => {
+      const status = error?.statusCode || error?.response?.status;
+      if (status === 400 || status === 404) return false;
+      return failureCount < 1;
+    },
   });
 };

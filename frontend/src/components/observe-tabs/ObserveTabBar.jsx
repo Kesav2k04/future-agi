@@ -23,6 +23,7 @@ import {
   useReorderSavedViews,
 } from "src/api/project/saved-views";
 import { useTabStoreShallow } from "src/sections/projects/LLMTracing/tabStore";
+import { useObserveHeader } from "src/sections/project/context/ObserveHeaderContext";
 
 import FixedTab from "./FixedTab";
 import CustomViewTab from "./CustomViewTab";
@@ -98,11 +99,9 @@ const ObserveTabBar = ({
   }, [projectSource]);
   const { data: savedViewsData } = useGetSavedViews(projectId);
   // Only show trace-list views (traces/spans/voice) — exclude "imagine" tabs (those belong to trace detail)
-  const customViews = (
-    savedViewsData?.customViews ??
-    savedViewsData?.custom_views ??
-    []
-  ).filter((v) => (v.tab_type || v.tabType) !== "imagine");
+  const customViews = (savedViewsData?.custom_views ?? []).filter(
+    (v) => v.tab_type !== "imagine",
+  );
 
   // Mutations
   const { mutate: updateView } = useUpdateSavedView(projectId);
@@ -121,16 +120,37 @@ const ObserveTabBar = ({
   const [saveViewAnchor, setSaveViewAnchor] = useState(null);
   const [isSavingView, setIsSavingView] = useState(false);
   const { mutate: createSavedView } = useCreateSavedView(projectId);
+  const { getViewConfig, getTabType } = useObserveHeader();
+
+  // Derive tab_type for a new saved view. Priority:
+  //  - on a saved view tab, inherit the view's tab_type.
+  //  - on the Users fixed tab, save as "users".
+  //  - on the Sessions fixed tab, save as "sessions".
+  //  - on the Traces fixed tab, fall back to LLMTracingView's registered
+  //    callback (distinguishes trace vs span sub-tab).
+  const resolveTabType = useCallback(() => {
+    if (activeTab === "users") return "users";
+    if (activeTab === "sessions") return "sessions";
+    if (activeTab === "traces") return getTabType?.() ?? "traces";
+    if (activeTab?.startsWith("view-")) {
+      const currentId = activeTab.replace("view-", "");
+      const current = customViews.find((v) => v.id === currentId);
+      return current?.tab_type ?? "traces";
+    }
+    return "traces";
+  }, [activeTab, customViews, getTabType]);
 
   const handleSaveViewConfirm = useCallback(
     (name) => {
       setIsSavingView(true);
+      const snapshot = getViewConfig?.() ?? null;
+      const tabType = resolveTabType();
       createSavedView(
         {
           project_id: projectId,
           name,
-          tab_type: "traces",
-          config: {},
+          tab_type: tabType,
+          config: snapshot ?? {},
         },
         {
           onSuccess: (res) => {
@@ -147,7 +167,7 @@ const ObserveTabBar = ({
         },
       );
     },
-    [projectId, createSavedView, onTabChange],
+    [projectId, createSavedView, onTabChange, getViewConfig, resolveTabType],
   );
 
   // DnD sensors — require 5px of movement before starting drag

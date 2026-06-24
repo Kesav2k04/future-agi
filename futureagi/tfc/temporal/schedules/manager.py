@@ -232,22 +232,43 @@ async def list_schedules(client: Client) -> List[str]:
 
 def _build_schedule_for_config(config: ScheduleConfig) -> Schedule:
     """Build a Temporal Schedule from a ScheduleConfig."""
-    return Schedule(
-        action=ScheduleActionStartWorkflow(
+    if config.cron_expression:
+        spec = ScheduleSpec(cron_expressions=[config.cron_expression])
+    else:
+        spec = ScheduleSpec(intervals=[ScheduleIntervalSpec(every=config.interval)])
+
+    policy_kwargs: dict = {"overlap": config.overlap_policy}
+    if config.catchup_window is not None:
+        policy_kwargs["catchup_window"] = config.catchup_window
+
+    if config.workflow_class is not None:
+        action = ScheduleActionStartWorkflow(
+            config.workflow_class.run,
+            id=f"scheduled-{config.schedule_id}",
+            task_queue=config.queue,
+        )
+    else:
+        from tfc.temporal.drop_in.decorator import _ACTIVITY_REGISTRY
+
+        activity_metadata = _ACTIVITY_REGISTRY.get(config.activity_name, {})
+        action = ScheduleActionStartWorkflow(
             TaskRunnerWorkflow.run,
             TaskRunnerInput(
                 activity_name=config.activity_name,
                 args=[],
                 kwargs={},
                 queue=config.queue,
+                max_retries=activity_metadata.get("max_retries"),
+                retry_delay=activity_metadata.get("retry_delay"),
             ),
             id=f"scheduled-{config.schedule_id}",
             task_queue=config.queue,
-        ),
-        spec=ScheduleSpec(intervals=[ScheduleIntervalSpec(every=config.interval)]),
-        policy=SchedulePolicy(
-            overlap=config.overlap_policy,  # Default: SKIP (prevents overlapping runs)
-        ),
+        )
+
+    return Schedule(
+        action=action,
+        spec=spec,
+        policy=SchedulePolicy(**policy_kwargs),
         state=ScheduleState(
             note=config.description or f"Schedule for {config.activity_name}"
         ),
@@ -321,6 +342,10 @@ async def a_register_schedules(
         schedules: List of schedule configs to register
         cleanup_orphans: If True, delete schedules not in the provided list (default: True)
     """
+    from tfc.temporal.common.registry import _import_temporal_activity_modules
+
+    _import_temporal_activity_modules()
+
     logger.info("registering_schedules", count=len(schedules))
 
     # Cleanup orphaned schedules first

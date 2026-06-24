@@ -226,7 +226,8 @@ export const useAgentPlaygroundStore = create(
       },
 
       // Tracks whether the NodeDrawer form has unsaved changes.
-      // Used by ensureDraft() to show a discard dialog before creating a draft.
+      // Used by ensureDraft() to show a discard dialog before creating a draft,
+      // and by BuilderActions to warn before running with stale config.
       _isNodeFormDirty: false,
       setNodeFormDirty: (dirty) => set({ _isNodeFormDirty: dirty }),
 
@@ -812,8 +813,8 @@ export const useAgentPlaygroundStore = create(
         if (!nodeConnections?.length) return;
         const lookup = new Map();
         nodeConnections.forEach((nc) => {
-          const src = nc.sourceNodeId;
-          const tgt = nc.targetNodeId;
+          const src = nc.sourceNodeId || nc.source_node_id;
+          const tgt = nc.targetNodeId || nc.target_node_id;
           if (src && tgt && nc.id) lookup.set(`${src}->${tgt}`, nc.id);
         });
         const { edges } = get();

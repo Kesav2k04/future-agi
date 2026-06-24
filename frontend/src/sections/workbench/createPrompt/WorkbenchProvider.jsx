@@ -25,6 +25,49 @@ import {
 import logger from "src/utils/logger";
 import { usePromptStreamUrl } from "src/sections/workbench/createPrompt/hooks/usePromptStreamUrl";
 
+const PROMPT_RUN_SOCKET_FALLBACK_MS = 10000;
+const PROMPT_RUN_STATUS_TIMEOUT_MS = 120000;
+const PROMPT_RUN_STATUS_INTERVAL_MS = 2500;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const unwrapApiPayload = (payload) =>
+  payload?.data?.result ?? payload?.data ?? payload?.result ?? payload;
+
+const asArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.results)) return value.results;
+  if (Array.isArray(value?.result)) return value.result;
+  if (Array.isArray(value?.output)) return value.output;
+  if (value && typeof value === "object") return Object.values(value);
+  return [];
+};
+
+const buildPromptRunOutput = (runStatus) => {
+  const payload = unwrapApiPayload(runStatus);
+  const result = payload?.executions_result || {};
+  const outputs = asArray(result.output);
+  const metadataRows = asArray(result.metadata);
+  const outputFormat =
+    result.prompt_config_snapshot?.configuration?.output_format || "string";
+
+  return outputs
+    .filter((output) => output !== null && output !== undefined)
+    .map((output, index) => {
+      const metadata = metadataRows[index] || {};
+      return {
+        id: getRandomId(),
+        text: typeof output === "string" ? output : JSON.stringify(output),
+        metadata: {
+          cost: metadata?.cost?.total_cost,
+          tokens: metadata?.usage?.total_tokens,
+          responseTime: metadata?.response_time,
+        },
+        outputFormat,
+      };
+    });
+};
+
 const WorkbenchProvider = ({ children }) => {
   const { id } = useParams();
 
@@ -84,6 +127,7 @@ const WorkbenchProvider = ({ children }) => {
   const [promptName, setPromptName] = useState("");
   const [openSelectModel, setOpenSelectModel] = useState(null);
   const [valuesChanged, setValuesChanged] = useState(false);
+  const [templateFormat, setTemplateFormat] = useState("mustache");
   const stoppedIds = useRef([]);
   const runningVersionIndexMapping = useRef({});
   const activeSocketsRef = useRef({});
@@ -131,7 +175,7 @@ const WorkbenchProvider = ({ children }) => {
       const newPre = [...pre];
       const newValue =
         typeof valueOrUpdater === "function"
-          ? { id: pre[index]?.id, prompts: valueOrUpdater(pre[index]?.prompts) }
+          ? { id: pre[index]?.id, prompts: valueOrUpdater(pre[index]?.prompts ?? []) }
           : valueOrUpdater;
 
       newPre[index] = newValue;
@@ -553,8 +597,13 @@ const WorkbenchProvider = ({ children }) => {
       setModelConfigByIndex(0, {
         id: getRandomId(),
         ...modelConfigDefault,
-        ...normalizeConfigurationForLoad(data?.prompt_config?.[0]?.configuration),
+        ...normalizeConfigurationForLoad(
+          data?.prompt_config?.[0]?.configuration,
+        ),
       });
+      const savedFormat =
+        data?.prompt_config?.[0]?.configuration?.template_format;
+      setTemplateFormat(savedFormat || "mustache");
     }
     if (data?.output?.length && !results?.[0]?.output?.length) {
       setResultsByIndex(0, {
@@ -720,6 +769,7 @@ const WorkbenchProvider = ({ children }) => {
       const configuration = normalizeConfigurationForSave(currentConfig);
       configuration["tool_choice"] =
         currentConfig?.tools?.length > 0 ? "auto" : "";
+      configuration["template_format"] = templateFormat || "mustache";
 
       const selectedVersion = selectedVersions[index];
 
@@ -732,7 +782,11 @@ const WorkbenchProvider = ({ children }) => {
         return acc;
       }, {});
 
-      const finalVariables = getVariables(currentPrompts, variableData);
+      const finalVariables = getVariables(
+        currentPrompts,
+        variableData,
+        templateFormat,
+      );
 
       const sanitizedMessages = currentPrompts?.map(({ id, ...rest }) => {
         return {
@@ -777,6 +831,7 @@ const WorkbenchProvider = ({ children }) => {
       variableData,
       placeholders,
       placeholderData,
+      templateFormat,
     ],
   );
 
@@ -792,6 +847,78 @@ const WorkbenchProvider = ({ children }) => {
       };
     },
     [id, selectedVersions],
+  );
+
+  const pollPromptRunStatus = useCallback(
+    async (index) => {
+      const selectedVersion = selectedVersions[index];
+      const startedAt = Date.now();
+      let lastPayload = null;
+
+      while (Date.now() - startedAt < PROMPT_RUN_STATUS_TIMEOUT_MS) {
+        const response = await axios.get(
+          endpoints.develop.runPrompt.getStatus(id),
+          {
+            params: { template_version: selectedVersion?.version },
+          },
+        );
+        lastPayload = unwrapApiPayload(response);
+        const outputs = buildPromptRunOutput(lastPayload);
+        const status = String(lastPayload?.status || "").toLowerCase();
+        const errorMessage =
+          lastPayload?.error_message ||
+          lastPayload?.executions_result?.error_message;
+
+        if (outputs.length > 0) {
+          return lastPayload;
+        }
+
+        if (status === "failed" || errorMessage) {
+          throw new Error(errorMessage || "Prompt run failed.");
+        }
+
+        await sleep(PROMPT_RUN_STATUS_INTERVAL_MS);
+      }
+
+      throw new Error(
+        `Timed out waiting for prompt run output: ${JSON.stringify(lastPayload)}`,
+      );
+    },
+    [id, selectedVersions],
+  );
+
+  const applyPromptRunStatus = useCallback(
+    (index, runStatus) => {
+      const output = buildPromptRunOutput(runStatus);
+      setResultsByIndex(index, {
+        output,
+        isAnimating: false,
+      });
+      setLoadingStatusByIndex(index, false);
+      queryClient.invalidateQueries({
+        queryKey: ["prompt-versions", id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["prompt-latest-version", id],
+      });
+    },
+    [id, queryClient, setLoadingStatusByIndex, setResultsByIndex],
+  );
+
+  const runPromptTemplateOverHttp = useCallback(
+    async ({ index, startRun }) => {
+      if (startRun) {
+        const payload = getSaveTemplatePayload(index, "prompt");
+        await axios.post(
+          endpoints.develop.runPrompt.runTemplatePrompt(id),
+          payload,
+        );
+      }
+      const runStatus = await pollPromptRunStatus(index);
+      applyPromptRunStatus(index, runStatus);
+      return runStatus;
+    },
+    [applyPromptRunStatus, getSaveTemplatePayload, id, pollPromptRunStatus],
   );
 
   const { mutate: saveOrRunPromptTemplate } = useMutation({
@@ -819,31 +946,110 @@ const WorkbenchProvider = ({ children }) => {
       const payload = getRunTemplatePayload(index);
 
       return new Promise((resolve, reject) => {
+        let completed = false;
+        let fallbackStarted = false;
+        let receivedSocketMessage = false;
+        let fallbackTimer = null;
+
+        const clearFallbackTimer = () => {
+          if (fallbackTimer) {
+            clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+          }
+        };
+
+        const fallbackToHttpPolling = async ({ startRun, reason }) => {
+          if (completed || fallbackStarted) return;
+          fallbackStarted = true;
+          clearFallbackTimer();
+          closeSocketByIndex(`run-${index}`);
+          logger.warn(
+            "Prompt stream unavailable; falling back to run polling.",
+            {
+              reason,
+              startRun,
+            },
+          );
+          try {
+            const runStatus = await runPromptTemplateOverHttp({
+              index,
+              startRun,
+            });
+            completed = true;
+            resolve(runStatus);
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        if (!promptStreamUrl) {
+          fallbackToHttpPolling({
+            startRun: true,
+            reason: "missing_prompt_stream_url",
+          });
+          return;
+        }
+
+        fallbackTimer = setTimeout(() => {
+          fallbackToHttpPolling({
+            startRun: !receivedSocketMessage,
+            reason: "prompt_stream_timeout",
+          });
+        }, PROMPT_RUN_SOCKET_FALLBACK_MS);
+
         // @ts-ignore
-        const socket = runPromptOverSocket({
-          url: promptStreamUrl,
-          payload,
-          onMessage: (data) => {
-            setWsData(data);
-            if (data?.streaming_status === "all_completed") {
-              closeSocketByIndex(`run-${index}`);
-              resolve(data);
-            }
-          },
-          onError: (err) => {
-            enqueueSnackbar(
-              typeof err === "string"
-                ? err
-                : "Failed to connect. Please try again.",
-              {
-                variant: "error",
-              },
-            );
-            closeSocketByIndex(`run-${index}`);
-            reject(err);
-          },
-        });
-        activeSocketsRef.current[`run-${index}`] = socket;
+        try {
+          const socket = runPromptOverSocket({
+            url: promptStreamUrl,
+            payload,
+            onMessage: (data) => {
+              if (!receivedSocketMessage) clearFallbackTimer();
+              receivedSocketMessage = true;
+              setWsData(data);
+              if (data?.streaming_status === "all_completed") {
+                completed = true;
+                clearFallbackTimer();
+                closeSocketByIndex(`run-${index}`);
+                resolve(data);
+              }
+            },
+            onError: (err) => {
+              enqueueSnackbar(
+                "Prompt stream connection failed. Falling back to status polling.",
+                { variant: "warning" },
+              );
+              fallbackToHttpPolling({
+                startRun: !receivedSocketMessage,
+                reason: typeof err === "string" ? err : "prompt_stream_error",
+              });
+            },
+            onClose: () => {
+              if (!completed) {
+                fallbackToHttpPolling({
+                  startRun: !receivedSocketMessage,
+                  reason: "prompt_stream_closed",
+                });
+              }
+            },
+          });
+          activeSocketsRef.current[`run-${index}`] = socket;
+        } catch (error) {
+          fallbackToHttpPolling({
+            startRun: true,
+            reason: error?.message || "prompt_stream_create_failed",
+          });
+        }
+      });
+    },
+    onError: (error, variables) => {
+      const index = variables?.index ?? 0;
+      setLoadingStatusByIndex(index, false);
+      setResultsByIndex(index, (previous) => ({
+        ...previous,
+        isAnimating: false,
+      }));
+      enqueueSnackbar(error?.message || "Prompt run failed.", {
+        variant: "error",
       });
     },
   });
@@ -1010,6 +1216,14 @@ const WorkbenchProvider = ({ children }) => {
       setSelectedVersions,
     ],
   );
+
+  // Auto-save when user changes template format (skip initial load from API).
+  const templateFormatUserChanged = useRef(false);
+  useEffect(() => {
+    if (!templateFormatUserChanged.current) return;
+    saveAndDraftAll();
+    templateFormatUserChanged.current = false;
+  }, [templateFormat]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onRestoreVersion = (version) => {
     setSelectedVersionByIndex(0, (prev) => {
@@ -1308,7 +1522,11 @@ const WorkbenchProvider = ({ children }) => {
       setVariableData(...v);
       const saveDraftIndexes = prompts.reduce(
         (acc, { prompts: currentPrompts }, i) => {
-          const finalVariables = getVariables(currentPrompts, v[0]);
+          const finalVariables = getVariables(
+            currentPrompts,
+            v[0],
+            templateFormat,
+          );
           if (Object.keys(finalVariables).length) {
             acc.push(i);
           }
@@ -1319,7 +1537,7 @@ const WorkbenchProvider = ({ children }) => {
 
       saveAndDraftAll(saveDraftIndexes);
     },
-    [saveAndDraftAll, setVariableData, prompts],
+    [saveAndDraftAll, setVariableData, prompts, templateFormat],
   );
 
   const setPlaceholdersDataModified = useCallback(
@@ -1416,6 +1634,11 @@ const WorkbenchProvider = ({ children }) => {
         pushStoppedIds,
         closeSocketByIndex,
         setModelConfig,
+        templateFormat,
+        setTemplateFormat: (v) => {
+          templateFormatUserChanged.current = true;
+          setTemplateFormat(v);
+        },
       }}
     >
       {children}

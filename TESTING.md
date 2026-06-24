@@ -30,9 +30,15 @@ yarn test:changed        # Only tests related to changed files
 yarn test:coverage       # Full run with coverage report
 yarn test:unit           # Unit tests only
 yarn test:integration    # Integration tests only
+yarn test:api-journeys   # Browserless API journeys against a running backend
 ```
 
 Coverage thresholds (global): **70%** for branches, functions, lines, and statements.
+
+API journeys require `API_BASE` plus either `FUTURE_AGI_ACCESS_TOKEN` or
+`FUTURE_AGI_EMAIL`/`FUTURE_AGI_PASSWORD`. Mutating annotation coverage is opt-in
+with `API_JOURNEY_MUTATIONS=1`. The full guide lives in
+`../internal-docs/api-ui-e2e-coverage/API_JOURNEY_GUIDE.md`.
 
 ### Backend (Django + pytest, Docker-based)
 
@@ -83,7 +89,7 @@ Today, CI covers the frontend; backend CI is on the roadmap. Workflows in [`.git
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `frontend-feature.yml` | push to `feature/*`, `bugfix/*`, `hotfix/*`, `refactor/*`, `chore/*`, `docs/*`, `test/*`, `release/*` | Branch-name validation, type check, unit tests, build verification |
+| `frontend-feature.yml` | push to `feat/*`, `fix/*`, `chore/*`, `docs/*`, `refactor/*`, `test/*`, `perf/*` | Branch-name validation, type check, unit tests, build verification |
 | `frontend-develop.yml` | push to `develop`/`dev` + PRs into `main`/`develop`/`dev` | Quality gates, integration tests, build check, Lighthouse (PRs only) |
 | `frontend-main.yml` | push to `main` | Full suite with coverage + production build |
 | `frontend-deploy-*.yaml` | manual or on main | Environment-specific deploys (EU, GCP, prod, dev CDN) |

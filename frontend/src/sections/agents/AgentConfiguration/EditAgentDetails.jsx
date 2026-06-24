@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Box, Typography, Grid, Stack, Button } from "@mui/material";
 import PropTypes from "prop-types";
 import FormTextFieldV2 from "src/components/FormTextField/FormTextFieldV2";
@@ -10,7 +16,7 @@ import {
   pinCodeOptions,
 } from "src/components/agent-definitions/helper";
 import { useKnowledgeBaseList } from "src/api/knowledge-base/files";
-import { useNavigate, useParams } from "react-router";
+import { useParams } from "react-router";
 import SwitchField from "src/components/Switch/SwitchField";
 import LanguageMultiSelect from "../CreateNewAgent/AgentBasicInfoStep/LanguageMultiSelect";
 import { useWatch } from "react-hook-form";
@@ -47,6 +53,8 @@ const EditAgentDetails = ({
   const { orgLimit } = useAuthContext();
   const { agentDefinitionId } = useParams();
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
+  const [showSyncSuccess, setShowSyncSuccess] = useState(false);
+  const syncSuccessTimeoutRef = useRef(null);
   const apiKey = useWatch({
     control,
     name: "apiKey",
@@ -141,8 +149,48 @@ const EditAgentDetails = ({
       setValue("description", providerData?.prompt, { shouldDirty: true });
       setValue("apiKey", providerData?.api_key, { shouldDirty: true });
       setLastFetchedAt(new Date());
+      setShowSyncSuccess(true);
     },
   });
+
+  useEffect(() => {
+    if (showSyncSuccess) {
+      if (syncSuccessTimeoutRef.current) {
+        clearTimeout(syncSuccessTimeoutRef.current);
+      }
+      syncSuccessTimeoutRef.current = setTimeout(() => {
+        setShowSyncSuccess(false);
+      }, 2500);
+    }
+
+    return () => {
+      if (syncSuccessTimeoutRef.current) {
+        clearTimeout(syncSuccessTimeoutRef.current);
+      }
+    };
+  }, [showSyncSuccess]);
+
+  const debounceTimeoutRef = useRef(null);
+
+  const debouncedMutate = useCallback(
+    (data) => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      debounceTimeoutRef.current = setTimeout(() => {
+        mutate(data);
+      }, 500);
+    },
+    [mutate],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSyncWithProvider = async () => {
     if (!apiKey || !assistantId) {
@@ -168,9 +216,7 @@ const EditAgentDetails = ({
   // meaning (nothing to call). Lock the toggle to inbound.
   const outboundLocked = selectedProvider === "others";
 
-  const { data: knowledgeBaseList } = useKnowledgeBaseList("", null, {
-    status: true,
-  });
+  const { data: knowledgeBaseList } = useKnowledgeBaseList("", null);
 
   const provider = useWatch({
     control,
@@ -397,46 +443,106 @@ const EditAgentDetails = ({
                 !isLiveKitProvider(selectedProvider)
               }
             >
-              <Stack direction={"row"} alignItems={"center"} gap={2}>
-                <FormTextFieldV2
-                  control={control}
-                  fieldName="assistantId"
-                  placeholder="asst_xxx"
-                  required={observabilityEnabled || keysRequired}
-                  label="Assistant ID"
-                  fullWidth
-                  size="small"
-                  error={errors && !!errors.assistantId?.message}
-                  helperText={errors && errors.assistantId?.message}
-                  sx={{
-                    "& .MuiInputLabel-root": {
-                      fontWeight: 500,
-                    },
-                  }}
-                  onChange={() => {
-                    trigger("assistantId");
-                  }}
-                />
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  sx={{
-                    flexShrink: 0,
-                  }}
-                  startIcon={
+              <Stack direction={"column"} gap={0.75}>
+                <Stack direction={"row"} alignItems={"center"} gap={2}>
+                  <FormTextFieldV2
+                    control={control}
+                    fieldName="assistantId"
+                    placeholder="asst_xxx"
+                    required={observabilityEnabled || keysRequired}
+                    label="Assistant ID"
+                    fullWidth
+                    size="small"
+                    disabled={isPending}
+                    error={errors && !!errors.assistantId?.message}
+                    helperText={errors && errors.assistantId?.message}
+                    sx={{
+                      "& .MuiInputLabel-root": {
+                        fontWeight: 500,
+                      },
+                    }}
+                    onChange={(e) => {
+                      trigger("assistantId");
+                      const value = e.target.value;
+                      if (apiKey && value && selectedProvider) {
+                        debouncedMutate({
+                          api_key: apiKey,
+                          assistant_id: value,
+                          provider: selectedProvider,
+                        });
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    disabled={isPending}
+                    sx={{
+                      flexShrink: 0,
+                    }}
+                    startIcon={
+                      <SvgColor
+                        src="/assets/icons/ic_refresh.svg"
+                        sx={{
+                          animation: isPending
+                            ? `${spin} 1s linear infinite`
+                            : "none",
+                        }}
+                      />
+                    }
+                    onClick={handleSyncWithProvider}
+                  >
+                    Sync with provider
+                  </Button>
+                </Stack>
+                <ShowComponent condition={isPending}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 1,
+                      color: "blue.600",
+                    }}
+                  >
                     <SvgColor
                       src="/assets/icons/ic_refresh.svg"
                       sx={{
-                        animation: isPending
-                          ? `${spin} 1s linear infinite`
-                          : "none",
+                        animation: `${spin} 1s linear infinite`,
+                        width: "16px",
+                        height: "16px",
                       }}
                     />
-                  }
-                  onClick={handleSyncWithProvider}
-                >
-                  Sync with provider
-                </Button>
+                    <Typography
+                      typography={"s3"}
+                      fontWeight={"fontWeightMedium"}
+                    >
+                      {`Syncing with ${selectedProvider}...`}
+                    </Typography>
+                  </Box>
+                </ShowComponent>
+                <ShowComponent condition={showSyncSuccess && !isPending}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 0.5,
+                      color: "green.600",
+                    }}
+                  >
+                    <SvgColor
+                      src="/assets/icons/ic_success_fill.svg"
+                      sx={{ width: 16, height: 16, color: "green.600" }}
+                    />
+                    <Typography
+                      typography={"s3"}
+                      fontWeight={"fontWeightMedium"}
+                    >
+                      {`Synced with ${selectedProvider}`}
+                    </Typography>
+                  </Box>
+                </ShowComponent>
               </Stack>
             </ShowComponent>
             <ShowComponent
@@ -477,8 +583,16 @@ const EditAgentDetails = ({
                 helperText={errors && errors.apiKey?.message}
                 fullWidth
                 size="small"
-                onChange={() => {
+                onChange={(e) => {
                   trigger("apiKey");
+                  const value = e.target.value;
+                  if (assistantId && value && selectedProvider) {
+                    debouncedMutate({
+                      api_key: value,
+                      assistant_id: assistantId,
+                      provider: selectedProvider,
+                    });
+                  }
                 }}
               />
             </ShowComponent>
@@ -896,7 +1010,7 @@ const EditAgentDetails = ({
             </CustomTooltip>
             <Typography
               typography="s2"
-              color="text.disabled"
+              color="text.secondary"
               sx={{ marginLeft: 1 }}
               fontWeight="500"
             >

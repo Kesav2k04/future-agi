@@ -62,7 +62,9 @@ function deriveVariablesFromDataset(dataset) {
   const variables = {};
   const cellMap = {};
   for (const col of dataset.columns) {
-    const cell = row?.cells?.find((c) => c.columnId === col.id);
+    const cell = row?.cells?.find(
+      (c) => (c.columnId || c.column_id) === col.id,
+    );
     variables[col.name] = cell?.value ?? "";
     if (cell) cellMap[col.name] = cell;
   }
@@ -145,7 +147,6 @@ export default function GlobalVariableDrawer({ open, onClose }) {
     uploadedFileName,
     currentView,
     setCurrentView,
-    globalVariables,
     setGlobalVariables,
     // importDatasetDrawerOpen,
     // setImportDatasetDrawerOpen,
@@ -156,7 +157,6 @@ export default function GlobalVariableDrawer({ open, onClose }) {
     uploadedFileName: state.uploadedFileName,
     currentView: state.currentView,
     setCurrentView: state.setCurrentView,
-    globalVariables: state.globalVariables,
     setGlobalVariables: state.setGlobalVariables,
     // importDatasetDrawerOpen: state.importDatasetDrawerOpen,
     // setImportDatasetDrawerOpen: state.setImportDatasetDrawerOpen,
@@ -176,16 +176,16 @@ export default function GlobalVariableDrawer({ open, onClose }) {
     [datasetData],
   );
 
-  // Sync dataset variables to store when data arrives
+  // Sync dataset variables to store (for other consumers like useConnectedNodeVariables)
   useEffect(() => {
     if (datasetData && Object.keys(datasetVariables).length > 0) {
       setGlobalVariables(datasetVariables);
     }
   }, [datasetVariables, datasetData, setGlobalVariables]);
 
-  // Form management
+  // Form management — use API-derived data as source of truth, not the store
   const methods = useForm({
-    defaultValues: escapeKeys(globalVariables),
+    defaultValues: escapeKeys(datasetVariables),
     mode: "onChange",
   });
 
@@ -199,13 +199,13 @@ export default function GlobalVariableDrawer({ open, onClose }) {
   // Watch all form values
   const formValues = watch();
 
-  // Sync form when global variables change
+  // Sync form when API-derived variables change
   useEffect(() => {
-    reset(escapeKeys(globalVariables));
-  }, [globalVariables, reset]);
+    reset(escapeKeys(datasetVariables));
+  }, [datasetVariables, reset]);
 
   // Get variable keys for the ImportDatasetDrawer
-  const variableKeys = Object.keys(globalVariables);
+  const variableKeys = Object.keys(datasetVariables);
 
   // Handler called when ImportDatasetDrawer applies data
   // Using getValues instead of watch() to avoid new object reference on every render
@@ -253,7 +253,7 @@ export default function GlobalVariableDrawer({ open, onClose }) {
     setShowUploadJsonDialog(false);
     setShowConfirmDialog(false);
     setPendingRun(false);
-    reset(escapeKeys(globalVariables)); // Reset form to clean state
+    reset(escapeKeys(datasetVariables)); // Reset form to clean state
     uploadMutation.reset();
     onClose();
   };
@@ -322,6 +322,7 @@ export default function GlobalVariableDrawer({ open, onClose }) {
               isDirty={isDirty}
               cellMap={cellMap}
               graphId={graphId}
+              variables={datasetVariables}
             />
           </FormProvider>
         );
@@ -341,6 +342,7 @@ export default function GlobalVariableDrawer({ open, onClose }) {
               isDirty={isDirty}
               cellMap={cellMap}
               graphId={graphId}
+              variables={datasetVariables}
             />
           </FormProvider>
         );

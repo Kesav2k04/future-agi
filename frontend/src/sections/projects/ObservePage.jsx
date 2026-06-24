@@ -1,4 +1,10 @@
-import React, { useMemo, useCallback, useEffect } from "react";
+import React, {
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+  startTransition,
+} from "react";
 import PropTypes from "prop-types";
 import { Box, Paper, useTheme, CircularProgress, Alert } from "@mui/material";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router";
@@ -12,10 +18,10 @@ import {
   ViewConfigModal,
   TabContextMenu,
 } from "src/components/observe-tabs";
-import ObserveTabs from "./ObserveTabs";
 import { useTabStoreShallow } from "./LLMTracing/tabStore";
 import { useGetProjectDetails } from "src/api/project/project-detail";
-import { useGetSavedViews } from "src/api/project/saved-views";
+import { useQueryClient } from "@tanstack/react-query";
+import { useGetSavedViews, SAVED_VIEWS_KEY } from "src/api/project/saved-views";
 import ReplayDrawer from "./ReplayDrawer/ReplayDrawer";
 import {
   resetReplaySessionsStore,
@@ -50,9 +56,6 @@ TabErrorBoundary.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
-// Routes that use the new tab system (ObserveTabBar)
-const TAB_SYSTEM_ROUTES = ["llm-tracing", "sessions", "users"];
-
 // Map observe tab keys to route + URL params
 const TAB_TO_ROUTE = {
   traces: { route: "llm-tracing", params: { selectedTab: "trace" } },
@@ -68,6 +71,7 @@ const ObservePage = React.memo(() => {
   const { observeId } = useParams();
   const { data: projectDetail } = useGetProjectDetails(observeId);
   const { data: savedViewsData } = useGetSavedViews(observeId);
+  const queryClient = useQueryClient();
 
   // Tab store state for modals and context menu
   const {
@@ -89,27 +93,27 @@ const ObservePage = React.memo(() => {
   // Active tab for the new tab system
   const [activeTab, setActiveTab] = useUrlState("tab", "traces");
 
-  // Determine if current route uses the new tab system
   const currentRouteSegment = useMemo(() => {
     const segments = location.pathname.split("/").filter(Boolean);
     return segments[segments.length - 1] || "llm-tracing";
   }, [location.pathname]);
 
-  const isTabSystemRoute = TAB_SYSTEM_ROUTES.includes(currentRouteSegment);
-
   // Derive active tab from URL on initial load / route changes
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    // Saved-view tabs own the `tab` key — don't overwrite with the route
+    // default. Without this guard, a click on a sessions/users saved view
+    // would land on the route, this effect would fire, and `tab=view-<id>`
+    // would be replaced by `tab=sessions` (or `tab=users`), wiping the
+    // active-view-id needed by Save view.
+    if (tab && tab.startsWith("view-")) return;
     if (currentRouteSegment === "sessions") {
       setActiveTab("sessions");
     } else if (currentRouteSegment === "users") {
       setActiveTab("users");
     } else if (currentRouteSegment === "llm-tracing") {
-      const params = new URLSearchParams(location.search);
       const selectedTab = params.get("selectedTab");
-      const tab = params.get("tab");
-      // If it's a custom view tab, keep it
-      if (tab && tab.startsWith("view-")) return;
-      // Otherwise derive from selectedTab param
       if (selectedTab === "spans") {
         setActiveTab("spans");
       } else if (!tab || tab === "traces") {
@@ -119,26 +123,136 @@ const ObservePage = React.memo(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRouteSegment]);
 
+  // Hydrate activeViewConfig on hard-refresh / direct URL load. handleTabChange
+  // sets it on click, but a page reload re-mounts with no in-memory state —
+  // children read activeViewConfig for extraFilters, visibleColumns, etc.,
+  // and without this all of those fall back to defaults until the user clicks
+  // the tab again. Re-runs only when the URL tab key or the saved-views list
+  // changes; the value for `tab=view-<id>` is stable across saved-views
+  // refetches so we don't churn the apply effect on every mutation invalidate.
+  const lastHydratedTabRef = useRef(null);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (!tab || !tab.startsWith("view-")) {
+      lastHydratedTabRef.current = null;
+      return;
+    }
+    if (lastHydratedTabRef.current === tab) return;
+    const customViews = savedViewsData?.custom_views ?? [];
+    if (!customViews.length) return;
+    const view = customViews.find((v) => `view-${v.id}` === tab);
+    if (!view?.config) return;
+    lastHydratedTabRef.current = tab;
+    setActiveViewConfig(view.config);
+  }, [location.search, savedViewsData, setActiveViewConfig]);
+
   // Handle tab change from ObserveTabBar
   const handleTabChange = useCallback(
     (tabKey) => {
-      setActiveTab(tabKey);
+      // setActiveTab is redundant here: navigate() below updates the URL and
+      // useUrlState's external-sync effect will update the state. Skipping
+      // the explicit call saves one setSearchParams round and the
+      // corresponding re-render cascade.
 
-      // Set activeViewConfig from saved view data
+      // Set activeViewConfig from saved view data. Read from queryClient
+      // directly rather than the `savedViewsData` closure, which can be stale
+      // immediately after an optimistic cache write.
+      let activeConfig = null;
+      let viewTabType = "traces";
       if (tabKey.startsWith("view-")) {
         const viewId = tabKey.replace("view-", "");
-        const view = (
-          savedViewsData?.customViews ?? savedViewsData?.custom_views
-        )?.find((v) => v.id === viewId);
-        setActiveViewConfig(view?.config || null);
-      } else {
-        setActiveViewConfig(null);
+        const cached = queryClient.getQueryData([SAVED_VIEWS_KEY, observeId]);
+        const customViews = cached?.custom_views ?? [];
+        const view = customViews.find((v) => v.id === viewId);
+        activeConfig = view?.config || null;
+        viewTabType = view?.tab_type ?? "traces";
       }
+
+      // Apply effects (activeViewConfig → apply effect → many setters) aren't
+      // urgent for tab responsiveness. Defer via startTransition so the
+      // navigation and URL update feel snappy while the filter apply runs as
+      // a non-blocking transition.
+      startTransition(() => {
+        setActiveViewConfig(activeConfig);
+      });
 
       // Navigate to the appropriate route
       if (tabKey.startsWith("view-")) {
-        const basePath = `/dashboard/observe/${observeId}/llm-tracing`;
-        navigate(`${basePath}?tab=${tabKey}&selectedTab=trace`, {
+        const isUsersView =
+          viewTabType === "users" || viewTabType === "user_detail";
+        const isSessionsView = viewTabType === "sessions";
+        let routeSegment = "llm-tracing";
+        if (isUsersView) routeSegment = "users";
+        else if (isSessionsView) routeSegment = "sessions";
+        const basePath = `/dashboard/observe/${observeId}/${routeSegment}`;
+
+        const params = new URLSearchParams();
+        params.set("tab", tabKey);
+
+        if (isUsersView) {
+          // Users-typed views use a different config schema (config.filters is
+          // an object, not an array) and its own URL-state key pair.
+          if (activeConfig?.filters?.dateFilter) {
+            params.set(
+              "userDateFilter",
+              JSON.stringify(activeConfig.filters.dateFilter),
+            );
+          }
+        } else if (isSessionsView) {
+          // Sessions uses sessionFilter / sessionDateFilter URL keys.
+          if (activeConfig?.filters) {
+            params.set("sessionFilter", JSON.stringify(activeConfig.filters));
+          }
+          if (activeConfig?.display?.dateFilter) {
+            params.set(
+              "sessionDateFilter",
+              JSON.stringify(activeConfig.display.dateFilter),
+            );
+          }
+        } else {
+          // Trace / Span views — pick URL keys that match LLMTracingView's
+          // useLLMTracingFilters registrations.
+          const isSpans = viewTabType === "spans";
+          const selectedTabValue = isSpans ? "spans" : "trace";
+          const primaryFilterKey = isSpans
+            ? "primarySpanFilter"
+            : "primaryTraceFilter";
+          const primaryDateKey = isSpans
+            ? "primarySpanDateFilter"
+            : "primaryTraceDateFilter";
+          const compareFilterKey = isSpans
+            ? "compareSpansFilter"
+            : "compareTraceFilter";
+          const compareDateKey = isSpans
+            ? "compareSpansDateFilter"
+            : "compareTraceDateFilter";
+
+          params.set("selectedTab", selectedTabValue);
+          if (activeConfig?.filters) {
+            params.set(primaryFilterKey, JSON.stringify(activeConfig.filters));
+          }
+          if (activeConfig?.display?.dateFilter) {
+            params.set(
+              primaryDateKey,
+              JSON.stringify(activeConfig.display.dateFilter),
+            );
+          }
+          if (activeConfig?.compare_filters) {
+            params.set(
+              compareFilterKey,
+              JSON.stringify(activeConfig.compare_filters),
+            );
+          }
+          if (activeConfig?.compare_date_filter) {
+            params.set(
+              compareDateKey,
+              JSON.stringify(activeConfig.compare_date_filter),
+            );
+          }
+        }
+
+        navigate(`${basePath}?${params.toString()}`, {
           replace: true,
         });
       } else {
@@ -152,59 +266,7 @@ const ObservePage = React.memo(() => {
         }
       }
     },
-    [
-      observeId,
-      navigate,
-      setActiveTab,
-      savedViewsData?.customViews ?? savedViewsData?.custom_views,
-      setActiveViewConfig,
-    ],
-  );
-
-  // Legacy tabs for non-tab-system routes (sessions, evals, charts, etc.)
-  const legacyTabs = useMemo(
-    () => [
-      {
-        id: "llm-tracing",
-        title: "LLM Tracing",
-        path: `/dashboard/observe/${observeId}/llm-tracing`,
-        show: true,
-      },
-      {
-        id: "evals-tasks",
-        title: "Evals & Tasks",
-        path: `/dashboard/observe/${observeId}/evals-tasks`,
-        show: true,
-      },
-      {
-        id: "charts",
-        title: "Charts",
-        path: `/dashboard/observe/${observeId}/charts`,
-        show: true,
-      },
-      {
-        id: "alerts",
-        title: "Alerts",
-        path: `/dashboard/observe/${observeId}/alerts`,
-        show: true,
-      },
-    ],
-    [observeId],
-  );
-
-  const currentLegacyTab = useMemo(() => {
-    const segments = location.pathname.split("/").filter(Boolean);
-    return legacyTabs.find((tab) => segments.includes(tab.id)) || legacyTabs[0];
-  }, [location.pathname, legacyTabs]);
-
-  const handleLegacyTabChange = useCallback(
-    (event, newTabId) => {
-      const selectedTab = legacyTabs.find((tab) => tab.id === newTabId);
-      if (selectedTab && selectedTab.path !== location.pathname) {
-        navigate(selectedTab.path, { replace: true });
-      }
-    },
-    [legacyTabs, location.pathname, navigate],
+    [observeId, navigate, queryClient, setActiveViewConfig],
   );
 
   // Memoized styles
@@ -289,21 +351,12 @@ const ObservePage = React.memo(() => {
 
       {/* Tabs Section */}
       <Paper sx={tabsPaperStyles}>
-        {isTabSystemRoute ? (
-          <ObserveTabBar
-            projectId={observeId}
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            projectSource={projectDetail?.source}
-          />
-        ) : (
-          <ObserveTabs
-            tabs={legacyTabs}
-            currentTab={currentLegacyTab}
-            onTabChange={handleLegacyTabChange}
-            observeId={observeId}
-          />
-        )}
+        <ObserveTabBar
+          projectId={observeId}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          projectSource={projectDetail?.source}
+        />
       </Paper>
 
       {/* Filter chips slot — FilterChips portals here */}
@@ -320,7 +373,7 @@ const ObservePage = React.memo(() => {
       </Box>
       <ReplayDrawer
         gridApi={headerConfig?.gridApi}
-        currentTab={currentLegacyTab}
+        activeRoute={currentRouteSegment}
         projectDetail={projectDetail}
       />
 
@@ -343,7 +396,7 @@ const ObservePage = React.memo(() => {
         <TabContextMenu
           anchorPosition={contextMenuAnchor}
           view={
-            (savedViewsData?.customViews ?? savedViewsData?.custom_views)?.find(
+            savedViewsData?.custom_views?.find(
               (v) => v.id === contextMenuAnchor.viewId,
             ) ?? null
           }

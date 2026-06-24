@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const BARE_VARIABLE_RE = /^\s*\{\{[^}]+\}\}\s*$/;
+
 export const getAddColumnApiCallValidation = (
   allColumns,
   isConditionalNode = false,
@@ -12,7 +14,20 @@ export const getAddColumnApiCallValidation = (
         ? z.string().optional()
         : z.string().min(1, "Name is required"),
     config: z.object({
-      url: z.string().url("Invalid URL").min(1, "URL is required"),
+      url: z
+        .string()
+        .min(1, "URL is required")
+        .transform((v) => {
+          let content = v;
+          allColumns.forEach(({ headerName, field }) => {
+            const pattern = new RegExp(
+              `{{\\s*${headerName}((?:\\.[^}\\s]+|\\[\\d+\\])*)\\s*}}`,
+              "g",
+            );
+            content = content.replace(pattern, `{{${field}$1}}`);
+          });
+          return content;
+        }),
       method: z.string().min(1, "Method is required"),
       params: z
         .array(
@@ -25,7 +40,17 @@ export const getAddColumnApiCallValidation = (
         )
         .transform((arr) => {
           return arr.reduce((acc, curr) => {
-            acc[curr.name] = { type: curr.type, value: curr.value };
+            let val = curr.value;
+            if (curr.type === "Variable") {
+              allColumns.forEach(({ headerName, field }) => {
+                const p = new RegExp(
+                  `{{\\s*${headerName}((?:\\.[^}\\s]+|\\[\\d+\\])*)\\s*}}`,
+                  "g",
+                );
+                val = val.replace(p, `{{${field}$1}}`);
+              });
+            }
+            acc[curr.name] = { type: curr.type, value: val };
             return acc;
           }, {});
         }),
@@ -40,7 +65,17 @@ export const getAddColumnApiCallValidation = (
         )
         .transform((arr) => {
           return arr.reduce((acc, curr) => {
-            acc[curr.name] = { type: curr.type, value: curr.value };
+            let val = curr.value;
+            if (curr.type === "Variable") {
+              allColumns.forEach(({ headerName, field }) => {
+                const p = new RegExp(
+                  `{{\\s*${headerName}((?:\\.[^}\\s]+|\\[\\d+\\])*)\\s*}}`,
+                  "g",
+                );
+                val = val.replace(p, `{{${field}$1}}`);
+              });
+            }
+            acc[curr.name] = { type: curr.type, value: val };
             return acc;
           }, {});
         }),
@@ -51,14 +86,18 @@ export const getAddColumnApiCallValidation = (
           let content = v;
 
           allColumns.forEach(({ headerName, field }) => {
-            const pattern = new RegExp(`{{\\s*${headerName}\\s*}}`, "g");
-            content = content.replace(pattern, `{{${field}}}`);
+            const pattern = new RegExp(
+              `{{\\s*${headerName}((?:\\.[^}\\s]+|\\[\\d+\\])*)\\s*}}`,
+              "g",
+            );
+            content = content.replace(pattern, `{{${field}$1}}`);
           });
 
           return content;
         })
         .refine((value) => {
           if (!value?.length) return true;
+          if (BARE_VARIABLE_RE.test(value)) return true;
           try {
             JSON.parse(value);
             return true;
@@ -68,6 +107,7 @@ export const getAddColumnApiCallValidation = (
         }, "Invalid JSON format")
         .transform((value) => {
           if (!value?.length) return {};
+          if (BARE_VARIABLE_RE.test(value)) return value;
           return JSON.parse(value);
         }),
       outputType: z.string().min(1, "Output type is required"),

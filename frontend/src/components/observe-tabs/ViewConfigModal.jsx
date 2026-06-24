@@ -22,6 +22,7 @@ import {
   useCreateSavedView,
   useUpdateSavedView,
 } from "src/api/project/saved-views";
+import { useObserveHeader } from "src/sections/project/context/ObserveHeaderContext";
 
 const TAB_TYPES = [
   { value: "traces", label: "Traces" },
@@ -45,6 +46,7 @@ const ViewConfigModal = ({
     useCreateSavedView(projectId);
   const { mutate: updateView, isPending: isUpdating } =
     useUpdateSavedView(projectId);
+  const { getViewConfig } = useObserveHeader();
 
   const isPending = isCreating || isUpdating;
 
@@ -60,16 +62,21 @@ const ViewConfigModal = ({
     e.preventDefault();
     if (!name.trim()) return;
 
-    const payload = {
+    const snapshot = getViewConfig?.() ?? null;
+    const config =
+      mode === "edit"
+        ? snapshot ?? initialValues?.config ?? {}
+        : snapshot ?? {};
+
+    const basePayload = {
       name: name.trim(),
-      tab_type: tabType,
       visibility,
-      config: initialValues?.config ?? {},
+      config,
     };
 
     if (mode === "edit" && initialValues?.id) {
       updateView(
-        { id: initialValues.id, ...payload },
+        { id: initialValues.id, ...basePayload },
         {
           onSuccess: (res) => {
             onClose();
@@ -79,7 +86,7 @@ const ViewConfigModal = ({
       );
     } else {
       createView(
-        { project_id: projectId, ...payload },
+        { project_id: projectId, tab_type: tabType, ...basePayload },
         {
           onSuccess: (res) => {
             onClose();

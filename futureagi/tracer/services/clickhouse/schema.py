@@ -33,14 +33,49 @@ from __future__ import annotations
 
 import os
 import re
-from typing import List, Tuple
 
 # Resolve the configured CH database name for use in DDL templates.
 # Falls back to "futureagi" which is the production default.
 _CH_DATABASE = os.getenv("CH_DATABASE", "futureagi")
-_USE_REPLICATED_ENGINES = os.getenv(
-    "CH_USE_REPLICATED_ENGINES", "true"
-).lower() in {"1", "true", "yes", "on"}
+_USE_REPLICATED_ENGINES = os.getenv("CH_USE_REPLICATED_ENGINES", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+# Gate the legacy CDC chain (tracer_observation_span + spans_mv +
+# span_metrics_hourly* MVs) for the spans cutover. Default False keeps
+# the legacy chain alive in prod so PeerDB CDC and `spans_mv` continue
+# to write into `spans` alongside fi-collector. Dev/local docker compose
+# sets this to True to drop the chain entirely — fi-collector becomes
+# the sole writer for `spans`. See docs/CH25_MIGRATION.md for the
+# cutover playbook.
+_DROP_LEGACY_CDC_CHAIN = os.getenv("CH25_DROP_LEGACY_CDC_CHAIN", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+# Names of the 4 legacy DDL entries that the CH25 cutover retires.
+# Order matters for DROP — MVs first, then their source tables, so we
+# can issue them as DROP IF EXISTS without dependency errors.
+_LEGACY_CDC_CHAIN_NAMES = (
+    "span_metrics_hourly_mv",
+    "spans_mv",
+    "span_metrics_hourly",
+    "tracer_observation_span",
+)
+
+# The legacy v1 ``spans`` DDL in this module conflicts with the v2 spans
+# schema applied by ``tracer/services/clickhouse/v2/schema/002_spans_v2.sql``.
+# Both use the same table name but different column shapes. When the
+# CH25 flag is set, the v1 registry entry is filtered out so v2 is the
+# only definition that ever lands; ``_migrate_v1_spans_if_needed`` in
+# the boot hook handles the drop + v2 reapply when an older volume
+# carries the v1 table.
+_V1_TO_V2_TABLES = ("spans",)
 
 
 def _to_single_node_engine(ddl: str) -> str:
@@ -62,6 +97,7 @@ def _to_single_node_engine(ddl: str) -> str:
         return f"{engine}({args})" if args else f"{engine}()"
 
     return re.sub(pattern, repl, ddl, flags=re.DOTALL)
+
 
 # ============================================================================
 # LAYER 1 — PeerDB CDC Landing Tables
@@ -260,8 +296,14 @@ CREATE TABLE IF NOT EXISTS tracer_eval_logger (
     id UUID,
 
     -- Foreign keys
-    trace_id UUID,
+    -- ``trace_id`` and ``observation_span_id`` are nullable so session-level
+    -- eval rows (PR4) can land here with NULL FKs; ``trace_session_id`` is
+    -- the new column that session rows populate. ``target_type``
+    -- discriminates the row shape (mirror of EvalLogger.target_type in PG).
+    trace_id Nullable(UUID),
     observation_span_id Nullable(String),
+    trace_session_id Nullable(UUID),
+    target_type LowCardinality(String) DEFAULT 'span',
     custom_eval_config_id UUID DEFAULT '00000000-0000-0000-0000-000000000000',
     eval_type_id Nullable(String),
 
@@ -302,12 +344,18 @@ CREATE TABLE IF NOT EXISTS tracer_eval_logger (
     -- Secondary indexes
     INDEX idx_trace_id trace_id TYPE bloom_filter GRANULARITY 1,
     INDEX idx_observation_span_id observation_span_id TYPE bloom_filter GRANULARITY 1,
+    INDEX idx_trace_session_id trace_session_id TYPE bloom_filter GRANULARITY 1,
+    INDEX idx_target_type target_type TYPE bloom_filter GRANULARITY 1,
     INDEX idx_custom_eval_config_id custom_eval_config_id TYPE bloom_filter GRANULARITY 1
 )
 ENGINE = ReplicatedReplacingMergeTree('/clickhouse/tables/{shard}/tracer_eval_logger', '{replica}', _peerdb_version)
 PARTITION BY toYYYYMM(created_at)
+-- ORDER BY uses ``coalesce(trace_id, trace_session_id, id)`` would be ideal
+-- but ClickHouse requires ORDER BY columns to be deterministic. Keeping the
+-- existing key works because span/trace rows still populate trace_id and
+-- session rows simply sort with NULL trace_id at the partition's NULL bucket.
 ORDER BY (trace_id, custom_eval_config_id, id)
-SETTINGS index_granularity = 8192;
+SETTINGS index_granularity = 8192, allow_nullable_key = 1;
 """
 
 # ---------------------------------------------------------------------------
@@ -435,6 +483,27 @@ CREATE DICTIONARY IF NOT EXISTS trace_dict (
 PRIMARY KEY id
 SOURCE(CLICKHOUSE(
     TABLE 'tracer_trace'
+    DB '{_CH_DATABASE}'
+))
+LIFETIME(MIN 30 MAX 60)
+LAYOUT(COMPLEX_KEY_HASHED(SHARDS 4));
+"""
+
+# ---------------------------------------------------------------------------
+# trace_session_dict — in-memory dictionary sourced from trace_session
+# PR3: lets eval_metrics_hourly_mv resolve project_id for session-target eval
+# rows (which have NULL trace_id). Mirrors trace_dict's shape and tuning.
+# ---------------------------------------------------------------------------
+TRACE_SESSION_DICT = f"""
+CREATE DICTIONARY IF NOT EXISTS trace_session_dict (
+    id UUID,
+    project_id UUID,
+    name Nullable(String),
+    _peerdb_is_deleted UInt8
+)
+PRIMARY KEY id
+SOURCE(CLICKHOUSE(
+    TABLE 'trace_session'
     DB '{_CH_DATABASE}'
 ))
 LIFETIME(MIN 30 MAX 60)
@@ -711,6 +780,8 @@ CREATE TABLE IF NOT EXISTS spans (
     INDEX idx_span_attr_str_keys mapKeys(span_attr_str) TYPE bloom_filter GRANULARITY 1,
     INDEX idx_span_attr_num_keys mapKeys(span_attr_num) TYPE bloom_filter GRANULARITY 1,
     INDEX idx_span_attr_bool_keys mapKeys(span_attr_bool) TYPE bloom_filter GRANULARITY 1,
+    INDEX idx_trace_session_id trace_session_id TYPE bloom_filter GRANULARITY 1,
+    INDEX idx_end_user_id end_user_id TYPE bloom_filter GRANULARITY 1,
 
     -- Projection for fast root-span pagination: allows CH to skip non-root
     -- spans via the index instead of scanning all rows.
@@ -720,7 +791,8 @@ CREATE TABLE IF NOT EXISTS spans (
             start_time, end_time, latency_ms, cost,
             total_tokens, prompt_tokens, completion_tokens,
             model, provider, trace_session_id, trace_tags,
-            project_id, parent_span_id, _peerdb_is_deleted, created_at
+            project_id, parent_span_id, _peerdb_is_deleted, created_at,
+            end_user_id
         ORDER BY (project_id, _peerdb_is_deleted, parent_span_id, start_time)
     )
 )
@@ -903,7 +975,6 @@ CREATE TABLE IF NOT EXISTS span_metrics_hourly (
 ENGINE = ReplicatedAggregatingMergeTree('/clickhouse/tables/{shard}/span_metrics_hourly', '{replica}')
 PARTITION BY toYYYYMM(hour)
 ORDER BY (project_id, hour, observation_type, model, status)
-TTL hour + INTERVAL 365 DAY
 SETTINGS index_granularity = 8192, allow_nullable_key = 1;
 """
 
@@ -965,7 +1036,6 @@ CREATE TABLE IF NOT EXISTS eval_metrics_hourly (
 ENGINE = ReplicatedAggregatingMergeTree('/clickhouse/tables/{shard}/eval_metrics_hourly', '{replica}')
 PARTITION BY toYYYYMM(hour)
 ORDER BY (project_id, custom_eval_config_id, hour)
-TTL hour + INTERVAL 365 DAY
 SETTINGS index_granularity = 8192, allow_nullable_key = 1;
 """
 
@@ -975,8 +1045,17 @@ TO eval_metrics_hourly
 AS
 SELECT
     coalesce(e.custom_eval_config_id, toUUID('00000000-0000-0000-0000-000000000000')) AS custom_eval_config_id,
-    -- Resolve project_id from the parent trace via the dictionary
-    dictGetOrDefault('trace_dict', 'project_id', toUUID(e.trace_id), toUUID('00000000-0000-0000-0000-000000000000')) AS project_id,
+    -- PR3: project_id resolution branches by target_type:
+    --   span / trace targets -> trace_dict lookup on trace_id
+    --   session target       -> trace_session_dict lookup on trace_session_id
+    -- Session rows have NULL trace_id, so the trace_dict lookup would
+    -- collapse them under the zero-UUID project_id. Branching on
+    -- target_type keeps each row in the correct project's bucket.
+    if(
+        e.target_type = 'session',
+        dictGetOrDefault('trace_session_dict', 'project_id', toUUID(e.trace_session_id), toUUID('00000000-0000-0000-0000-000000000000')),
+        dictGetOrDefault('trace_dict', 'project_id', toUUID(e.trace_id), toUUID('00000000-0000-0000-0000-000000000000'))
+    ) AS project_id,
     toStartOfHour(e.created_at)                                    AS hour,
 
     count()                                                        AS eval_count,
@@ -1732,7 +1811,7 @@ ORDER BY (organization_id, project_id, trace_id, started_at);
 """
 
 
-SCHEMA_DDL_STATEMENTS: List[Tuple[str, str]] = [
+SCHEMA_DDL_STATEMENTS: list[tuple[str, str]] = [
     # Layer 1 — CDC landing tables
     ("tracer_observation_span", CDC_OBSERVATION_SPAN),
     ("tracer_trace", CDC_TRACE),
@@ -1743,6 +1822,7 @@ SCHEMA_DDL_STATEMENTS: List[Tuple[str, str]] = [
     ("tracer_enduser", CDC_TRACER_ENDUSER),
     # Layer 2 — Dictionaries + denormalized spans
     ("trace_dict", TRACE_DICT),
+    ("trace_session_dict", TRACE_SESSION_DICT),
     ("enduser_dict", ENDUSER_DICT),
     ("model_hub_promptversion", CDC_MODEL_HUB_PROMPTVERSION),
     ("model_hub_prompttemplate", CDC_MODEL_HUB_PROMPTTEMPLATE),
@@ -1793,7 +1873,7 @@ SCHEMA_DDL_STATEMENTS: List[Tuple[str, str]] = [
 
 # Post-DDL ALTER statements to ensure materialized columns exist on CDC tables
 # that PeerDB may recreate without them during RESYNC operations.
-POST_DDL_ALTERS: List[str] = [
+POST_DDL_ALTERS: list[str] = [
     "ALTER TABLE usage_apicalllog ADD COLUMN IF NOT EXISTS "
     "eval_score Float64 MATERIALIZED "
     "JSONExtractFloat(JSONExtractString(config), 'output', 'output')",
@@ -1806,10 +1886,111 @@ POST_DDL_ALTERS: List[str] = [
     "ALTER TABLE usage_apicalllog ADD COLUMN IF NOT EXISTS "
     "eval_dataset_id String MATERIALIZED "
     "JSONExtractString(JSONExtractString(config), 'dataset_id')",
+    # PR3: evolve existing tracer_eval_logger tables to the row_type stack's
+    # new shape. CREATE TABLE IF NOT EXISTS skips already-created tables, so
+    # these ALTERs bring the schema forward in place. Idempotent thanks to
+    # IF NOT EXISTS / IF EXISTS clauses; ordering matters where the bloom
+    # index on trace_id has to be dropped before we can MODIFY the column.
+    "ALTER TABLE tracer_eval_logger ADD COLUMN IF NOT EXISTS "
+    "trace_session_id Nullable(UUID)",
+    "ALTER TABLE tracer_eval_logger ADD COLUMN IF NOT EXISTS "
+    "target_type LowCardinality(String) DEFAULT 'span'",
+    # ClickHouse refuses to MODIFY a column that's part of a skip index
+    # (Code: 524 — "Trying to ALTER trace_id column which is a part of
+    # index idx_trace_id"). Drop the index, modify the column to Nullable
+    # so session rows (target_type='session') can write NULL trace_id,
+    # then re-add the index. All idempotent.
+    "ALTER TABLE tracer_eval_logger DROP INDEX IF EXISTS idx_trace_id",
+    "ALTER TABLE tracer_eval_logger MODIFY COLUMN trace_id Nullable(UUID)",
+    "ALTER TABLE tracer_eval_logger ADD INDEX IF NOT EXISTS "
+    "idx_trace_id trace_id TYPE bloom_filter GRANULARITY 1",
+    # Bloom filter indexes for the new columns (mirrors the existing
+    # idx_observation_span_id / idx_trace_id). Cheap filter queries.
+    "ALTER TABLE tracer_eval_logger ADD INDEX IF NOT EXISTS "
+    "idx_trace_session_id trace_session_id TYPE bloom_filter GRANULARITY 1",
+    "ALTER TABLE tracer_eval_logger ADD INDEX IF NOT EXISTS "
+    "idx_target_type target_type TYPE bloom_filter GRANULARITY 1",
+    # Strip the legacy 365d TTL from the v1 hourly rollup tables. The CREATE
+    # strings above no longer declare TTL, but existing prod clusters carry
+    # the original TTL on the live tables — these ALTERs remove it.
+    # In dev/test where the legacy CDC chain is gated off, the tables don't
+    # exist and these ALTERs error out; _ensure_analytics_schema() catches
+    # those as warnings (model_hub/apps.py:88-93).
+    "ALTER TABLE span_metrics_hourly REMOVE TTL",
+    "ALTER TABLE eval_metrics_hourly REMOVE TTL",
 ]
 
 
-def get_all_schema_ddl() -> List[Tuple[str, str]]:
+# ============================================================================
+# Materialized-view recreation manifest
+# ============================================================================
+#
+# CREATE MATERIALIZED VIEW IF NOT EXISTS skips already-existing views, so any
+# semantic change to an MV body (new WHERE clause, different aggregation,
+# additional join) requires DROP + CREATE on each environment that has the
+# old MV. To make this safe and replayable we keep an explicit manifest of
+# every MV that may need recreation, and ship a Django management command
+# (``manage.py recreate_clickhouse_mv``) that consumes it.
+#
+# Each entry carries:
+#   - ``ddl_constant_name``: name of the constant in this module that holds
+#     the canonical CREATE MATERIALIZED VIEW statement.
+#   - ``source_table`` / ``target_table``: the CDC table the MV reads and
+#     the AggregatingMergeTree (or similar) the MV writes into. Used by the
+#     command's gap-backfill path.
+#   - ``source_time_column``: the column we filter on when running the gap
+#     backfill (typically ``created_at``).
+#   - ``backfill_select``: the SELECT body to use for gap-backfill INSERTs
+#     (mirrors the MV's body verbatim minus the CREATE prefix; the command
+#     appends ``AND <source_time_column> >= %(cutoff)s`` to the WHERE
+#     clause). Set to ``None`` to opt the MV out of backfill (use case:
+#     MVs whose semantic change makes a partial re-aggregate incorrect —
+#     those need a full recompute via a one-off SRE script instead).
+#
+# The command verifies the deployed MV's SHOW CREATE matches the canonical
+# DDL after recreation, so a misconfigured manifest fails loudly.
+MV_RECREATE_MANIFEST: dict[str, dict[str, str | None]] = {
+    "eval_metrics_hourly_mv": {
+        "ddl_constant_name": "EVAL_METRICS_HOURLY_MV",
+        "source_table": "tracer_eval_logger",
+        "target_table": "eval_metrics_hourly",
+        "source_time_column": "created_at",
+        # Mirrors EVAL_METRICS_HOURLY_MV's SELECT body verbatim. The command
+        # appends ``AND created_at >= %(cutoff)s`` to the WHERE clause when
+        # running the gap backfill — keep this in lockstep with the MV body
+        # above. A unit test asserts the WHERE clause shape so divergence
+        # surfaces immediately.
+        "backfill_select": """
+            INSERT INTO eval_metrics_hourly
+            SELECT
+                coalesce(e.custom_eval_config_id, toUUID('00000000-0000-0000-0000-000000000000')) AS custom_eval_config_id,
+                if(
+                    e.target_type = 'session',
+                    dictGetOrDefault('trace_session_dict', 'project_id', toUUID(e.trace_session_id), toUUID('00000000-0000-0000-0000-000000000000')),
+                    dictGetOrDefault('trace_dict', 'project_id', toUUID(e.trace_id), toUUID('00000000-0000-0000-0000-000000000000'))
+                ) AS project_id,
+                toStartOfHour(e.created_at)                                    AS hour,
+
+                count()                                                        AS eval_count,
+                ifNull(sumIf(e.output_float, e.output_float IS NOT NULL), 0)   AS float_sum,
+                countIf(e.output_float IS NOT NULL)                            AS float_count,
+                countIf(e.output_bool = 1)                                     AS bool_pass,
+                countIf(e.output_bool = 0 AND e.output_bool IS NOT NULL)       AS bool_fail,
+                countIf(e.error = 1)                                           AS error_count
+
+            FROM tracer_eval_logger AS e
+            WHERE e._peerdb_is_deleted = 0
+              AND e.created_at >= %(cutoff)s
+            GROUP BY
+                custom_eval_config_id,
+                project_id,
+                hour
+        """,
+    },
+}
+
+
+def get_all_schema_ddl() -> list[tuple[str, str]]:
     """Return all schema DDL statements in correct creation order.
 
     The order ensures that dependencies are satisfied:
@@ -1818,23 +1999,113 @@ def get_all_schema_ddl() -> List[Tuple[str, str]]:
       3. spans + spans_mv (depends on tracer_observation_span + trace_dict)
       4. span_metrics_hourly + MV (depends on spans)
       5. eval_metrics_hourly + MV (depends on tracer_eval_logger + trace_dict)
+
+    When ``CH25_DROP_LEGACY_CDC_CHAIN`` is set, the four legacy entries
+    in ``_LEGACY_CDC_CHAIN_NAMES`` are filtered out — fi-collector is
+    expected to be the sole writer for ``spans`` and the legacy aggregate
+    table is unread.
     """
+    statements = SCHEMA_DDL_STATEMENTS
+    if _DROP_LEGACY_CDC_CHAIN:
+        excluded = set(_LEGACY_CDC_CHAIN_NAMES) | set(_V1_TO_V2_TABLES)
+        statements = [(name, ddl) for name, ddl in statements if name not in excluded]
+
     if _USE_REPLICATED_ENGINES:
-        return list(SCHEMA_DDL_STATEMENTS)
+        return list(statements)
 
-    return [
-        (name, _to_single_node_engine(ddl))
-        for name, ddl in SCHEMA_DDL_STATEMENTS
-    ]
+    return [(name, _to_single_node_engine(ddl)) for name, ddl in statements]
 
 
-def get_drop_statements() -> List[str]:
+def get_legacy_chain_drop_statements() -> list[tuple[str, str]]:
+    """Return DROP statements for the legacy CDC chain.
+
+    Used at boot when ``CH25_DROP_LEGACY_CDC_CHAIN`` is set, to clean up
+    existing instances that were created by an earlier deploy (since
+    ``CREATE IF NOT EXISTS`` cannot drop). Order is MV → source so that
+    drops never trip dependency errors. Each statement is wrapped in
+    ``IF EXISTS`` so reruns are no-ops.
+
+    Returns a list of ``(name, statement)`` tuples so callers can log
+    per-target failures without inspecting SQL.
+    """
+    statements: list[tuple[str, str]] = []
+    for name in _LEGACY_CDC_CHAIN_NAMES:
+        if name.endswith("_mv"):
+            statements.append((name, f"DROP VIEW IF EXISTS {name}"))
+        else:
+            statements.append((name, f"DROP TABLE IF EXISTS {name}"))
+    return statements
+
+
+def should_drop_legacy_chain() -> bool:
+    """Whether ``CH25_DROP_LEGACY_CDC_CHAIN`` is enabled.
+
+    Module-level constant captures the env var at import time. Callers
+    (the boot hook, the warm-cache routine, tests) use this helper so
+    the env semantics live in one place.
+    """
+    return _DROP_LEGACY_CDC_CHAIN
+
+
+def detect_spans_table_shape(execute_fn) -> str:
+    """Classify the existing ``spans`` table as v1, v2, absent, or unknown.
+
+    The two schemas use different typed-attribute Map column names:
+
+    - v1 (legacy ``SPANS_TABLE`` in this module): ``span_attr_str``,
+      ``span_attr_num``, ``span_attr_bool``.
+    - v2 (``v2/schema/002_spans_v2.sql``): ``attrs_string``,
+      ``attrs_number``, ``attrs_bool``, plus ``attributes_extra JSON``.
+
+    ``CREATE TABLE IF NOT EXISTS`` silently no-ops on shape drift, so a
+    dev box upgrading from an old CH 24.x volume keeps the v1 table and
+    every v2 read fails with "column doesn't exist". This detector lets
+    the boot hook notice and migrate.
+
+    Args:
+        execute_fn: Callable that takes a SQL string and returns rows
+            (list of tuples). Threads through ``ClickHouseClient.execute``
+            without coupling this module to the client class — also makes
+            the detector unit-testable with a stub.
+
+    Returns:
+        ``"v2"`` — the v2 column ``attrs_string`` is present.
+        ``"v1"`` — only the v1 column ``span_attr_str`` is present.
+        ``"absent"`` — the table doesn't exist (fresh CH).
+        ``"unknown"`` — the table exists but matches neither shape;
+            don't auto-migrate, let the operator decide.
+    """
+    rows = execute_fn(
+        """
+        SELECT name FROM system.columns
+        WHERE database = currentDatabase()
+          AND table = 'spans'
+          AND name IN ('attrs_string', 'span_attr_str')
+        """
+    )
+    names = {r[0] for r in rows}
+    if "attrs_string" in names:
+        return "v2"
+    if "span_attr_str" in names:
+        return "v1"
+    exists_rows = execute_fn(
+        """
+        SELECT count() FROM system.tables
+        WHERE database = currentDatabase() AND name = 'spans'
+        """
+    )
+    if exists_rows and exists_rows[0][0] > 0:
+        return "unknown"
+    return "absent"
+
+
+def get_drop_statements() -> list[str]:
     """Return DROP statements in reverse dependency order for clean teardown.
 
     Materialized views are dropped first so that the underlying target
     tables and dictionaries can be removed safely.
     """
-    drops: List[str] = []
+    drops: list[str] = []
     for name, _ in reversed(SCHEMA_DDL_STATEMENTS):
         if name.endswith("_mv"):
             drops.append(f"DROP VIEW IF EXISTS {name};")
@@ -1847,7 +2118,7 @@ def get_drop_statements() -> List[str]:
     return drops
 
 
-def get_backfill_statements() -> List[str]:
+def get_backfill_statements() -> list[str]:
     """Return INSERT … SELECT statements for initial backfill of derived tables.
 
     After the CDC landing tables have been populated by PeerDB, run these

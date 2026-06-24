@@ -6,16 +6,15 @@ import ReactApexChart from "react-apexcharts";
 import { useTheme } from "@mui/material/styles";
 import { useDashboardQuery } from "src/hooks/useDashboards";
 import { format } from "date-fns";
-
-const escapeHtml = (str) => {
-  if (typeof str !== "string") return str;
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-};
+import {
+  DEFAULT_DECIMALS,
+  escapeHtml,
+  formatValueWithConfig,
+  getAutoDecimals,
+  getSeriesAverage,
+  getSuggestedUnitConfig,
+} from "./widgetUtils";
+import { toTimeRangePayload } from "./dashboardDateRange";
 
 const CHART_HEIGHT_FALLBACK = 280;
 const COLORS = [
@@ -44,19 +43,6 @@ function getApexType(chartType) {
   return map[chartType] || "line";
 }
 
-function getSeriesAverage(points = []) {
-  let total = 0;
-  let count = 0;
-  for (const pt of points) {
-    if (pt?.y == null) continue;
-    const y = Number(pt.y);
-    if (!Number.isFinite(y)) continue;
-    total += y;
-    count += 1;
-  }
-  return count > 0 ? total / count : null;
-}
-
 export default function WidgetChart({ widget, globalDateRange }) {
   const theme = useTheme();
   const queryMutation = useDashboardQuery();
@@ -64,13 +50,8 @@ export default function WidgetChart({ widget, globalDateRange }) {
   // If globalDateRange is provided, override the widget's time range
   const queryConfig = useMemo(() => {
     if (!rawQueryConfig) return rawQueryConfig;
-    if (!globalDateRange) return rawQueryConfig;
-    // Convert globalDateRange {start, end} to the format the backend expects
-    const timeOverride = {
-      preset: "custom",
-      custom_start: globalDateRange.start,
-      custom_end: globalDateRange.end,
-    };
+    const timeOverride = toTimeRangePayload(globalDateRange);
+    if (!timeOverride) return rawQueryConfig;
     return {
       ...rawQueryConfig,
       time_range: timeOverride,
@@ -185,19 +166,22 @@ export default function WidgetChart({ widget, globalDateRange }) {
 
   // Compute Y-axis precision once from the data range so all ticks use the
   // same number of decimals (avoids "0.0 / 0.0 / 0.02" inconsistency).
-  const autoDecimals = useMemo(() => {
-    let minAbs = Infinity;
-    for (const s of chartSeries) {
-      for (const pt of s.data || []) {
-        const v = Math.abs(pt.y ?? pt);
-        if (v > 0 && v < minAbs) minAbs = v;
-      }
-    }
-    if (minAbs === Infinity || minAbs >= 0.1) return 1;
-    if (minAbs >= 0.01) return 2;
-    if (minAbs >= 0.001) return 3;
-    return 4;
-  }, [chartSeries]);
+  const autoDecimals = useMemo(
+    () => getAutoDecimals(chartSeries),
+    [chartSeries],
+  );
+  const leftAxisFormatConfig = useMemo(() => {
+    const suggested = getSuggestedUnitConfig(result?.metrics || []);
+    const leftAxis = axisConfig?.leftY || {};
+    return {
+      ...leftAxis,
+      unit: leftAxis.unit || suggested.unit,
+      prefixSuffix:
+        leftAxis.unit || !suggested.unit
+          ? leftAxis.prefixSuffix || "prefix"
+          : suggested.prefixSuffix,
+    };
+  }, [axisConfig?.leftY, result?.metrics]);
 
   useEffect(() => {
     if (!isPie || !pieValues.length) {
@@ -253,6 +237,13 @@ export default function WidgetChart({ widget, globalDateRange }) {
     return () => clearTimeout(timer);
   }, [isPie, pieValues, chartSeries]);
 
+  const isDark = theme.palette.mode === "dark";
+  const makeFormatter =
+    (cfg, fallbackDecimals = autoDecimals, includeUnit = true) =>
+    (val) =>
+      formatValueWithConfig(val, cfg, { fallbackDecimals, includeUnit });
+  const formatVal = makeFormatter(leftAxisFormatConfig);
+
   if (queryMutation.isPending) {
     return (
       <Box
@@ -305,7 +296,7 @@ export default function WidgetChart({ widget, globalDateRange }) {
         }}
       >
         <Typography variant="body2" color="text.disabled">
-          No data available
+          No output for the selected inputs.
         </Typography>
       </Box>
     );
@@ -330,11 +321,7 @@ export default function WidgetChart({ widget, globalDateRange }) {
                 variant="h3"
                 sx={{ color: COLORS[i % COLORS.length] }}
               >
-                {avg == null
-                  ? "—"
-                  : avg >= 1000
-                    ? `${(avg / 1000).toFixed(1)}K`
-                    : avg.toFixed(1)}
+                {avg == null ? "—" : formatVal(avg)}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 {s.name}
@@ -490,13 +477,10 @@ export default function WidgetChart({ widget, globalDateRange }) {
                         }}
                       >
                         {val != null
-                          ? val >= 1000
-                            ? val.toLocaleString(undefined, {
-                                maximumFractionDigits: 0,
-                              })
-                            : val % 1 === 0
-                              ? val
-                              : val.toFixed(2)
+                          ? formatValueWithConfig(val, leftAxisFormatConfig, {
+                              fallbackDecimals: autoDecimals,
+                              includeUnit: false,
+                            })
                           : "-"}
                       </td>
                     );
@@ -655,30 +639,19 @@ export default function WidgetChart({ widget, globalDateRange }) {
     );
   }
 
-  // Line / Column / Bar (+ stacked variants)
-  const isDark = theme.palette.mode === "dark";
-
-  const makeFormatter = (cfg) => (val) => {
-    if (val == null) return "-";
-    const dec = cfg?.decimals ?? 1;
-    const unit = cfg?.unit || "";
-    let str;
-    if (Boolean(cfg?.abbreviation ?? true) && Math.abs(val) >= 1000000)
-      str = `${(val / 1000000).toFixed(dec)}M`;
-    else if (Boolean(cfg?.abbreviation ?? true) && Math.abs(val) >= 1000)
-      str = `${(val / 1000).toFixed(dec)}K`;
-    else str = val.toFixed(dec);
-    return cfg?.prefixSuffix === "suffix" ? `${str}${unit}` : `${unit}${str}`;
-  };
-  const formatVal = makeFormatter(axisConfig?.leftY);
-
   // Bar chart — horizontal bar table
   if (isHorizontal) {
-    const barValues = chartSeries.map((s) => {
+    const barRows = chartSeries.map((s) => {
       const avg = getSeriesAverage(s.data);
-      return avg == null ? 0 : avg;
+      return {
+        value: avg,
+        numericValue: avg == null ? 0 : avg,
+      };
     });
-    const maxVal = Math.max(...barValues.map(Math.abs), 1);
+    const maxVal = Math.max(
+      ...barRows.map((row) => Math.abs(row.numericValue)),
+      1,
+    );
     return (
       <Box
         ref={containerRef}
@@ -760,7 +733,8 @@ export default function WidgetChart({ widget, globalDateRange }) {
         </Box>
         {/* Bar rows */}
         <Box sx={{ flex: 1, overflow: "auto", px: 2 }}>
-          {barValues.map((val, i) => {
+          {barRows.map((row, i) => {
+            const val = row.numericValue;
             const color = COLORS[i % COLORS.length];
             const pct = maxVal > 0 ? (Math.abs(val) / maxVal) * 100 : 0;
             const name = chartSeries[i]?.name || "";
@@ -836,7 +810,7 @@ export default function WidgetChart({ widget, globalDateRange }) {
                       flexShrink: 0,
                     }}
                   >
-                    {formatVal(val)}
+                    {row.value == null ? "—" : formatVal(row.value)}
                   </Typography>
                 </Box>
               </Box>
@@ -865,7 +839,8 @@ export default function WidgetChart({ widget, globalDateRange }) {
 
           if (isStacked && dpi >= 0) {
             const w = chartContext.w;
-            const gridRect = w.globals.gridRect;
+            const gridRect = w?.globals?.gridRect;
+            if (!gridRect) return;
             const chartRect = el.getBoundingClientRect();
             const mouseY = event.clientY - chartRect.top - gridRect.y;
             const plotH = gridRect.height;

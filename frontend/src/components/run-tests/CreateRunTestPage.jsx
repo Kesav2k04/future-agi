@@ -32,7 +32,10 @@ import axios, { endpoints } from "src/utils/axios";
 import { useSnackbar } from "notistack";
 import { useRouter } from "src/routes/hooks";
 import { useDebounce } from "src/hooks/use-debounce";
-import { EvalPickerDrawer } from "src/sections/common/EvalPicker";
+import {
+  EvalPickerDrawer,
+  serializeEvalConfig,
+} from "src/sections/common/EvalPicker";
 import EmptyLayout from "../EmptyLayout/EmptyLayout";
 import SvgColor from "../svg-color";
 import { FormSearchSelectFieldState } from "../FromSearchSelectField";
@@ -178,8 +181,18 @@ const CreateRunTestPage = ({ open, onClose }) => {
   const [openEvaluationDialog, setOpenEvaluationDialog] = useState(false);
   const [openUpdateKeysDialog, setOpenUpdateKeysDialog] = useState(false);
   // When non-null, the new EvalPickerDrawer opens directly at the config
-  // step with this template loaded (edit flow).
-  const [editingEvalItem, setEditingEvalItem] = useState(null);
+  // step with the matching row from `evaluationsConfig` loaded (edit flow).
+  // We track only the id and look the row up at render time so we never
+  // hold a stale snapshot if `evaluationsConfig` changes underneath us.
+  const [editingEvalId, setEditingEvalId] = useState(null);
+  const editingEvalItem = useMemo(
+    () =>
+      editingEvalId
+        ? evaluationsConfig.find((e) => e.evalId === editingEvalId) || null
+        : null,
+    [editingEvalId, evaluationsConfig],
+  );
+
   useEffect(() => {
     if (open) {
       setActiveStep(0);
@@ -197,7 +210,7 @@ const CreateRunTestPage = ({ open, onClose }) => {
       });
       setEvaluationsConfig([]);
       setOpenEvaluationDialog(false);
-      setEditingEvalItem(null);
+      setEditingEvalId(null);
       setCompleted({});
     }
   }, [open]);
@@ -534,13 +547,8 @@ const CreateRunTestPage = ({ open, onClose }) => {
             evalConfig.evalTemplateName ||
             "Unnamed Evaluation",
           template_id: evalConfig.templateId || evalConfig.id?.split("_")[0], // Extract original template ID
-          template_name: evalConfig.evalTemplateName,
           mapping: evalConfig.config?.mapping || {},
           config: evalConfig.config || {},
-          description: evalConfig.description || "",
-          type: evalConfig.type || "user_built",
-          required_keys: evalConfig.evalRequiredKeys || [],
-          tags: evalConfig.evalTemplateTags || [],
           error_localizer: evalConfig?.errorLocalizer,
           ...(evalConfig?.model && { model: evalConfig.model }),
           ...(evalConfig?.evalGroup && { eval_group: evalConfig.evalGroup }),
@@ -618,44 +626,45 @@ const CreateRunTestPage = ({ open, onClose }) => {
     });
   };
 
-  // Transform the new EvalPickerDrawer's camelCase payload into the legacy
-  // `evaluationsConfig` shape expected by the existing render + final POST.
-  // Keeps the rest of CreateRunTestPage untouched.
-  const toLegacyEvalShape = (evalConfig, versionedName) => ({
-    evalId: `${evalConfig.templateId}_${Date.now()}_${Math.random()
-      .toString(36)
-      .slice(2, 8)}`,
-    templateId: evalConfig.templateId,
-    name: versionedName,
-    evalTemplateName: evalConfig.evalTemplate?.name || evalConfig.name,
-    description: evalConfig.evalTemplate?.description || "",
-    type: "user_built",
-    config: {
-      ...(evalConfig.config || {}),
+  const toLegacyEvalShape = (evalConfig, versionedName) => {
+    const serialized = serializeEvalConfig(evalConfig);
+    return {
+      evalId: `${evalConfig.templateId}_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2, 8)}`,
+      templateId: evalConfig.templateId,
+      name: versionedName,
+      evalTemplateName: evalConfig.evalTemplate?.name || evalConfig.name,
+      description: evalConfig.evalTemplate?.description || "",
+      type: "user_built",
       mapping: evalConfig.mapping || {},
-      ...(evalConfig.instructions != null && {
-        instructions: evalConfig.instructions,
-      }),
-      ...(evalConfig.passThreshold != null && {
-        pass_threshold: evalConfig.passThreshold,
-      }),
-      ...(evalConfig.choiceScores &&
-        Object.keys(evalConfig.choiceScores).length > 0 && {
-          choice_scores: evalConfig.choiceScores,
+      config: {
+        ...serialized.config,
+        mapping: evalConfig.mapping || {},
+        ...(evalConfig.instructions != null && {
+          instructions: evalConfig.instructions,
         }),
-    },
-    model: evalConfig.model,
-    evalRequiredKeys:
-      evalConfig.evalTemplate?.required_keys ||
-      evalConfig.evalTemplate?.requiredKeys ||
-      [],
-    evalTemplateTags: evalConfig.evalTemplate?.tags || [],
-    errorLocalizer: false,
-  });
+        ...(evalConfig.passThreshold != null && {
+          pass_threshold: evalConfig.passThreshold,
+        }),
+        ...(evalConfig.choiceScores &&
+          Object.keys(evalConfig.choiceScores).length > 0 && {
+            choice_scores: evalConfig.choiceScores,
+          }),
+      },
+      model: evalConfig.model,
+      evalRequiredKeys:
+        evalConfig.evalTemplate?.required_keys ||
+        evalConfig.evalTemplate?.requiredKeys ||
+        [],
+      evalTemplateTags: evalConfig.evalTemplate?.tags || [],
+      errorLocalizer: !!evalConfig.error_localizer_enabled,
+    };
+  };
 
   const handleAddEvaluation = async (evalConfig) => {
     // Capture edit-target before we close the drawer and clear state.
-    const editingId = editingEvalItem?.evalId || null;
+    const editingId = editingEvalId;
 
     setEvaluationsConfig((prev) => {
       let updated = [...prev];
@@ -671,7 +680,7 @@ const CreateRunTestPage = ({ open, onClose }) => {
     });
 
     setOpenEvaluationDialog(false);
-    setEditingEvalItem(null);
+    setEditingEvalId(null);
   };
 
   const handleRemoveEvaluation = (id, isGroupEval) => {
@@ -695,7 +704,7 @@ const CreateRunTestPage = ({ open, onClose }) => {
     return agentDefVersions?.pages?.reduce((acc, curr) => {
       const newOptions =
         curr.results?.map((result) => ({
-          label: result.versionNameDisplay,
+          label: result.version_name_display,
           value: result.id,
         })) ?? [];
       return [...acc, ...newOptions];
@@ -810,10 +819,9 @@ const CreateRunTestPage = ({ open, onClose }) => {
       enableToolEvaluation: value,
     }));
   };
-  const handleEditEvalItem = (evalConfig) => {
-    // Pass through to the new picker via `initialEval`: it only needs `.id`
-    // (the eval template id) to load the full template at the config step.
-    setEditingEvalItem(evalConfig);
+
+  const handleEditEvalItem = (evalItem) => {
+    setEditingEvalId(evalItem.evalId);
     setOpenEvaluationDialog(true);
   };
   useEffect(() => {
@@ -896,9 +904,9 @@ const CreateRunTestPage = ({ open, onClose }) => {
                     agentDefinitionsLoading
                       ? []
                       : agentDefinitions?.map((agent) => ({
-                          label: agent?.agentName,
+                          label: agent?.agent_name,
                           value: agent?.id,
-                          type: agent?.agentType,
+                          type: agent?.agent_type,
                           component: (
                             <Box
                               sx={{
@@ -912,11 +920,11 @@ const CreateRunTestPage = ({ open, onClose }) => {
                               <SvgColor
                                 sx={{ width: 18 }}
                                 src={getIconForAgentDefinitions(
-                                  agent?.agentType,
+                                  agent?.agent_type,
                                 )}
                               />
-                              <Typography variant="s2_1">
-                                {agent?.agentName}
+                              <Typography typography="s2_1">
+                                {agent?.agent_name}
                               </Typography>
                             </Box>
                           ),
@@ -1188,7 +1196,7 @@ const CreateRunTestPage = ({ open, onClose }) => {
                               />
                             )}
                             <Typography variant="body2" fontWeight={600}>
-                              {scenario.datasetRows || 0}
+                              {scenario.dataset_rows || 0}
                             </Typography>
                           </Box>
                         </ListItem>
@@ -1484,14 +1492,14 @@ const CreateRunTestPage = ({ open, onClose }) => {
             >
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 <Typography
-                  variant="s1"
+                  typography="s1"
                   fontWeight={"fontWeightMedium"}
                   color={"text.primary"}
                 >
                   Enable tool call evaluation
                 </Typography>
                 <Typography
-                  variant="s2_1"
+                  typography="s2_1"
                   fontWeight={"fontWeightRegular"}
                   color={"text.primary"}
                 >
@@ -1535,7 +1543,7 @@ const CreateRunTestPage = ({ open, onClose }) => {
                   variant="contained"
                   startIcon={<Iconify icon="eva:plus-fill" />}
                   onClick={() => {
-                    setEditingEvalItem(null);
+                    setEditingEvalId(null);
                     setOpenEvaluationDialog(true);
                   }}
                   sx={{
@@ -1568,7 +1576,7 @@ const CreateRunTestPage = ({ open, onClose }) => {
                       variant="outlined"
                       size="small"
                       onClick={() => {
-                        setEditingEvalItem(null);
+                        setEditingEvalId(null);
                         setOpenEvaluationDialog(true);
                       }}
                       startIcon={
@@ -1623,9 +1631,9 @@ const CreateRunTestPage = ({ open, onClose }) => {
                                 flexWrap: "wrap",
                               }}
                             >
-                              <ShowComponent condition={!!evalItem?.groupName}>
+                              <ShowComponent condition={!!evalItem?.group_name}>
                                 <Chip
-                                  label={`Group name - ${evalItem?.groupName}.`}
+                                  label={`Group name - ${evalItem?.group_name}.`}
                                   size="small"
                                   sx={{
                                     height: "24px",
@@ -2221,7 +2229,7 @@ const CreateRunTestPage = ({ open, onClose }) => {
                             ? "text.primary"
                             : index <= activeStep
                               ? "primary.main"
-                              : "text.disabled"
+                              : "text.secondary"
                         }
                         sx={{
                           textAlign: "center",
@@ -2325,20 +2333,14 @@ const CreateRunTestPage = ({ open, onClose }) => {
         open={openEvaluationDialog}
         onClose={() => {
           setOpenEvaluationDialog(false);
-          setEditingEvalItem(null);
+          setEditingEvalId(null);
         }}
         source="create-simulate"
         sourceColumns={evalColumnsToDisplay}
         sourcePreviewData={sourcePreviewData}
         onEvalAdded={handleAddEvaluation}
-        initialEval={
-          editingEvalItem
-            ? {
-                id: editingEvalItem.templateId,
-                template_id: editingEvalItem.templateId,
-              }
-            : null
-        }
+        existingEvals={editingEvalItem ? [] : evaluationsConfig}
+        initialEval={editingEvalItem || null}
       />
     </>
   );

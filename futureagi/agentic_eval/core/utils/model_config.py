@@ -66,7 +66,15 @@ class ModelConfigs:
     )
     INTERNET_SEARCH: Final[ModelConfig] = ModelConfig(
         provider=LiteLlmProvider.PERPLEXITY.value,
-        model_name="perplexity/llama-3.1-sonar-large-128k-online",
+        model_name="perplexity/sonar-pro",
+        temperature=0.2,
+        max_tokens=16000,
+    )
+    # Perplexity Agent API (third-party LLM orchestration with built-in search/tools).
+    # Backed by https://api.perplexity.ai/v1/agent; default model is gpt-5.1.
+    PERPLEXITY_AGENT_GPT_5_1: Final[ModelConfig] = ModelConfig(
+        provider=LiteLlmProvider.PERPLEXITY.value,
+        model_name="perplexity/gpt-5.1",
         temperature=0.2,
         max_tokens=16000,
     )
@@ -119,6 +127,16 @@ class ModelConfigs:
         supports_pdf=True,
     )
 
+    VERTEX_GEMINI_3_5_FLASH: Final[ModelConfig] = ModelConfig(
+        provider=LiteLlmProvider.VERTEX_AI.value,
+        # `gemini-3.5-flash` is not a real Vertex publisher model and 404s
+        # ("Publisher Model gemini-3.5-flash was not found"). Use the real
+        # Gemini-3 flash preview model.
+        model_name="vertex_ai/gemini-3-flash-preview",
+        temperature=0.2,
+        max_tokens=8100,
+    )
+
     CLAUDE_4_5_SONNET_BEDROCK_ARN: Final[ModelConfig] = ModelConfig(
         provider=LiteLlmProvider.AWS_BEDROCK_ANTHROPIC.value,
         model_name=os.environ.get("BEDROCK_SONNET_ARN", ""),
@@ -143,6 +161,34 @@ class ModelConfigs:
     PROTECT: Final[ModelConfig] = ModelConfig(
         provider=LiteLlmProvider.PROTECT.value,
         model_name="protect",
+        temperature=0.0,
+        max_tokens=150,
+    )
+
+    PROTECT_TOXICITY: Final[ModelConfig] = ModelConfig(
+        provider=LiteLlmProvider.PROTECT.value,
+        model_name="protect_toxicity",
+        temperature=0.0,
+        max_tokens=150,
+    )
+
+    PROTECT_BIAS: Final[ModelConfig] = ModelConfig(
+        provider=LiteLlmProvider.PROTECT.value,
+        model_name="protect_bias",
+        temperature=0.0,
+        max_tokens=150,
+    )
+
+    PROTECT_PRIVACY: Final[ModelConfig] = ModelConfig(
+        provider=LiteLlmProvider.PROTECT.value,
+        model_name="protect_privacy",
+        temperature=0.0,
+        max_tokens=150,
+    )
+
+    PROTECT_PROMPT_INJECTION: Final[ModelConfig] = ModelConfig(
+        provider=LiteLlmProvider.PROTECT.value,
+        model_name="protect_prompt_injection",
         temperature=0.0,
         max_tokens=150,
     )
@@ -218,6 +264,16 @@ class ModelConfigs:
         """Check if the model is a turing model."""
         cfg = cls.get_config(model_name)
         return bool(cfg and cfg.provider == LiteLlmProvider.TURING.value)
+
+    @classmethod
+    def is_protect(cls, model_name: str) -> bool:
+        """Check if the model is a protect or protect_flash model."""
+        cfg = cls.get_config(model_name)
+        return bool(
+            cfg
+            and cfg.provider
+            in (LiteLlmProvider.PROTECT.value, LiteLlmProvider.PROTECT_FLASH.value)
+        )
 
     @classmethod
     def supports_audio(cls, model_name: str) -> bool:

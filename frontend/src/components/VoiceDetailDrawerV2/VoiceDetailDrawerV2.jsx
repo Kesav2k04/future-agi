@@ -69,6 +69,8 @@ const VoiceDetailDrawerV2 = ({
   // the VoiceDrawerHeader (close/nav/fullscreen bar) — and just render
   // the call body so it fits the host's layout.
   embedded = false,
+  hiddenActionIds = [],
+  hideAnnotationTab = false,
 }) => {
   const queryClient = useQueryClient();
   const { observeId } = useParams();
@@ -89,7 +91,10 @@ const VoiceDetailDrawerV2 = ({
   const { mutate: deleteSavedView } = useDeleteSavedView(projectId);
   const { mutate: reorderSavedViews } = useReorderSavedViews(projectId);
 
-  const customViews = savedViewsData?.custom_views || [];
+  const customViews = useMemo(
+    () => savedViewsData?.custom_views || [],
+    [savedViewsData?.custom_views],
+  );
 
   const [activeDrawerTab, setActiveDrawerTab] = useState("voice");
 
@@ -273,9 +278,9 @@ const VoiceDetailDrawerV2 = ({
         position: "relative",
         display: "flex",
         flexDirection: "column",
-        width: isFullscreen ? "100vw" : `${drawerWidth}vw`,
-        height: "100vh",
-        minHeight: "100vh",
+        width: embedded ? "100%" : isFullscreen ? "100vw" : `${drawerWidth}vw`,
+        height: embedded ? "100%" : "100vh",
+        minHeight: embedded ? 0 : "100vh",
         bgcolor: "background.paper",
         overflow: "hidden",
       }}
@@ -283,7 +288,7 @@ const VoiceDetailDrawerV2 = ({
       {/* Left-edge resize handle — drag to resize the drawer. Mirrors the
           exact interaction pattern of TraceDetailDrawerV2. Hidden in
           fullscreen since there's nothing to resize into. */}
-      {!isFullscreen && !initialFullscreen && (
+      {!embedded && !isFullscreen && !initialFullscreen && (
         <Box
           onMouseDown={(e) => {
             e.preventDefault();
@@ -335,9 +340,7 @@ const VoiceDetailDrawerV2 = ({
           }
           isFullscreen={isFullscreen}
           onOpenNewTab={
-            initialFullscreen ||
-            !projectId ||
-            !(data?.trace_id || data?.id)
+            initialFullscreen || !projectId || !(data?.trace_id || data?.id)
               ? undefined
               : () => {
                   // Prefer the canonical trace id so the full page takes
@@ -498,6 +501,8 @@ const VoiceDetailDrawerV2 = ({
                 data={data}
                 onCompareBaseline={onCompareBaseline}
                 onAction={handleVoiceAction}
+                hiddenActionIds={hiddenActionIds}
+                hideAnnotationTab={hideAnnotationTab}
               />
             </Box>
           </>
@@ -552,9 +557,7 @@ const VoiceDetailDrawerV2 = ({
         anchorEl={queueAnchorEl}
         onClose={() => setQueueAnchorEl(null)}
         sourceType={data?.trace_id ? "trace" : "call_execution"}
-        sourceIds={
-          data?.trace_id ? [data.trace_id] : data?.id ? [data.id] : []
-        }
+        sourceIds={data?.trace_id ? [data.trace_id] : data?.id ? [data.id] : []}
         itemName={data?.customer_name || "Voice call"}
       />
 
@@ -620,6 +623,8 @@ VoiceDetailDrawerV2.propTypes = {
   isLoading: PropTypes.bool,
   initialFullscreen: PropTypes.bool,
   embedded: PropTypes.bool,
+  hiddenActionIds: PropTypes.arrayOf(PropTypes.string),
+  hideAnnotationTab: PropTypes.bool,
 };
 
 export default VoiceDetailDrawerV2;

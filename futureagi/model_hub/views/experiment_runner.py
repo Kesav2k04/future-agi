@@ -871,7 +871,8 @@ class ExperimentRunner:
                                 f"{user_eval_metric.name}-reason",
                                 parent_column=eval_column,
                             )
-                            cols_ids_to_update.append(reason_column.id)
+                            if reason_column is not None:
+                                cols_ids_to_update.append(reason_column.id)
 
                     cols_ids_to_update.append(eval_column.id)
 
@@ -1290,7 +1291,8 @@ class ExperimentRunner:
 
             try:
                 messages = populate_placeholders(
-                    messages, self.dataset.id, row.id, column.id, model_name=model
+                    messages, self.dataset.id, row.id, column.id, model_name=model,
+                    template_format=model_config.get("template_format"),
                 )
                 if output_format != "audio":
                     messages = remove_empty_text_from_messages(messages)
@@ -1325,7 +1327,13 @@ class ExperimentRunner:
             value_info["reason"] = value_info.get("data", {}).get("response")
 
         except Exception as e:
-            logger.exception(f"Error in processing the row: {str(e)}")
+            # Expected, handled validation failure (empty messages) is user
+            # misconfiguration; the row is persisted as a failed cell below.
+            # Downgrade only that case to warning so real failures stay errors.
+            if "Messages are required" in str(e):
+                logger.warning(f"Error in processing the row: {str(e)}")
+            else:
+                logger.exception(f"Error in processing the row: {str(e)}")
             # if unsupported_exception:
             response = str(e)
             value_info = {"reason": str(e)}
@@ -1562,7 +1570,8 @@ def _process_row_impl(
 
         try:
             messages = populate_placeholders(
-                messages, dataset_id, row_id, column_id, model_name=model
+                messages, dataset_id, row_id, column_id, model_name=model,
+                template_format=model_config.get("template_format"),
             )
             if output_format != "audio":
                 messages = remove_empty_text_from_messages(messages)
@@ -1596,7 +1605,13 @@ def _process_row_impl(
         value_info["reason"] = value_info.get("data", {}).get("response")
 
     except Exception as e:
-        logger.exception(f"Error in processing the row: {str(e)}")
+        # Expected, handled validation failure (empty messages) is user
+        # misconfiguration; the row is persisted as a failed cell below.
+        # Downgrade only that case to warning so real failures stay errors.
+        if "Messages are required" in str(e):
+            logger.warning(f"Error in processing the row: {str(e)}")
+        else:
+            logger.exception(f"Error in processing the row: {str(e)}")
         # if unsupported_exception:
         response = str(e)
         value_info = {"reason": str(e)}

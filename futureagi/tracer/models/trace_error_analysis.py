@@ -28,6 +28,7 @@ class TraceErrorAnalysis(BaseModel):
         related_name="error_analyses",
         null=False,
         blank=False,
+        db_constraint=False,  # CH scale: SCALE_ARCHITECTURE.md §9a
     )
     project = models.ForeignKey(
         Project,
@@ -224,6 +225,7 @@ class TraceErrorGroup(BaseModel):
         blank=True,
         related_name="success_for_groups",
         help_text="Precomputed nearest success trace",
+        db_constraint=False,  # CH scale: SCALE_ARCHITECTURE.md §9a
     )
 
     # --- Existing fields (backwards compat) ---
@@ -276,6 +278,12 @@ class TraceErrorGroup(BaseModel):
             models.Index(fields=["project", "source"]),
             models.Index(fields=["project", "issue_group"]),
             models.Index(fields=["status"]),
+            models.Index(
+                fields=["project", "-last_seen"],
+                condition=models.Q(deleted=False),
+                name="tracer_teg_proj_last_seen_idx",
+            ),
+            models.Index(fields=["project", "fix_layer"]),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -441,6 +449,7 @@ class ErrorClusterTraces(BaseModel):
         related_name="error_cluster_traces",
         null=True,
         blank=True,
+        db_constraint=False,  # CH scale: SCALE_ARCHITECTURE.md §9a
     )
 
     span = models.ForeignKey(
@@ -449,6 +458,7 @@ class ErrorClusterTraces(BaseModel):
         related_name="error_cluster_spans",
         null=True,
         blank=True,
+        db_constraint=False,  # CH scale: SCALE_ARCHITECTURE.md §9a
     )
     cluster = models.ForeignKey(
         TraceErrorGroup,
@@ -486,4 +496,8 @@ class ErrorClusterTraces(BaseModel):
             models.Index(fields=["span"]),
             models.Index(fields=["scan_issue"]),
             models.Index(fields=["eval_logger"]),
+            models.Index(
+                fields=["cluster", "-created_at"],
+                name="tracer_ect_cluster_created_idx",
+            ),
         ]

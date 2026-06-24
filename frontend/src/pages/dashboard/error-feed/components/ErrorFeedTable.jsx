@@ -131,7 +131,7 @@ const COLUMNS = [
   { id: "severity", label: "Severity", sortable: true, width: 100 },
   { id: "status", label: "Status", sortable: false, width: 118 },
   { id: "traceCount", label: "Events", sortable: true, width: 85 },
-  { id: "usersAffected", label: "Users", sortable: true, width: 75 },
+  { id: "usersAffected", label: "Users", sortable: false, width: 75 },
   { id: "fixLayer", label: "Fix Layer", sortable: false, width: 120 },
   { id: "trends", label: "Trend (14d)", sortable: false, width: 130 },
   { id: "lastSeen", label: "Last seen", sortable: true, width: 120 },
@@ -237,7 +237,7 @@ function EmptyState({ filtered }) {
               ? "No errors match your filters"
               : "No errors — everything looks good!"}
           </Typography>
-          <Typography typography="s2" color="text.disabled">
+          <Typography typography="s2" color="text.secondary">
             {filtered
               ? "Try adjusting your search or filter criteria."
               : "Errors captured by Future AGI will appear here."}
@@ -376,7 +376,9 @@ export default function ErrorFeedTable({ selected, onSelect, onSelectAll }) {
           {/* ── body ── */}
           <TableBody>
             {isLoading ? (
-              Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
+              Array.from({ length: pageSize }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))
             ) : rows.length === 0 ? (
               <EmptyState filtered={isFiltered} />
             ) : (

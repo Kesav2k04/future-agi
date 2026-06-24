@@ -278,7 +278,7 @@ const CustomCellRender = (props) => {
     );
   }
 
-  if (status === StatusTypes.RUNNING || value === undefined) {
+  if (status === StatusTypes.RUNNING) {
     return (
       <RunningSkeletonRenderer
         originType={props.colDef.col.originType}
@@ -331,15 +331,35 @@ const CustomCellRender = (props) => {
         originType={originType}
         isFutureAgiEval={isFutureAgiEval}
         outputType={output}
+        warnings={cellData?.value_infos?.warnings}
       />
     );
   }
 
-  if (
-    originType === OriginTypes.ANNOTATION_LABEL &&
-    dataType === DataTypes.ARRAY
-  ) {
-    return <AnnotationArrayCellRenderer value={value} cellData={cellData} />;
+  if (originType === OriginTypes.ANNOTATION_LABEL) {
+    if (dataType === DataTypes.ARRAY) {
+      return <AnnotationArrayCellRenderer value={value} cellData={cellData} />;
+    }
+    if (typeof value === "string" && value.trim().startsWith("{")) {
+      let parsedEnvelope = null;
+      try {
+        parsedEnvelope = JSON.parse(value.replaceAll("'", '"'));
+      } catch {
+        parsedEnvelope = null;
+      }
+      if (
+        parsedEnvelope &&
+        typeof parsedEnvelope === "object" &&
+        ("selected" in parsedEnvelope ||
+          "rating" in parsedEnvelope ||
+          "value" in parsedEnvelope ||
+          "text" in parsedEnvelope)
+      ) {
+        return (
+          <AnnotationArrayCellRenderer value={value} cellData={cellData} />
+        );
+      }
+    }
   }
 
   switch (dataType) {

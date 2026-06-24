@@ -26,10 +26,16 @@ import axios, { endpoints } from "src/utils/axios";
 import { canonicalEntries, canonicalKeys } from "src/utils/utils";
 import CustomAudioPlayer from "src/components/custom-audio/CustomAudioPlayer";
 import { AudioPlaybackProvider } from "src/components/custom-audio/context-provider/AudioPlaybackContext";
+import CustomTooltip from "src/components/tooltip/CustomTooltip";
 import DraggableColResizer from "src/components/draggable-col-resizer";
 import { JsonValueTree } from "./DatasetTestMode";
+import { buildCompositeRuntimeConfig } from "../Helpers/compositeRuntimeConfig";
 import EvalResultDisplay from "./EvalResultDisplay";
 import useErrorLocalizerPoll from "../hooks/useErrorLocalizerPoll";
+import {
+  useExecuteCompositeEval,
+  useExecuteCompositeEvalAdhoc,
+} from "../hooks/useCompositeEval";
 
 // Hover-tooltip content for the Columns / Value table. Stringifies
 // primitives and JSON-encodes objects, then caps length so a 50k-char
@@ -176,6 +182,9 @@ const SimulationTestMode = React.forwardRef(
       errorLocalizerEnabled = false,
       initialMapping = null,
       initialRunTestId = "",
+      isComposite = false,
+      compositeAdhocConfig = null,
+      initialExecutionId = null,
     },
     ref,
   ) => {
@@ -187,15 +196,19 @@ const SimulationTestMode = React.forwardRef(
     const [loadingMoreRunTests, setLoadingMoreRunTests] = useState(false);
     const [runTestsPage, setRunTestsPage] = useState(1);
     const [runTestsHasMore, setRunTestsHasMore] = useState(true);
-    const [selectedRunTestId, setSelectedRunTestId] =
-      useState(initialRunTestId || "");
+    const [selectedRunTestId, setSelectedRunTestId] = useState(
+      initialRunTestId || "",
+    );
 
     // Run test context (agent def, scenarios, persona, evals)
     const [runTestContext, setRunTestContext] = useState(null);
 
     // Test executions (runs within a simulation)
     const [executions, setExecutions] = useState([]);
-    const [selectedExecutionId, setSelectedExecutionId] = useState("");
+    const [executionsFetched, setExecutionsFetched] = useState(false);
+    const [selectedExecutionId, setSelectedExecutionId] = useState(
+      initialExecutionId || "",
+    );
 
     // Call executions (individual calls)
     const [calls, setCalls] = useState([]);
@@ -262,6 +275,8 @@ const SimulationTestMode = React.forwardRef(
     // Async error localization poll — see DatasetTestMode for rationale.
     const { state: errorLocalizerState, start: startErrorLocalizerPoll } =
       useErrorLocalizerPoll();
+    const executeComposite = useExecuteCompositeEval();
+    const executeCompositeAdhoc = useExecuteCompositeEvalAdhoc();
 
     // 1. Fetch run tests (simulations) — infinite-scroll pagination.
     // Page 1 loads on mount; subsequent pages fetch via onScroll on the
@@ -316,8 +331,11 @@ const SimulationTestMode = React.forwardRef(
         setExecutions([]);
         setSelectedExecutionId("");
         setRunTestContext(null);
-        return;
+        setExecutionsFetched(false);
+        return undefined;
       }
+      setExecutionsFetched(false);
+      let cancelled = false;
       const fetchAll = async () => {
         try {
           // Fetch detail (agent def, scenarios, persona, evals) and executions in parallel
@@ -330,21 +348,33 @@ const SimulationTestMode = React.forwardRef(
               params: { page: 1, limit: 100 },
             }),
           ]);
+          if (cancelled) return;
           // Detail: flat serializer data
           setRunTestContext(detailRes.data || null);
           // Executions: paginated {results: [...]}
           const items = execRes.data?.results || [];
           setExecutions(items);
+          setExecutionsFetched(true);
           if (items.length > 0) {
-            setSelectedExecutionId(items[0].id || "");
+            const preferred =
+              initialExecutionId &&
+              items.some((it) => it.id === initialExecutionId)
+                ? initialExecutionId
+                : items[0].id || "";
+            setSelectedExecutionId(preferred);
           }
         } catch {
+          if (cancelled) return;
           setExecutions([]);
           setRunTestContext(null);
+          setExecutionsFetched(true);
         }
       };
       fetchAll();
-    }, [selectedRunTestId]);
+      return () => {
+        cancelled = true;
+      };
+    }, [selectedRunTestId, initialExecutionId]);
 
     // 3. Fetch call executions for the selected execution
     useEffect(() => {
@@ -354,32 +384,40 @@ const SimulationTestMode = React.forwardRef(
         setCurrentCallIndex(0);
         setCallDetail(null);
         setLastFetchedCallsKey(null);
-        return;
+        return undefined;
       }
       // Flip loading synchronously so the spinner shows as soon as the
       // user picks a run. Empty-state visibility comes from the
       // render-time `isPendingCallsFetch` comparison.
       setLoadingCalls(true);
+      let cancelled = false;
       const fetchCalls = async () => {
         try {
           const { data } = await axios.get(
             endpoints.testExecutions.list(selectedExecutionId),
             { params: { page: 1, limit: 50 } },
           );
+          if (cancelled) return;
           const items = data?.results || [];
           const total = data?.count || items.length;
           setCalls(items);
           setTotalCalls(total);
           setCurrentCallIndex(0);
         } catch {
+          if (cancelled) return;
           setCalls([]);
           setTotalCalls(0);
         } finally {
-          setLoadingCalls(false);
-          setLastFetchedCallsKey(selectedExecutionId);
+          if (!cancelled) {
+            setLoadingCalls(false);
+            setLastFetchedCallsKey(selectedExecutionId);
+          }
         }
       };
       fetchCalls();
+      return () => {
+        cancelled = true;
+      };
     }, [selectedExecutionId]);
 
     // Current call
@@ -389,7 +427,7 @@ const SimulationTestMode = React.forwardRef(
     useEffect(() => {
       if (!currentCall) {
         setCallDetail(null);
-        return;
+        return undefined;
       }
 
       const cacheKey = currentCall.id || "";
@@ -397,9 +435,10 @@ const SimulationTestMode = React.forwardRef(
       if (cached) {
         setCallDetail(cached.detail);
         setLoadingDetail(false);
-        return;
+        return undefined;
       }
 
+      let cancelled = false;
       const fetchDetail = async () => {
         setLoadingDetail(true);
         try {
@@ -409,6 +448,7 @@ const SimulationTestMode = React.forwardRef(
             const { data } = await axios.get(
               endpoints.runTests.callExecutionDetail(callId),
             );
+            if (cancelled) return;
             callData = data || currentCall;
           }
 
@@ -661,17 +701,22 @@ const SimulationTestMode = React.forwardRef(
             flat[k] = v;
           }
 
+          if (cancelled) return;
           if (cacheKey) {
             detailCacheRef.current.set(cacheKey, { detail: flat });
           }
           setCallDetail(flat);
         } catch {
+          if (cancelled) return;
           setCallDetail(currentCall);
         } finally {
-          setLoadingDetail(false);
+          if (!cancelled) setLoadingDetail(false);
         }
       };
       fetchDetail();
+      return () => {
+        cancelled = true;
+      };
     }, [currentCall, runTestContext]);
 
     // Field names for variable mapping. Expand nested object keys into
@@ -709,8 +754,7 @@ const SimulationTestMode = React.forwardRef(
         "providerCallData",
       ]);
       const walk = (obj, prefix) => {
-        // canonicalEntries filters out the camelCase aliases the axios
-        // interceptor adds alongside snake_case keys.
+        // canonicalEntries filters out the camelCase aliases that may exist in legacy objects alongside snake_case keys.
         const entries = canonicalEntries(obj);
         for (const [k, v] of entries) {
           const path = prefix ? `${prefix}.${k}` : k;
@@ -792,8 +836,7 @@ const SimulationTestMode = React.forwardRef(
     const isReady = useMemo(
       () =>
         !!selectedRunTestId &&
-        variables.length > 0 &&
-        variables.every((v) => !!mapping[v]),
+        (variables.length === 0 || variables.every((v) => !!mapping[v])),
       [selectedRunTestId, variables, mapping],
     );
 
@@ -841,29 +884,67 @@ const SimulationTestMode = React.forwardRef(
             }
           }
         }
-        // Auto-context: send the call ID so the evaluator resolves
-        // {{call}}, {{call.transcript}}, {{call.recording_url}} etc.
-        // against the CallExecution fetched server-side.
+        // Auto-context: single-eval playground resolves call_id server-side.
+        // Composite execution expects the concrete call context directly.
         const _callId = currentCall?.id;
-        const { data } = await axios.post(
-          endpoints.develop.eval.evalPlayground,
-          {
-            template_id: tid,
-            model,
-            error_localizer: errorLocalizerEnabled,
-            config: {
-              mapping: evalMapping,
-              ...(Object.keys(codeParams || {}).length > 0
-                ? { params: codeParams }
-                : {}),
-            },
-            ...(_callId ? { call_id: _callId } : {}),
-          },
-        );
+        const compositeConfig = buildCompositeRuntimeConfig({
+          codeParams,
+        });
+        const compositePayload = {
+          mapping: evalMapping,
+          model,
+          error_localizer: errorLocalizerEnabled,
+          config: compositeConfig,
+          ...(callDetail ? { call_context: callDetail } : {}),
+        };
+
+        const { data } = isComposite
+          ? compositeAdhocConfig
+            ? {
+                data: {
+                  status: true,
+                  result: await executeCompositeAdhoc.mutateAsync({
+                    ...compositeAdhocConfig,
+                    ...compositePayload,
+                  }),
+                },
+              }
+            : {
+                data: {
+                  status: true,
+                  result: await executeComposite.mutateAsync({
+                    templateId: tid,
+                    payload: compositePayload,
+                  }),
+                },
+              }
+          : await axios.post(endpoints.develop.eval.evalPlayground, {
+              template_id: tid,
+              model,
+              error_localizer: errorLocalizerEnabled,
+              config: {
+                mapping: evalMapping,
+                ...(Object.keys(codeParams || {}).length > 0
+                  ? { params: codeParams }
+                  : {}),
+              },
+              ...(_callId ? { call_id: _callId } : {}),
+            });
         if (data?.status) {
-          setResult(data.result);
-          onTestResult?.(true, data.result);
-          if (errorLocalizerEnabled && data.result?.log_id) {
+          const nextResult = isComposite
+            ? {
+                output:
+                  data.result?.aggregation_enabled &&
+                  data.result?.aggregate_score != null
+                    ? data.result.aggregate_score
+                    : null,
+                reason: data.result?.summary || "",
+                compositeResult: data.result,
+              }
+            : data.result;
+          setResult(nextResult);
+          onTestResult?.(true, nextResult);
+          if (!isComposite && errorLocalizerEnabled && data.result?.log_id) {
             startErrorLocalizerPoll(data.result.log_id);
           }
         } else {
@@ -890,8 +971,13 @@ const SimulationTestMode = React.forwardRef(
       currentCall,
       onTestResult,
       errorLocalizerEnabled,
+      isComposite,
+      compositeAdhocConfig,
       startErrorLocalizerPoll,
       codeParams,
+      model,
+      executeComposite,
+      executeCompositeAdhoc,
     ]);
 
     useImperativeHandle(
@@ -926,8 +1012,11 @@ const SimulationTestMode = React.forwardRef(
       totalCalls === 0 &&
       !loadingCalls &&
       !isPendingCallsFetch;
+    const hasNoExecutions =
+      !!selectedRunTestId && executionsFetched && executions.length === 0;
     const isMappingPending =
       !isConfirmedEmpty &&
+      !hasNoExecutions &&
       (loadingRunTests ||
         loadingCalls ||
         isPendingCallsFetch ||
@@ -949,7 +1038,20 @@ const SimulationTestMode = React.forwardRef(
             options={runTests}
             getOptionLabel={getRunTestLabel}
             value={runTests.find((rt) => rt.id === selectedRunTestId) || null}
-            onChange={(_, val) => setSelectedRunTestId(val?.id || "")}
+            onChange={(_, val) => {
+              setSelectedRunTestId(val?.id || "");
+              setMapping({});
+              setRunTestContext(null);
+              setExecutions([]);
+              setExecutionsFetched(false);
+              setSelectedExecutionId("");
+              setCalls([]);
+              setTotalCalls(0);
+              setCurrentCallIndex(0);
+              setCallDetail(null);
+              setLastFetchedCallsKey(null);
+              detailCacheRef.current.clear();
+            }}
             loading={loadingRunTests || loadingMoreRunTests}
             disabled={!!initialRunTestId}
             openOnFocus
@@ -1050,7 +1152,14 @@ const SimulationTestMode = React.forwardRef(
               size="small"
               fullWidth
               value={selectedExecutionId}
-              onChange={(e) => setSelectedExecutionId(e.target.value)}
+              onChange={(e) => {
+                setSelectedExecutionId(e.target.value);
+                setCalls([]);
+                setTotalCalls(0);
+                setCurrentCallIndex(0);
+                setCallDetail(null);
+              }}
+              disabled={!!initialExecutionId}
               sx={{ fontSize: "13px" }}
             >
               {executions.map((ex, i) => (
@@ -1065,11 +1174,8 @@ const SimulationTestMode = React.forwardRef(
           </Box>
         )}
 
-        {/* Empty state */}
-        {selectedExecutionId &&
-          !loadingCalls &&
-          !isPendingCallsFetch &&
-          totalCalls === 0 && (
+        {/* Empty state — simulation has no executions */}
+        {hasNoExecutions && (
           <Box
             sx={{
               display: "flex",
@@ -1088,148 +1194,179 @@ const SimulationTestMode = React.forwardRef(
               sx={{ color: "text.disabled" }}
             />
             <Typography variant="body2" fontWeight={600} color="text.secondary">
-              No calls in this simulation
+              This simulation has no data
             </Typography>
-            <Typography variant="caption" color="text.disabled">
-              Add calls to the simulation before running a test
+            <Typography variant="caption" color="text.secondary">
+              Run the simulation first to generate call data for testing
             </Typography>
           </Box>
         )}
+
+        {/* Empty state */}
+        {selectedExecutionId &&
+          !loadingCalls &&
+          !isPendingCallsFetch &&
+          totalCalls === 0 && (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 0.75,
+                py: 3,
+                border: "1px dashed",
+                borderColor: "divider",
+                borderRadius: "8px",
+              }}
+            >
+              <Iconify
+                icon="mdi:table-off"
+                width={28}
+                sx={{ color: "text.disabled" }}
+              />
+              <Typography
+                variant="body2"
+                fontWeight={600}
+                color="text.secondary"
+              >
+                No calls in this simulation
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Add calls to the simulation before running a test
+              </Typography>
+            </Box>
+          )}
 
         {/* Call navigator */}
         {selectedExecutionId &&
           totalCalls > 0 &&
           !loadingCalls &&
           !isPendingCallsFetch && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="caption" color="text.secondary">
-              Call {currentCallIndex + 1} of {totalCalls}
-            </Typography>
-            <IconButton
-              size="small"
-              disabled={currentCallIndex === 0}
-              onClick={() => {
-                setCurrentCallIndex((i) => Math.max(0, i - 1));
-                setResult(null);
-                setError(null);
-                onClearResult?.();
-              }}
-              sx={{ width: 24, height: 24 }}
-            >
-              <Iconify icon="mdi:chevron-left" width={16} />
-            </IconButton>
-            <IconButton
-              size="small"
-              disabled={currentCallIndex >= totalCalls - 1}
-              onClick={() => {
-                setCurrentCallIndex((i) => Math.min(totalCalls - 1, i + 1));
-                setResult(null);
-                setError(null);
-                onClearResult?.();
-              }}
-              sx={{ width: 24, height: 24 }}
-            >
-              <Iconify icon="mdi:chevron-right" width={16} />
-            </IconButton>
-          </Box>
-        )}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Call {currentCallIndex + 1} of {totalCalls}
+              </Typography>
+              <IconButton
+                size="small"
+                disabled={currentCallIndex === 0}
+                onClick={() => {
+                  setCurrentCallIndex((i) => Math.max(0, i - 1));
+                  setResult(null);
+                  setError(null);
+                  onClearResult?.();
+                }}
+                sx={{ width: 24, height: 24 }}
+              >
+                <Iconify icon="mdi:chevron-left" width={16} />
+              </IconButton>
+              <IconButton
+                size="small"
+                disabled={currentCallIndex >= totalCalls - 1}
+                onClick={() => {
+                  setCurrentCallIndex((i) => Math.min(totalCalls - 1, i + 1));
+                  setResult(null);
+                  setError(null);
+                  onClearResult?.();
+                }}
+                sx={{ width: 24, height: 24 }}
+              >
+                <Iconify icon="mdi:chevron-right" width={16} />
+              </IconButton>
+            </Box>
+          )}
 
         {/* Variable mapping — skeleton rows stay visible until callDetail
             resolves, so we don't flicker between two loading states. The
             shell (search bar, header, rows area with maxHeight 320) mirrors
             the real table structure so the swap-in is layout-stable. */}
         {isMappingPending && (
+          <Box
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: "6px",
+              overflow: "hidden",
+            }}
+          >
             <Box
               sx={{
-                border: "1px solid",
+                px: 1,
+                py: 0.75,
+                borderBottom: "1px solid",
                 borderColor: "divider",
-                borderRadius: "6px",
-                overflow: "hidden",
               }}
             >
-              <Box
-                sx={{
-                  px: 1,
-                  py: 0.75,
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Search columns or values..."
+                value=""
+                disabled
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Iconify
+                        icon="mdi:magnify"
+                        width={14}
+                        sx={{ color: "text.disabled" }}
+                      />
+                    </InputAdornment>
+                  ),
+                  sx: { fontSize: "12px", height: 28 },
                 }}
-              >
-                <TextField
-                  size="small"
-                  fullWidth
-                  placeholder="Search columns or values..."
-                  value=""
-                  disabled
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Iconify
-                          icon="mdi:magnify"
-                          width={14}
-                          sx={{ color: "text.disabled" }}
-                        />
-                      </InputAdornment>
-                    ),
-                    sx: { fontSize: "12px", height: 28 },
-                  }}
-                />
-              </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  px: 1.5,
-                  py: 0.5,
-                  backgroundColor: (theme) =>
-                    theme.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.03)"
-                      : "#fafafa",
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  fontWeight={600}
-                  sx={{ width: 200, flexShrink: 0 }}
-                >
-                  Columns
-                </Typography>
-                <Typography
-                  variant="caption"
-                  fontWeight={600}
-                  sx={{ flex: 1 }}
-                >
-                  Value
-                </Typography>
-              </Box>
-              <Box sx={{ maxHeight: 320, overflowY: "auto" }}>
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <Box
-                    key={i}
-                    sx={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      px: 1.5,
-                      py: 0.6,
-                      borderBottom: "1px solid",
-                      borderColor: "divider",
-                      "&:last-child": { borderBottom: "none" },
-                    }}
-                  >
-                    <Skeleton
-                      variant="text"
-                      width={180}
-                      sx={{ flexShrink: 0, pt: 0.25 }}
-                    />
-                    <Box sx={{ flex: 1, pl: 1.5 }}>
-                      <Skeleton variant="text" />
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
+              />
             </Box>
-          )}
+            <Box
+              sx={{
+                display: "flex",
+                px: 1.5,
+                py: 0.5,
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.03)"
+                    : "#fafafa",
+                borderBottom: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography
+                variant="caption"
+                fontWeight={600}
+                sx={{ width: 200, flexShrink: 0 }}
+              >
+                Columns
+              </Typography>
+              <Typography variant="caption" fontWeight={600} sx={{ flex: 1 }}>
+                Value
+              </Typography>
+            </Box>
+            <Box sx={{ maxHeight: 320, overflowY: "auto" }}>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    px: 1.5,
+                    py: 0.6,
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                    "&:last-child": { borderBottom: "none" },
+                  }}
+                >
+                  <Skeleton
+                    variant="text"
+                    width={180}
+                    sx={{ flexShrink: 0, pt: 0.25 }}
+                  />
+                  <Box sx={{ flex: 1, pl: 1.5 }}>
+                    <Skeleton variant="text" />
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
 
         {callDetail &&
           !loadingDetail &&
@@ -1508,14 +1645,14 @@ const SimulationTestMode = React.forwardRef(
           !loadingCalls &&
           !isPendingCallsFetch &&
           totalCalls === 0 && (
-          <Typography
-            variant="body2"
-            color="text.disabled"
-            sx={{ textAlign: "center", py: 3 }}
-          >
-            No calls found for this simulation run
-          </Typography>
-        )}
+            <Typography
+              variant="body2"
+              color="text.disabled"
+              sx={{ textAlign: "center", py: 3 }}
+            >
+              No calls found for this simulation run
+            </Typography>
+          )}
 
         {/* Variable mapping */}
         {variables.length > 0 && (
@@ -1528,44 +1665,11 @@ const SimulationTestMode = React.forwardRef(
               Variable Mapping
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
-              {variables.map((variable) => (
-                <Box
-                  key={variable}
-                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.5,
-                      px: 1,
-                      py: 0.25,
-                      borderRadius: "4px",
-                      border: "1px solid",
-                      borderColor: "divider",
-                      minWidth: 120,
-                    }}
-                  >
-                    <Iconify
-                      icon="mdi:code-braces"
-                      width={14}
-                      sx={{ color: "text.secondary" }}
-                    />
-                    <Typography
-                      variant="caption"
-                      fontWeight={600}
-                      sx={{ fontSize: "12px" }}
-                    >
-                      {variable}
-                    </Typography>
-                  </Box>
-                  <Iconify
-                    icon="mdi:arrow-right"
-                    width={14}
-                    sx={{ color: "text.disabled" }}
-                  />
+              {variables.map((variable) => {
+                const autocomplete = (
                   <Autocomplete
                     size="small"
+                    disabled={isMappingPending}
                     options={
                       mapping[variable] &&
                       !fieldNames.includes(mapping[variable])
@@ -1589,7 +1693,11 @@ const SimulationTestMode = React.forwardRef(
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        placeholder="Search field..."
+                        placeholder={
+                          isMappingPending
+                            ? "Loading columns..."
+                            : "Search field..."
+                        }
                         InputProps={{
                           ...params.InputProps,
                           sx: {
@@ -1599,6 +1707,13 @@ const SimulationTestMode = React.forwardRef(
                             height: 28,
                             py: 0,
                           },
+                          endAdornment: isMappingPending ? (
+                            <InputAdornment position="end">
+                              <CircularProgress size={14} />
+                            </InputAdornment>
+                          ) : (
+                            params.InputProps.endAdornment
+                          ),
                         }}
                       />
                     )}
@@ -1630,8 +1745,60 @@ const SimulationTestMode = React.forwardRef(
                       );
                     }}
                   />
-                </Box>
-              ))}
+                );
+                return (
+                  <Box
+                    key={variable}
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: "4px",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        minWidth: 120,
+                      }}
+                    >
+                      <Iconify
+                        icon="mdi:code-braces"
+                        width={14}
+                        sx={{ color: "text.secondary" }}
+                      />
+                      <Typography
+                        variant="caption"
+                        fontWeight={600}
+                        sx={{ fontSize: "12px" }}
+                      >
+                        {variable}
+                      </Typography>
+                    </Box>
+                    <Iconify
+                      icon="mdi:arrow-right"
+                      width={14}
+                      sx={{ color: "text.disabled" }}
+                    />
+                    {isMappingPending ? (
+                      <CustomTooltip
+                        show
+                        type="black"
+                        size="small"
+                        title="Columns are being fetched"
+                        placement="top"
+                        arrow
+                      >
+                        <Box sx={{ flex: 1 }}>{autocomplete}</Box>
+                      </CustomTooltip>
+                    ) : (
+                      autocomplete
+                    )}
+                  </Box>
+                );
+              })}
             </Box>
           </Box>
         )}
@@ -1643,6 +1810,9 @@ const SimulationTestMode = React.forwardRef(
               ...result,
               ...(errorLocalizerState.status
                 ? { error_localizer_status: errorLocalizerState.status }
+                : {}),
+              ...(errorLocalizerState.message
+                ? { error_localizer_message: errorLocalizerState.message }
                 : {}),
               ...(errorLocalizerState.details
                 ? {
@@ -1690,6 +1860,9 @@ SimulationTestMode.propTypes = {
   onClearResult: PropTypes.func,
   initialMapping: PropTypes.object,
   initialRunTestId: PropTypes.string,
+  isComposite: PropTypes.bool,
+  compositeAdhocConfig: PropTypes.object,
+  initialExecutionId: PropTypes.string,
 };
 
 export default SimulationTestMode;

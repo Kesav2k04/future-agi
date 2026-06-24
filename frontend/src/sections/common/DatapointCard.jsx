@@ -21,6 +21,10 @@ import GenerateDiffText from "./GenerateDiffText";
 import CustomJsonViewer from "src/components/custom-json-viewer/CustomJsonViewer";
 import CellMarkdown from "./CellMarkdown";
 import CustomTooltip from "src/components/tooltip";
+import {
+  parseAnnotationValue,
+  renderAnnotationValue,
+} from "./DevelopCellRenderer/AnnotationCellRenderer/renderAnnotationValue";
 const DatapointCard = ({
   value,
   column,
@@ -37,6 +41,8 @@ const DatapointCard = ({
   const theme = useTheme();
   const [tabValue, setTabValue] = useState("markdown");
   const shouldApplyDefaultSx = Object.keys(sx).length === 0;
+  const cellValue = value?.cell_value ?? value?.cellValue;
+  const valueInfos = value?.value_infos ?? value?.valueInfos;
   useEffect(() => {
     // changes tab to "raw" if current tab is "difference" and showDiff is off and none of the diff tracker is on
     // showDiff is the state for a single datapoint card whether to show difference tab or not
@@ -118,12 +124,10 @@ const DatapointCard = ({
   };
 
   const thoughts = useMemo(() => {
-    if (value?.valueInfos) {
+    if (valueInfos) {
       const infoSources = [
-        typeof value.valueInfos === "string" ? value.valueInfos : null,
-        typeof value.valueInfos?.reason === "string"
-          ? value.valueInfos.reason
-          : null,
+        typeof valueInfos === "string" ? valueInfos : null,
+        typeof valueInfos?.reason === "string" ? valueInfos.reason : null,
       ].filter(Boolean);
       for (const src of infoSources) {
         const extracted = extractAllThoughts(src);
@@ -131,18 +135,46 @@ const DatapointCard = ({
       }
     }
     return null;
-  }, [value?.valueInfos]);
+  }, [valueInfos]);
+
+  const isAnnotationColumn = column?.originType === "annotation_label";
+
+  // Annotation cells store the typed envelope (e.g. {"selected":[...]},
+  // {"value":"up"}, {"rating":4}). Pull out the primitive once so the rest
+  // of the card (raw tab, copy, float-as-% formatting) sees the user-facing
+  // value rather than the envelope JSON.
+  const annotationUnwrapped = useMemo(() => {
+    if (!isAnnotationColumn) return undefined;
+    const parsed = parseAnnotationValue(cellValue);
+    if (Array.isArray(parsed)) return JSON.stringify(parsed);
+    if (parsed && typeof parsed === "object") {
+      if (Array.isArray(parsed.selected))
+        return JSON.stringify(parsed.selected);
+      if (typeof parsed.rating === "number") return String(parsed.rating);
+      if (typeof parsed.value === "string" || typeof parsed.value === "number")
+        return String(parsed.value);
+      if (typeof parsed.text === "string") return parsed.text;
+      return cellValue;
+    }
+    return parsed == null ? "" : String(parsed);
+  }, [isAnnotationColumn, cellValue]);
 
   const formattedValue = useMemo(() => {
+    if (isAnnotationColumn) return annotationUnwrapped;
     if (dataType === "float") {
-      return `${getScorePercentage(parseFloat(value?.cellValue) * 10)}%`;
+      return `${getScorePercentage(parseFloat(cellValue) * 10)}%`;
     }
     if (dataType === "datetime") {
-      const date = new Date(value?.cellValue);
-      return isNaN(date.getTime()) ? value?.cellValue : date.toLocaleString();
+      const date = new Date(cellValue);
+      return isNaN(date.getTime()) ? cellValue : date.toLocaleString();
     }
-    return value?.cellValue;
-  }, [value?.cellValue, dataType]);
+    return cellValue;
+  }, [cellValue, dataType, isAnnotationColumn, annotationUnwrapped]);
+
+  const annotationContent = useMemo(
+    () => (isAnnotationColumn ? renderAnnotationValue(cellValue, theme) : null),
+    [isAnnotationColumn, cellValue, theme],
+  );
   const parsedJson = useMemo(() => {
     if (!isJsonValue(formattedValue)) return null;
     try {
@@ -351,7 +383,7 @@ const DatapointCard = ({
                         cursor: "pointer",
                       }}
                       onClick={() => {
-                        copyToClipboard(value?.cellValue);
+                        copyToClipboard(cellValue);
                         enqueueSnackbar("Copied to clipboard", {
                           variant: "success",
                         });
@@ -412,6 +444,14 @@ const DatapointCard = ({
                       >
                         <ShowComponent
                           condition={
+                            isAnnotationColumn && annotationContent !== null
+                          }
+                        >
+                          {annotationContent}
+                        </ShowComponent>
+                        <ShowComponent
+                          condition={
+                            !isAnnotationColumn &&
                             column?.originType === "run_prompt" &&
                             isJsonValue(formattedValue) &&
                             parsedJson !== null
@@ -424,6 +464,7 @@ const DatapointCard = ({
                         </ShowComponent>
                         <ShowComponent
                           condition={
+                            !isAnnotationColumn &&
                             !(
                               column?.originType === "run_prompt" &&
                               isJsonValue(formattedValue) &&

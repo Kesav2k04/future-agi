@@ -2,7 +2,9 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   IconButton,
+  InputAdornment,
   Table,
   TableBody,
   TableCell,
@@ -17,7 +19,7 @@ import {
   useTheme,
 } from "@mui/material";
 // date-fns available if needed for timestamps
-import { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Iconify from "src/components/iconify";
 import FormSearchField from "src/components/FormSearchField/FormSearchField";
@@ -178,7 +180,9 @@ const EvalDetailPanel = ({ evalData }) => {
   const { data: configData, isLoading } = useQuery({
     queryKey: ["evals", "detail", templateId],
     queryFn: async () => {
-      const { data } = await axios.get(endpoints.develop.eval.getEvalDetail(templateId));
+      const { data } = await axios.get(
+        endpoints.develop.eval.getEvalDetail(templateId),
+      );
       return data?.result;
     },
     enabled: !!templateId,
@@ -201,7 +205,8 @@ const EvalDetailPanel = ({ evalData }) => {
   const normalizedConfigData = normalizeEvalPickerEval(configData);
   const normalizedEvalData = normalizeEvalPickerEval(evalData);
 
-  const evalType = normalizedConfigData?.evalType || normalizedEvalData?.evalType || "llm";
+  const evalType =
+    normalizedConfigData?.evalType || normalizedEvalData?.evalType || "llm";
   const outputType =
     normalizedConfigData?.outputType || normalizedEvalData?.outputType || "";
   const description = configData?.description || evalData?.description || "";
@@ -222,7 +227,8 @@ const EvalDetailPanel = ({ evalData }) => {
     configData?.choicesMap ||
     {};
   const instructions = configData?.instructions || evalData?.instructions || "";
-  const code = getEvalCode(normalizedConfigData) || getEvalCode(normalizedEvalData);
+  const code =
+    getEvalCode(normalizedConfigData) || getEvalCode(normalizedEvalData);
   const codeLanguage =
     getEvalCodeLanguage(normalizedConfigData) ||
     getEvalCodeLanguage(normalizedEvalData);
@@ -482,11 +488,14 @@ const SkeletonRows = (
 // ── Main Component ──
 
 const EvalPickerList = ({ onSelectEval }) => {
-  const { existingEvals, sourceId, lockedFilters } = useEvalPickerContext();
+  const { existingEvals, source, sourceId, lockedFilters } =
+    useEvalPickerContext();
+  const useScopedEvals = source === "dataset" || source === "experiment";
   const {
     items,
     total,
     isLoading,
+    isSearching,
     searchQuery,
     setSearchQuery,
     page,
@@ -497,7 +506,11 @@ const EvalPickerList = ({ onSelectEval }) => {
     setSorting,
     filters,
     setFilters,
-  } = useEvalPickerData({ sourceId, lockedFilters });
+  } = useEvalPickerData({
+    sourceId: useScopedEvals ? sourceId : null,
+    enabled: true,
+    lockedFilters,
+  });
 
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
   const [expandedEvalId, setExpandedEvalId] = useState(null);
@@ -508,7 +521,8 @@ const EvalPickerList = ({ onSelectEval }) => {
         (e) =>
           e.id === evalId ||
           e.eval_template_id === evalId ||
-          e.template_id === evalId,
+          e.template_id === evalId ||
+          e["templateId"] === evalId,
       ),
     [existingEvals],
   );
@@ -588,101 +602,113 @@ const EvalPickerList = ({ onSelectEval }) => {
               setPage(0);
               setExpandedEvalId(null);
             }}
+            InputProps={
+              isSearching && searchQuery.trim()
+                ? {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <CircularProgress
+                          size={14}
+                          thickness={5}
+                          aria-label="Searching evaluations"
+                        />
+                      </InputAdornment>
+                    ),
+                  }
+                : undefined
+            }
           />
-          {!lockedFilters && (
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<Iconify icon="mage:filter" width={14} />}
-              onClick={(e) => setFilterAnchorEl(e.currentTarget)}
-              sx={{
-                textTransform: "none",
-                fontSize: "12px",
-                height: "32px",
-                borderColor: activeFilterCount > 0 ? "primary.main" : "divider",
-                color:
-                  activeFilterCount > 0 ? "primary.main" : "text.secondary",
-              }}
-            >
-              Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-            </Button>
-          )}
+
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<Iconify icon="mage:filter" width={14} />}
+            onClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            sx={{
+              textTransform: "none",
+              fontSize: "12px",
+              height: "32px",
+              borderColor: activeFilterCount > 0 ? "primary.main" : "divider",
+              color: activeFilterCount > 0 ? "primary.main" : "text.secondary",
+            }}
+          >
+            Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </Button>
         </Box>
       </Box>
 
       {/* Quick tag filters */}
-      {!lockedFilters && (
-        <Box
-          sx={{
-            display: "flex",
-            gap: 0.5,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          {EVAL_TAGS.map((tag) => {
-            const activeTagValues = filters?.tags || [];
-            const tagValues = tag.match || [tag.value];
-            const isActive = tagValues.some((v) => activeTagValues.includes(v));
-            return (
-              <Chip
-                key={tag.value}
-                icon={<Iconify icon={tag.icon} width={14} />}
-                label={tag.label}
-                size="small"
-                variant={isActive ? "filled" : "outlined"}
-                color={isActive ? "primary" : "default"}
-                onClick={() => {
-                  if (isActive) {
-                    const toRemove = new Set(tagValues);
-                    setFilters((prev) => {
-                      const safe = prev || {};
-                      const remaining = (safe.tags || []).filter(
-                        (v) => !toRemove.has(v),
-                      );
-                      if (!remaining.length) {
-                        const next = { ...safe };
-                        delete next.tags;
-                        return Object.keys(next).length ? next : null;
-                      }
-                      return { ...safe, tags: remaining };
-                    });
-                  } else {
-                    setFilters((prev) => {
-                      const safe = prev || {};
-                      return {
-                        ...safe,
-                        tags: [...(safe.tags || []), ...tagValues],
-                      };
-                    });
-                  }
-                  setPage(0);
-                  setExpandedEvalId(null);
-                }}
-                sx={{ fontSize: "11px", height: 26, cursor: "pointer" }}
-              />
-            );
-          })}
-          {filters?.tags?.length ? (
+
+      <Box
+        sx={{
+          display: "flex",
+          gap: 0.5,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        {EVAL_TAGS.map((tag) => {
+          const activeTagValues = filters?.tags || [];
+          const tagValues = tag.match || [tag.value];
+          const isActive = tagValues.some((v) => activeTagValues.includes(v));
+          return (
             <Chip
-              label="Clear"
+              key={tag.value}
+              icon={<Iconify icon={tag.icon} width={14} />}
+              label={tag.label}
               size="small"
-              variant="outlined"
-              onDelete={() => {
-                setFilters((prev) => {
-                  const safe = prev || {};
-                  const next = { ...safe };
-                  delete next.tags;
-                  return Object.keys(next).length ? next : null;
-                });
+              variant={isActive ? "filled" : "outlined"}
+              color={isActive ? "primary" : "default"}
+              onClick={() => {
+                if (isActive) {
+                  const toRemove = new Set(tagValues);
+                  setFilters((prev) => {
+                    const safe = prev || {};
+                    const remaining = (safe.tags || []).filter(
+                      (v) => !toRemove.has(v),
+                    );
+                    if (!remaining.length) {
+                      const next = { ...safe };
+                      delete next.tags;
+                      return Object.keys(next).length ? next : null;
+                    }
+                    return { ...safe, tags: remaining };
+                  });
+                } else {
+                  setFilters((prev) => {
+                    const safe = prev || {};
+                    return {
+                      ...safe,
+                      tags: [...(safe.tags || []), ...tagValues],
+                    };
+                  });
+                }
                 setPage(0);
                 setExpandedEvalId(null);
               }}
-              sx={{ fontSize: "11px", height: 26 }}
+              sx={{ fontSize: "11px", height: 26, cursor: "pointer" }}
             />
-          ) : null}
-        </Box>
-      )}
+          );
+        })}
+        {filters?.tags?.length ? (
+          <Chip
+            label="Clear"
+            size="small"
+            variant="outlined"
+            onDelete={() => {
+              setFilters((prev) => {
+                const safe = prev || {};
+                const next = { ...safe };
+                delete next.tags;
+                return Object.keys(next).length ? next : null;
+              });
+              setPage(0);
+              setExpandedEvalId(null);
+            }}
+            sx={{ fontSize: "11px", height: 26 }}
+          />
+        ) : null}
+      </Box>
 
       {/* Scrollable Table */}
       <TableContainer sx={{ flex: 1, overflow: "auto", minHeight: 0 }}>
@@ -737,7 +763,7 @@ const EvalPickerList = ({ onSelectEval }) => {
               items.map((evalItem) => {
                 const isExpanded = expandedEvalId === evalItem.id;
                 const added = isAlreadyAdded(evalItem.id);
-                const createdBy = evalItem.createdByName || "Unknown";
+                const createdBy = evalItem.created_by_name || "Unknown";
                 const isSystem = createdBy === "System";
 
                 return [
@@ -809,10 +835,10 @@ const EvalPickerList = ({ onSelectEval }) => {
                         >
                           {evalItem.name}
                         </Typography>
-                        {evalItem.currentVersion &&
-                          !evalItem.isDraft &&
-                          evalItem.currentVersion !== "draft" && (
-                            <VersionBadge version={evalItem.currentVersion} />
+                        {evalItem.current_version &&
+                          !evalItem.is_draft &&
+                          evalItem.current_version !== "draft" && (
+                            <VersionBadge version={evalItem.current_version} />
                           )}
                       </Box>
                     </TableCell>
@@ -834,8 +860,8 @@ const EvalPickerList = ({ onSelectEval }) => {
                         noWrap
                         sx={{ fontSize: "12px" }}
                       >
-                        {OUTPUT_TYPE_LABELS[evalItem.outputType] ||
-                          evalItem.outputType}
+                        {OUTPUT_TYPE_LABELS[evalItem.output_type] ||
+                          evalItem.output_type}
                       </Typography>
                     </TableCell>
 
@@ -928,6 +954,7 @@ const EvalPickerList = ({ onSelectEval }) => {
         open={Boolean(filterAnchorEl)}
         onClose={() => setFilterAnchorEl(null)}
         currentFilters={filters}
+        lockedFilters={lockedFilters}
         onApply={(newFilters) => {
           setFilters(newFilters);
           setPage(0);

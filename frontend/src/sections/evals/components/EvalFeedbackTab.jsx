@@ -18,6 +18,7 @@ import { useDebounce } from "src/hooks/use-debounce";
 import AddEvalsFeedbackDrawer from "src/sections/evals/EvalDetails/EvalsFeedback/AddEvalsFeedbackDrawer";
 
 import { useEvalFeedbackList } from "../hooks/useEvalFeedback";
+import { isEditableElement } from "src/utils/keyboardUtils";
 
 // ── Columns ──
 const useColumns = () =>
@@ -215,7 +216,7 @@ const EvalFeedbackTab = ({ templateId }) => {
     page,
     pageSize,
   });
-  const items = data?.items || [];
+  const items = useMemo(() => data?.items || [], [data?.items]);
   const total = data?.total || 0;
 
   const filteredItems = useMemo(() => {
@@ -250,6 +251,8 @@ const EvalFeedbackTab = ({ templateId }) => {
   React.useEffect(() => {
     if (detailIndex === null) return;
     const handler = (e) => {
+      if (e.repeat) return;
+      if (isEditableElement(e)) return;
       if (e.key === "k") {
         e.preventDefault();
         setDetailIndex((i) => Math.max(0, (i ?? 0) - 1));

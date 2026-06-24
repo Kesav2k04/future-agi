@@ -542,6 +542,7 @@ const FILTERS = [
 const TranscriptView = ({
   transcript,
   onAnnotate,
+  embedded = false,
   // Header-row customization hooks used by the chat drawer to repurpose
   // the voice TalkRatioBar as a compact speaker legend:
   //   - hideTimelineStrip: drop the orange/white bar below the TALK RATIO
@@ -639,23 +640,50 @@ const TranscriptView = ({
     return () => document.removeEventListener("keydown", onKey);
   }, [filteredTurns.length]);
 
-  // Scroll focused row into view (j/k nav overrides autoScroll — it's an
-  // explicit navigation action)
+  // Scrolls a row into view *inside the list container only* using
+  // `listRef.scrollTo` — never `scrollIntoView`, which walks up scrollable
+  // ancestors and pulls the host page along when embedded.
   const rowRefs = useRef([]);
   const listRef = useRef(null);
+  const scrollRowIntoView = useCallback(
+    ({ idx, block = "center", behavior = "smooth" }) => {
+      const rowEl = rowRefs.current[idx];
+      if (!rowEl) return;
+      // Drawer keeps the original scrollIntoView behavior. Embedded mode
+      // scopes the scroll to the list container so it can never walk up
+      // and pull the host page along with it.
+      if (!embedded) {
+        rowEl.scrollIntoView({ block, behavior });
+        return;
+      }
+      const listEl = listRef.current;
+      if (!listEl) return;
+      const rowRect = rowEl.getBoundingClientRect();
+      const listRect = listEl.getBoundingClientRect();
+      const rowTop = rowRect.top - listRect.top + listEl.scrollTop;
+      const rowBottom = rowTop + rowRect.height;
+      const viewTop = listEl.scrollTop;
+      const viewBottom = viewTop + listEl.clientHeight;
+      let target;
+      if (block === "nearest") {
+        if (rowTop >= viewTop && rowBottom <= viewBottom) return;
+        target = rowTop < viewTop ? rowTop : rowBottom - listEl.clientHeight;
+      } else {
+        target = rowTop - listEl.clientHeight / 2 + rowRect.height / 2;
+      }
+      listEl.scrollTo({ top: Math.max(0, target), behavior });
+    },
+    [embedded],
+  );
+
+  // j/k nav — overrides autoScroll (explicit user action)
   useEffect(() => {
     if (focusIdx >= 0) {
-      rowRefs.current[focusIdx]?.scrollIntoView({
-        block: "nearest",
-        behavior: "smooth",
-      });
+      scrollRowIntoView({ idx: focusIdx, block: "nearest" });
     }
-  }, [focusIdx]);
+  }, [focusIdx, scrollRowIntoView]);
 
-  // Auto-scroll to playing row — debounced so that rapid playingIdx churn
-  // (e.g. the currentTime poller nudging by fractions of a second) does not
-  // trigger a scrollIntoView on every frame. We only actually scroll once
-  // the value has been stable for ~250ms, which matches how a human reads.
+  // Playback follow — debounced 250ms against currentTime poller churn.
   const lastScrolledIdxRef = useRef(-1);
   useEffect(() => {
     if (!autoScroll) return;
@@ -664,23 +692,18 @@ const TranscriptView = ({
     const handle = setTimeout(() => {
       if (lastScrolledIdxRef.current === playingIdx) return;
       lastScrolledIdxRef.current = playingIdx;
-      rowRefs.current[playingIdx]?.scrollIntoView({
-        block: "center",
-        behavior: "smooth",
-      });
+      scrollRowIntoView({ idx: playingIdx, block: "center" });
     }, 250);
     return () => clearTimeout(handle);
-  }, [playingIdx, autoScroll]);
+  }, [playingIdx, autoScroll, scrollRowIntoView]);
 
-  // When the transcript source changes (user jumped to a different
-  // recording), move the view to wherever the audio is now — but only if
-  // autoScroll is still active. If the user had already disabled autoScroll
-  // on the previous call, preserve that preference across the jump.
+  // Transcript source changed — jump within the list to the current row.
   useEffect(() => {
     lastScrolledIdxRef.current = -1;
     if (!autoScroll) return;
     if (playingIdx >= 0) {
-      rowRefs.current[playingIdx]?.scrollIntoView({
+      scrollRowIntoView({
+        idx: playingIdx,
         block: "center",
         behavior: "auto",
       });
@@ -688,14 +711,11 @@ const TranscriptView = ({
     } else {
       listRef.current?.scrollTo?.({ top: 0, behavior: "auto" });
     }
-    // Intentionally depending on `transcript` identity, not playingIdx, so
-    // this fires exactly once per new call.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transcript]);
 
-  // Detect user-initiated scroll intent. Using wheel/touch/keydown (rather
-  // than the scroll event) lets us distinguish manual scrolling from the
-  // programmatic scrollIntoView calls above without fragile flag passing.
+  // wheel/touch/keydown lets us distinguish manual scroll from the
+  // programmatic scrollRowIntoView calls above.
   const handleUserScrollIntent = useCallback(() => {
     setAutoScroll(false);
   }, []);
@@ -729,12 +749,9 @@ const TranscriptView = ({
   const handleResumeFollow = useCallback(() => {
     setAutoScroll(true);
     if (playingIdx >= 0) {
-      rowRefs.current[playingIdx]?.scrollIntoView({
-        block: "center",
-        behavior: "smooth",
-      });
+      scrollRowIntoView({ idx: playingIdx, block: "center" });
     }
-  }, [playingIdx]);
+  }, [playingIdx, scrollRowIntoView]);
 
   const handleCopyTurn = useCallback((turn) => {
     const text = `[${formatClock(turn.start)}] ${turn.rawRole || turn.role}: ${turn.content}`;
@@ -986,6 +1003,7 @@ TranscriptView.propTypes = {
   hideTalkRatioPercentages: PropTypes.bool,
   talkRatioLegendAlign: PropTypes.oneOf(["left", "right"]),
   hideSilenceMarkers: PropTypes.bool,
+  embedded: PropTypes.bool,
 };
 
 export default TranscriptView;

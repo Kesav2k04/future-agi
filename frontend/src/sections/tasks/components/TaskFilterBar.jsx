@@ -1,51 +1,75 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import PropTypes from "prop-types";
 import { Box, Button, Typography } from "@mui/material";
 import { useWatch } from "react-hook-form";
 import Iconify from "src/components/iconify";
 import { getRandomId } from "src/utils/utils";
-import TraceFilterPanel from "src/sections/projects/LLMTracing/TraceFilterPanel";
+import TraceFilterPanel, {
+  useTraceFilterProperties,
+} from "src/sections/projects/LLMTracing/TraceFilterPanel";
+import {
+  FIELD_CATEGORY_TO_COL_TYPE,
+  RANGE_OPS,
+  LIST_OPS,
+  NO_VALUE_OPS,
+} from "src/sections/common/EvalsTasks/common";
+import { useDashboardFilterValues } from "src/hooks/useDashboards";
+import {
+  getPickerOptionValue,
+  getPickerOptionLabel,
+  getPickerOptionSecondaryLabel,
+} from "src/sections/projects/LLMTracing/filterValuePickerUtils";
 
-// ── Operator maps (new panel format ↔ old task filter format) ──
-const OP_NEW_TO_OLD = {
-  is: "equals",
-  is_not: "not_equals",
-  contains: "contains",
-  not_contains: "not_contains",
-  equal_to: "equal_to",
-  not_equal_to: "not_equal_to",
-  greater_than: "greater_than",
-  greater_than_or_equal: "greater_than_or_equal",
-  less_than: "less_than",
-  less_than_or_equal: "less_than_or_equal",
-  between: "between",
-  not_between: "not_between",
-};
+// ── Operator handling — canonical backend ops ──
+//
+// `TraceFilterPanel` (PR #432 / TH-4924) emits canonical backend op names
+// directly: `equals`, `not_equals`, `in`, `not_in`, `contains`,
+// `not_contains`, `starts_with`, `ends_with`, `is_null`, `is_not_null`,
+// `greater_than`, `greater_than_or_equal`, `less_than`,
+// `less_than_or_equal`, `between`, `not_between`.
+const resolveApiColType = (apiColType, fieldCategory) =>
+  apiColType || FIELD_CATEGORY_TO_COL_TYPE[fieldCategory] || "SPAN_ATTRIBUTE";
 
-const OP_OLD_TO_NEW = {
-  equals: "is",
-  not_equals: "is_not",
-  contains: "contains",
-  not_contains: "not_contains",
-  is: "is",
-  is_not: "is_not",
-  equal_to: "equal_to",
-  not_equal_to: "not_equal_to",
-  greater_than: "greater_than",
-  greater_than_or_equal: "greater_than_or_equal",
-  less_than: "less_than",
-  less_than_or_equal: "less_than_or_equal",
-  between: "between",
-  not_between: "not_between",
+// Legacy `equals`/`not_equals` on string rows → multi-value `in`/`not_in`
+// on hydration so the new panel renders the multi-select picker.
+const HYDRATE_STRING_OP = { equals: "in", not_equals: "not_in" };
+
+const isStringLike = (fieldType) =>
+  fieldType === "text" || fieldType === "string";
+
+const coerceForType = (val, fieldType) => {
+  if (val === null || val === undefined || val === "") return val;
+  if (Array.isArray(val)) return val.map((v) => coerceForType(v, fieldType));
+  if (fieldType === "number") {
+    const n = Number(val);
+    return Number.isNaN(n) ? val : n;
+  }
+  if (fieldType === "boolean") {
+    if (val === true || val === false) return val;
+    if (val === "true") return true;
+    if (val === "false") return false;
+  }
+  return val;
 };
 
 const OP_DISPLAY = {
-  is: "is",
-  is_not: "is not",
+  // canonical
+  equals: "equals",
+  not_equals: "not equals",
+  in: "is one of",
+  not_in: "is not one of",
   contains: "contains",
   not_contains: "not contains",
-  equal_to: "=",
-  not_equal_to: "≠",
+  starts_with: "starts with",
+  ends_with: "ends with",
+  is_null: "is null",
+  is_not_null: "is not null",
   greater_than: ">",
   greater_than_or_equal: "≥",
   less_than: "<",
@@ -54,31 +78,92 @@ const OP_DISPLAY = {
   not_between: "not between",
 };
 
-// ── new panel filter → old task form filter(s) ──
-// Each picked value becomes a separate row so the backend's
-// `getNewTaskFilters` pushes them into the same property array.
-// We stash `fieldCategory` and `fieldLabel` on each row so the live
-// preview (which reads raw useWatch values) can reconstruct the
-// tracing API array without losing metadata. Zod strips these at
-// submit time so the backend payload is unaffected.
+const TASK_FILTER_CATEGORIES = [
+  { key: "all", label: "All", icon: "mdi:view-grid-outline" },
+  { key: "system", label: "Span type", icon: "mdi:shape-outline" },
+  { key: "attribute", label: "Attributes", icon: "mdi:code-braces" },
+];
+
+const isTaskFilterProperty = (property) =>
+  property?.id === "span_kind" || property?.category === "attribute";
+
+// Panel filter → form row(s). List/range ops keep array `filterValue`;
+// no-value ops drop it; other ops explode into one scalar row per value.
 function convertNewToOld(newFilters) {
   const out = [];
   (newFilters || []).forEach((f) => {
     if (!f?.field) return;
-    const values = Array.isArray(f.value) ? f.value : [f.value];
     const isAttribute = f.fieldCategory === "attribute";
-    values.forEach((v) => {
+    const fieldType = f.fieldType || "string";
+    const filterType =
+      fieldType === "number"
+        ? "number"
+        : fieldType === "boolean"
+          ? "boolean"
+          : "text";
+    const op = f.operator || "equals";
+
+    const base = {
+      property: isAttribute ? "attributes" : f.field,
+      propertyId: f.field,
+      fieldCategory: f.fieldCategory || "system",
+      fieldLabel: f.fieldName || f.fieldLabel || f.field,
+      apiColType: resolveApiColType(f.apiColType, f.fieldCategory),
+    };
+
+    if (NO_VALUE_OPS.has(op)) {
+      out.push({
+        id: getRandomId(),
+        ...base,
+        filterConfig: { filterType, filterOp: op },
+      });
+      return;
+    }
+
+    if (RANGE_OPS.has(op)) {
+      const arr = Array.isArray(f.value) ? f.value : [];
+      if (arr.length < 2) return;
+      out.push({
+        id: getRandomId(),
+        ...base,
+        filterConfig: {
+          filterType,
+          filterOp: op,
+          filterValue: coerceForType(arr.slice(0, 2), fieldType),
+        },
+      });
+      return;
+    }
+
+    if (LIST_OPS.has(op)) {
+      const arr = (Array.isArray(f.value) ? f.value : [f.value]).filter(
+        (v) => v !== undefined && v !== null && v !== "",
+      );
+      if (arr.length === 0) return;
+      out.push({
+        id: getRandomId(),
+        ...base,
+        filterConfig: {
+          filterType,
+          filterOp: op,
+          filterValue: coerceForType(arr, fieldType),
+        },
+      });
+      return;
+    }
+
+    // Single-value ops: explode any incoming array (legacy multi-value
+    // `equals` from saved tasks) into one scalar row per value.
+    const arr = Array.isArray(f.value) ? f.value : [f.value];
+    arr.forEach((v) => {
       if (v === undefined || v === null || v === "") return;
       out.push({
         id: getRandomId(),
-        property: isAttribute ? "attributes" : f.field,
-        propertyId: f.field,
-        fieldCategory: f.fieldCategory || "system",
-        fieldLabel: f.fieldLabel || f.field,
+        ...base,
         filterConfig: {
-          filterType: f.fieldType === "number" ? "number" : "text",
-          filterOp: OP_NEW_TO_OLD[f.operator] || f.operator || "equals",
-          filterValue: v,
+          filterType,
+          filterOp: op,
+          filterValue: coerceForType(v, fieldType),
         },
       });
     });
@@ -86,39 +171,89 @@ function convertNewToOld(newFilters) {
   return out;
 }
 
-// ── old task form filter → new panel format (one row per property+op group) ──
+// ── form filter → new panel format ──
+// One form row → one panel row. Only ops with a natural multi-value shape
+// (range, list, or string equals/not_equals just rewritten to in/not_in via
+// HYDRATE_STRING_OP) collapse same-(field, op) rows into one multi-value
+// panel row — grouping any other op (e.g. not_contains) would let the chip
+// + panel UI fold "exclude A AND exclude B" into a single "[A, B]" row.
 function convertOldToNew(oldFilters) {
   const groups = new Map();
+  const result = [];
   (oldFilters || []).forEach((f) => {
     if (!f) return;
     const isAttribute = f.property === "attributes";
     const field = isAttribute ? f.propertyId : f.property;
     if (!field) return;
-    const op = f?.filterConfig?.filterOp || "equals";
+
+    const rawOp = f?.filterConfig?.filterOp || "equals";
     const category = f.fieldCategory || (isAttribute ? "attribute" : "system");
-    const key = `${field}|${op}|${category}`;
-    if (!groups.has(key)) {
-      groups.set(key, {
+    const ft = f?.filterConfig?.filterType;
+    const fieldType =
+      ft === "number" ? "number" : ft === "boolean" ? "boolean" : "string";
+
+    let op = rawOp;
+    const hydrated = isStringLike(fieldType) && HYDRATE_STRING_OP[op];
+    if (hydrated) {
+      op = HYDRATE_STRING_OP[op];
+    }
+
+    const isMultiValueOp =
+      RANGE_OPS.has(op) || LIST_OPS.has(op) || Boolean(hydrated);
+
+    let entry;
+    if (isMultiValueOp) {
+      const key = `${field}|${op}|${category}`;
+      entry = groups.get(key);
+      if (!entry) {
+        entry = {
+          field,
+          fieldLabel: f.fieldLabel || field,
+          fieldType,
+          fieldCategory: category,
+          operator: op,
+          value: [],
+        };
+        groups.set(key, entry);
+        result.push(entry);
+      }
+    } else {
+      entry = {
         field,
         fieldLabel: f.fieldLabel || field,
-        fieldType:
-          f?.filterConfig?.filterType === "number" ? "number" : "string",
+        fieldType,
         fieldCategory: category,
-        operator: OP_OLD_TO_NEW[op] || op,
+        // Preserved so the panel re-renders the right chip on edit-open.
+        apiColType: resolveApiColType(
+          f.apiColType || f?.filterConfig?.colType,
+          category,
+        ),
+        operator: op,
         value: [],
-      });
+      };
+      result.push(entry);
     }
+
+    if (NO_VALUE_OPS.has(op)) return;
+
     const val = f?.filterConfig?.filterValue;
-    if (val !== undefined && val !== null && val !== "") {
-      groups.get(key).value.push(val);
+    if (RANGE_OPS.has(op)) {
+      entry.value = Array.isArray(val) ? val : [];
+      return;
+    }
+    if (val === undefined || val === null || val === "") return;
+    if (Array.isArray(val)) {
+      entry.value.push(...val);
+    } else {
+      entry.value.push(val);
     }
   });
-  return Array.from(groups.values());
+  return result;
 }
 
 // ── Chip display for an active filter ──
 const FilterChip = ({ filter, onRemove }) => {
-  const opLabel = OP_DISPLAY[filter.operator] || filter.operator || "is";
+  const opLabel = OP_DISPLAY[filter.operator] || filter.operator || "equals";
   const valueStr = Array.isArray(filter.value)
     ? filter.value.join(", ")
     : String(filter.value ?? "");
@@ -150,7 +285,7 @@ const FilterChip = ({ filter, onRemove }) => {
         sx={{ color: "text.disabled" }}
       />
       <Typography sx={{ fontSize: 12, color: "text.secondary" }}>
-        {filter.fieldLabel || filter.field}
+        {filter.fieldName || filter.fieldLabel || filter.field}
       </Typography>
       <Typography sx={{ fontSize: 11, color: "text.disabled" }}>
         {opLabel}
@@ -187,14 +322,80 @@ FilterChip.propTypes = {
   onRemove: PropTypes.func.isRequired,
 };
 
+// Task rowType → TraceFilterPanel `tab`. Sessions / voiceCalls have no
+// id-field tab. Casing is normalized to handle inconsistent callers.
+const rowTypeToFilterTab = (rowType) => {
+  const key = String(rowType || "").toLowerCase();
+  if (key === "spans" || key === "span") return "spans";
+  if (key === "traces" || key === "trace") return "trace";
+  return null;
+};
+
 // ── Main ──
-const TaskFilterBar = ({ control, setValue, projectId }) => {
+const TaskFilterBar = ({
+  control,
+  setValue,
+  projectId,
+  isSimulator = false,
+  rowType,
+}) => {
   // Read the form filters (old format) and mirror them in local state (new format).
   const formFilters = useWatch({ control, name: "filters" });
   const [panelFilters, setPanelFilters] = useState(() =>
     convertOldToNew(formFilters),
   );
   const suppressNextSync = useRef(false);
+
+  // Resolve UUID column ids → display names. Shares cache with TraceFilterPanel.
+  const { data: properties = [] } = useTraceFilterProperties(projectId, {
+    isSimulator,
+  });
+  const propertyById = useMemo(() => {
+    const map = {};
+    for (const p of properties) map[p.id] = p;
+    return map;
+  }, [properties]);
+
+  // Resolve annotator user UUIDs → "Name (email)" for chip values.
+  const hasAnnotatorFilter = panelFilters.some((f) => f.field === "annotator");
+  const { data: annotatorOptions = [] } = useDashboardFilterValues({
+    metricName: "annotator",
+    metricType: "annotation_metric",
+    projectIds: projectId ? [projectId] : [],
+    source: "traces",
+    enabled: hasAnnotatorFilter,
+  });
+  const annotatorLabelById = useMemo(() => {
+    const map = {};
+    for (const opt of annotatorOptions) {
+      const value = String(getPickerOptionValue(opt));
+      if (!value) continue;
+      const label = getPickerOptionLabel(opt);
+      const email = getPickerOptionSecondaryLabel(opt);
+      map[value] = email ? `${label} (${email})` : label;
+    }
+    return map;
+  }, [annotatorOptions]);
+
+  const enrichedFilters = useMemo(
+    () =>
+      panelFilters.map((f) => {
+        const prop = propertyById[f.field];
+        let next = f;
+        if (!f.fieldName && f.fieldLabel === f.field && prop) {
+          next = { ...next, fieldLabel: prop.name };
+        }
+        if (f.field === "annotator" && Object.keys(annotatorLabelById).length) {
+          const remap = (v) => annotatorLabelById[String(v)] || v;
+          next = {
+            ...next,
+            value: Array.isArray(f.value) ? f.value.map(remap) : remap(f.value),
+          };
+        }
+        return next;
+      }),
+    [panelFilters, propertyById, annotatorLabelById],
+  );
 
   // Keep local panel state in sync with form filters when they change externally
   // (e.g. edit mode hydration). Skip the sync right after our own apply.
@@ -208,6 +409,15 @@ const TaskFilterBar = ({ control, setValue, projectId }) => {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const addBtnRef = useRef(null);
+
+  // Re-anchor when chips swap the trigger DOM node, so an open popover
+  // doesn't end up attached to a detached element.
+  const hasFiltersForEffect = panelFilters.length > 0;
+  useEffect(() => {
+    if (anchorEl && addBtnRef.current && anchorEl !== addBtnRef.current) {
+      setAnchorEl(addBtnRef.current);
+    }
+  }, [hasFiltersForEffect, anchorEl]);
 
   const applyPanelFilters = useCallback(
     (next) => {
@@ -250,7 +460,7 @@ const TaskFilterBar = ({ control, setValue, projectId }) => {
             flexWrap: "wrap",
           }}
         >
-          {panelFilters.map((f, idx) => (
+          {enrichedFilters.map((f, idx) => (
             <FilterChip
               key={`${f.field}-${idx}`}
               filter={f}
@@ -341,6 +551,10 @@ const TaskFilterBar = ({ control, setValue, projectId }) => {
         onClose={() => setAnchorEl(null)}
         currentFilters={panelFilters}
         projectId={projectId}
+        isSimulator={isSimulator}
+        tab={rowTypeToFilterTab(rowType)}
+        categories={TASK_FILTER_CATEGORIES}
+        propertyFilter={isTaskFilterProperty}
         onApply={(next) => applyPanelFilters(next || [])}
       />
     </Box>
@@ -351,6 +565,8 @@ TaskFilterBar.propTypes = {
   control: PropTypes.object.isRequired,
   setValue: PropTypes.func.isRequired,
   projectId: PropTypes.string,
+  isSimulator: PropTypes.bool,
+  rowType: PropTypes.string,
 };
 
 export default TaskFilterBar;

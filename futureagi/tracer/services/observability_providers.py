@@ -15,6 +15,7 @@ logger = structlog.get_logger(__name__)
 
 VAPI_PAGE_LIMIT = 100
 VAPI_MAX_PAGES = 10
+OBSERVABILITY_VERIFY_TIMEOUT_SECONDS = 30
 
 
 class ObservabilityService:
@@ -36,7 +37,11 @@ class ObservabilityService:
         else:
             raise ValueError(f"Invalid choice for provider: {provider}")
         headers = {"Authorization": f"Bearer {api_key}"}
-        response = requests.get(api_endpoint, headers=headers)
+        response = requests.get(
+            api_endpoint,
+            headers=headers,
+            timeout=OBSERVABILITY_VERIFY_TIMEOUT_SECONDS,
+        )
         return response.status_code
 
     @staticmethod
@@ -59,7 +64,7 @@ class ObservabilityService:
         response = requests.get(
             endpoint,
             headers=headers,
-            timeout=30,
+            timeout=OBSERVABILITY_VERIFY_TIMEOUT_SECONDS,
         )
         return response.status_code
 
@@ -573,15 +578,19 @@ class ObservabilityService:
                 }
             )
             if transcript.get("role") in ["user", "agent"]:
+                if started_at and seconds_from_start is not None:
+                    abs_time = (
+                        datetime.fromisoformat(started_at)
+                        + timedelta(seconds=seconds_from_start)
+                    ).isoformat()
+                else:
+                    abs_time = None
                 processed_transcripts.append(
                     {
                         "id": str(uuid.uuid4()),
                         "role": role,
                         "content": transcript.get("content"),
-                        "time": (
-                            datetime.fromisoformat(started_at)
-                            + timedelta(seconds=seconds_from_start)
-                        ).isoformat(),
+                        "time": abs_time,
                         "duration": duration,
                     }
                 )
@@ -666,13 +675,21 @@ class ObservabilityService:
         return VoiceCallLogs(**processed_log).model_dump()
 
     @staticmethod
-    def process_raw_logs(raw_log: dict, provider: str) -> VoiceCallLogs:
+    def process_raw_logs(
+        raw_log: dict,
+        provider: str,
+        span_attributes: dict | None = None,
+    ) -> VoiceCallLogs:
         """
         Processes a raw log from a voice provider into a structured format.
 
         Args:
             raw_log: Raw call log from the provider
             provider: One of ProviderChoices.VAPI or ProviderChoices.RETELL
+            span_attributes: Optional ObservationSpan.span_attributes. When
+                provided, the canonical recording URLs from the span (which
+                may be FAGI-S3-rehosted) override the provider URLs read from
+                ``raw_log``.
 
         Returns:
             VoiceCallLogs object containing processed call logs
@@ -681,8 +698,18 @@ class ObservabilityService:
             ValueError: If provider is not recognized
         """
         if provider == ProviderChoices.VAPI:
-            return ObservabilityService._process_vapi_logs(raw_log)
+            processed = ObservabilityService._process_vapi_logs(raw_log)
         elif provider == ProviderChoices.RETELL:
-            return ObservabilityService._process_retell_logs(raw_log)
+            processed = ObservabilityService._process_retell_logs(raw_log)
         else:
             raise ValueError(f"Invalid choice for provider: {provider}")
+
+        if span_attributes:
+            mono_combined = span_attributes.get("conversation.recording.mono.combined")
+            stereo = span_attributes.get("conversation.recording.stereo")
+            if mono_combined:
+                processed["recording_url"] = mono_combined
+            if stereo:
+                processed["stereo_recording_url"] = stereo
+
+        return processed

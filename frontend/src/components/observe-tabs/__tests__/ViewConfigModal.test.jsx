@@ -1,11 +1,14 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "src/utils/test-utils";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "src/utils/test-utils";
+import { ObserveHeaderContext } from "src/sections/project/context/ObserveHeaderContext";
 import ViewConfigModal from "../ViewConfigModal";
 
-// Mock the API hooks
+// Mock the API hooks — expose mockCreate/mockUpdate so tests can assert on payloads
+const mockCreate = vi.fn();
+const mockUpdate = vi.fn();
 vi.mock("src/api/project/saved-views", () => ({
-  useCreateSavedView: () => ({ mutate: vi.fn(), isPending: false }),
-  useUpdateSavedView: () => ({ mutate: vi.fn(), isPending: false }),
+  useCreateSavedView: () => ({ mutate: mockCreate, isPending: false }),
+  useUpdateSavedView: () => ({ mutate: mockUpdate, isPending: false }),
 }));
 
 describe("ViewConfigModal", () => {
@@ -58,5 +61,101 @@ describe("ViewConfigModal", () => {
   it("does not render when open is false", () => {
     render(<ViewConfigModal {...defaultProps} open={false} />);
     expect(screen.queryByText("Create New View")).not.toBeInTheDocument();
+  });
+});
+
+const defaultProps = {
+  open: true,
+  onClose: vi.fn(),
+  mode: "create",
+  projectId: "test-project-id",
+};
+
+const canonicalFilter = (columnId) => ({
+  column_id: columnId,
+  filter_config: {
+    filter_type: "text",
+    filter_op: "equals",
+    filter_value: "ERROR",
+  },
+});
+
+const renderWithCtx = (getViewConfig, props) =>
+  render(
+    <ObserveHeaderContext.Provider
+      value={{
+        headerConfig: {},
+        setHeaderConfig: () => {},
+        activeViewConfig: null,
+        setActiveViewConfig: () => {},
+        registerGetViewConfig: () => {},
+        getViewConfig,
+      }}
+    >
+      <ViewConfigModal {...defaultProps} {...props} />
+    </ObserveHeaderContext.Provider>,
+  );
+
+describe("ViewConfigModal — config snapshot on save", () => {
+  beforeEach(() => {
+    mockCreate.mockReset();
+    mockUpdate.mockReset();
+  });
+
+  it("create mode sends getViewConfig() output as config", async () => {
+    const snapshot = { filters: [canonicalFilter("status")] };
+    renderWithCtx(() => snapshot);
+    fireEvent.change(screen.getByLabelText("Name *"), {
+      target: { value: "v1" },
+    });
+    fireEvent.click(screen.getByText("Create"));
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+    expect(mockCreate.mock.calls[0][0].config).toEqual(snapshot);
+    expect(mockCreate.mock.calls[0][0].tab_type).toBe("traces");
+  });
+
+  it("create mode falls back to {} when getViewConfig returns null", async () => {
+    renderWithCtx(() => null);
+    fireEvent.change(screen.getByLabelText("Name *"), {
+      target: { value: "v2" },
+    });
+    fireEvent.click(screen.getByText("Create"));
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+    expect(mockCreate.mock.calls[0][0].config).toEqual({});
+  });
+
+  it("edit mode re-captures live config on save", async () => {
+    const fresh = { filters: [canonicalFilter("duration")] };
+    const stale = { filters: [canonicalFilter("status")] };
+    renderWithCtx(() => fresh, {
+      mode: "edit",
+      initialValues: {
+        id: "v9",
+        name: "Old",
+        tab_type: "traces",
+        config: stale,
+      },
+    });
+    fireEvent.click(screen.getByText("Save"));
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+    expect(mockUpdate.mock.calls[0][0].config).toEqual(fresh);
+    expect(mockUpdate.mock.calls[0][0]).not.toHaveProperty("tab_type");
+  });
+
+  it("edit mode falls back to initialValues.config when getViewConfig returns null", async () => {
+    const stale = { filters: [canonicalFilter("status")] };
+    renderWithCtx(() => null, {
+      mode: "edit",
+      initialValues: {
+        id: "v9",
+        name: "Old",
+        tab_type: "traces",
+        config: stale,
+      },
+    });
+    fireEvent.click(screen.getByText("Save"));
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+    expect(mockUpdate.mock.calls[0][0].config).toEqual(stale);
+    expect(mockUpdate.mock.calls[0][0]).not.toHaveProperty("tab_type");
   });
 });

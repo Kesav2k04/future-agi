@@ -38,10 +38,10 @@ import { PERMISSIONS, RolePermission } from "src/utils/rolePermissionMapping";
 import { useGetProjectById } from "src/api/project/evals-task";
 import { useDebounce } from "src/hooks/use-debounce";
 import axios, { endpoints } from "src/utils/axios";
-import { objectCamelToSnake } from "src/utils/utils";
 import { red } from "src/theme/palette";
 import {
   extractAttributeFilters,
+  getTaskFilterApiKey,
   getNewTaskFilters,
   NewTaskValidationSchema,
 } from "../NewTaskDrawer/validation";
@@ -50,7 +50,7 @@ import ScheduledRuns from "../NewTaskDrawer/ScheduledRuns";
 import { getDefaultTaskValues, useGetTaskData } from "../common";
 import TaskConfirmDialog from "./TaskConfirmBox";
 import TaskLogsView from "../TaskLogsView";
-import { EvalPickerDrawer } from "../../EvalPicker";
+import { EvalPickerDrawer, serializeEvalConfig } from "../../EvalPicker";
 
 // ── Configured Eval Card ──
 
@@ -162,6 +162,7 @@ const EditTaskDrawerV2Content = ({
   });
 
   const project = useWatch({ control, name: "project" });
+  const rowType = useWatch({ control, name: "rowType" }) || "spans";
   const formValues = useWatch({ control });
 
   const { field: startDateField } = useController({
@@ -197,7 +198,7 @@ const EditTaskDrawerV2Content = ({
       axios.get(endpoints.project.getEvalTaskConfig(), {
         params: {
           project_id: project,
-          filters: JSON.stringify(objectCamelToSnake(filters)),
+          filters: JSON.stringify(filters),
           task_id: selectedRow?.id,
         },
       }),
@@ -211,10 +212,13 @@ const EditTaskDrawerV2Content = ({
 
   // Fetch eval attributes for variable mapping
   const { data: evalAttributes } = useQuery({
-    queryKey: ["eval-attributes", filters],
+    queryKey: ["eval-attributes", rowType, filters],
     queryFn: () =>
       axios.get(endpoints.project.getEvalAttributeList(), {
-        params: { filters: JSON.stringify(objectCamelToSnake(filters)) },
+        params: {
+          row_type: rowType,
+          filters: JSON.stringify(filters),
+        },
       }),
     select: (d) => d.data?.result,
   });
@@ -261,9 +265,27 @@ const EditTaskDrawerV2Content = ({
     (editType) => {
       const data = formValues;
       const attributeFilters = extractAttributeFilters(data?.filters);
-      const observationTypes = (data.filters || [])
-        .filter((f) => f.property === "observationType")
-        .map((f) => f?.filterConfig?.filterValue);
+
+      // Task system filter aggregation. Keep the update payload aligned with
+      // the backend-supported task filter contract instead of saving fields
+      // that the dispatcher would ignore.
+      const systemFilters = {};
+      (data.filters || []).forEach((f) => {
+        if (!f?.property || f.property === "attributes") return;
+        const apiKey = getTaskFilterApiKey(f.property);
+        const v = f?.filterConfig?.filterValue;
+        const values = Array.isArray(v)
+          ? v
+          : v !== undefined && v !== null && v !== ""
+            ? [v]
+            : [];
+        if (!values.length) return;
+        if (systemFilters[apiKey]) {
+          systemFilters[apiKey].push(...values);
+        } else {
+          systemFilters[apiKey] = [...values];
+        }
+      });
 
       const transformedData = {
         evals: data.evalsDetails?.map((item) => item.id) || [],
@@ -273,18 +295,18 @@ const EditTaskDrawerV2Content = ({
             new Date(startDateField.value).toISOString(),
             new Date(endDateField.value).toISOString(),
           ],
-          ...(observationTypes?.length > 0
-            ? { observation_type: observationTypes }
-            : {}),
+          ...systemFilters,
           ...(attributeFilters?.length > 0
             ? { span_attributes_filters: attributeFilters }
             : {}),
         },
-        observation_type: observationTypes,
         project_id: data.project,
         name: data.name,
         project: data.project,
         run_type: data.runType,
+        // row_type intentionally omitted — immutable after task creation.
+        // The BE serializer rejects it on PATCH; the picker is also
+        // locked on edit (see TaskConfigPanel rowTypeLocked).
         sampling_rate: data.samplingRate,
         spans_limit: String(data.spansLimit),
         edit_type: editType,
@@ -303,6 +325,8 @@ const EditTaskDrawerV2Content = ({
     async (evalConfig) => {
       const tplId = evalConfig.templateId || evalConfig.template_id;
       const existingId = evalConfig.id;
+      // Use serializeEvalConfig so function-params land at config.params.
+      const serialized = serializeEvalConfig(evalConfig);
       try {
         let id;
         if (existingId) {
@@ -313,7 +337,7 @@ const EditTaskDrawerV2Content = ({
               name: evalConfig.name,
               model: evalConfig.model || null,
               mapping: evalConfig.mapping,
-              config: evalConfig.config || {},
+              config: serialized.config,
               error_localizer: evalConfig.errorLocalizerEnabled || false,
             },
           );
@@ -327,7 +351,7 @@ const EditTaskDrawerV2Content = ({
               eval_template: tplId,
               model: evalConfig.model || null,
               mapping: evalConfig.mapping,
-              config: evalConfig.config || {},
+              config: serialized.config,
               filters: getNewTaskFilters(formValues, observeId, true).filters,
               error_localizer: evalConfig.errorLocalizerEnabled || false,
             },
@@ -340,8 +364,13 @@ const EditTaskDrawerV2Content = ({
           template_id: tplId,
           templateId: tplId,
         });
-      } catch {
-        addEval({ ...evalConfig, template_id: tplId, templateId: tplId });
+      } catch (err) {
+        enqueueSnackbar(
+          err?.response?.data?.result ||
+            err?.message ||
+            "Failed to save evaluation",
+          { variant: "error" },
+        );
       }
     },
     [project, formValues, observeId, addEval],

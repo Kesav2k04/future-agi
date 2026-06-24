@@ -20,6 +20,9 @@ from typing import Any, Dict, List, Optional, Tuple
 from tracer.services.clickhouse.query_builders.base import BaseQueryBuilder
 from tracer.services.clickhouse.query_builders.filters import ClickHouseFilterBuilder
 
+#TODO: switch this to "start_time" once we create an index on that column .
+TIME_FILTER_COLUMN = "created_at"  # Options: "created_at" | "start_time"
+
 
 class TraceListQueryBuilder(BaseQueryBuilder):
     """Build queries for the paginated trace list view.
@@ -118,6 +121,8 @@ class TraceListQueryBuilder(BaseQueryBuilder):
         fb = ClickHouseFilterBuilder(
             table=self.TABLE,
             annotation_label_ids=self.annotation_label_ids,
+            project_id=self.project_id,
+            project_ids=self.project_ids,
         )
         extra_where, extra_params = fb.translate(self.filters)
         self.params.update(extra_params)
@@ -131,7 +136,7 @@ class TraceListQueryBuilder(BaseQueryBuilder):
 
         # Pagination
         offset = self.page_number * self.page_size
-        self.params["limit"] = self.page_size + 1  # +1 for has_more detection
+        self.params["limit"] = self.page_size
         self.params["offset"] = offset
 
         # Build optional filter fragment
@@ -181,7 +186,7 @@ class TraceListQueryBuilder(BaseQueryBuilder):
             trace_session_id,
             project_id"""
 
-        # Phase 1: light columns only (no input/output/span_attr/metadata).
+        # Phase 1: light columns only (no input/output/attrs/metadata).
         # Heavy columns are fetched in build_content_query() for just the
         # returned trace_ids — avoids OOM on large tables.
         #
@@ -209,8 +214,8 @@ class TraceListQueryBuilder(BaseQueryBuilder):
         {self.project_where()}
           AND (parent_span_id IS NULL OR parent_span_id = '')
           AND created_at >= %(start_date)s - INTERVAL 1 DAY
-          AND start_time >= %(start_date)s
-          AND start_time < %(end_date)s
+          AND {TIME_FILTER_COLUMN} >= %(start_date)s
+          AND {TIME_FILTER_COLUMN} < %(end_date)s
           {pv_fragment}
           {search_fragment}
           {filter_fragment}
@@ -240,14 +245,14 @@ class TraceListQueryBuilder(BaseQueryBuilder):
             trace_id,
             input,
             output,
-            span_attr_str,
-            span_attr_num,
-            metadata_map,
-            trace_tags
+            attrs_string,
+            attrs_number,
+            toJSONString(metadata) AS metadata,
+            dictGetOrDefault('trace_dict', 'tags', toUUID(trace_id), '[]') AS trace_tags
         FROM {self.TABLE}
         PREWHERE trace_id IN %(content_trace_ids)s
         WHERE {self.project_filter_sql()}
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
           AND (parent_span_id IS NULL OR parent_span_id = '')
         LIMIT 1 BY trace_id
         """
@@ -268,13 +273,13 @@ class TraceListQueryBuilder(BaseQueryBuilder):
         query = f"""
         SELECT
             trace_id,
-            span_attributes_raw
+            attributes_extra
         FROM {self.TABLE}
         PREWHERE trace_id IN %(attr_trace_ids)s
         WHERE {self.project_filter_sql()}
-          AND _peerdb_is_deleted = 0
-          AND span_attributes_raw != '{{}}'
-          AND span_attributes_raw != ''
+          AND is_deleted = 0
+          AND attributes_extra != '{{}}'
+          AND attributes_extra != ''
         """
         return query, params
 
@@ -287,6 +292,8 @@ class TraceListQueryBuilder(BaseQueryBuilder):
         fb = ClickHouseFilterBuilder(
             table=self.TABLE,
             annotation_label_ids=self.annotation_label_ids,
+            project_id=self.project_id,
+            project_ids=self.project_ids,
         )
         extra_where, extra_params = fb.translate(self.filters)
         # Merge params -- reuse the same start/end dates
@@ -311,14 +318,15 @@ class TraceListQueryBuilder(BaseQueryBuilder):
         # prunes old partitions. Drops 7d count from 716ms/3.5M rows to
         # 255ms/306K rows on a 3.5M-span project, without dropping any
         # rows that legitimately match the user's `start_time` window.
+
         query = f"""
         SELECT uniq(trace_id) AS total
         FROM {self.TABLE}
         {self.project_where()}
           AND (parent_span_id IS NULL OR parent_span_id = '')
           AND created_at >= %(start_date)s - INTERVAL 1 DAY
-          AND start_time >= %(start_date)s
-          AND start_time < %(end_date)s
+          AND {TIME_FILTER_COLUMN} >= %(start_date)s
+          AND {TIME_FILTER_COLUMN} < %(end_date)s
           {pv_fragment}
           {search_fragment}
           {filter_fragment}
@@ -348,7 +356,7 @@ class TraceListQueryBuilder(BaseQueryBuilder):
         FROM {self.TABLE}
         WHERE {self.project_filter_sql()}
           AND trace_id IN %(sc_trace_ids)s
-          AND _peerdb_is_deleted = 0
+          AND is_deleted = 0
         GROUP BY trace_id
         """
         return query, params
@@ -397,6 +405,23 @@ class TraceListQueryBuilder(BaseQueryBuilder):
             "eval_config_ids": tuple(self.eval_config_ids),
         }
 
+        # Partition-prune `tracer_eval_logger` (PARTITION BY toYYYYMM(created_at))
+        # so the FINAL merge can skip months that cannot match this page.
+        # The page of trace_ids was selected by build() within the user's
+        # [start_date, end_date] window on `start_time`, so the matching eval
+        # rows' `created_at` falls inside that window plus ingestion skew. A
+        # lower-bound-only filter with a 1-day skew buffer (identical to the
+        # mitigation in build()/build_count_query()) prunes old partitions
+        # without dropping any legitimately-matching eval row. Guarded on
+        # self.start_date so callers that invoke build_eval_query() without a
+        # prior build() (e.g. unit tests) keep their current behavior.
+        created_at_fragment = ""
+        if self.start_date is not None:
+            params["start_date"] = self.start_date
+            created_at_fragment = (
+                "AND created_at >= %(start_date)s - INTERVAL 1 DAY"
+            )
+
         # Include errored rows but compute aggregates only over successful
         # rows (error = 0). ``success_count`` / ``error_count`` let the
         # pivot surface an explicit error state on the UI when every eval
@@ -439,8 +464,10 @@ class TraceListQueryBuilder(BaseQueryBuilder):
             ) AS str_lists
         FROM {self.EVAL_TABLE} FINAL
         WHERE _peerdb_is_deleted = 0
+          AND (deleted = 0 OR deleted IS NULL)
           AND trace_id IN %(trace_ids)s
           AND custom_eval_config_id IN %(eval_config_ids)s
+          {created_at_fragment}
         GROUP BY trace_id, custom_eval_config_id
         """
         return query, params
@@ -467,17 +494,102 @@ class TraceListQueryBuilder(BaseQueryBuilder):
 
         query = f"""
         SELECT
-            toString(trace_id) AS trace_id,
-            toString(label_id) AS label_id,
-            anyLast(value) AS value,
-            toString(anyLast(annotator_id)) AS annotator_id
-        FROM {self.ANNOTATION_TABLE} FINAL
-        WHERE _peerdb_is_deleted = 0
-          AND trace_id IN %(trace_ids)s
-          AND label_id IN %(label_ids)s
+            if(
+                isNull(s.trace_id)
+                OR s.trace_id = toUUID('00000000-0000-0000-0000-000000000000'),
+                sp.trace_id,
+                toString(s.trace_id)
+            ) AS trace_id,
+            toString(s.label_id) AS label_id,
+            anyLast(s.value) AS value,
+            toString(anyLast(s.annotator_id)) AS annotator_id
+        FROM {self.ANNOTATION_TABLE} AS s FINAL
+        LEFT JOIN {self.TABLE} AS sp
+          ON sp.id = s.observation_span_id
+         AND sp._peerdb_is_deleted = 0
+        WHERE s._peerdb_is_deleted = 0
+          AND s.deleted = false
+          AND if(
+                isNull(s.trace_id)
+                OR s.trace_id = toUUID('00000000-0000-0000-0000-000000000000'),
+                sp.trace_id,
+                toString(s.trace_id)
+              ) IN %(trace_ids)s
+          AND s.label_id IN %(label_ids)s
         GROUP BY trace_id, label_id
         """
         return query, params
+
+    def build_user_id_query(
+        self, trace_ids: List[str]
+    ) -> Tuple[str, Dict[str, Any]]:
+        """Fetch user_id strings from ClickHouse for a page of trace IDs.
+
+        Uses enduser_dict to resolve end_user_id UUIDs to user_id strings
+        in a single query. Returns one user_id per trace (uses `any()`
+        aggregation to pick the first non-null value across all spans).
+        """
+        if not trace_ids:
+            return "", {}
+
+        params: Dict[str, Any] = {
+            **self.params,
+            "user_trace_ids": tuple(trace_ids),
+        }
+
+        query = f"""
+        SELECT trace_id, user_id
+        FROM (
+            SELECT
+                trace_id,
+                dictGetOrDefault('enduser_dict', 'user_id', any(end_user_id), '') AS user_id
+            FROM {self.TABLE}
+            PREWHERE trace_id IN %(user_trace_ids)s
+            WHERE {self.project_filter_sql()}
+              AND _peerdb_is_deleted = 0
+              AND end_user_id IS NOT NULL
+              AND end_user_id != toUUID('00000000-0000-0000-0000-000000000000')
+            GROUP BY trace_id
+        )
+        WHERE user_id != ''
+        """
+        return query, params
+
+    def resolve_user_ids(
+        self, trace_ids: List[str], analytics
+    ) -> Dict[str, str]:
+        """Resolve user_id strings for a page of trace IDs.
+
+        Single-query lookup using ClickHouse enduser_dict:
+        - Queries ClickHouse for user_id strings via dictionary lookup (~50-100ms)
+        - No PostgreSQL round-trip needed
+
+        Args:
+            trace_ids: List of trace ID strings to resolve users for.
+            analytics: Analytics service instance for executing CH queries.
+
+        Returns:
+            Dict mapping trace_id → user_id string.
+        """
+        if not trace_ids:
+            return {}
+
+        user_query, user_params = self.build_user_id_query(trace_ids)
+        if not user_query:
+            return {}
+
+        result = analytics.execute_ch_query(
+            user_query, user_params, timeout_ms=10000
+        )
+
+        # Build trace_id → user_id mapping (filter already applied in query)
+        user_id_map = {
+            str(row.get("trace_id", "")): row.get("user_id")
+            for row in result.data
+            if row.get("user_id")
+        }
+
+        return user_id_map
 
     @staticmethod
     def pivot_annotation_results(

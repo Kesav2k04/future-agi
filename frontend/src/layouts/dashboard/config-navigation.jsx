@@ -60,9 +60,9 @@ const ICONS = {
 export function useNavData() {
   const { user } = useAuthContext();
   const { currentWorkspaceRole } = useWorkspace();
-  const userOrgRole = user?.organization_role ?? user?.organizationRole;
-  const userDefaultWsRole =
-    user?.default_workspace_role ?? user?.defaultWorkspaceRole;
+  const { isOSS } = useDeploymentMode();
+  const userOrgRole = user?.organization_role;
+  const userDefaultWsRole = user?.default_workspace_role;
   const isOwner = userOrgRole === "Owner";
   const effectiveWsRole = currentWorkspaceRole || userDefaultWsRole;
   const isAdmin =
@@ -137,16 +137,7 @@ export function useNavData() {
         icon: ICONS.keys,
       });
     }
-    return [
-      {
-        items: [
-          {
-            title: "Falcon AI",
-            path: paths.dashboard.falconAI,
-            icon: ICONS.falconAI,
-          },
-        ],
-      },
+    const sections = [
       {
         subheader: "BUILD",
         items: buildItems,
@@ -272,7 +263,21 @@ export function useNavData() {
       //   items: [],
       // },
     ];
-  }, [isOwner, isAdmin]);
+
+    sections.unshift({
+      items: [
+        {
+          title: "Falcon AI",
+          path: paths.dashboard.falconAI,
+          icon: ICONS.falconAI,
+          disabled: isOSS,
+          disabledTooltip: "Not available on self-hosted",
+        },
+      ],
+    });
+
+    return sections;
+  }, [isOwner, isAdmin, isOSS]);
   return data;
 }
 
@@ -343,18 +348,18 @@ export function useNavSettingsData() {
     queryKey: ["workspaces-list", "settings"],
     queryFn: () => axiosInstance.get(endpoints.workspace.workspaceList),
     select: (res) => res.data?.results || [],
-    enabled: !!(user?.ws_enabled ?? user?.wsEnabled),
+    enabled: !!user?.ws_enabled,
     staleTime: 30_000,
   });
 
   // Use organization role for org-level settings
   // Workspace role is only relevant for workspace-specific tabs
-  const effectiveRole = user?.organization_role ?? user?.organizationRole;
+  const effectiveRole = user?.organization_role;
   const isOrgAdminPlus =
     effectiveRole === ROLES.OWNER || effectiveRole === ROLES.ADMIN;
   const isWsAdmin =
     isOrgAdminPlus || currentWorkspaceRole === ROLES.WORKSPACE_ADMIN;
-  const wsEnabled = user?.ws_enabled ?? user?.wsEnabled;
+  const wsEnabled = user?.ws_enabled;
 
   const sections = useMemo(() => {
     // Wait for user role to be loaded before rendering tabs
@@ -412,7 +417,7 @@ export function useNavSettingsData() {
       });
     }
     // Falcon AI Connectors — same access as integrations
-    if (canAccess(RoutesName.integrations)) {
+    if (!isOSS && canAccess(RoutesName.integrations)) {
       wsSettingsItems.push({
         title: "Falcon AI Connectors",
         path: "/dashboard/settings/falcon-ai-connectors",
@@ -499,7 +504,7 @@ export function useNavSettingsData() {
       result.push({
         subheader: "Your Workspaces",
         items: workspaces.map((ws) => ({
-          title: ws.display_name || ws.displayName || ws.name,
+          title: ws.display_name || ws.name,
           path: `/dashboard/settings/workspace/${ws.id}`,
           icon: SettingsIcons.Workspaces,
         })),
@@ -534,13 +539,13 @@ export function useWorkspaceSettingsNav(workspaceId) {
 
   if (!workspaceId || !workspace) return null;
 
-  // Check org role using organizationRole, not workspace role
-  const userOrgRole = user?.organization_role ?? user?.organizationRole;
+  // Check org role using the canonical user-info organization_role field.
+  const userOrgRole = user?.organization_role;
   const isOrgAdminPlus =
     userOrgRole === ROLES.OWNER || userOrgRole === ROLES.ADMIN;
 
   // Workspace level thresholds: 8=admin, 3=member, 1=viewer (from backend Level constants)
-  const wsLevel = workspace.user_ws_level ?? workspace.userWsLevel ?? 0;
+  const wsLevel = workspace.user_ws_level ?? 0;
   const isWsAdmin = isOrgAdminPlus || wsLevel >= 8;
   const isWsViewer = !isOrgAdminPlus && wsLevel < 3;
 
@@ -582,11 +587,7 @@ export function useWorkspaceSettingsNav(workspaceId) {
   }
 
   return {
-    name:
-      workspace.display_name ||
-      workspace.displayName ||
-      workspace.name ||
-      "Workspace",
+    name: workspace.display_name || workspace.name || "Workspace",
     data: [{ items }],
   };
 }

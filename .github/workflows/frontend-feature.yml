@@ -2,7 +2,7 @@ name: Frontend Feature Branch Pipeline
 
 on:
   push:
-    branches: [feature/*, feat/*, bugfix/*, hotfix/*, refactor/*, docs/*, test/*, chore/*, release/*]
+    branches: [feat/*, fix/*, chore/*, docs/*, refactor/*, test/*, perf/*]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-feature.yml'
@@ -51,7 +51,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.17'
+          node-version: '22.18'
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
 

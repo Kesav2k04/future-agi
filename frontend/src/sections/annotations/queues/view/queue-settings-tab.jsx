@@ -1,11 +1,17 @@
 import PropTypes from "prop-types";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import {
+  Alert,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   FormControl,
   FormControlLabel,
@@ -19,6 +25,7 @@ import {
 } from "@mui/material";
 import { Controller, useForm, FormProvider } from "react-hook-form";
 import {
+  useHardDeleteAnnotationQueue,
   useUpdateAnnotationQueue,
   useUpdateAnnotationQueueStatus,
 } from "src/api/annotation-queues/annotation-queues";
@@ -26,7 +33,9 @@ import RHFTextField from "src/components/hook-form/rhf-text-field";
 import { RHFCheckbox } from "src/components/hook-form/rhf-checkbox";
 import LabelPicker from "../components/label-picker";
 import AnnotatorPicker from "../components/annotator-picker";
+import { isQueueAnnotatorRole, queueRoleList } from "../constants";
 
+/** @type {Record<string, { label: string; hint: string }>} */
 const ALL_STATUS_OPTIONS = {
   draft: { label: "Draft", hint: "Queue is being set up" },
   active: { label: "Active", hint: "Open for annotation and review" },
@@ -34,6 +43,7 @@ const ALL_STATUS_OPTIONS = {
   completed: { label: "Completed", hint: "All items annotated and reviewed" },
 };
 
+/** @type {Record<string, string[]>} */
 const VALID_TRANSITIONS = {
   draft: ["active"],
   active: ["paused", "completed"],
@@ -41,14 +51,23 @@ const VALID_TRANSITIONS = {
   completed: ["active", "paused"],
 };
 
-function getStatusOptions(currentStatus) {
+function getStatusOptions(currentStatus, { hasLabels = true } = {}) {
   const allowed = VALID_TRANSITIONS[currentStatus] || [];
-  const opt = (s) => ({
-    value: s,
-    label: ALL_STATUS_OPTIONS[s]?.label || s,
-    hint: ALL_STATUS_OPTIONS[s]?.hint || "",
-  });
-  return [opt(currentStatus), ...allowed.map(opt)];
+  const opt = (s, { isCurrent = false } = {}) => {
+    const disabled = !isCurrent && s === "active" && !hasLabels;
+    return {
+      value: s,
+      label: ALL_STATUS_OPTIONS[s]?.label || s,
+      hint: disabled
+        ? "Add at least one label to activate the queue"
+        : ALL_STATUS_OPTIONS[s]?.hint || "",
+      disabled,
+    };
+  };
+  return [
+    opt(currentStatus, { isCurrent: true }),
+    ...allowed.map((s) => opt(s)),
+  ];
 }
 
 const RESERVATION_TIMEOUT_OPTIONS = [
@@ -85,6 +104,8 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
 
   const labelIds = watch("label_ids");
   const annotators = watch("annotators");
+  const autoAssign = watch("autoAssign");
+  const annotatorCount = annotators.filter(isQueueAnnotatorRole).length;
   const hasInitializedRef = useRef(false);
 
   useEffect(() => {
@@ -95,6 +116,7 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
         queue.annotators?.map((a) => ({
           userId: a.user_id,
           role: a.role || "annotator",
+          roles: queueRoleList(a),
         })) || [];
       reset({
         name: queue.name || "",
@@ -126,7 +148,7 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
       label_ids: formData.label_ids,
       annotator_ids: formData.annotators.map((a) => a.userId),
       annotator_roles: Object.fromEntries(
-        formData.annotators.map((a) => [a.userId, a.role]),
+        formData.annotators.map((a) => [a.userId, a.roles || [a.role]]),
       ),
     };
 
@@ -199,26 +221,38 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
                 <Controller
                   name="status"
                   control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      size="small"
-                      select
-                      label="Status"
-                      fullWidth
-                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: 0.5 } }}
-                      SelectProps={{
-                        renderValue: (v) => ALL_STATUS_OPTIONS[v]?.label || v,
-                        MenuProps: {
-                          PaperProps: {
-                            sx: { borderRadius: "4px !important" },
+                  render={({ field }) => {
+                    const currentStatus = queue?.status || field.value;
+                    return (
+                      <TextField
+                        {...field}
+                        size="small"
+                        select
+                        label="Status"
+                        fullWidth
+                        FormHelperTextProps={{
+                          sx: { ml: 0, color: "warning.main" },
+                        }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": { borderRadius: 0.5 },
+                        }}
+                        SelectProps={{
+                          renderValue: (v) => ALL_STATUS_OPTIONS[v]?.label || v,
+                          MenuProps: {
+                            PaperProps: {
+                              sx: { borderRadius: "4px !important" },
+                            },
                           },
-                        },
-                      }}
-                    >
-                      {getStatusOptions(queue?.status || field.value).map(
-                        (opt) => (
-                          <MenuItem key={opt.value} value={opt.value}>
+                        }}
+                      >
+                        {getStatusOptions(currentStatus, {
+                          hasLabels: (labelIds || []).length > 0,
+                        }).map((opt) => (
+                          <MenuItem
+                            key={opt.value}
+                            value={opt.value}
+                            disabled={opt.disabled}
+                          >
                             <Box>
                               <Typography variant="body2">
                                 {opt.label}
@@ -231,16 +265,16 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
                               </Typography>
                             </Box>
                           </MenuItem>
-                        ),
-                      )}
-                    </TextField>
-                  )}
+                        ))}
+                      </TextField>
+                    );
+                  }}
                 />
               </Stack>
             </CardContent>
           </Card>
 
-          {/* Labels & Annotators */}
+          {/* Labels & Members */}
           <Card
             elevation={0}
             sx={{
@@ -263,13 +297,14 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
                 />
 
                 <Divider />
-                <Typography variant="subtitle1">Annotators</Typography>
+                <Typography variant="subtitle1">Members</Typography>
                 <AnnotatorPicker
                   value={annotators}
                   onChange={(a) =>
                     setValue("annotators", a, { shouldDirty: true })
                   }
                   creatorId={creatorId}
+                  highlightAutoAssigned={autoAssign}
                   isManager
                 />
               </Stack>
@@ -299,8 +334,8 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
                       const n = Number(value);
                       if (!value && value !== 0) return "Required";
                       if (n < 1) return "Must be at least 1";
-                      if (annotators.length > 0 && n > annotators.length)
-                        return `Cannot exceed annotator count (${annotators.length})`;
+                      if (annotatorCount > 0 && n > annotatorCount)
+                        return `Cannot exceed annotator count (${annotatorCount})`;
                       return true;
                     },
                   }}
@@ -319,7 +354,7 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
                       inputProps={{ min: 1, max: 10 }}
                       helperText={
                         fieldState.error?.message ||
-                        "Number of annotators that must complete each item"
+                        "Number of members with the Annotator role that must complete each item"
                       }
                       FormHelperTextProps={{ sx: { ml: 0 } }}
                       sx={{ "& .MuiOutlinedInput-root": { borderRadius: 0.5 } }}
@@ -373,11 +408,11 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
                           fontWeight={500}
                           color="text.primary"
                         >
-                          Auto-assign items to all annotators
+                          Auto-assign items to all annotator members
                         </Typography>
-                        <Typography variant="caption" color="text.disabled">
-                          When on, all annotators are assigned to every item and
-                          anyone can annotate any item
+                        <Typography variant="caption" color="text.secondary">
+                          When on, all members with the Annotator role are
+                          assigned to every item and can annotate any item
                         </Typography>
                       </Box>
                     }
@@ -469,11 +504,113 @@ export default function QueueSettingsTab({ queue, queueId, creatorId }) {
               {isPending ? "Saving..." : "Save Changes"}
             </Button>
           </Box>
+
+          <DangerZone queue={queue} />
         </Stack>
       </Box>
     </FormProvider>
   );
 }
+
+function DangerZone({ queue }) {
+  // Hard delete is intentionally separated from the everyday "Archive"
+  // button on the queue list. It bypasses the soft-delete that the rest
+  // of the app relies on for restore-on-recreate, so we gate it behind
+  // an explicit type-the-name confirmation.
+  const navigate = useNavigate();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const { mutate: hardDelete, isPending: isDeleting } =
+    useHardDeleteAnnotationQueue();
+  if (!queue) return null;
+  const matches = typed === queue.name;
+  return (
+    <>
+      <Card
+        sx={{ borderColor: "error.main", borderWidth: 1, borderStyle: "solid" }}
+      >
+        <CardContent>
+          <Stack spacing={2}>
+            <Typography variant="h6" color="error.main">
+              Danger zone
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Permanently delete this queue. All automation rules, items,
+              assignments, and annotation scores attached to it are removed.
+              This cannot be undone — for a recoverable removal, use{" "}
+              <strong>Archive</strong> from the queue list instead.
+            </Typography>
+            <Box>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => {
+                  setTyped("");
+                  setDialogOpen(true);
+                }}
+              >
+                Delete queue permanently
+              </Button>
+            </Box>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={dialogOpen}
+        onClose={() => !isDeleting && setDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Delete queue permanently</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="error">
+              This will hard-delete <strong>{queue.name}</strong> along with all
+              rules, items, assignments, and scores. There is no way to recover
+              the data after this.
+            </Alert>
+            <Typography variant="body2">
+              Type the queue name to confirm: <strong>{queue.name}</strong>
+            </Typography>
+            <TextField
+              autoFocus
+              size="small"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              placeholder={queue.name}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogOpen(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={!matches || isDeleting}
+            onClick={() =>
+              hardDelete(
+                { id: queue.id, name: queue.name },
+                {
+                  onSuccess: () => {
+                    setDialogOpen(false);
+                    navigate("/dashboard/annotations/queues");
+                  },
+                },
+              )
+            }
+          >
+            {isDeleting ? "Deleting…" : "Delete forever"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
+
+DangerZone.propTypes = { queue: PropTypes.object };
 
 QueueSettingsTab.propTypes = {
   queue: PropTypes.object,

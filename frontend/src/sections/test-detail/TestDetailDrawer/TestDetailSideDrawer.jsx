@@ -13,8 +13,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import axios, { endpoints } from "src/utils/axios";
 import { transformMetricDetails } from "src/sections/agents/CallLogs/utils";
 import { enqueueSnackbar } from "notistack";
-import { deepEqual, objectCamelToSnake } from "src/utils/utils";
+import { deepEqual } from "src/utils/utils";
 import { useUrlState } from "src/routes/hooks/use-url-state";
+import { stripUiFilterKeys } from "src/components/ComplexFilter/common";
 import SkeltonForTestDeatilDrawer from "../Skeletons/SkeltonForTestDeatilDrawer";
 import { AGENT_TYPES } from "src/sections/agents/constants";
 import { HeaderSkeleton } from "./BasLineCompare/Skeletons";
@@ -29,6 +30,8 @@ import {
 } from "src/sections/agents/helper";
 import VoiceDetailDrawerV2 from "src/components/VoiceDetailDrawerV2";
 import ChatDetailDrawerV2 from "src/components/ChatDetailDrawerV2";
+import { buildVoiceCallAnnotationSources } from "src/components/voiceAnnotationSources";
+
 const BaselineVsReplayHeader = lazy(() => import("./BasLineCompare/Header"));
 
 const TestDetailSideDrawerChild = ({
@@ -132,7 +135,10 @@ const TestDetailSideDrawerChild = ({
       return {
         ...base,
         ...callExecDetail,
-        transcript: mergeTranscripts(base.transcript, callExecDetail.transcript),
+        transcript: mergeTranscripts(
+          base.transcript,
+          callExecDetail.transcript,
+        ),
       };
     }
     return base;
@@ -219,9 +225,9 @@ const TestDetailSideDrawerChild = ({
     const simulateFilters =
       urlModule === "simulate"
         ? JSON.stringify(
-            Array.isArray(drawerQueryKey[3])
-              ? drawerQueryKey[3].map(objectCamelToSnake)
-              : [],
+            stripUiFilterKeys(
+              Array.isArray(drawerQueryKey[3]) ? drawerQueryKey[3] : [],
+            ),
           )
         : JSON.stringify([]);
 
@@ -312,9 +318,11 @@ const TestDetailSideDrawerChild = ({
                 transformedData = { ...metricDetails, evalMetrics };
               }
 
+              setIsFetching(null);
               setTestDetailDrawerOpen({
                 ...transformedData,
               });
+              return;
             }
           }
         } catch (error) {
@@ -425,6 +433,21 @@ const TestDetailSideDrawerChild = ({
       null
     );
   }, [mergedData?.observation_span]);
+
+  const annotationSources = useMemo(
+    () =>
+      buildVoiceCallAnnotationSources({
+        traceId,
+        rootSpanId: rootObsSpanId,
+        module: urlModule,
+        callExecutionId: data?.id,
+      }),
+    [traceId, rootObsSpanId, urlModule, data?.id],
+  );
+
+  if (!data || isFetching === "initial") {
+    return null;
+  }
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
@@ -678,27 +701,7 @@ const TestDetailSideDrawerChild = ({
         }}
       >
         <AnnotationSidebarContent
-          sources={
-            urlModule === "project"
-              ? [
-                  ...(rootObsSpanId
-                    ? [
-                        {
-                          sourceType: "observation_span",
-                          sourceId: rootObsSpanId,
-                        },
-                      ]
-                    : (data?.trace_id || data?.id)
-                    ? [
-                        {
-                          sourceType: "trace",
-                          sourceId: data?.trace_id || data?.id,
-                        },
-                      ]
-                    : []),
-                ]
-              : [{ sourceType: "call_execution", sourceId: data?.id }]
-          }
+          sources={annotationSources}
           onClose={() => setAnnotationSidebarOpen(false)}
           onScoresChanged={() => {
             queryClient.invalidateQueries({
@@ -759,12 +762,11 @@ const TestDetailSideDrawer = ({
     }));
   const handleClose = () => {
     removeRowIndex();
-    setTestDetailDrawerOpen(null);
-    setCompareReplay(false);
   };
 
-  const isDrawerOpen =
+  const hasUrlRowIndex =
     updatedRowIndex !== undefined && updatedRowIndex !== null;
+  const isDrawerOpen = hasUrlRowIndex && !!testDetailDrawerOpen;
 
   const effectiveOrigin = urlOrigin || origin;
   const effectiveModule = module || "simulate";
@@ -772,8 +774,15 @@ const TestDetailSideDrawer = ({
   return (
     <Drawer
       open={isDrawerOpen}
+      keepMounted={hasUrlRowIndex}
       onClose={handleClose}
       anchor="right"
+      SlideProps={{
+        onExited: () => {
+          setTestDetailDrawerOpen(null);
+          setCompareReplay(false);
+        },
+      }}
       PaperProps={{
         sx: {
           height: "100vh",

@@ -20,7 +20,6 @@ import { useRouter } from "src/routes/hooks";
 import { useBoolean } from "src/hooks/use-boolean";
 import { useAuthContext } from "src/auth/hooks";
 import { setSession, setRefreshToken } from "src/auth/context/jwt/utils";
-import { PATH_AFTER_LOGIN } from "src/config-global";
 
 import Iconify from "src/components/iconify";
 import FormProvider, { RHFTextField } from "src/components/hook-form";
@@ -28,10 +27,11 @@ import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { Events, trackEvent, PropertyName } from "src/utils/Mixpanel";
 import { Box, Button, CircularProgress } from "@mui/material";
 import axiosInstance, { endpoints } from "src/utils/axios";
+import { LOGIN_ERROR_CODES } from "src/utils/constants";
 import { useSnackbar } from "src/components/snackbar";
 import { useMutation } from "@tanstack/react-query";
 import { useParams } from "src/routes/hooks";
-import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
+import { getRecaptchaToken } from "src/utils/recaptchaService";
 import logger from "src/utils/logger";
 import { FormCheckboxField } from "src/components/FormCheckboxField";
 import SvgColor from "src/components/svg-color";
@@ -41,16 +41,25 @@ import {
   startAuthentication,
 } from "@simplewebauthn/browser";
 import RightSectionAuth from "./RightSectionAuth";
+import { isValidUtm } from "src/utils/utmUtils";
+import { usePostLoginPath } from "src/hooks/useDeploymentMode";
 
 // ----------------------------------------------------------------------
 
 export default function JwtLoginView() {
   const { login } = useAuthContext();
-  const { executeRecaptcha } = useGoogleReCaptcha();
+  const postLoginPath = usePostLoginPath();
   const router = useRouter();
   const [errorMsg, setErrorMsg] = useState("");
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo");
+  // Persist returnTo on a login action so it survives flows that drop the
+  // URL param (OAuth round-trip, login → setup-org).
+  const persistReturnTo = () => {
+    if (returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
+      localStorage.setItem("redirectUrl", returnTo);
+    }
+  };
   const password = useBoolean();
   const navigate = useNavigate();
   const { search } = useLocation();
@@ -61,9 +70,7 @@ export default function JwtLoginView() {
 
   const { mutate: acceptInvitation } = useMutation({
     mutationFn: () =>
-      axiosInstance.get(
-        `${endpoints.invite.accept_invitation}${uuid}/${token}/`,
-      ),
+      axiosInstance.get(endpoints.invite.accept_invitation(uuid, token)),
     onSuccess: (response) => {
       navigate(`/auth/jwt/invitation/set-password/${uuid}/${token}`, {
         state: {
@@ -97,7 +104,7 @@ export default function JwtLoginView() {
 
     utmKeys.forEach((key) => {
       const val = params.get(key);
-      if (val) utmParams.set(key, val);
+      if (isValidUtm(val)) utmParams.set(key, val);
     });
 
     const returnTo = params.get("returnTo");
@@ -108,7 +115,7 @@ export default function JwtLoginView() {
 
       utmKeys.forEach((key) => {
         const val = innerParams.get(key);
-        if (val) utmParams.set(key, val);
+        if (isValidUtm(val)) utmParams.set(key, val);
       });
     }
 
@@ -182,14 +189,17 @@ export default function JwtLoginView() {
   } = methods;
 
   const onSubmit = handleSubmit(async (data) => {
-    if (!executeRecaptcha) {
+    persistReturnTo();
+    let token;
+    try {
+      token = await getRecaptchaToken("login");
+    } catch (err) {
       enqueueSnackbar({
         message: "reCAPTCHA not ready. Please try again",
         variant: "error",
       });
       return;
     }
-    const token = await executeRecaptcha("login");
 
     trackEvent(Events.loginClicked, {
       [PropertyName.status]: true,
@@ -200,7 +210,7 @@ export default function JwtLoginView() {
         email: data.email,
         password: data.password,
         remember_me: data.rememberMe,
-        "recaptcha-response": token,
+        recaptcha_response: token,
       });
       // trackEvent(Events.loginCompleted);
 
@@ -229,44 +239,102 @@ export default function JwtLoginView() {
           localStorage.setItem("signupProvider", "email");
           navigate(paths.auth.jwt.setup_org);
         } else {
-          router.push(returnTo || PATH_AFTER_LOGIN);
+          if (returnTo) localStorage.setItem("initial-render", "done");
+          router.push(returnTo || postLoginPath);
+          localStorage.removeItem("redirectUrl");
         }
       }
     } catch (error) {
-      const raw = error;
-      const message =
-        typeof raw === "object" && raw?.[0] === "I"
-          ? Object.keys(raw)
-              .filter((key) => !isNaN(key)) // only numeric keys
-              .sort((a, b) => a - b) // sort keys in order
-              .map((key) => raw[key])
-              .join("")
-          : error?.detail || error?.result?.error || "Login failed";
-      if (message.includes("IP address temporarily blocked")) {
-        enqueueSnackbar(message, { variant: "error" });
-        return;
-      }
-      if (error?.detail === "User not found") {
-        setErrorMsg(
-          "No account found with this email. Please sign up to create one",
-        );
-      } else if (error?.result?.error === "Account deactivated") {
-        setErrorMsg(
-          error?.result?.message ||
-            "Your account has been deactivated. Please contact your organization admin.",
-        );
-      } else if (error?.result?.error === "Invalid credentials") {
-        setErrorMsg("Enter a valid Email and password combination");
-      } else {
-        setErrorMsg(
-          typeof error === "string"
-            ? error
-            : error?.detail ||
+      const errorCode = error?.result?.error_code || error?.error_code;
+      if (errorCode) {
+        switch (errorCode) {
+          case LOGIN_ERROR_CODES.IP_BLOCKED:
+          case LOGIN_ERROR_CODES.IP_RATE_LIMITED:
+            enqueueSnackbar(
+              error?.result?.error ||
+                "Your IP has been temporarily blocked. Please try again later.",
+              { variant: "error" },
+            );
+            break;
+
+          case LOGIN_ERROR_CODES.ACCOUNT_BLOCKED:
+          case LOGIN_ERROR_CODES.TOO_MANY_ATTEMPTS: {
+            const remaining = error?.result?.block_time_remaining;
+            const minutes = remaining ? Math.ceil(remaining / 60) : null;
+            setErrorMsg(
+              minutes
+                ? `Account temporarily blocked. Please try again in ${minutes} minutes.`
+                : "Account temporarily blocked due to too many failed attempts.",
+            );
+            break;
+          }
+
+          case LOGIN_ERROR_CODES.RECAPTCHA_FAILED:
+            setErrorMsg("reCAPTCHA verification failed. Please try again.");
+            break;
+
+          case LOGIN_ERROR_CODES.INVALID_CREDENTIALS:
+            setErrorMsg("Enter a valid Email and password combination");
+            break;
+
+          case LOGIN_ERROR_CODES.ACCOUNT_DEACTIVATED:
+            setErrorMsg(
+              error?.result?.message ||
+                "Your account has been deactivated. Please contact your organization admin.",
+            );
+            break;
+
+          case LOGIN_ERROR_CODES.UNEXPECTED_ERROR:
+          default:
+            setErrorMsg(
+              error?.result?.message ||
                 error?.result?.error ||
                 "An unexpected error occurred",
-        );
+            );
+            break;
+        }
+      } else {
+        // Backward compatibility fallback for responses without error_code
+        const raw = error;
+        const message =
+          typeof raw === "object" && raw?.[0] === "I"
+            ? Object.keys(raw)
+                .filter((key) => !isNaN(key))
+                .sort((a, b) => a - b)
+                .map((key) => raw[key])
+                .join("")
+            : error?.detail || error?.result?.error || "Login failed";
+        if (message.includes("IP address temporarily blocked")) {
+          enqueueSnackbar(message, { variant: "error" });
+        } else if (error?.detail === "User not found") {
+          setErrorMsg(
+            "No account found with this email. Please sign up to create one",
+          );
+        } else if (error?.result?.error === "Account deactivated") {
+          setErrorMsg(
+            error?.result?.message ||
+              "Your account has been deactivated. Please contact your organization admin.",
+          );
+        } else if (error?.result?.error === "Invalid credentials") {
+          setErrorMsg("Enter a valid Email and password combination");
+        } else {
+          setErrorMsg(
+            typeof error === "string"
+              ? error
+              : error?.detail ||
+                  error?.result?.error ||
+                  "An unexpected error occurred",
+          );
+        }
       }
-      logger.error("Login attempt failed", error);
+      if (
+        (error?.statusCode >= 400 && error?.statusCode < 500) ||
+        error?.name === "NotAllowedError"
+      ) {
+        logger.info("Login attempt failed (expected)", error);
+      } else {
+        logger.error("Login attempt failed", error);
+      }
     }
   });
 
@@ -274,6 +342,7 @@ export default function JwtLoginView() {
 
   const handlePasskeyLogin = async () => {
     try {
+      persistReturnTo();
       setPasskeyLoading(true);
       // Get authentication options from server
       const optionsRes = await axiosInstance.post(
@@ -297,7 +366,9 @@ export default function JwtLoginView() {
 
       if (verifyRes.status === 200) {
         await login(verifyRes);
-        router.push(returnTo || PATH_AFTER_LOGIN);
+        if (returnTo) localStorage.setItem("initial-render", "done");
+        router.push(returnTo || postLoginPath);
+        localStorage.removeItem("redirectUrl");
       }
     } catch (error) {
       if (error?.name === "NotAllowedError") {
@@ -310,18 +381,27 @@ export default function JwtLoginView() {
           { variant: "error" },
         );
       }
-      logger.error("Passkey login failed", error);
+      if (
+        (error?.statusCode >= 400 && error?.statusCode < 500) ||
+        error?.name === "NotAllowedError"
+      ) {
+        logger.info("Passkey login failed (expected)", error);
+      } else {
+        logger.error("Passkey login failed", error);
+      }
     } finally {
       setPasskeyLoading(false);
     }
   };
 
   const handleSsoLogin = () => {
+    persistReturnTo();
     // Navigate to SSO login page
     navigate(paths.auth.jwt.sso);
   };
 
   const handleServiceProvider = async (provider) => {
+    persistReturnTo();
     trackEvent(Events.ssoLoginClicked, {
       [PropertyName.mode]: provider,
     });
@@ -352,7 +432,14 @@ export default function JwtLoginView() {
         });
       }
     } catch (error) {
-      logger.error("Error during social login:", error);
+      if (
+        (error?.statusCode >= 400 && error?.statusCode < 500) ||
+        error?.name === "NotAllowedError"
+      ) {
+        logger.info("Error during social login (expected)", error);
+      } else {
+        logger.error("Error during social login:", error);
+      }
       if (error.response?.status === 302 && error.response?.headers?.reason) {
         enqueueSnackbar(error.response.headers.reason, { variant: "error" });
       } else {
@@ -506,7 +593,7 @@ export default function JwtLoginView() {
       >
         By clicking continue, you agree to our
         <Link
-          href="https://futureagi.com/terms-and-conditions"
+          href="https://futureagi.com/terms"
           target="_blank"
           sx={{ cursor: "pointer" }}
         >
@@ -515,7 +602,7 @@ export default function JwtLoginView() {
         </Link>{" "}
         and
         <Link
-          href="https://futureagi.com/privacy-policy"
+          href="https://futureagi.com/privacy"
           target="_blank"
           sx={{ cursor: "pointer" }}
         >

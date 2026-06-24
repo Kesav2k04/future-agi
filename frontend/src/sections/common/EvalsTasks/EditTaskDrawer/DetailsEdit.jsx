@@ -36,6 +36,7 @@ import Iconify from "src/components/iconify";
 import { enqueueSnackbar } from "notistack";
 import {
   extractAttributeFilters,
+  getTaskFilterApiKey,
   getNewTaskFilters,
   NewTaskValidationSchema,
 } from "../NewTaskDrawer/validation";
@@ -53,7 +54,6 @@ import EvaluationSection from "../NewTaskDrawer/EvaluationSection";
 import { red } from "src/theme/palette";
 import FilterErrorBoundary from "src/components/ComplexFilter/FilterErrorBoundary";
 import EvaluationDrawer from "../../EvaluationDrawer/EvaluationDrawer";
-import { objectCamelToSnake } from "src/utils/utils";
 import { resetEvalStore } from "src/sections/evals/store/useEvalStore";
 
 function CustomTabPanel(props) {
@@ -109,6 +109,7 @@ const DetailsEdit = ({
   });
 
   const project = useWatch({ control, name: "project" });
+  const rowType = useWatch({ control, name: "rowType" }) || "spans";
   const isProjectSelected = !!project;
   const [configureEvalOpen, setConfigureEvalOpen] = useState(false);
   const [, setSelectedEval] = useState(null);
@@ -157,6 +158,7 @@ const DetailsEdit = ({
   const onAddSubmit = (data) => {
     const {
       runType,
+      rowType,
       spansLimit,
       samplingRate,
       evalsDetails,
@@ -167,6 +169,7 @@ const DetailsEdit = ({
     const payload = {
       ...restData,
       run_type: runType,
+      row_type: rowType,
       ...(runType !== "continuous" && spansLimit
         ? { spans_limit: spansLimit }
         : {}),
@@ -184,7 +187,7 @@ const DetailsEdit = ({
       axios.get(endpoints.project.getEvalTaskConfig(), {
         params: {
           project_id: project,
-          filters: JSON.stringify(objectCamelToSnake(filters)),
+          filters: JSON.stringify(filters),
           task_id: selectedRow?.id,
         },
       }),
@@ -199,11 +202,12 @@ const DetailsEdit = ({
   }, [configuredEvalList]);
 
   const { data: evalAttributes } = useQuery({
-    queryKey: ["eval-attributes", filters],
+    queryKey: ["eval-attributes", rowType, filters],
     queryFn: () =>
       axios.get(endpoints.project.getEvalAttributeList(), {
         params: {
-          filters: JSON.stringify(objectCamelToSnake(filters)),
+          row_type: rowType,
+          filters: JSON.stringify(filters),
         },
       }),
     select: (data) => data.data?.result,
@@ -245,11 +249,30 @@ const DetailsEdit = ({
   });
 
   const onUpdateSubmit = (data, editType) => {
+    // Flat chip list with col_type for the BE dispatcher; observation_type
+    // (incl. node_type alias) still rides as a sibling key.
     const attributeFilters = extractAttributeFilters(data?.filters);
 
-    const observationTypes = data.filters
-      .filter((f) => f.property === "observationType")
-      .map((f) => f?.filterConfig?.filterValue);
+    // Task system filter aggregation. The task filter UI only exposes
+    // backend-supported system fields plus span attributes, so unsupported
+    // TraceFilterPanel fields cannot be saved and silently ignored.
+    const systemFilters = {};
+    (data.filters || []).forEach((f) => {
+      if (!f?.property || f.property === "attributes") return;
+      const apiKey = getTaskFilterApiKey(f.property);
+      const v = f?.filterConfig?.filterValue;
+      const values = Array.isArray(v)
+        ? v
+        : v !== undefined && v !== null && v !== ""
+          ? [v]
+          : [];
+      if (!values.length) return;
+      if (systemFilters[apiKey]) {
+        systemFilters[apiKey].push(...values);
+      } else {
+        systemFilters[apiKey] = [...values];
+      }
+    });
 
     const transformedData = {
       evals: data.evalsDetails?.map((item) => item.id) || [],
@@ -259,18 +282,17 @@ const DetailsEdit = ({
           new Date(startDateField.value).toISOString(),
           new Date(endDateField.value).toISOString(),
         ],
-        ...(observationTypes && observationTypes?.length > 0
-          ? { observation_type: observationTypes }
-          : {}),
+        ...systemFilters,
         ...(attributeFilters && attributeFilters?.length > 0
-          ? { span_attributes_filters: attributeFilters }
+          ? { filters: attributeFilters }
           : {}),
       },
-      observation_type: observationTypes,
       project_id: data.project,
       name: data.name,
       project: data.project,
       run_type: data.runType,
+      // row_type intentionally omitted from update payload — immutable
+      // after task creation; the BE serializer rejects it on PATCH.
       sampling_rate: data.samplingRate,
       spans_limit: String(data.spansLimit),
       edit_type: editType,

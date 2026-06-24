@@ -159,7 +159,7 @@ const CreateScenarioView = () => {
     return agentDefVersions?.pages?.reduce((acc, curr) => {
       const newOptions =
         curr.results?.map((result) => ({
-          label: result.versionNameDisplay,
+          label: result.version_name_display,
           value: result.id,
         })) ?? [];
       return [...acc, ...newOptions];
@@ -227,9 +227,9 @@ const CreateScenarioView = () => {
   const promptVersionOptions = useMemo(() => {
     const results = promptVersionsData?.results || promptVersionsData || [];
     return results.map((version) => {
-      const versionLabel = String(version.templateVersion).startsWith("v")
-        ? version.templateVersion
-        : `v${version.templateVersion}`;
+      const versionLabel = String(version.template_version).startsWith("v")
+        ? version.template_version
+        : `v${version.template_version}`;
       return {
         label: versionLabel,
         value: version.id,
@@ -274,10 +274,10 @@ const CreateScenarioView = () => {
     const agentOptions = agentDefinitionsLoading
       ? []
       : agentDefinitions?.map((agent) => ({
-          label: agent?.agentName,
+          label: agent?.agent_name,
           value: agent?.id,
           sourceType: SourceType.AGENT_DEFINITION,
-          agentType: agent?.agentType,
+          agentType: agent?.agent_type,
         })) ?? [];
 
     const promptOptions = isLoadingPrompts
@@ -467,7 +467,9 @@ const CreateScenarioView = () => {
     // @ts-ignore
     try {
       const data = await mutateAsync(payload);
-      navigate(`/dashboard/simulate/scenarios/${data?.data?.scenario?.id}`);
+      navigate(`/dashboard/simulate/scenarios/${data?.data?.scenario?.id}`, {
+        replace: true,
+      });
     } catch (error) {
       enqueueSnackbar(error?.message, { variant: "error" });
       return;

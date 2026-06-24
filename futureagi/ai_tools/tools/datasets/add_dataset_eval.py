@@ -64,6 +64,7 @@ class AddDatasetEvalTool(BaseTool):
         from ai_tools.resolvers import resolve_dataset, resolve_eval_template
         from model_hub.models.develop_dataset import Column
         from model_hub.models.evals_metric import EvalTemplate, UserEvalMetric
+        from model_hub.utils.eval_result_columns import infer_eval_result_column_data_type
         from model_hub.utils.eval_validators import validate_eval_template_org_access
 
         # Resolve dataset by name or UUID
@@ -124,7 +125,7 @@ class AddDatasetEvalTool(BaseTool):
         # Auto-detect mapping if not provided
         if not params.mapping:
             # Try to auto-map eval template keys to dataset columns by name similarity
-            required_keys = template.required_fields or []
+            required_keys = (template.config or {}).get("required_keys", [])
             auto_mapping = {}
             for key in required_keys:
                 key_lower = key.lower()
@@ -197,7 +198,10 @@ class AddDatasetEvalTool(BaseTool):
                         error_code="VALIDATION_ERROR",
                     )
 
-        # Validate all required template keys are mapped
+        # Validate all required template keys are mapped. System evals
+        # stay strict; user-built custom evals allow partial mappings —
+        # the shared validator at run time fails on all-empty or warns
+        # on partial.
         from model_hub.utils.eval_validators import validate_required_key_mapping
 
         required_keys = (
@@ -205,13 +209,19 @@ class AddDatasetEvalTool(BaseTool):
             if template.config and isinstance(template.config, dict)
             else []
         )
-        missing_keys = validate_required_key_mapping(resolved_mapping, required_keys)
-        if missing_keys:
-            return ToolResult.error(
-                f"Missing required mapping keys: {', '.join(f'`{k}`' for k in missing_keys)}. "
-                f"Required: {', '.join(f'`{k}`' for k in required_keys)}",
-                error_code="VALIDATION_ERROR",
+        is_user_custom_eval = bool(
+            template.config and template.config.get("custom_eval", False)
+        )
+        if not is_user_custom_eval:
+            missing_keys = validate_required_key_mapping(
+                resolved_mapping, required_keys
             )
+            if missing_keys:
+                return ToolResult.error(
+                    f"Missing required mapping keys: {', '.join(f'`{k}`' for k in missing_keys)}. "
+                    f"Required: {', '.join(f'`{k}`' for k in required_keys)}",
+                    error_code="VALIDATION_ERROR",
+                )
 
         # Build config — always enable reason_column so eval runner creates
         # reason cells (MCP tool always creates reason columns)
@@ -255,18 +265,7 @@ class AddDatasetEvalTool(BaseTool):
 
                 dataset = Dataset.objects.get(id=dataset.id)
 
-                # Determine output data type from template
-                output_type = "boolean"
-                if template.config and isinstance(template.config, dict):
-                    output_map = {
-                        "reason": "text",
-                        "score": "float",
-                        "choices": "array",
-                        "Pass/Fail": "boolean",
-                    }
-                    output_type = output_map.get(
-                        template.config.get("output", ""), "boolean"
-                    )
+                output_type = infer_eval_result_column_data_type(template)
 
                 col = Column(
                     name=eval_name,

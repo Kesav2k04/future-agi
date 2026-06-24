@@ -35,6 +35,7 @@ from tracer.services.clickhouse.client import (
 from tracer.services.clickhouse.query_builders.dashboard import (
     METRIC_UNITS,
     DashboardQueryBuilder,
+    InvalidMetricCombinationError,
 )
 from tracer.services.clickhouse.query_builders.dataset_dashboard import (
     DATASET_FILTER_COLUMNS,
@@ -582,12 +583,32 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                 _DashCls = get_query_builder_class("DASHBOARD")
                 builder = _DashCls(trace_config)
                 query_timeout = self._get_trace_query_timeout_ms(trace_config)
-                for sql, params, metric_info in builder.build_all_queries():
+                # Build + execute per metric so one nonsensical or failing
+                # metric surfaces as a per-widget error instead of failing the
+                # whole dashboard query.
+                for metric in builder.metrics:
+                    metric_info = builder.metric_info(metric)
                     metric_info["source"] = "traces"
-                    result = analytics.execute_ch_query(
-                        sql, params, timeout_ms=query_timeout
-                    )
-                    all_metric_results.append((metric_info, result.data))
+                    try:
+                        sql, params = builder.build_metric_query(metric)
+                        result = analytics.execute_ch_query(
+                            sql, params, timeout_ms=query_timeout
+                        )
+                        all_metric_results.append((metric_info, result.data))
+                    except InvalidMetricCombinationError as e:
+                        metric_info["error"] = str(e)
+                        all_metric_results.append((metric_info, []))
+                    except Exception as e:
+                        logger.warning(
+                            "dashboard_metric_query_failed",
+                            metric=metric.get("id") or metric.get("name"),
+                            error=str(e),
+                        )
+                        metric_info["error"] = (
+                            "This metric could not be computed for the "
+                            "selected options."
+                        )
+                        all_metric_results.append((metric_info, []))
 
             # --- Dataset metrics via DatasetQueryBuilder ---
             if dataset_metrics:
@@ -610,10 +631,31 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                         )
 
                 builder = DatasetQueryBuilder(ds_config)
-                for sql, params, metric_info in builder.build_all_queries():
+                # Build + execute per metric so one failing metric surfaces as a
+                # per-widget error instead of failing the whole dashboard query.
+                for metric in builder.metrics:
+                    metric_info = builder.metric_info(metric)
                     metric_info["source"] = "datasets"
-                    result = analytics.execute_ch_query(sql, params, timeout_ms=10000)
-                    all_metric_results.append((metric_info, result.data))
+                    try:
+                        sql, params = builder.build_metric_query(metric)
+                        result = analytics.execute_ch_query(
+                            sql, params, timeout_ms=10000
+                        )
+                        all_metric_results.append((metric_info, result.data))
+                    except InvalidMetricCombinationError as e:
+                        metric_info["error"] = str(e)
+                        all_metric_results.append((metric_info, []))
+                    except Exception as e:
+                        logger.warning(
+                            "dashboard_dataset_metric_query_failed",
+                            metric=metric.get("id") or metric.get("name"),
+                            error=str(e),
+                        )
+                        metric_info["error"] = (
+                            "This metric could not be computed for the "
+                            "selected options."
+                        )
+                        all_metric_results.append((metric_info, []))
 
             # --- Simulation metrics via SimulationQueryBuilder ---
             if simulation_metrics:
@@ -2899,25 +2941,67 @@ class DashboardWidgetViewSet(BaseModelViewSetMixin, ModelViewSet):
             _DashCls = get_query_builder_class("DASHBOARD")
             builder = _DashCls(trace_config)
             query_timeout = self._get_trace_query_timeout_ms(trace_config)
-            for sql, params, metric_info in builder.build_all_queries():
+            # Build + execute per metric so one nonsensical or failing metric
+            # surfaces as a per-widget error instead of failing the whole widget.
+            for metric in builder.metrics:
+                metric_info = builder.metric_info(metric)
                 metric_info["source"] = "traces"
-                rows, column_types, _ = ch_client.execute_read(
-                    sql, params, timeout_ms=query_timeout
-                )
-                col_names = [ct[0] for ct in column_types]
-                row_dicts = [dict(zip(col_names, row, strict=True)) for row in rows]
-                metric_results.append((metric_info, row_dicts))
+                try:
+                    sql, params = builder.build_metric_query(metric)
+                    rows, column_types, _ = ch_client.execute_read(
+                        sql, params, timeout_ms=query_timeout
+                    )
+                    col_names = [ct[0] for ct in column_types]
+                    row_dicts = [
+                        dict(zip(col_names, row, strict=True)) for row in rows
+                    ]
+                    metric_results.append((metric_info, row_dicts))
+                except InvalidMetricCombinationError as e:
+                    metric_info["error"] = str(e)
+                    metric_results.append((metric_info, []))
+                except Exception as e:
+                    logger.warning(
+                        "dashboard_widget_metric_query_failed",
+                        metric=metric.get("id") or metric.get("name"),
+                        error=str(e),
+                    )
+                    metric_info["error"] = (
+                        "This metric could not be computed for the "
+                        "selected options."
+                    )
+                    metric_results.append((metric_info, []))
 
         if dataset_metrics:
             ds_config = {**query_config, "metrics": dataset_metrics}
             ds_config["workspace_id"] = str(workspace.id)
             builder = DatasetQueryBuilder(ds_config)
-            for sql, params, metric_info in builder.build_all_queries():
+            # Build + execute per metric so one failing metric surfaces as a
+            # per-widget error instead of failing the whole widget.
+            for metric in builder.metrics:
+                metric_info = builder.metric_info(metric)
                 metric_info["source"] = "datasets"
-                rows, column_types, _ = ch_client.execute_read(sql, params)
-                col_names = [ct[0] for ct in column_types]
-                row_dicts = [dict(zip(col_names, row, strict=True)) for row in rows]
-                metric_results.append((metric_info, row_dicts))
+                try:
+                    sql, params = builder.build_metric_query(metric)
+                    rows, column_types, _ = ch_client.execute_read(sql, params)
+                    col_names = [ct[0] for ct in column_types]
+                    row_dicts = [
+                        dict(zip(col_names, row, strict=True)) for row in rows
+                    ]
+                    metric_results.append((metric_info, row_dicts))
+                except InvalidMetricCombinationError as e:
+                    metric_info["error"] = str(e)
+                    metric_results.append((metric_info, []))
+                except Exception as e:
+                    logger.warning(
+                        "dashboard_widget_dataset_metric_query_failed",
+                        metric=metric.get("id") or metric.get("name"),
+                        error=str(e),
+                    )
+                    metric_info["error"] = (
+                        "This metric could not be computed for the "
+                        "selected options."
+                    )
+                    metric_results.append((metric_info, []))
 
         if simulation_metrics:
             sim_config = {**query_config, "metrics": simulation_metrics}

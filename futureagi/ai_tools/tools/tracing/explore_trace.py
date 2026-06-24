@@ -389,7 +389,10 @@ class ExploreTraceTool(BaseTool):
             if not parsed:
                 match = re.search(r"\{.*\}", raw, re.DOTALL)
                 if match:
-                    parsed = json.loads(match.group(0))
+                    try:
+                        parsed = json.loads(match.group(0))
+                    except (json.JSONDecodeError, ValueError):
+                        pass
 
             if not parsed:
                 return {"sub_flows": [], "trace_overview": ""}

@@ -660,6 +660,63 @@ class TestClickHouseFilterBuilder:
         assert "project_id = %(project_id)s" in where_pid
         assert "project_id IN %(project_ids)s" not in where_pid
 
+    def test_system_metric_trace_wrap_org_mode_uses_project_ids(self):
+        """Trace-mode SYSTEM_METRIC filters (e.g. ``node_type``) wrap the
+        condition in a ``trace_id IN (SELECT trace_id FROM spans WHERE
+        project_id ...)`` subquery. That wrap used to hardcode
+        ``project_id = %(project_id)s`` regardless of org scope, so
+        org-scoped requests (``project_ids`` set, no ``project_id``) raised
+        ``KeyError: 'project_id'`` at execution time — surfaced by
+        ``list_traces_of_session`` as a generic 400. Regression guard.
+        """
+        from tracer.services.clickhouse.query_builders.filters import (
+            ClickHouseFilterBuilder,
+        )
+
+        builder = ClickHouseFilterBuilder(
+            project_ids=["11111111-1111-1111-1111-111111111111"],
+            query_mode=ClickHouseFilterBuilder.QUERY_MODE_TRACE,
+        )
+        where, params = builder.translate(
+            [
+                {
+                    "column_id": "node_type",
+                    "filter_config": {
+                        "filter_type": "text",
+                        "filter_op": "in",
+                        "filter_value": ["chain", "retriever"],
+                        "col_type": "SYSTEM_METRIC",
+                    },
+                }
+            ]
+        )
+
+        assert "trace_id IN" in where
+        assert "project_id IN %(project_ids)s" in where
+        assert "project_id = %(project_id)s" not in where
+        assert "project_id" not in params
+
+        # Single-project mode should still emit the scalar shape.
+        single_pid = ClickHouseFilterBuilder(
+            project_id="11111111-1111-1111-1111-111111111111",
+            query_mode=ClickHouseFilterBuilder.QUERY_MODE_TRACE,
+        )
+        where_pid, _ = single_pid.translate(
+            [
+                {
+                    "column_id": "node_type",
+                    "filter_config": {
+                        "filter_type": "text",
+                        "filter_op": "in",
+                        "filter_value": ["chain", "retriever"],
+                        "col_type": "SYSTEM_METRIC",
+                    },
+                }
+            ]
+        )
+        assert "project_id = %(project_id)s" in where_pid
+        assert "project_id IN %(project_ids)s" not in where_pid
+
     def test_score_date_scope_can_be_disabled_for_monitor_builders(self):
         """Monitor queries bind start_time/end_time, not start_date/end_date."""
         from tracer.services.clickhouse.query_builders.filters import (

@@ -822,10 +822,18 @@ class ClickHouseFilterBuilder:
             if is_root_only
             else ""
         )
+        # Mirror the org-scoped vs single-project param binding used
+        # elsewhere (see `_scoped_spans_subquery`): the outer query exposes
+        # either `%(project_id)s` or `%(project_ids)s`, never both.
+        project_pred = (
+            "project_id IN %(project_ids)s"
+            if self._org_scoped
+            else "project_id = %(project_id)s"
+        )
         return (
             f"trace_id IN ("
             f"SELECT trace_id FROM {self.table} "
-            f"WHERE project_id = %(project_id)s AND _peerdb_is_deleted = 0 "
+            f"WHERE {project_pred} AND _peerdb_is_deleted = 0 "
             f"{root_clause}"
             f"AND {inner})"
         )

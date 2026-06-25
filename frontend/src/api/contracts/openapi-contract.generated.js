@@ -93147,8 +93147,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
       "properties": {
         "tool_choice": {
           "title": "Tool choice",
-          "type": "string",
-          "x-nullable": true
+          "type": "string"
         },
         "template_format": {
           "title": "Template format",
@@ -93173,68 +93172,49 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "model_detail": {
           "title": "Model detail",
           "type": "object",
-          "x-nullable": true,
           "x-json-value": true,
           "description": "Any valid JSON value."
         },
         "voice_id": {
           "title": "Voice id",
-          "type": "string",
-          "x-nullable": true
+          "type": "string"
         }
       },
-      "default": {
-        "tool_choice": null,
-        "model_detail": null,
-        "voice_id": null
-      },
-      "additionalProperties": {}
+      "default": {},
+      "additionalProperties": true
     },
     "PromptModelParams": {
       "type": "object",
       "properties": {
         "temperature": {
           "title": "Temperature",
-          "type": "number",
-          "x-nullable": true
+          "type": "number"
         },
         "max_tokens": {
           "title": "Max tokens",
-          "type": "integer",
-          "x-nullable": true
+          "type": "integer"
         },
         "top_p": {
           "title": "Top p",
-          "type": "number",
-          "x-nullable": true
+          "type": "number"
         },
         "frequency_penalty": {
           "title": "Frequency penalty",
-          "type": "number",
-          "x-nullable": true
+          "type": "number"
         },
         "presence_penalty": {
           "title": "Presence penalty",
-          "type": "number",
-          "x-nullable": true
+          "type": "number"
         },
         "response_format": {
           "title": "Response format",
           "type": "object",
-          "x-nullable": true,
           "x-string-or-object": true,
           "description": "String or JSON object."
         }
       },
-      "default": {
-        "temperature": null,
-        "max_tokens": null,
-        "top_p": null,
-        "frequency_penalty": null,
-        "presence_penalty": null,
-        "response_format": null
-      },
-      "additionalProperties": {}
+      "default": {},
+      "additionalProperties": true
     },
     "ExperimentComparisonDatasetMetric": {
       "required": [

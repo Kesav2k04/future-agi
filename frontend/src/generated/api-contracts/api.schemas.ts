@@ -10466,7 +10466,7 @@ export interface PromptModelParamsApi {
   /** String or JSON object. */
   response_format?: PromptModelParamsApiResponseFormat;
   [key: string]: unknown;
-}
+ }
 
 /**
  * Any valid JSON value.
@@ -10488,7 +10488,7 @@ export interface PromptConfigurationApi {
   model_detail?: PromptConfigurationApiModelDetail;
   voice_id?: string;
   [key: string]: unknown;
-}
+ }
 
 /**
  * Plain text string or array of content-part objects.

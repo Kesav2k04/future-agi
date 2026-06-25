@@ -434,16 +434,15 @@ class PromptModelParamsSerializer(_ExtraFieldsMixin, serializers.Serializer):
     so the generated contract is Record<string, unknown> for the extra keys.
     """
 
-    temperature = serializers.FloatField(required=False, allow_null=True)
-    max_tokens = serializers.IntegerField(required=False, allow_null=True)
-    top_p = serializers.FloatField(required=False, allow_null=True)
-    frequency_penalty = serializers.FloatField(required=False, allow_null=True)
-    presence_penalty = serializers.FloatField(required=False, allow_null=True)
-    response_format = StringOrObjectField(required=False, allow_null=True)
+    temperature = serializers.FloatField(required=False)
+    max_tokens = serializers.IntegerField(required=False)
+    top_p = serializers.FloatField(required=False)
+    frequency_penalty = serializers.FloatField(required=False)
+    presence_penalty = serializers.FloatField(required=False)
+    response_format = StringOrObjectField(required=False)
 
     class Meta:
-        # additionalProperties:{} lets unknown provider keys through in the schema
-        swagger_schema_fields = {"additionalProperties": {}}
+        swagger_schema_fields = {"additionalProperties": True}
 
 
 class PromptConfigurationSerializer(_ExtraFieldsMixin, serializers.Serializer):
@@ -452,16 +451,16 @@ class PromptConfigurationSerializer(_ExtraFieldsMixin, serializers.Serializer):
     Typed keys are validated; any additional key is accepted via _ExtraFieldsMixin.
     """
 
-    tool_choice = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    tool_choice = serializers.CharField(required=False, allow_blank=True)
     template_format = serializers.CharField(required=False, allow_blank=True)
     tools = serializers.ListField(child=JsonValueField(), required=False)
     output_format = serializers.CharField(required=False, allow_blank=True)
     model_type = serializers.CharField(required=False, allow_blank=True)
-    model_detail = JsonValueField(required=False, allow_null=True)
-    voice_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    model_detail = JsonValueField(required=False)
+    voice_id = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
-        swagger_schema_fields = {"additionalProperties": {}}
+        swagger_schema_fields = {"additionalProperties": True}
 
 
 class PromptConfigEntrySerializer(serializers.Serializer):

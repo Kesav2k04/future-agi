@@ -215,6 +215,34 @@ async function runGeneration(schemaPath) {
   });
 
   normalizeGeneratedQueryParamSerialization();
+  // Fix two schema generation gaps that orval cannot resolve from Swagger 2.0:
+  if (fs.existsSync(zodOutputPath)) {
+    let zod = fs.readFileSync(zodOutputPath, "utf8");
+
+    // 1. x-string-or-array: orval generates zod.object({}).passthrough() — fix
+    //    to the correct string|array union using the unique description as anchor.
+    zod = zod.replaceAll(
+      `zod.object({\n\n}).passthrough().describe('Plain text string or array of content-part objects.')`,
+      `zod.union([zod.string(), zod.array(zod.unknown())]).describe('Plain text string or array of content-part objects.')`,
+    );
+
+    // 2. additionalProperties:true on PromptModelParams / PromptConfiguration:
+    //    orval does not add .passthrough() for inline schemas even when the
+    //    swagger declares additionalProperties. Use unique constant names as anchors.
+    for (const name of [
+      "modelHubExperimentsV2CreateBodyPromptConfigItemModelParamsDefault",
+      "modelHubExperimentsV2CreateBodyPromptConfigItemConfigurationDefault",
+      "modelHubExperimentsV2UpdateBodyPromptConfigItemModelParamsDefault",
+      "modelHubExperimentsV2UpdateBodyPromptConfigItemConfigurationDefault",
+    ]) {
+      zod = zod.replaceAll(
+        `}).default(${name}),`,
+        `}).passthrough().default(${name}),`,
+      );
+    }
+
+    fs.writeFileSync(zodOutputPath, zod);
+  }
   normalizeGeneratedFileEndings();
 }
 

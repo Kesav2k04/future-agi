@@ -20220,8 +20220,8 @@ export const ModelHubExperimentsReRunCreateResponse = zod.object({
 export const modelHubExperimentsV2CreateBodyNameMax = 255;
 
 export const modelHubExperimentsV2CreateBodyExperimentTypeDefault = `llm`;
-export const modelHubExperimentsV2CreateBodyPromptConfigItemModelParamsDefault = { temperature: null, max_tokens: null, top_p: null, frequency_penalty: null, presence_penalty: null, response_format: null };
-export const modelHubExperimentsV2CreateBodyPromptConfigItemConfigurationDefault = { tool_choice: null, model_detail: null, voice_id: null };
+export const modelHubExperimentsV2CreateBodyPromptConfigItemModelParamsDefault = {  };
+export const modelHubExperimentsV2CreateBodyPromptConfigItemConfigurationDefault = {  };
 export const modelHubExperimentsV2CreateBodyPromptConfigItemOutputFormatDefault = `string`;
 
 
@@ -20258,7 +20258,7 @@ export const ModelHubExperimentsV2CreateBody = zod.object({
   "response_format": zod.object({
 
 }).passthrough().optional().describe('String or JSON object.')
-}).default(modelHubExperimentsV2CreateBodyPromptConfigItemModelParamsDefault),
+}).passthrough().default(modelHubExperimentsV2CreateBodyPromptConfigItemModelParamsDefault),
   "configuration": zod.object({
   "tool_choice": zod.string().optional(),
   "template_format": zod.string().optional(),
@@ -20271,13 +20271,11 @@ export const ModelHubExperimentsV2CreateBody = zod.object({
 
 }).passthrough().optional().describe('Any valid JSON value.'),
   "voice_id": zod.string().optional()
-}).default(modelHubExperimentsV2CreateBodyPromptConfigItemConfigurationDefault),
+}).passthrough().default(modelHubExperimentsV2CreateBodyPromptConfigItemConfigurationDefault),
   "output_format": zod.string().min(1).default(modelHubExperimentsV2CreateBodyPromptConfigItemOutputFormatDefault),
   "messages": zod.array(zod.object({
   "role": zod.string().min(1),
-  "content": zod.object({
-
-}).passthrough().describe('Plain text string or array of content-part objects.'),
+  "content": zod.union([zod.string(), zod.array(zod.unknown())]).describe('Plain text string or array of content-part objects.'),
   "name": zod.string().min(1).optional(),
   "tool_calls": zod.object({
 
@@ -20463,8 +20461,8 @@ export const ModelHubExperimentsV2UpdateParams = zod.object({
   "experiment_id": zod.string()
 })
 
-export const modelHubExperimentsV2UpdateBodyPromptConfigItemModelParamsDefault = { temperature: null, max_tokens: null, top_p: null, frequency_penalty: null, presence_penalty: null, response_format: null };
-export const modelHubExperimentsV2UpdateBodyPromptConfigItemConfigurationDefault = { tool_choice: null, model_detail: null, voice_id: null };
+export const modelHubExperimentsV2UpdateBodyPromptConfigItemModelParamsDefault = {  };
+export const modelHubExperimentsV2UpdateBodyPromptConfigItemConfigurationDefault = {  };
 export const modelHubExperimentsV2UpdateBodyPromptConfigItemOutputFormatDefault = `string`;
 
 
@@ -20498,7 +20496,7 @@ export const ModelHubExperimentsV2UpdateBody = zod.object({
   "response_format": zod.object({
 
 }).passthrough().optional().describe('String or JSON object.')
-}).default(modelHubExperimentsV2UpdateBodyPromptConfigItemModelParamsDefault),
+}).passthrough().default(modelHubExperimentsV2UpdateBodyPromptConfigItemModelParamsDefault),
   "configuration": zod.object({
   "tool_choice": zod.string().optional(),
   "template_format": zod.string().optional(),
@@ -20511,13 +20509,11 @@ export const ModelHubExperimentsV2UpdateBody = zod.object({
 
 }).passthrough().optional().describe('Any valid JSON value.'),
   "voice_id": zod.string().optional()
-}).default(modelHubExperimentsV2UpdateBodyPromptConfigItemConfigurationDefault),
+}).passthrough().default(modelHubExperimentsV2UpdateBodyPromptConfigItemConfigurationDefault),
   "output_format": zod.string().min(1).default(modelHubExperimentsV2UpdateBodyPromptConfigItemOutputFormatDefault),
   "messages": zod.array(zod.object({
   "role": zod.string().min(1),
-  "content": zod.object({
-
-}).passthrough().describe('Plain text string or array of content-part objects.'),
+  "content": zod.union([zod.string(), zod.array(zod.unknown())]).describe('Plain text string or array of content-part objects.'),
   "name": zod.string().min(1).optional(),
   "tool_calls": zod.object({
 

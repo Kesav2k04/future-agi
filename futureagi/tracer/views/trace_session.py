@@ -333,58 +333,54 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
 
         return queryset
 
+    @staticmethod
+    def _upsert_overlay(
+        trace_session_id, *, project_id, bookmarked, display_name
+    ):
+        """Single write path for the TraceSessionOverlay (DESIGN §5 / §5.1).
+
+        Used by BOTH the PG-backed ``perform_update`` (post-save mirror) and
+        the CH-only write path (no PG ``TraceSession`` row). One invariant,
+        one code path, no drift.
+        """
+        from tracer.models.trace_session import TraceSessionOverlay
+
+        TraceSessionOverlay.objects.update_or_create(
+            trace_session_id=trace_session_id,
+            defaults={
+                "project_id": project_id,
+                "bookmarked": bookmarked,
+                "display_name": display_name,
+            },
+        )
+
     def perform_update(self, serializer):
         """Persist a TraceSession update AND mirror the UI overlay (slice 2b).
-
-        ``bookmarked`` and ``name`` are the user-writable fields on
-        ``TraceSessionSerializer`` (the bookmark / rename UI write path). The
-        legacy ``TraceSession.bookmarked``/``name`` write is kept UNCHANGED here
-        (the PG-fallback read and legacy callers still read it during the
-        dual-source window; it retires at contract / P4). On top of that we now
-        ALSO upsert the PG ``TraceSessionOverlay`` so slice 2a's overlay-backed
-        reads — ``_build_bookmark_filter`` (bookmarked → ids) and
-        ``_fetch_session_names`` (``COALESCE(overlay.display_name, …)``) — stay
-        fresh (DESIGN §5 / §5.1, the user overlay + the rename-bug separation).
-
-        ATOMICITY: the overlay lives in the SAME PG database as ``TraceSession``,
-        so the ``save()`` and the overlay ``update_or_create`` are wrapped in ONE
-        ``transaction.atomic()`` and commit both-or-neither. This is a PG↔PG
-        write that MUST stay consistent — deliberately NOT the best-effort CH
-        dual-write pattern (which tolerates a failed mirror).
 
         The overlay fields are read from the POST-SAVE instance, never from
         ``validated_data``: a partial PATCH (e.g. only ``{"bookmarked": true}``)
         carries no ``name``, so sourcing ``display_name`` from ``validated_data``
-        would clobber an existing rename (and a name-only PATCH would clobber
-        ``bookmarked``). ``instance`` always reflects the full current state.
-
-        ``display_name`` mirrors the current ``name``: for a never-renamed
-        session it equals the external session id (harmless — slice 2a's COALESCE
-        would surface the same value), and for a rename it is the new label,
-        which is exactly the overlay's purpose.
+        would clobber an existing rename. ``instance`` always reflects the full
+        current state.
         """
-        from tracer.models.trace_session import TraceSessionOverlay
-
         with transaction.atomic():
             instance = serializer.save()
-            TraceSessionOverlay.objects.update_or_create(
-                trace_session_id=instance.id,
-                defaults={
-                    "project_id": instance.project_id,
-                    "bookmarked": instance.bookmarked,
-                    "display_name": instance.name,
-                },
+            self._upsert_overlay(
+                instance.id,
+                project_id=instance.project_id,
+                bookmarked=instance.bookmarked,
+                display_name=instance.name,
             )
 
     def update(self, request, *args, **kwargs):
-        # CH-only sessions still need bookmark / rename writes to land in the
-        # PG overlay. If the PG row is missing, retry through the CH session
-        # resolver and write the overlay directly under the same tenant gate.
+        # Narrow the Http404 catch to the object lookup ONLY. Any 404 from
+        # validation, signals, or nested lookups must propagate normally.
         partial = kwargs.get("partial", False)
         try:
-            return super().update(request, *args, **kwargs)
+            self.get_object()
         except Http404:
             return self._update_ch_only_session(request, partial=partial)
+        return super().update(request, *args, **kwargs)
 
     def _update_ch_only_session(self, request, *, partial):
         """Overlay-only write path for a CH-only (collector) session."""
@@ -397,37 +393,93 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         serializer.is_valid(raise_exception=True)
         validated = serializer.validated_data
 
-        from tracer.models.trace_session import TraceSessionOverlay
-
         project_id = session_fields["project_id"]
-        with transaction.atomic():
-            # Seed a new overlay from the session's current (CH-merged) state so
-            # a partial PATCH (only ``bookmarked`` or only ``name``) never
-            # clobbers the other field.
-            overlay, _ = TraceSessionOverlay.objects.get_or_create(
-                trace_session_id=trace_session_id,
-                defaults={
-                    "project_id": project_id,
-                    "bookmarked": bool(session_fields.get("bookmarked")),
-                    "display_name": session_fields.get("display_name"),
-                },
-            )
-            overlay.project_id = project_id
-            if validated.get("bookmarked") is not None:
-                overlay.bookmarked = validated["bookmarked"]
-            if "name" in validated:
-                overlay.display_name = validated["name"]
-            overlay.save()
 
+        current_bookmarked = bool(session_fields.get("bookmarked"))
+        current_name = session_fields.get("display_name")
+        new_bookmarked = (
+            validated["bookmarked"]
+            if validated.get("bookmarked") is not None
+            else current_bookmarked
+        )
+        new_name = validated.get("name", current_name)
+
+        with transaction.atomic():
+            self._upsert_overlay(
+                trace_session_id,
+                project_id=project_id,
+                bookmarked=new_bookmarked,
+                display_name=new_name,
+            )
+
+        first_seen = session_fields.get("first_seen")
+        created_at = (
+            first_seen.isoformat() if hasattr(first_seen, "isoformat") else first_seen
+        )
         return Response(
             {
                 "id": str(trace_session_id),
                 "project": str(project_id),
-                "bookmarked": overlay.bookmarked,
-                "name": overlay.display_name,
-                "created_at": session_fields.get("first_seen"),
+                "bookmarked": new_bookmarked,
+                "name": new_name,
+                "created_at": created_at,
             }
         )
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+        except Http404:
+            return self._destroy_ch_only_session(request)
+        self.perform_destroy(instance)
+        return Response(status=drf_status.HTTP_204_NO_CONTENT)
+
+    def _destroy_ch_only_session(self, request):
+        """Soft-delete a CH-only (collector) session under the same tenant gate."""
+        from datetime import UTC, datetime
+
+        from tracer.models.trace_session import TraceSessionOverlay
+
+        trace_session_id = self.kwargs.get("pk")
+        session_fields = _resolve_ch_session_fields(request, trace_session_id)
+        if not session_fields:
+            raise Http404("Trace session not found")
+
+        project_id = session_fields["project_id"]
+
+        TraceSessionOverlay.objects.filter(
+            trace_session_id=trace_session_id
+        ).delete()
+
+        # Mark as deleted in the CH trace_sessions RMT: INSERT a row with
+        # is_deleted=1 and a newer version so FINAL picks it up.
+        from tracer.services.clickhouse.v2.curated_writer import (
+            _TRACE_SESSION_COLUMNS,
+            _get_client,
+            _reset_client,
+        )
+
+        try:
+            client = _get_client()
+            now = datetime.now(UTC)
+            row = [
+                str(project_id),
+                str(trace_session_id),
+                session_fields.get("external_session_id", ""),
+                session_fields.get("first_seen", now),
+                now,  # version — newer than the live row
+                1,  # is_deleted
+            ]
+            client.insert(
+                "trace_sessions", [row], column_names=list(_TRACE_SESSION_COLUMNS)
+            )
+        except Exception:
+            _reset_client()
+            # Best-effort: the overlay is already removed so the session
+            # won't appear in bookmark lists. A stale CH row is acceptable
+            # (it will be caught by eventual-consistency sweeps).
+
+        return Response(status=drf_status.HTTP_204_NO_CONTENT)
 
     def perform_destroy(self, instance):
         _soft_delete_trace_session_tree([instance])
@@ -1998,7 +2050,14 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         # select under the same OLD id. A net-new id has no remap entry (resolves
         # to itself), so no double-count.
         _NULL_USER_OPS = {"is_null", "is_not_null"}
-        _NEGATED_USER_OPS = {"not_in", "not_equals", "ne", "neq"}
+        _NEGATED_USER_OPS = {"not_in", "not_equals"}
+        _SUPPORTED_USER_OPS = _NULL_USER_OPS | _NEGATED_USER_OPS | {"in", "equals"}
+
+        if user_id_op and user_id_op not in _SUPPORTED_USER_OPS:
+            return self._gm.bad_request(
+                f"Unsupported operator '{user_id_op}' for user_id filter. "
+                f"Supported: {sorted(_SUPPORTED_USER_OPS)}"
+            )
 
         end_user_display = None
         if user_id_op in _NULL_USER_OPS:

@@ -5656,7 +5656,7 @@ class TestFilterBuilderEdgeCases:
             }
         ]
         where, params = builder.translate(filters)
-        assert "model = %(col_1)s" in where
+        assert "lower(model) = %(col_1)s" in where
         assert params == {"col_1": "gpt-4"}
 
     def test_eval_metric_filter_subquery_structure(self):

@@ -945,3 +945,255 @@ class TestTraceSessionOverlayWritePath:
         assert not TraceSessionOverlay.objects.filter(
             trace_session_id=trace_session.id
         ).exists()
+
+
+@pytest.mark.integration
+@pytest.mark.api
+class TestTraceSessionCHOnlyDestroyPath:
+    """CH-only sessions (no PG row) must be deletable via the same endpoint."""
+
+    def test_delete_ch_only_session_returns_204(self, auth_client, observe_project):
+        session_id = uuid.uuid4()
+        assert not TraceSession.objects.filter(id=session_id).exists()
+
+        with mock.patch(
+            "tracer.views.trace_session._resolve_ch_session_fields",
+            return_value={
+                "project_id": observe_project.id,
+                "external_session_id": "ext-session-1",
+                "first_seen": timezone.now(),
+                "bookmarked": False,
+                "display_name": None,
+            },
+        ), mock.patch(
+            "tracer.services.clickhouse.v2.curated_writer._get_client"
+        ) as mock_ch_client:
+            mock_ch_client.return_value = mock.Mock()
+            response = auth_client.delete(
+                f"/tracer/trace-session/{session_id}/",
+            )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_delete_ch_only_session_removes_overlay(
+        self, auth_client, observe_project
+    ):
+        session_id = uuid.uuid4()
+        TraceSessionOverlay.objects.create(
+            trace_session_id=session_id,
+            project_id=observe_project.id,
+            bookmarked=True,
+            display_name="bookmarked-session",
+        )
+
+        with mock.patch(
+            "tracer.views.trace_session._resolve_ch_session_fields",
+            return_value={
+                "project_id": observe_project.id,
+                "external_session_id": "ext-session-1",
+                "first_seen": timezone.now(),
+                "bookmarked": True,
+                "display_name": "bookmarked-session",
+            },
+        ), mock.patch(
+            "tracer.services.clickhouse.v2.curated_writer._get_client"
+        ) as mock_ch_client:
+            mock_ch_client.return_value = mock.Mock()
+            response = auth_client.delete(
+                f"/tracer/trace-session/{session_id}/",
+            )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not TraceSessionOverlay.objects.filter(
+            trace_session_id=session_id
+        ).exists()
+
+    def test_delete_ch_only_session_inserts_deletion_marker(
+        self, auth_client, observe_project
+    ):
+        session_id = uuid.uuid4()
+
+        with mock.patch(
+            "tracer.views.trace_session._resolve_ch_session_fields",
+            return_value={
+                "project_id": observe_project.id,
+                "external_session_id": "ext-session-1",
+                "first_seen": timezone.now(),
+                "bookmarked": False,
+                "display_name": None,
+            },
+        ), mock.patch(
+            "tracer.services.clickhouse.v2.curated_writer._get_client"
+        ) as mock_ch_client:
+            ch_client = mock.Mock()
+            mock_ch_client.return_value = ch_client
+            auth_client.delete(f"/tracer/trace-session/{session_id}/")
+
+        ch_client.insert.assert_called_once()
+        call_args = ch_client.insert.call_args
+        assert call_args.args[0] == "trace_sessions"
+        row = call_args.args[1][0]
+        is_deleted_col_idx = 5
+        assert row[is_deleted_col_idx] == 1
+
+    def test_delete_ch_only_session_not_found_returns_404(
+        self, auth_client, observe_project
+    ):
+        session_id = uuid.uuid4()
+
+        with mock.patch(
+            "tracer.views.trace_session._resolve_ch_session_fields",
+            return_value=None,
+        ):
+            response = auth_client.delete(
+                f"/tracer/trace-session/{session_id}/",
+            )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_delete_pg_session_still_works(self, auth_client, trace_session):
+        response = auth_client.delete(
+            f"/tracer/trace-session/{trace_session.id}/",
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        trace_session.refresh_from_db()
+        assert trace_session.deleted is True
+
+
+@pytest.mark.integration
+@pytest.mark.api
+class TestTraceSessionResponseContract:
+    """Both PG and CH-only PATCH paths must return the same response shape."""
+
+    EXPECTED_KEYS = {"id", "project", "bookmarked", "name", "created_at"}
+
+    def test_pg_patch_response_shape(self, auth_client, trace_session):
+        response = auth_client.patch(
+            f"/tracer/trace-session/{trace_session.id}/",
+            {"bookmarked": True},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert self.EXPECTED_KEYS <= set(data.keys())
+
+    def test_ch_only_patch_response_shape(self, auth_client, observe_project):
+        session_id = uuid.uuid4()
+
+        with mock.patch(
+            "tracer.views.trace_session._resolve_ch_session_fields",
+            return_value={
+                "project_id": observe_project.id,
+                "bookmarked": False,
+                "display_name": "ch-session",
+                "first_seen": timezone.now(),
+            },
+        ):
+            response = auth_client.patch(
+                f"/tracer/trace-session/{session_id}/",
+                {"bookmarked": True},
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert self.EXPECTED_KEYS <= set(data.keys())
+        assert data["id"] == str(session_id)
+        assert data["project"] == str(observe_project.id)
+        assert data["bookmarked"] is True
+        assert data["name"] == "ch-session"
+        assert data["created_at"] is not None
+
+    def test_ch_only_patch_created_at_is_iso_string(
+        self, auth_client, observe_project
+    ):
+        session_id = uuid.uuid4()
+        first_seen = timezone.now()
+
+        with mock.patch(
+            "tracer.views.trace_session._resolve_ch_session_fields",
+            return_value={
+                "project_id": observe_project.id,
+                "bookmarked": False,
+                "display_name": "ch-session",
+                "first_seen": first_seen,
+            },
+        ):
+            response = auth_client.patch(
+                f"/tracer/trace-session/{session_id}/",
+                {"bookmarked": True},
+                format="json",
+            )
+
+        data = response.json()
+        assert data["created_at"] == first_seen.isoformat()
+
+
+@pytest.mark.integration
+@pytest.mark.api
+class TestTraceSessionUserIdFilterValidation:
+    """Unsupported user_id filter operators must be rejected, not silently matched."""
+
+    def test_contains_op_rejected(self, auth_client, observe_project):
+        import json
+
+        filters = json.dumps([
+            {
+                "column_id": "user_id",
+                "filter_config": {
+                    "col_type": "SYSTEM_METRIC",
+                    "filter_type": "text",
+                    "filter_op": "contains",
+                    "filter_value": "alice",
+                },
+            }
+        ])
+        response = auth_client.get(
+            "/tracer/trace-session/list_sessions/",
+            {"project_id": str(observe_project.id), "filters": filters},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_starts_with_op_rejected(self, auth_client, observe_project):
+        import json
+
+        filters = json.dumps([
+            {
+                "column_id": "user_id",
+                "filter_config": {
+                    "col_type": "SYSTEM_METRIC",
+                    "filter_type": "text",
+                    "filter_op": "starts_with",
+                    "filter_value": "ali",
+                },
+            }
+        ])
+        response = auth_client.get(
+            "/tracer/trace-session/list_sessions/",
+            {"project_id": str(observe_project.id), "filters": filters},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_equals_op_accepted(self, auth_client, observe_project):
+        import json
+
+        filters = json.dumps([
+            {
+                "column_id": "user_id",
+                "filter_config": {
+                    "col_type": "SYSTEM_METRIC",
+                    "filter_type": "text",
+                    "filter_op": "equals",
+                    "filter_value": "alice",
+                },
+            }
+        ])
+        with mock.patch(
+            "tracer.views.trace_session._resolve_end_user_ids_for_user_id",
+            return_value=([], None),
+        ):
+            response = auth_client.get(
+                "/tracer/trace-session/list_sessions/",
+                {"project_id": str(observe_project.id), "filters": filters},
+            )
+        assert response.status_code != status.HTTP_400_BAD_REQUEST

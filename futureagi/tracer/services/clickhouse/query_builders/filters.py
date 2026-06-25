@@ -743,7 +743,7 @@ class ClickHouseFilterBuilder:
 
         inner_value = values if inner_op == "in" else values[0]
         inner = self._build_column_condition(
-            f"eu.{enduser_column}", "text", inner_op, inner_value
+            enduser_column, "text", inner_op, inner_value
         )
         if not inner:
             return None

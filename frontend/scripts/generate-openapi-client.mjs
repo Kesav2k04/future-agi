@@ -215,6 +215,19 @@ async function runGeneration(schemaPath) {
   });
 
   normalizeGeneratedQueryParamSerialization();
+  // Fix MessageItemApiContent in api.schemas.ts: orval generates
+  // { [key: string]: unknown } but content is string | unknown[].
+  const schemasOutputPath = path.join(outputDir, "api.schemas.ts");
+  if (fs.existsSync(schemasOutputPath)) {
+    const schemas = fs.readFileSync(schemasOutputPath, "utf8");
+    fs.writeFileSync(
+      schemasOutputPath,
+      schemas.replace(
+        "export type MessageItemApiContent = { [key: string]: unknown };",
+        "export type MessageItemApiContent = string | unknown[];",
+      ),
+    );
+  }
   // Fix two schema generation gaps that orval cannot resolve from Swagger 2.0:
   if (fs.existsSync(zodOutputPath)) {
     let zod = fs.readFileSync(zodOutputPath, "utf8");

@@ -430,8 +430,9 @@ class PromptModelParamsSerializer(_ExtraFieldsMixin, serializers.Serializer):
     Sampling-level params only (temperature, max_tokens, etc.).
     Call-level config (tools, tool_choice) lives in PromptConfigurationSerializer.
     Typed keys are validated; any additional provider-specific key is accepted
-    via _ExtraFieldsMixin.  The swagger schema adds additionalProperties:{}
-    so the generated contract is Record<string, unknown> for the extra keys.
+    via _ExtraFieldsMixin.  additionalProperties:true in the swagger schema
+    triggers .passthrough() in the generated zod (via post-processing in
+    generate-openapi-client.mjs) so unknown provider keys are not stripped.
     """
 
     temperature = serializers.FloatField(required=False)

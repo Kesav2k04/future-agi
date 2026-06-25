@@ -10493,7 +10493,7 @@ export interface PromptConfigurationApi {
 /**
  * Plain text string or array of content-part objects.
  */
-export type MessageItemApiContent = { [key: string]: unknown };
+export type MessageItemApiContent = string | unknown[];
 
 /**
  * Any valid JSON value.

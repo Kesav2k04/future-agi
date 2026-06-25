@@ -497,12 +497,17 @@ def resolve_source_object(
     model = get_source_model(source_type)
     if not model:
         return None
-    try:
-        obj = model.objects.get(pk=source_id)
-    except model.DoesNotExist:
+
+    # PG-first by row existence, not by source type: a curated span/session has a
+    # PG row and must resolve there (richer object, no CH round-trip); only a
+    # collector one (no PG row) needs CH. `source_type` alone can't tell them apart
+    # — both are e.g. `observation_span` — so the missing row is the discriminator.
+    obj = model.objects.filter(pk=source_id).first()
+    if obj is None:
         if not allow_ch_fallback:
             return None
-        # Collector spans/sessions live only in CH; fall back there (fail closed).
+        # No PG row: collector spans/sessions live only in CH (fail closed). A
+        # PG-native source type that's genuinely absent resolves to None there.
         return _resolve_ch_source_object(
             source_type, source_id, organization=organization, workspace=workspace
         )

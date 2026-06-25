@@ -3584,7 +3584,7 @@ class TestDashboardQueryBuilderBase:
 # ===========================================================================
 
 
-def _single_metric_config(metric):
+def _single_metric_config(metric, breakdowns=None):
     return {
         "project_ids": ["11111111-1111-1111-1111-111111111111"],
         "organization_id": "22222222-2222-2222-2222-222222222222",
@@ -3593,7 +3593,7 @@ def _single_metric_config(metric):
         "time_range": {"preset": "7D"},
         "metrics": [metric],
         "filters": [],
-        "breakdowns": [],
+        "breakdowns": breakdowns or [],
     }
 
 
@@ -3634,8 +3634,8 @@ class TestDashboardV2RewriteRouting:
 
     def test_eval_metric_keeps_legacy_columns(self):
         # eval_metric reads usage_apicalllog (NOT migrated) — the rewrite must
-        # NOT rename _peerdb_is_deleted → is_deleted there, or CH 500s with
-        # "Identifier 'e.is_deleted' cannot be resolved".
+        # NOT rename _peerdb_is_deleted → is_deleted on the legacy alias, or
+        # CH 500s with "Identifier 'e.is_deleted' cannot be resolved".
         config = _single_metric_config(
             {
                 "id": str(uuid.uuid4()),
@@ -3648,10 +3648,33 @@ class TestDashboardV2RewriteRouting:
         )
         sql, _, _ = DashboardQueryBuilderV2(config).build_all_queries()[0]
         assert "usage_apicalllog" in sql
-        assert "_peerdb_is_deleted" in sql
-        assert "is_deleted = 0" not in sql.replace("_peerdb_is_deleted", "")
-        # Legacy-table SQL is not given the v2 SETTINGS block.
-        assert "use_skip_indexes_if_final" not in sql
+        # Legacy alias (e.) keeps _peerdb_is_deleted
+        assert "e._peerdb_is_deleted" in sql
+        assert "e.is_deleted" not in sql
+
+    def test_eval_metric_with_spans_breakdown_rewrites_spans_refs(self):
+        # An eval metric with a trace-dimension breakdown JOINs spans. The
+        # spans-alias refs (s._peerdb_is_deleted, s.span_attr_str) must be
+        # rewritten to v2, while the legacy-table alias (e._peerdb_is_deleted)
+        # stays on v1.
+        config = _single_metric_config(
+            {
+                "id": str(uuid.uuid4()),
+                "name": "hallucination",
+                "type": "eval_metric",
+                "config_id": str(uuid.uuid4()),
+                "output_type": "SCORE",
+                "aggregation": "count",
+            },
+            breakdowns=[{"name": "provider", "type": "system_metric"}],
+        )
+        sql, _, _ = DashboardQueryBuilderV2(config).build_all_queries()[0]
+        # Spans JOIN present, its _peerdb_is_deleted rewritten to is_deleted
+        assert "s.is_deleted" in sql or "is_deleted = 0" in sql
+        assert "s._peerdb_is_deleted" not in sql
+        # Legacy alias untouched
+        assert "e._peerdb_is_deleted" in sql
+        assert "e.is_deleted" not in sql
 
 
 class TestInvalidMetricCombination:

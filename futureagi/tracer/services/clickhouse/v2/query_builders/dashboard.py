@@ -12,13 +12,17 @@ schema (system_metric / custom_attribute) OR a non-migrated legacy table
 (eval_metric → `usage_apicalllog`, annotation_metric → `model_hub_score`, both
 still on `_peerdb_is_deleted` / `deleted`). `V2RewriteMixin`'s blanket auto-wrap
 can't make that per-metric distinction — it would rename `_peerdb_is_deleted` →
-`is_deleted` on the legacy tables, producing "Identifier 'e.is_deleted' cannot be
-resolved" (the TH-5911 / TH-5964 failure mode; see DECISIONS #033). So both
-dispatch methods are excluded from the mixin and the rewrite is applied here,
-per metric, skipping the legacy-table types.
+`is_deleted` on the legacy tables too. So both dispatch methods are excluded
+from the mixin and the rewrite is applied here, per metric. For legacy-table
+metrics that JOIN onto spans (breakdowns/filters by trace dimensions), the
+full rewrite is applied first (fixing spans refs like `s._peerdb_is_deleted` →
+`s.is_deleted`, `s.span_attr_str` → `s.attrs_string`), then the legacy-table
+aliases are restored (e.g. `e.is_deleted` → `e._peerdb_is_deleted`).
 """
 
 from __future__ import annotations
+
+import re
 
 from tracer.services.clickhouse.query_builders.dashboard import DashboardQueryBuilder
 from tracer.services.clickhouse.v2.query_builders._rewrite import V2RewriteMixin
@@ -28,41 +32,41 @@ from tracer.services.clickhouse.v2.query_builders.filters import (
 
 
 # Metric types whose SQL reads tables NOT migrated to the CH 25.3 spans schema.
-# Their `_peerdb_is_deleted` / `deleted` columns must survive the v1→v2 rewrite
-# untouched (PLAN_V2_NO_CDC: "existing usage_apicalllog continues").
 _LEGACY_TABLE_METRIC_TYPES = frozenset({"eval_metric", "annotation_metric"})
+
+# Tables whose columns must NOT be rewritten (they keep `_peerdb_is_deleted`).
+_LEGACY_TABLE_RE = re.compile(
+    r"(?:usage_apicalllog|model_hub_score)\s+AS\s+(\w+)", re.IGNORECASE
+)
 
 
 class DashboardQueryBuilderV2(V2RewriteMixin, DashboardQueryBuilder):
     """Drop-in v2 Dashboard builder.
 
-    The v1 builder is unusual in that it's NOT a subclass of BaseQueryBuilder —
-    it owns its own composition logic for the metric → SQL mapping. We inherit
-    it the same way.
-
     Both `build_metric_query` and `build_all_queries` are excluded from the
     mixin's blanket rewrite because they are polymorphic over metric type (see
     module docstring). `build_metric_query` applies the rewrite itself, per
-    metric, skipping the legacy-table types; `build_all_queries` (inherited from
-    v1) fans out over it, so its output is already correctly rewritten and must
-    NOT be re-wrapped (re-wrapping would also double the v2 SETTINGS clause).
+    metric:
 
-    Residual gap (accepted, == DECISIONS #033 / TH-6022): an eval/annotation
-    metric whose breakdown/filter forces a JOIN onto the migrated `spans` table
-    is a mixed-table query — the `s.` spans alias would need the rewrite while
-    the `e.`/`a.` legacy aliases must not, and a whole-string rewrite can't tell
-    them apart. Such a metric is left un-rewritten and handled gracefully by the
-    view's per-metric isolation rather than failing the whole dashboard.
+    * Non-legacy metrics (system_metric, custom_attribute): full rewrite.
+    * Legacy metrics (eval_metric, annotation_metric): full rewrite first
+      (so spans-JOINed refs like ``s._peerdb_is_deleted`` become
+      ``s.is_deleted``), then legacy-table aliases are restored
+      (``e.is_deleted`` → ``e._peerdb_is_deleted``).
     """
 
     _v2_rewrite_exclude = frozenset({"build_metric_query", "build_all_queries"})
 
-    def build_metric_query(self, metric: dict):
+    def build_metric_query(self, metric: dict) -> tuple[str, dict]:
         sql, params = super().build_metric_query(metric)
-        if metric.get("type") in _LEGACY_TABLE_METRIC_TYPES:
-            # Legacy-table SQL — leave its columns on the v1 schema.
+        sql = rewrite_and_apply_v2_settings(sql)
+        if metric.get("type") not in _LEGACY_TABLE_METRIC_TYPES:
             return sql, params
-        return rewrite_and_apply_v2_settings(sql), params
+        # Mixed-table query: rewrite already fixed spans refs, now restore
+        # _peerdb_is_deleted for every legacy-table alias.
+        for alias in _LEGACY_TABLE_RE.findall(sql):
+            sql = sql.replace(f"{alias}.is_deleted", f"{alias}._peerdb_is_deleted")
+        return sql, params
 
 
 __all__ = ["DashboardQueryBuilderV2"]

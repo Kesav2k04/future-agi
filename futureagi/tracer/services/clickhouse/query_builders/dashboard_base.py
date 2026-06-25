@@ -82,8 +82,8 @@ class DashboardQueryBuilderBase:
         """
         return {
             "id": metric.get("id", ""),
-            "name": metric.get("displayName")
-            or metric.get("display_name")
+            "name": metric.get("display_name")
+            or metric.get("displayName")
             or metric.get("name", ""),
             "type": metric.get("type", "system_metric"),
             "aggregation": metric.get("aggregation", "avg"),

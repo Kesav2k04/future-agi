@@ -57,6 +57,17 @@ vi.mock("src/components/VoiceDetailDrawerV2", () => ({
   ),
 }));
 
+vi.mock("src/components/ChatDetailDrawerV2", () => ({
+  default: ({ data, embedded, hideAnnotationTab }) => (
+    <div
+      data-testid="chat-drawer"
+      data-scenario={data?.scenario}
+      data-embedded={String(embedded)}
+      data-hide-annotation={String(hideAnnotationTab)}
+    />
+  ),
+}));
+
 vi.mock("src/sections/projects/TracesDrawer/SessionHistory", () => ({
   default: ({ traceDetail = [], onTraceClick }) => (
     <div data-testid="session-history">
@@ -211,7 +222,7 @@ describe("Annotation queue ContentPanel", () => {
     expect(screen.queryByTestId("new-scenario-view")).not.toBeInTheDocument();
   });
 
-  it("keeps chat call execution queue items on the chat detail layout", async () => {
+  it("renders ChatDetailDrawerV2 (embedded) for chat call execution queue items", async () => {
     axios.get.mockResolvedValueOnce({
       data: {
         status: "completed",
@@ -241,11 +252,19 @@ describe("Annotation queue ContentPanel", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("new-scenario-view")).toHaveTextContent(
-        "Answer the customer",
-      );
+      expect(screen.getByTestId("chat-drawer")).toBeInTheDocument();
     });
+    expect(screen.getByTestId("chat-drawer")).toHaveAttribute(
+      "data-embedded",
+      "true",
+    );
+    expect(screen.getByTestId("chat-drawer")).toHaveAttribute(
+      "data-hide-annotation",
+      "true",
+    );
+    // Chat sims no longer use the voice drawer or the legacy ScenarioView path.
     expect(screen.queryByTestId("voice-drawer")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("new-scenario-view")).not.toBeInTheDocument();
   });
 
   it("copies every dataset field including JSON objects and booleans", async () => {

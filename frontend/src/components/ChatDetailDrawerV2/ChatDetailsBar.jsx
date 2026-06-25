@@ -4,6 +4,7 @@ import { Box, Stack } from "@mui/material";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { enqueueSnackbar } from "notistack";
 import axios from "src/utils/axios";
+import { apiPath } from "src/api/contracts/api-surface";
 import { fDateTime } from "src/utils/format-time";
 import CustomTooltip from "src/components/tooltip/CustomTooltip";
 import Iconify from "src/components/iconify";
@@ -127,7 +128,9 @@ const InlineTagsRow = ({ tags = [], traceId }) => {
 
   const { mutate: saveTags, isPending } = useMutation({
     mutationFn: (newTags) =>
-      axios.patch(`/tracer/trace/${traceId}/tags/`, { tags: newTags }),
+      axios.patch(apiPath("/tracer/trace/{id}/tags/", { id: traceId }), {
+        tags: newTags,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chatCallDetail"] });
       queryClient.invalidateQueries({ queryKey: ["voiceCallDetail"] });

@@ -19650,78 +19650,6 @@ export const ModelHubEvalTemplatesFeedbackListListResponse = zod.object({
 
 
 /**
- * Manages ground truth configuration on the eval template's config JSONField.
- * @summary GET/PUT /model-hub/eval-templates/<id>/ground-truth-config/
- */
-export const ModelHubEvalTemplatesGroundTruthConfigListParams = zod.object({
-  "template_id": zod.string()
-})
-
-
-
-
-
-export const ModelHubEvalTemplatesGroundTruthConfigListResponse = zod.object({
-  "status": zod.boolean(),
-  "result": zod.object({
-  "ground_truth": zod.object({
-  "enabled": zod.boolean().optional(),
-  "ground_truth_id": zod.string().uuid().optional(),
-  "mode": zod.string().min(1).optional(),
-  "max_examples": zod.number().optional(),
-  "similarity_threshold": zod.number().optional(),
-  "injection_format": zod.string().min(1).optional()
-})
-})
-})
-
-
-/**
- * Manages ground truth configuration on the eval template's config JSONField.
- * @summary GET/PUT /model-hub/eval-templates/<id>/ground-truth-config/
- */
-export const ModelHubEvalTemplatesGroundTruthConfigUpdateParams = zod.object({
-  "template_id": zod.string()
-})
-
-export const modelHubEvalTemplatesGroundTruthConfigUpdateBodyEnabledDefault = true;
-export const modelHubEvalTemplatesGroundTruthConfigUpdateBodyModeDefault = `auto`;
-export const modelHubEvalTemplatesGroundTruthConfigUpdateBodyMaxExamplesMax = 10;
-
-export const modelHubEvalTemplatesGroundTruthConfigUpdateBodySimilarityThresholdMin = 0;
-export const modelHubEvalTemplatesGroundTruthConfigUpdateBodySimilarityThresholdMax = 1;
-
-export const modelHubEvalTemplatesGroundTruthConfigUpdateBodyInjectionFormatDefault = `structured`;
-
-export const ModelHubEvalTemplatesGroundTruthConfigUpdateBody = zod.object({
-  "enabled": zod.boolean().default(modelHubEvalTemplatesGroundTruthConfigUpdateBodyEnabledDefault),
-  "ground_truth_id": zod.string().uuid().optional(),
-  "mode": zod.enum(['auto', 'manual', 'disabled']).default(modelHubEvalTemplatesGroundTruthConfigUpdateBodyModeDefault),
-  "max_examples": zod.number().min(1).max(modelHubEvalTemplatesGroundTruthConfigUpdateBodyMaxExamplesMax).optional(),
-  "similarity_threshold": zod.number().min(modelHubEvalTemplatesGroundTruthConfigUpdateBodySimilarityThresholdMin).max(modelHubEvalTemplatesGroundTruthConfigUpdateBodySimilarityThresholdMax).optional(),
-  "injection_format": zod.enum(['structured', 'conversational', 'xml']).default(modelHubEvalTemplatesGroundTruthConfigUpdateBodyInjectionFormatDefault)
-})
-
-
-
-
-
-export const ModelHubEvalTemplatesGroundTruthConfigUpdateResponse = zod.object({
-  "status": zod.boolean(),
-  "result": zod.object({
-  "ground_truth": zod.object({
-  "enabled": zod.boolean().optional(),
-  "ground_truth_id": zod.string().uuid().optional(),
-  "mode": zod.string().min(1).optional(),
-  "max_examples": zod.number().optional(),
-  "similarity_threshold": zod.number().optional(),
-  "injection_format": zod.string().min(1).optional()
-})
-})
-})
-
-
-/**
  * GET /model-hub/eval-templates/<id>/ground-truth/
  */
 export const ModelHubEvalTemplatesGroundTruthListParams = zod.object({
@@ -19734,6 +19662,15 @@ export const ModelHubEvalTemplatesGroundTruthListParams = zod.object({
 
 
 
+
+
+
+export const modelHubEvalTemplatesGroundTruthListResponseResultItemsItemEmbeddingsStaleDefault = false;
+export const modelHubEvalTemplatesGroundTruthListResponseResultItemsItemIsActiveDefault = false;
+export const modelHubEvalTemplatesGroundTruthListResponseResultItemsItemEnabledDefault = true;
+export const modelHubEvalTemplatesGroundTruthListResponseResultItemsItemMaxExamplesDefault = 3;
+export const modelHubEvalTemplatesGroundTruthListResponseResultItemsItemSimilarityThresholdDefault = 0.7;
+
 export const ModelHubEvalTemplatesGroundTruthListResponse = zod.object({
   "status": zod.boolean(),
   "result": zod.object({
@@ -19745,16 +19682,23 @@ export const ModelHubEvalTemplatesGroundTruthListResponse = zod.object({
   "file_name": zod.string().optional(),
   "columns": zod.array(zod.string().min(1)),
   "row_count": zod.number(),
-  "variable_mapping": zod.object({
-
-}).passthrough().optional(),
+  "variable_mapping": zod.record(zod.string(), zod.unknown()).optional().describe('Map of template variable name to GT column name (string) or list of column names.'),
   "role_mapping": zod.object({
-
-}).passthrough().optional(),
+  "output": zod.string().min(1).optional(),
+  "explanation": zod.string().min(1).optional(),
+  "expected_output": zod.string().min(1).optional().describe('Legacy alias for `output`.'),
+  "reasoning": zod.string().min(1).optional().describe('Legacy alias for `explanation`.'),
+  "reason": zod.string().min(1).optional().describe('Legacy alias for `explanation`.')
+}).optional(),
   "embedding_status": zod.string().min(1).optional(),
   "embedded_row_count": zod.number().optional(),
   "storage_type": zod.string().min(1).optional(),
-  "created_at": zod.string().optional()
+  "created_at": zod.string().optional(),
+  "embeddings_stale": zod.boolean().default(modelHubEvalTemplatesGroundTruthListResponseResultItemsItemEmbeddingsStaleDefault),
+  "is_active": zod.boolean().default(modelHubEvalTemplatesGroundTruthListResponseResultItemsItemIsActiveDefault),
+  "enabled": zod.boolean().default(modelHubEvalTemplatesGroundTruthListResponseResultItemsItemEnabledDefault),
+  "max_examples": zod.number().default(modelHubEvalTemplatesGroundTruthListResponseResultItemsItemMaxExamplesDefault),
+  "similarity_threshold": zod.number().default(modelHubEvalTemplatesGroundTruthListResponseResultItemsItemSimilarityThresholdDefault)
 })),
   "total": zod.number()
 })
@@ -22058,85 +22002,69 @@ export const ModelHubGroundTruthEmbedCreateResponse = zod.object({
 
 
 /**
- * PUT /model-hub/ground-truth/<id>/mapping/
+ * PUT /model-hub/ground-truth/<id>/setup/
  */
-export const ModelHubGroundTruthMappingUpdateParams = zod.object({
+export const ModelHubGroundTruthSetupUpdateParams = zod.object({
   "ground_truth_id": zod.string()
 })
 
-export const ModelHubGroundTruthMappingUpdateBody = zod.object({
-  "variable_mapping": zod.object({
 
-}).passthrough()
+
+
+
+
+export const modelHubGroundTruthSetupUpdateBodyMaxExamplesMax = 20;
+
+export const modelHubGroundTruthSetupUpdateBodyEnabledDefault = true;
+
+export const ModelHubGroundTruthSetupUpdateBody = zod.object({
+  "variable_mapping": zod.record(zod.string(), zod.unknown()).describe('Map of template variable name to GT column name (string) or list of column names. Keys are dynamic per-template.'),
+  "role_mapping": zod.object({
+  "output": zod.string().min(1).optional(),
+  "explanation": zod.string().min(1).optional(),
+  "expected_output": zod.string().min(1).optional().describe('Legacy alias for `output`.'),
+  "reasoning": zod.string().min(1).optional().describe('Legacy alias for `explanation`.'),
+  "reason": zod.string().min(1).optional().describe('Legacy alias for `explanation`.')
+}),
+  "max_examples": zod.number().min(1).max(modelHubGroundTruthSetupUpdateBodyMaxExamplesMax),
+  "enabled": zod.boolean().default(modelHubGroundTruthSetupUpdateBodyEnabledDefault)
 })
 
-export const ModelHubGroundTruthMappingUpdateResponse = zod.object({
+
+
+
+
+
+
+export const modelHubGroundTruthSetupUpdateResponseResultEmbeddingsStaleDefault = false;
+export const modelHubGroundTruthSetupUpdateResponseResultConfigMaxExamplesMax = 20;
+
+export const modelHubGroundTruthSetupUpdateResponseResultConfigSimilarityThresholdMin = 0;
+export const modelHubGroundTruthSetupUpdateResponseResultConfigSimilarityThresholdMax = 1;
+
+
+
+export const ModelHubGroundTruthSetupUpdateResponse = zod.object({
   "status": zod.boolean(),
   "result": zod.object({
   "id": zod.string().uuid(),
-  "variable_mapping": zod.object({
-
-}).passthrough().optional()
-})
-})
-
-
-/**
- * PUT /model-hub/ground-truth/<id>/role-mapping/
- */
-export const ModelHubGroundTruthRoleMappingUpdateParams = zod.object({
-  "ground_truth_id": zod.string()
-})
-
-export const ModelHubGroundTruthRoleMappingUpdateBody = zod.object({
+  "template_id": zod.string().uuid(),
+  "variable_mapping": zod.record(zod.string(), zod.unknown()).optional().describe('Map of template variable name to GT column name (string) or list of column names.'),
   "role_mapping": zod.object({
-
-}).passthrough()
+  "output": zod.string().min(1).optional(),
+  "explanation": zod.string().min(1).optional(),
+  "expected_output": zod.string().min(1).optional().describe('Legacy alias for `output`.'),
+  "reasoning": zod.string().min(1).optional().describe('Legacy alias for `explanation`.'),
+  "reason": zod.string().min(1).optional().describe('Legacy alias for `explanation`.')
+}).optional(),
+  "embedding_status": zod.string().min(1),
+  "embeddings_stale": zod.boolean().default(modelHubGroundTruthSetupUpdateResponseResultEmbeddingsStaleDefault),
+  "config": zod.object({
+  "enabled": zod.boolean(),
+  "ground_truth_id": zod.string().uuid(),
+  "max_examples": zod.number().min(1).max(modelHubGroundTruthSetupUpdateResponseResultConfigMaxExamplesMax),
+  "similarity_threshold": zod.number().min(modelHubGroundTruthSetupUpdateResponseResultConfigSimilarityThresholdMin).max(modelHubGroundTruthSetupUpdateResponseResultConfigSimilarityThresholdMax)
 })
-
-
-
-
-export const ModelHubGroundTruthRoleMappingUpdateResponse = zod.object({
-  "status": zod.boolean(),
-  "result": zod.object({
-  "id": zod.string().uuid(),
-  "role_mapping": zod.object({
-
-}).passthrough().optional(),
-  "embedding_status": zod.string().min(1)
-})
-})
-
-
-/**
- * POST /model-hub/ground-truth/<id>/search/ — test retrieval with a query.
- */
-export const ModelHubGroundTruthSearchCreateParams = zod.object({
-  "ground_truth_id": zod.string()
-})
-
-
-export const modelHubGroundTruthSearchCreateBodyMaxResultsMax = 20;
-
-
-
-export const ModelHubGroundTruthSearchCreateBody = zod.object({
-  "query": zod.string().min(1),
-  "max_results": zod.number().min(1).max(modelHubGroundTruthSearchCreateBodyMaxResultsMax).optional()
-})
-
-
-
-
-export const ModelHubGroundTruthSearchCreateResponse = zod.object({
-  "status": zod.boolean(),
-  "result": zod.object({
-  "query": zod.string().min(1),
-  "results": zod.array(zod.object({
-
-}).passthrough()),
-  "total": zod.number()
 })
 })
 
@@ -22149,7 +22077,7 @@ export const ModelHubGroundTruthStatusListParams = zod.object({
 })
 
 
-
+export const modelHubGroundTruthStatusListResponseResultEmbeddingsStaleDefault = false;
 
 export const ModelHubGroundTruthStatusListResponse = zod.object({
   "status": zod.boolean(),
@@ -22158,7 +22086,8 @@ export const ModelHubGroundTruthStatusListResponse = zod.object({
   "embedding_status": zod.string().min(1),
   "embedded_row_count": zod.number(),
   "total_rows": zod.number(),
-  "progress_percent": zod.number()
+  "progress_percent": zod.number(),
+  "embeddings_stale": zod.boolean().default(modelHubGroundTruthStatusListResponseResultEmbeddingsStaleDefault)
 })
 })
 

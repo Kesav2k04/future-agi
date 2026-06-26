@@ -35918,7 +35918,13 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "queryParameters": {},
         "responses": {
           "200": {
-            "$ref": "#/definitions/Trace"
+            "$ref": "#/definitions/TraceDetailResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
+          },
+          "500": {
+            "$ref": "#/definitions/ApiErrorResponse"
           },
           "default": {
             "$ref": "#/definitions/ManagementAPIErrorResponse"
@@ -60266,7 +60272,9 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "eleven_labs",
             "retell",
             "livekit",
-            "others"
+            "others",
+            "bland",
+            "twilio"
           ]
         },
         "enabled": {
@@ -70673,6 +70681,22 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "tags": {
           "title": "Tags",
           "type": "object"
+        }
+      }
+    },
+    "TraceDetailResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "$ref": "#/definitions/TraceDetailResult"
         }
       }
     },
@@ -88970,6 +88994,35 @@ export const OPENAPI_CONTRACT = Object.freeze({
             "type": "string",
             "minLength": 1
           }
+        }
+      }
+    },
+    "TraceDetailResult": {
+      "required": [
+        "trace",
+        "observation_spans",
+        "summary",
+        "graph"
+      ],
+      "type": "object",
+      "properties": {
+        "trace": {
+          "title": "Trace",
+          "type": "object"
+        },
+        "observation_spans": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "object"
+        },
+        "graph": {
+          "title": "Graph",
+          "type": "object"
         }
       }
     },

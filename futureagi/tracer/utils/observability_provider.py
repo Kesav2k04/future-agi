@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime
 
@@ -274,7 +275,7 @@ def _export_provider_call_to_collector(span, provider: str, provider_log_id: str
         organization_id = str(getattr(project, "organization_id", "") or "")
         if not organization_id:
             return
-        # Drop nested raw_log (OTLP can't carry it); read path's empty-raw_log branch derives status/duration/recording from call.* scalars.
+        # OTLP can't carry the nested raw_log dict; re-attach it as a JSON string below.
         attrs = {
             k: v for k, v in (span.span_attributes or {}).items() if k != "raw_log"
         }
@@ -284,8 +285,10 @@ def _export_provider_call_to_collector(span, provider: str, provider_log_id: str
             attrs["input.value"] = span.input
         if span.output not in (None, "", [], {}):
             attrs["output.value"] = span.output
-        # raw_log dropped, so compute transcript now (trace.py reads fi.conversation.transcript).
         raw_log = (span.span_attributes or {}).get("raw_log") or {}
+        if raw_log:
+            attrs["raw_log"] = json.dumps(raw_log, default=str)
+        # Stamp the normalized transcript (read path falls back to this).
         try:
             processed = ObservabilityService.process_raw_logs(
                 raw_log, provider, span_attributes=span.span_attributes or {}

@@ -36648,7 +36648,7 @@ export const TracerObservabilityProviderListResponse = zod.object({
   "id": zod.string().uuid().optional(),
   "project": zod.string().uuid().optional(),
   "project_name": zod.string().min(1).optional().describe('Name of the project. If it doesn\'t exist, it will be created.'),
-  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others']),
+  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others', 'bland', 'twilio']),
   "enabled": zod.boolean().optional(),
   "organization": zod.string().uuid().optional(),
   "workspace": zod.string().uuid().optional(),
@@ -36669,7 +36669,7 @@ export const TracerObservabilityProviderListResponse = zod.object({
 
 export const TracerObservabilityProviderCreateBody = zod.object({
   "project_name": zod.string().min(1).optional().describe('Name of the project. If it doesn\'t exist, it will be created.'),
-  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others']),
+  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others', 'bland', 'twilio']),
   "enabled": zod.boolean().optional(),
   "metadata": zod.object({
 
@@ -36685,7 +36685,7 @@ export const TracerObservabilityProviderCreateBody = zod.object({
 
 export const TracerObservabilityProviderVerifyApiKeyBody = zod.object({
   "project_name": zod.string().min(1).optional().describe('Name of the project. If it doesn\'t exist, it will be created.'),
-  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others']),
+  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others', 'bland', 'twilio']),
   "enabled": zod.boolean().optional(),
   "metadata": zod.object({
 
@@ -36701,7 +36701,7 @@ export const TracerObservabilityProviderVerifyApiKeyBody = zod.object({
 
 export const TracerObservabilityProviderVerifyAssistantIdBody = zod.object({
   "project_name": zod.string().min(1).optional().describe('Name of the project. If it doesn\'t exist, it will be created.'),
-  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others']),
+  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others', 'bland', 'twilio']),
   "enabled": zod.boolean().optional(),
   "metadata": zod.object({
 
@@ -36723,7 +36723,7 @@ export const TracerObservabilityProviderReadResponse = zod.object({
   "id": zod.string().uuid().optional(),
   "project": zod.string().uuid().optional(),
   "project_name": zod.string().min(1).optional().describe('Name of the project. If it doesn\'t exist, it will be created.'),
-  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others']),
+  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others', 'bland', 'twilio']),
   "enabled": zod.boolean().optional(),
   "organization": zod.string().uuid().optional(),
   "workspace": zod.string().uuid().optional(),
@@ -36747,7 +36747,7 @@ export const TracerObservabilityProviderUpdateParams = zod.object({
 
 export const TracerObservabilityProviderUpdateBody = zod.object({
   "project_name": zod.string().min(1).optional().describe('Name of the project. If it doesn\'t exist, it will be created.'),
-  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others']),
+  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others', 'bland', 'twilio']),
   "enabled": zod.boolean().optional(),
   "metadata": zod.object({
 
@@ -36761,7 +36761,7 @@ export const TracerObservabilityProviderUpdateResponse = zod.object({
   "id": zod.string().uuid().optional(),
   "project": zod.string().uuid().optional(),
   "project_name": zod.string().min(1).optional().describe('Name of the project. If it doesn\'t exist, it will be created.'),
-  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others']),
+  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others', 'bland', 'twilio']),
   "enabled": zod.boolean().optional(),
   "organization": zod.string().uuid().optional(),
   "workspace": zod.string().uuid().optional(),
@@ -36785,7 +36785,7 @@ export const TracerObservabilityProviderPartialUpdateParams = zod.object({
 
 export const TracerObservabilityProviderPartialUpdateBody = zod.object({
   "project_name": zod.string().min(1).optional().describe('Name of the project. If it doesn\'t exist, it will be created.'),
-  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others']),
+  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others', 'bland', 'twilio']),
   "enabled": zod.boolean().optional(),
   "metadata": zod.object({
 
@@ -36799,7 +36799,7 @@ export const TracerObservabilityProviderPartialUpdateResponse = zod.object({
   "id": zod.string().uuid().optional(),
   "project": zod.string().uuid().optional(),
   "project_name": zod.string().min(1).optional().describe('Name of the project. If it doesn\'t exist, it will be created.'),
-  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others']),
+  "provider": zod.enum(['vapi', 'eleven_labs', 'retell', 'livekit', 'others', 'bland', 'twilio']),
   "enabled": zod.boolean().optional(),
   "organization": zod.string().uuid().optional(),
   "workspace": zod.string().uuid().optional(),
@@ -41706,34 +41706,24 @@ export const TracerTraceReadParams = zod.object({
   "id": zod.string()
 })
 
-export const tracerTraceReadResponseNameMax = 2000;
-
-export const tracerTraceReadResponseExternalIdMax = 255;
-
-
+export const tracerTraceReadResponseStatusDefault = true;
 
 export const TracerTraceReadResponse = zod.object({
-  "id": zod.string().uuid().optional(),
-  "project": zod.string().uuid(),
-  "project_version": zod.string().uuid().optional(),
-  "name": zod.string().max(tracerTraceReadResponseNameMax).optional(),
-  "metadata": zod.object({
+  "status": zod.boolean().default(tracerTraceReadResponseStatusDefault),
+  "result": zod.object({
+  "trace": zod.object({
 
-}).passthrough().optional(),
-  "input": zod.object({
+}).passthrough(),
+  "observation_spans": zod.array(zod.object({
 
-}).passthrough().optional(),
-  "output": zod.object({
+}).passthrough()),
+  "summary": zod.object({
 
-}).passthrough().optional(),
-  "error": zod.object({
+}).passthrough(),
+  "graph": zod.object({
 
-}).passthrough().optional(),
-  "session": zod.string().uuid().optional(),
-  "external_id": zod.string().max(tracerTraceReadResponseExternalIdMax).optional(),
-  "tags": zod.object({
-
-}).passthrough().optional()
+}).passthrough()
+})
 })
 
 

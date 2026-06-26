@@ -62,6 +62,7 @@ from tracer.serializers.trace import (
     TraceListQuerySerializer,
     TraceObserveIndexQuerySerializer,
     TraceObserveListQuerySerializer,
+    TraceDetailResponseSerializer,
     TraceSerializer,
     TraceVoiceCallListQuerySerializer,
     UserCodeExampleResponseSerializer,
@@ -1103,6 +1104,9 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
     def perform_destroy(self, instance):
         _soft_delete_trace_tree([instance])
 
+    @swagger_auto_schema(
+        responses={200: TraceDetailResponseSerializer, **ERROR_RESPONSES},
+    )
     def retrieve(self, request, *args, **kwargs):
         """
         Retrieve a trace by its ID.
@@ -1239,6 +1243,32 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             ),
         }
 
+    @staticmethod
+    def _recording_available(recording):
+        """True when the recording dict carries any playable URL. Collector pulls
+        drop raw_log so process_raw_logs can't infer this; derive it from the
+        recovered URLs (mirrors transcript_available)."""
+        rec = recording or {}
+        mono = rec.get("mono") or {}
+        return bool(
+            rec.get("stereo_url")
+            or mono.get("combined_url")
+            or mono.get("customer_url")
+            or mono.get("assistant_url")
+        )
+
+    @staticmethod
+    def _coerce_raw_log(value):
+        """raw_log rides in span attributes as a JSON string (collector path) or a
+        dict (legacy PG+CDC). Return a dict either way so process_raw_logs can
+        recompute status/duration/recording_available/transcript from it."""
+        if isinstance(value, str):
+            try:
+                return json.loads(value) or {}
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return value or {}
+
     def populate_call_logs_result(
         self, qs, eval_configs, annotation_labels=None, *, detail_mode=False
     ):
@@ -1289,8 +1319,8 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
 
             recording = self._build_recording_dict(attrs)
 
-            # Raw provider payload if present
-            raw_log = attrs.get("raw_log") or {}
+            # Raw provider payload if present (collector ships it as JSON string)
+            raw_log = self._coerce_raw_log(attrs.get("raw_log"))
             provider = trace.provider or "vapi"
 
             processed_log = ObservabilityService.process_raw_logs(
@@ -1315,6 +1345,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                 "trace_id": str(trace.id),
                 "call_metadata": metadata,
                 "recording": recording,
+                "recording_available": self._recording_available(recording),
                 "observation_span": observation_span,
                 "turn_count": voice_metrics.get("turn_count"),
                 "talk_ratio": voice_metrics.get("talk_ratio"),
@@ -2719,7 +2750,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         # fi.simulator.call_execution_id and similar keys.
         eval_attrs = span_attrs.get("eval_attributes", {}) or {}
 
-        raw_log = span_attrs.get("raw_log") or {}
+        raw_log = self._coerce_raw_log(span_attrs.get("raw_log"))
         metadata_raw = row.get("metadata_json") or "{}"
         try:
             metadata = (
@@ -3014,6 +3045,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             "project_id": str(project_id),
             "provider_call_id": processed_log.get("call_id"),
             "recording": recording,
+            "recording_available": self._recording_available(recording),
             "call_metadata": metadata,
             "observation_span": observation_span,
             "eval_outputs": eval_outputs,
@@ -3959,7 +3991,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             ):
                 continue
 
-            raw_log = span_attrs.get("raw_log") or {}
+            raw_log = self._coerce_raw_log(span_attrs.get("raw_log"))
             voice_metrics = self._extract_voice_turn_and_talk_metrics(
                 span_attrs, raw_log
             )

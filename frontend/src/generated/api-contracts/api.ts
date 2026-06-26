@@ -1079,6 +1079,7 @@ import type {
   ToolsApi,
   TopicCategoriesResponseApi,
   TraceApi,
+  TraceDetailResponseApi,
   TraceErrorAnalysisResponseApi,
   TraceErrorTaskResponseApi,
   TraceErrorTaskUpdateRequestApi,
@@ -66770,19 +66771,29 @@ export const tracerTraceVoiceCallDetail = async (params?: TracerTraceVoiceCallDe
 
 
 export type tracerTraceReadResponse200 = {
-  data: TraceApi
+  data: TraceDetailResponseApi
   status: 200
+}
+
+export type tracerTraceReadResponse400 = {
+  data: ApiErrorResponseApi
+  status: 400
+}
+
+export type tracerTraceReadResponse500 = {
+  data: ApiErrorResponseApi
+  status: 500
 }
 
 export type tracerTraceReadResponseDefault = {
   data: ManagementAPIErrorResponseApi
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 500>
 }
 
 export type tracerTraceReadResponseSuccess = (tracerTraceReadResponse200) & {
   headers: Headers;
 };
-export type tracerTraceReadResponseError = (tracerTraceReadResponseDefault) & {
+export type tracerTraceReadResponseError = (tracerTraceReadResponse400 | tracerTraceReadResponse500 | tracerTraceReadResponseDefault) & {
   headers: Headers;
 };
 

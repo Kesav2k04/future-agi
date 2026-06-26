@@ -19307,6 +19307,8 @@ export const ObservabilityProviderApiProvider = {
   retell: 'retell',
   livekit: 'livekit',
   others: 'others',
+  bland: 'bland',
+  twilio: 'twilio',
 } as const;
 
 export type ObservabilityProviderApiMetadata = { [key: string]: unknown };
@@ -20684,6 +20686,26 @@ export interface TraceApi {
   /** @maxLength 255 */
   external_id?: string;
   tags?: TraceApiTags;
+}
+
+export type TraceDetailResultApiTrace = { [key: string]: unknown };
+
+export type TraceDetailResultApiObservationSpansItem = { [key: string]: unknown };
+
+export type TraceDetailResultApiSummary = { [key: string]: unknown };
+
+export type TraceDetailResultApiGraph = { [key: string]: unknown };
+
+export interface TraceDetailResultApi {
+  trace: TraceDetailResultApiTrace;
+  observation_spans: TraceDetailResultApiObservationSpansItem[];
+  summary: TraceDetailResultApiSummary;
+  graph: TraceDetailResultApiGraph;
+}
+
+export interface TraceDetailResponseApi {
+  status?: boolean;
+  result: TraceDetailResultApi;
 }
 
 export interface TraceTagsUpdateApi {

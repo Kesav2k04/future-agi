@@ -28042,11 +28042,9 @@ export const SimulateApiAgentDefinitionOperationsFetchAssistantFromProviderBody 
 
 
 
-
 export const SimulateApiAgentDefinitionOperationsFetchAssistantFromProviderResponse = zod.object({
   "name": zod.string().min(1).optional(),
   "assistant_id": zod.string().min(1).optional(),
-  "api_key": zod.string().min(1).optional(),
   "prompt": zod.string().min(1).optional(),
   "provider": zod.string().min(1).optional(),
   "commit_message": zod.string().min(1).optional()

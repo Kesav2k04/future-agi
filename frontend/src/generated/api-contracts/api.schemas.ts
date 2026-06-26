@@ -14651,8 +14651,6 @@ export interface FetchAssistantResponseApi {
   /** @minLength 1 */
   readonly assistant_id?: string;
   /** @minLength 1 */
-  readonly api_key?: string;
-  /** @minLength 1 */
   readonly prompt?: string;
   /** @minLength 1 */
   readonly provider?: string;

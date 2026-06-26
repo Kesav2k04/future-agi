@@ -55879,12 +55879,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "readOnly": true,
           "minLength": 1
         },
-        "api_key": {
-          "title": "Api key",
-          "type": "string",
-          "readOnly": true,
-          "minLength": 1
-        },
         "prompt": {
           "title": "Prompt",
           "type": "string",

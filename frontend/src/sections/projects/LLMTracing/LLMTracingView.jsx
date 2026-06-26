@@ -2082,13 +2082,8 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
       // Re-apply only on id-set change, so a manual drag/toggle isn't reverted.
       const slotKey =
         selectedTab === "trace" ? "primary-trace" : "primary-spans";
-      const compareSlotKey =
-        selectedTab === "trace" ? "compare-trace" : "compare-spans";
-      const idsOf = (k) => (columns[k] || []).map((c) => c?.id);
-      const idSetKey = [
-        ...idsOf(slotKey),
-        ...(showCompare ? idsOf(compareSlotKey) : []),
-      ]
+      const idSetKey = (columns[slotKey] || [])
+        .map((c) => c?.id)
         .sort()
         .join("|");
       if (idSetKey !== appliedIdSetKeyRef.current) {

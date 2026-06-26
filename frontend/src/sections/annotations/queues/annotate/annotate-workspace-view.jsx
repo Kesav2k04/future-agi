@@ -453,7 +453,7 @@ export default function AnnotateWorkspaceView() {
       isReviewWorkspaceMode && requiresReview ? "pending_review" : undefined,
     excludeReviewStatus:
       !isReviewWorkspaceMode && requiresReview ? "pending_review" : undefined,
-    reserve: !isReviewWorkspaceMode,
+    reserve: !isReviewWorkspaceMode && queueDetail?.annotations_required === 1,
     enabled: detailEnabled,
     staleTime: 0,
     refetchOnMount: "always",

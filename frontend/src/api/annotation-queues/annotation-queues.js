@@ -790,6 +790,7 @@ export const useAnnotateDetail = (
     ...(excludeReviewStatus
       ? { exclude_review_status: excludeReviewStatus }
       : {}),
+    ...(reserve ? { reserve: true } : {}),
   };
   return useQuery({
     queryKey: annotateKeys.detail(queueId, itemId, annotatorId, detailFilters),

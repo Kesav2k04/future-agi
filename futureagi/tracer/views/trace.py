@@ -3009,27 +3009,29 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             if not trace_id:
                 return self._gm.bad_request("trace_id is required")
 
-            # Validate ownership via a single PG query before any dispatch
-            trace = (
-                Trace.objects.select_related("project")
-                .filter(
-                    id=trace_id,
-                    project__organization_id=request.user.organization_id,
-                )
-                .first()
+            # Resolve the trace's project from CH and validate ownership. PG
+            # `tracer_trace` is dropped on CH25, so the project comes from the CH
+            # `traces` row and ownership is checked against the still-present
+            # `tracer_project`.
+            analytics = AnalyticsQueryService()
+            proj_result = analytics.execute_ch_query(
+                "SELECT toString(project_id) AS project_id FROM traces "
+                "WHERE id = toUUID(%(trace_id)s) AND is_deleted = 0 LIMIT 1",
+                {"trace_id": str(trace_id)},
+                timeout_ms=10000,
             )
-            if not trace:
+            if not proj_result.data:
+                return self._gm.not_found("trace_id not found")
+            project_id = proj_result.data[0]["project_id"]
+            if not Project.objects.filter(
+                id=project_id,
+                organization_id=request.user.organization_id,
+            ).exists():
                 return self._gm.not_found("trace_id not found")
 
-            # ClickHouse-only path. The legacy PG fallback (reading from
-            # the soon-deleted `ObservationSpan` ORM + `EvalLogger` rows)
-            # was removed as part of PLAN_V2_NO_CDC: span data lives in
-            # CH, not PG. CH_ROUTE_VOICE_CALL_DETAIL must be set to
-            # `clickhouse` (default in .env) — if it ever resolves to
-            # postgres, that's a config error, not a fallback opportunity.
-            analytics = AnalyticsQueryService()
+            # ClickHouse-only path: span data lives in CH, not PG (PLAN_V2_NO_CDC).
             return self._voice_call_detail_clickhouse(
-                request, trace_id, analytics, str(trace.project_id)
+                request, trace_id, analytics, project_id
             )
         except Exception as e:
             logger.exception("voice_call_detail_error", error=str(e))
@@ -3286,14 +3288,25 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         # Fetch ALL non-deleted eval configs for the project so the drawer
         # renders the same set of evals as the list columns. Missing scores
         # become placeholder entries with `output=None`.
-        eval_configs = CustomEvalConfig.objects.filter(
-            id__in=EvalLogger.objects.filter(
-                trace_id__in=Trace.objects.filter(project_id=project_id).values("id")
-            )
-            .values("custom_eval_config_id")
-            .distinct(),
-            deleted=False,
-        ).select_related("eval_template")
+        # Eval configs with results for this project's traces. CH25-safe: resolve
+        # via the CH eval table + trace_dict (PG `tracer_trace` is dropped),
+        # mirroring the trace-list path so the drawer shows the same eval set.
+        eval_table, eval_nd = eval_logger_source()
+        cfg_result = analytics.execute_ch_query(
+            "SELECT DISTINCT toString(custom_eval_config_id) AS cid "
+            f"FROM {eval_table} FINAL "
+            f"WHERE {eval_nd} "
+            "AND dictGet('trace_dict', 'project_id', trace_id) = toUUID(%(pid)s)",
+            {"pid": str(project_id)},
+            timeout_ms=30000,
+        )
+        cfg_ids = [r.get("cid", "") for r in cfg_result.data if r.get("cid")]
+        if cfg_ids:
+            eval_configs = CustomEvalConfig.objects.filter(
+                id__in=cfg_ids, deleted=False
+            ).select_related("eval_template")
+        else:
+            eval_configs = []
         eval_config_ids = [str(c.id) for c in eval_configs]
 
         eval_outputs = {}

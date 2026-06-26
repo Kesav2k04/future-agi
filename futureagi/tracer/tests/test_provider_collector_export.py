@@ -1,4 +1,4 @@
-"""Provider-pull -> fi-collector dual-write: pulled calls also reach CH `spans` once CDC is dropped."""
+"""Provider-pull -> fi-collector export: pulled calls reach CH `spans`/`traces` (collector-owned write)."""
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -6,12 +6,6 @@ from types import SimpleNamespace
 import pytest
 
 from tracer.utils import observability_provider as op
-
-
-@pytest.fixture(autouse=True)
-def _cdc_off(monkeypatch):
-    """Export only fires once CDC is off; these tests exercise that post-flip state."""
-    monkeypatch.setenv("CH25_DROP_LEGACY_CDC_CHAIN", "true")
 
 
 @pytest.mark.unit
@@ -163,8 +157,8 @@ def test_export_no_org_is_noop(monkeypatch):
 
 
 @pytest.mark.unit
-def test_export_is_dormant_when_cdc_not_dropped(monkeypatch):
-    # CDC still live -> export dormant; CDC already mirrors the PG span, else double-write.
+def test_export_fires_regardless_of_legacy_env(monkeypatch):
+    # CDC is assumed always dropped: the export no longer gates on the env var.
     monkeypatch.delenv("CH25_DROP_LEGACY_CDC_CHAIN", raising=False)
     called = {"n": 0}
     import tracer.services.collector_ingest as ci
@@ -190,7 +184,7 @@ def test_export_is_dormant_when_cdc_not_dropped(monkeypatch):
         span_attributes={"raw_log": {"id": "c1"}, "call.status": "completed"},
     )
     op._export_provider_call_to_collector(span, "vapi", "c1")
-    assert called["n"] == 0  # CDC live -> export dormant, no emit
+    assert called["n"] == 1  # export always fires now
 
 
 @pytest.mark.unit

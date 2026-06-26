@@ -962,7 +962,13 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
     registerGetTabType,
   } = useObserveHeader();
 
-  const { data: projectDetail } = useGetProjectDetails(observeId, !isUserMode);
+  // keepPrevious: hold `source` across refetch so projectSource doesn't flicker
+  // undefined mid-switch (would drop the voice saved-view custom columns).
+  const { data: projectDetail } = useGetProjectDetails(
+    observeId,
+    !isUserMode,
+    true,
+  );
   // User mode: behave like an OBSERVE project so the many projectSource
   // checks stay on the happy path.
   const projectSource = isUserMode
@@ -1992,9 +1998,8 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
       }
     }
 
-    // Array.isArray guard: UsersView writes `filters` as an object, which
-    // can briefly leak during cross-tab transitions (route change is queued
-    // in startTransition while activeViewConfig updates synchronously).
+    // Array.isArray guard: UsersView writes `filters` as an object, which can
+    // briefly leak across a cross-tab switch before this config resolves.
     const rawFilters = activeViewConfig.filters;
     const nextFilters = (Array.isArray(rawFilters) ? rawFilters : []).map(
       (f) => ({
@@ -2616,10 +2621,8 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
     columnKey,
   ]);
 
-  // Defer the visibility signal so it catches up with activeViewConfig
-  // (which updates inside startTransition). Without this, canSaveView briefly
-  // returns true on view-switch because filter state updates urgently while
-  // the baseline update trails by a render, which makes the button flicker.
+  // Defer the visibility signal so a view-switch doesn't briefly flip
+  // canSaveView true if the baseline trails the filter state by a render.
   const canSaveViewDeferred = useDeferredValue(canSaveView);
 
   const currentGridRef = useMemo(() => {

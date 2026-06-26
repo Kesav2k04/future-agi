@@ -407,8 +407,8 @@ const SessionsView = ({ mode = "project", userIdForUserMode = null }) => {
     sessionColumns,
   ]);
 
-  // Deferred so the button doesn't flicker between filter state (urgent)
-  // and activeViewConfig (startTransition) settling.
+  // Deferred so the button doesn't flicker while filter state and the baseline
+  // config settle on a view-switch.
   const canSaveViewDeferred = useDeferredValue(canSaveView);
 
   // dateFilter lives inside `display` because the backend serializer only

@@ -263,3 +263,50 @@ class TestV1V2EnvelopeParity:
         v1, v2 = self._v1_result(), self._v2_result()
         assert set(v1["summary"]) == set(v2["summary"])
         assert set(v1["graph"]) == set(v2["graph"]) == {"nodes", "edges"}
+
+
+# --------------------------------------------------------------------------- #
+# 4) Eval score mapping
+# --------------------------------------------------------------------------- #
+class TestV2EvalScoreRendering:
+    """Nullable output_float/output_bool -> numeric score; a real 0.0 (0%) float
+    score must survive (`is not None`, not truthiness)."""
+
+    @staticmethod
+    def _eval_row(**overrides):
+        # empty eval_config_id -> skips the CustomEvalConfig lookup (no DB hit)
+        row = {
+            "span_id": "S1",
+            "eval_config_id": "",
+            "output_float": None,
+            "output_bool": None,
+            "output_str": None,
+            "eval_explanation": "",
+        }
+        row.update(overrides)
+        return row
+
+    def _scores_for(self, eval_row):
+        analytics = _FakeAnalytics(
+            project_rows=[{"project_id": "P1"}],
+            span_rows=[_root_span_row()],
+            eval_rows=[eval_row],
+        )
+        with ExitStack() as stack:
+            _patch_v2_pg(stack, project_accessible=True, pg_trace=None)
+            result = retrieve_trace_detail_ch(MagicMock(), MagicMock(), "T1", analytics)
+        return result["observation_spans"][0]["eval_scores"]
+
+    def test_zero_float_score_is_kept(self):
+        # regression: truthiness check previously dropped this to None
+        scores = self._scores_for(self._eval_row(output_float=0.0))
+        assert len(scores) == 1 and scores[0]["score"] == 0.0
+
+    def test_nonzero_float_score(self):
+        assert self._scores_for(self._eval_row(output_float=0.75))[0]["score"] == 75.0
+
+    def test_bool_false_score(self):
+        assert self._scores_for(self._eval_row(output_bool=False))[0]["score"] == 0
+
+    def test_no_score_when_both_null(self):
+        assert self._scores_for(self._eval_row())[0]["score"] is None

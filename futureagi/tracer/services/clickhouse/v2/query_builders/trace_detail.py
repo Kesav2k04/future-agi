@@ -307,8 +307,8 @@ def retrieve_trace_detail_ch(
             output_float = row.get("output_float")
             output_bool = row.get("output_bool")
             output_str = row.get("output_str")
-            # Score: use float if non-zero, else bool (True=100, False=0)
-            if output_float and output_float != 0:
+
+            if output_float is not None:
                 score = round(output_float * 100, 2)
             elif output_bool is not None:
                 score = 100 if output_bool else 0

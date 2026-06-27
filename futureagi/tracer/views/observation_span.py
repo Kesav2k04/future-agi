@@ -284,6 +284,60 @@ def _project_workspace_scope_q(request, project_prefix="project__"):
     return Q(**{workspace_field: workspace})
 
 
+def allowed_root_spans_for_request(
+    trace_ids: list[str],
+    *,
+    organization,
+    project_scope_q,
+) -> dict[str, str]:
+    """Resolve ``{trace_id: root_span_id}`` for *trace_ids*, returning only traces
+    whose owning project is org/workspace-accessible. Collector traces have no PG
+    ``Trace`` row, so the project_id is learned from CH and re-checked against the
+    PG ``Project`` authority. FAIL CLOSED: an untenanted / cross-org trace is dropped
+    (no key) — same response shape as before.
+    """
+    if not trace_ids:
+        return {}
+
+    from tracer.services.clickhouse.v2 import get_reader
+
+    with get_reader() as reader:
+        ch_spans = reader.list_by_trace_ids([str(tid) for tid in trace_ids])
+
+    # Root spans only (CH stores parent_span_id as a non-nullable String; root
+    # spans carry ""). Collect the candidate project_ids to verify against PG.
+    root_spans = [s for s in ch_spans if not s.parent_span_id]
+    candidate_project_ids = {
+        str(s.project_id) for s in root_spans if s.project_id
+    }
+    if not candidate_project_ids:
+        return {}
+
+    allowed_project_ids = {
+        str(pid)
+        for pid in Project.objects.filter(
+            project_scope_q,
+            id__in=candidate_project_ids,
+            organization=organization,
+        ).values_list("id", flat=True)
+    }
+    if not allowed_project_ids:
+        return {}
+
+    result: dict[str, str] = {}
+    for span in root_spans:
+        pid = str(span.project_id) if span.project_id else None
+        if pid is None or pid not in allowed_project_ids:
+            # FAIL CLOSED: untenanted or cross-org span — never returned.
+            continue
+        tid = str(span.trace_id)
+        # list_by_trace_ids orders by (trace_id, start_time, id) so the first
+        # parentless span per trace wins.
+        if tid not in result:
+            result[tid] = str(span.id)
+    return result
+
+
 class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
     _gm = GeneralMethods()
     permission_classes = [IsAuthenticated]
@@ -626,30 +680,10 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
         # Fetch eval metrics from CH
         evals_metrics = {}
         if children_span_ids:
-            eval_query = """
-                SELECT
-                    toString(observation_span_id) AS span_id,
-                    toString(custom_eval_config_id) AS config_id,
-                    output_float,
-                    output_bool,
-                    output_str_list,
-                    eval_explanation,
-                    error,
-                    error_message,
-                    output_str
-                FROM tracer_eval_logger FINAL
-                WHERE observation_span_id IN %(span_ids)s
-                  AND _peerdb_is_deleted = 0
-                  AND (deleted = 0 OR deleted IS NULL)
-            """
-            eval_result = analytics.execute_ch_query(
-                eval_query, {"span_ids": children_span_ids}, timeout_ms=5000
-            )
+            eval_rows = analytics.get_children_eval_metrics_ch(children_span_ids)
 
             # Get config names from PG (small config table)
-            config_ids = list(
-                {r["config_id"] for r in eval_result.data if r.get("config_id")}
-            )
+            config_ids = list({r["config_id"] for r in eval_rows if r.get("config_id")})
             config_name_map = {}
             config_output_type_map = {}
             if config_ids:
@@ -660,7 +694,7 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
                     config_name_map[str(c.id)] = c.name
                     config_output_type_map[str(c.id)] = _get_configured_output_type(c)
 
-            for eval_row in eval_result.data:
+            for eval_row in eval_rows:
                 config_id = eval_row.get("config_id")
                 span_id = eval_row.get("span_id")
                 config_name = config_name_map.get(
@@ -855,43 +889,17 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             if not trace_ids:
                 return self._gm.bad_request("trace_ids is required")
 
-            # Tenant gate via PG (CH spans don't carry org_id filterability).
-            # Reduce the caller-supplied set to only those traces visible to
-            # the request org/workspace.
+            # Collector traces have no PG ``Trace`` row; the gate resolves the root
+            # span + tenant from CH/PG-Project instead (fail closed). See selector.
             org = _get_request_organization(request)
-            allowed_trace_ids = list(
-                Trace.objects.filter(
-                    _project_workspace_scope_q(request),
-                    id__in=trace_ids,
-                    project__organization=org,
-                ).values_list("id", flat=True)
+            result = allowed_root_spans_for_request(
+                trace_ids,
+                organization=org,
+                project_scope_q=_project_workspace_scope_q(request, project_prefix=""),
             )
-            if not allowed_trace_ids:
-                return self._gm.success_response({})
-
-            # Read root spans from CH and pick the first parentless span per
-            # trace_id (mirrors the pattern in feed.py::_get_root_spans_batch
-            # committed in 50561eb5c).
-            from tracer.services.clickhouse.v2 import get_reader
-
-            with get_reader() as reader:
-                ch_spans = reader.list_by_trace_ids(
-                    [str(tid) for tid in allowed_trace_ids]
-                )
-
-            result: dict[str, str] = {}
-            for span in ch_spans:
-                # CH stores parent_span_id as a non-nullable String; root
-                # spans use "" (empty). list_by_trace_ids orders by
-                # (trace_id, start_time, id) so the first parentless span
-                # per trace wins.
-                if span.parent_span_id:
-                    continue
-                tid = str(span.trace_id)
-                if tid not in result:
-                    result[tid] = str(span.id)
             return self._gm.success_response(result)
         except Exception as e:
+            # fail closed: any CH/PG error returns no data, never a partial leak
             return self._gm.bad_request(f"Error fetching root spans: {str(e)}")
 
     @action(detail=False, methods=["post"])
@@ -1327,19 +1335,13 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             # annotations + Score subqueries + Python pivot, ~350 LOC) was
             # deleted. CH is the authoritative span + eval store and the
             # pivot now lives in `_list_spans_clickhouse` via
-            # SpanListQueryBuilder.
+            # SpanListQueryBuilder. A CH read failure surfaces via the outer
+            # handler instead of silently degrading to the empty post-migration
+            # Postgres path, which masked CH failures as "0 rows".
             analytics = AnalyticsQueryService()
-            try:
-                return self._list_spans_clickhouse(
-                    request, project_id, validated_data, analytics
-                )
-            except Exception:
-                logger.warning(
-                    "list_spans_observe_clickhouse_failed, falling back to postgres",
-                    project_id=project_id,
-                    exc_info=True,
-                )
-                return self._list_spans_postgres(request, project_id, validated_data)
+            return self._list_spans_clickhouse(
+                request, project_id, validated_data, analytics
+            )
 
         except Exception as e:
             logger.exception(f"Error in fetching the spans list of observe: {str(e)}")
@@ -1397,19 +1399,12 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
                 }
             )
 
-        # Get eval config IDs from CH (fast) instead of PG EvalLogger scan
+        # Get eval config IDs from CH (fast) instead of PG EvalLogger scan,
+        # via the shared service selector (same lookup trace.py uses).
         eval_config_ids = []
-        ch_result = analytics.execute_ch_query(
-            "SELECT DISTINCT toString(custom_eval_config_id) AS cid "
-            "FROM tracer_eval_logger FINAL "
-            "WHERE _peerdb_is_deleted = 0 "
-            "AND (deleted = 0 OR deleted IS NULL) "
-            "AND dictGet('trace_dict', 'project_id', "
-            "trace_id) = toUUID(%(pid)s)",
-            {"pid": str(project_id)},
-            timeout_ms=30000,
+        ch_ids = analytics.get_eval_config_ids_with_data_ch(
+            str(project_id), timeout_ms=30000
         )
-        ch_ids = [r.get("cid", "") for r in ch_result.data if r.get("cid")]
         if ch_ids:
             eval_configs = CustomEvalConfig.objects.filter(
                 id__in=ch_ids, deleted=False
@@ -2181,39 +2176,11 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
         """Get evaluation details from ClickHouse."""
         # Span- and trace-target rows both anchor to observation_span_id;
         # session rows don't and are served by /trace-session/:id/eval_logs/.
-        query = """
-            SELECT
-                output_float,
-                output_bool,
-                output_str_list,
-                output_str,
-                eval_explanation,
-                error,
-                error_message,
-                output_metadata
-            FROM tracer_eval_logger FINAL
-            WHERE observation_span_id = %(span_id)s
-              AND custom_eval_config_id = %(config_id)s
-              AND target_type IN ('span', 'trace')
-              AND _peerdb_is_deleted = 0
-              AND (deleted = 0 OR deleted IS NULL)
-            LIMIT 1
-        """
-        result = analytics.execute_ch_query(
-            query,
-            {
-                "span_id": str(observation_span_id),
-                "config_id": str(custom_eval_config_id),
-            },
-            timeout_ms=5000,
-        )
-
-        if not result.data:
+        row = analytics.get_eval_detail_ch(observation_span_id, custom_eval_config_id)
+        if not row:
             return self._gm.bad_request(
                 "No eval logger found for the given observation span id and custom eval config id"
             )
-
-        row = result.data[0]
 
         output_metadata = row.get("output_metadata")
         if not output_metadata or not isinstance(output_metadata, dict):

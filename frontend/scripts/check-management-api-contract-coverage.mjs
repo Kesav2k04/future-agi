@@ -26,6 +26,7 @@ const MIN_GROUP_PATHS = {
   "falcon-ai": 15,
   "model-hub": 360,
   simulate: 100,
+  // OTLP trace ingestion routes migrated to fi-collector; Django no longer serves them.
   tracer: 154,
   usage: 55,
 };

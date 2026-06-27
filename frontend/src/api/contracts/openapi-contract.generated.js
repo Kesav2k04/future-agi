@@ -55718,6 +55718,12 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "type": "string",
           "minLength": 1
         },
+        "agent_id": {
+          "title": "Agent id",
+          "type": "string",
+          "format": "uuid",
+          "x-nullable": true
+        },
         "provider": {
           "title": "Provider",
           "description": "Voice provider. One of: vapi, retell, eleven_labs, others.",
@@ -55744,12 +55750,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
         },
         "assistant_id": {
           "title": "Assistant id",
-          "type": "string",
-          "readOnly": true,
-          "minLength": 1
-        },
-        "api_key": {
-          "title": "Api key",
           "type": "string",
           "readOnly": true,
           "minLength": 1

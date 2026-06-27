@@ -11,6 +11,7 @@ from datetime import timedelta
 from typing import List
 
 import structlog
+from django.db.models import F
 
 from tfc.temporal.drop_in import temporal_activity
 from tracer.models.trace_error_analysis import TraceErrorGroup
@@ -173,7 +174,12 @@ def sweep_scannable_traces():
             enabled=True,
             sampling_rate__gt=0,
             project__trace_type="observe",
-        ).values("project_id", "sampling_rate", "last_swept_at")
+        )
+        # Oldest watermark first (never-swept = NULL ranks first) so the most
+        # behind projects are served before the tick's time limit — otherwise a
+        # large fleet would always starve the same tail of projects.
+        .order_by(F("last_swept_at").asc(nulls_first=True))
+        .values("project_id", "sampling_rate", "last_swept_at")
     )
     if not configs:
         return

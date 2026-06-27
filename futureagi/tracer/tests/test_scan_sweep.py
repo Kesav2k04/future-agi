@@ -46,11 +46,11 @@ def _reader(candidates=None, side_effect=None):
 
 
 def _config_model(rows):
-    """Mock TraceScanConfig: ``no_workspace_objects.filter(...).values(...)``
-    returns ``rows``; the same shared ``filter.return_value`` carries the
-    ``.update(...)`` watermark write."""
+    """Mock TraceScanConfig: ``no_workspace_objects.filter(...).order_by(...)
+    .values(...)`` returns ``rows``; the same shared ``filter.return_value``
+    carries the ``.update(...)`` watermark write."""
     m = MagicMock()
-    m.no_workspace_objects.filter.return_value.values.return_value = rows
+    m.no_workspace_objects.filter.return_value.order_by.return_value.values.return_value = rows
     return m
 
 

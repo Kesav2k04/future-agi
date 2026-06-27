@@ -319,13 +319,21 @@ def delete_eval_column_and_dependents(column, organization_id):
     and DeleteAndRunUserEvalView so both fix the Cell full-scan (TH-5508) and
     stay in sync if the logic ever changes.
 
-    Must be called inside a transaction.atomic() block by the caller.
+    Must run inside ``transaction.atomic()``. Steps 2-6 write to four tables
+    (Cell, Dataset, UserEvalMetric, Column); a non-atomic run leaves half-
+    applied state on any failure mid-sequence. The assert below makes that
+    requirement enforced, not documented — a future caller cannot forget.
     """
+    from django.db import connection
     from django.db.models import Q
     from django.utils import timezone
 
     from model_hub.models.develop_dataset import Cell, Column, Dataset
     from model_hub.models.evals_metric import UserEvalMetric
+
+    assert connection.in_atomic_block, (
+        "delete_eval_column_and_dependents requires transaction.atomic()"
+    )
 
     now = timezone.now()
 
@@ -344,12 +352,22 @@ def delete_eval_column_and_dependents(column, organization_id):
             column_id__in=col_ids, deleted=False
         ).update(deleted=True, deleted_at=now)
 
-    # 3. Prune column_order from the dataset.
+    # 3. Prune column_order AND column_config in one Dataset row update.
+    #    column_config is keyed by column id — leaving stale soft-deleted
+    #    ids in it makes a client round-trip of the full config fail
+    #    validation against the (now smaller) live column set.
     dataset = column.dataset
+    dataset_updates = {}
     if dataset.column_order and col_id_strs:
-        Dataset.objects.filter(id=dataset.id).update(
-            column_order=[c for c in dataset.column_order if c not in col_id_strs]
-        )
+        dataset_updates["column_order"] = [
+            c for c in dataset.column_order if c not in col_id_strs
+        ]
+    if dataset.column_config and col_id_strs:
+        dataset_updates["column_config"] = {
+            k: v for k, v in dataset.column_config.items() if k not in col_id_strs
+        }
+    if dataset_updates:
+        Dataset.objects.filter(id=dataset.id).update(**dataset_updates)
 
     # 4. Flag other metrics that referenced this column BEFORE deleting it
     #    (column must still be visible for get_metrics_using_column to find it).

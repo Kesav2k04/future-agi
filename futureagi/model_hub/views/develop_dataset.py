@@ -7712,23 +7712,31 @@ class DeleteEvalsView(APIView):
                             deleted=False,
                         )
                     )
-                    if per_edt_cols:
-                        col_ids = [c.id for c in per_edt_cols]
-                        snapshot_dataset = per_edt_cols[0].dataset
-                        Cell.objects.filter(
-                            column_id__in=col_ids, deleted=False
-                        ).update(deleted=True, deleted_at=now)
-                        Column.objects.filter(id__in=col_ids).update(
-                            deleted=True, deleted_at=now
-                        )
-                        if snapshot_dataset.column_order:
-                            col_id_strs = {str(cid) for cid in col_ids}
-                            snapshot_dataset.column_order = [
-                                cid
-                                for cid in snapshot_dataset.column_order
-                                if cid not in col_id_strs
-                            ]
-                            snapshot_dataset.save(update_fields=["column_order"])
+                    # Soft-delete the metric alongside the per-EDT columns/cells.
+                    # Previously this branch only cleaned up columns + cells and
+                    # left eval_metric.deleted=False — the eval lived on as a
+                    # ghost record (still in the sidebar, broken on rerun).
+                    with transaction.atomic():
+                        if per_edt_cols:
+                            col_ids = [c.id for c in per_edt_cols]
+                            snapshot_dataset = per_edt_cols[0].dataset
+                            Cell.objects.filter(
+                                column_id__in=col_ids, deleted=False
+                            ).update(deleted=True, deleted_at=now)
+                            Column.objects.filter(id__in=col_ids).update(
+                                deleted=True, deleted_at=now
+                            )
+                            if snapshot_dataset.column_order:
+                                col_id_strs = {str(cid) for cid in col_ids}
+                                snapshot_dataset.column_order = [
+                                    cid
+                                    for cid in snapshot_dataset.column_order
+                                    if cid not in col_id_strs
+                                ]
+                                snapshot_dataset.save(update_fields=["column_order"])
+                        eval_metric.deleted = True
+                        eval_metric.deleted_at = now
+                        eval_metric.save(update_fields=["deleted", "deleted_at"])
                 else:
                     # Check if column exists before attempting deletion
                     column = Column.objects.filter(

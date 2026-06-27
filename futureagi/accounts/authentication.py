@@ -73,6 +73,46 @@ def _is_annotation_queue_role_scoped_write_path(path):
     )
 
 
+def workspace_read_only(view_cls):
+    """Mark a view whose write-method requests perform NO workspace writes.
+
+    Some read-only endpoints use a POST body only to carry filters or a
+    search query — they read, they don't mutate. Decorate those views with
+    ``@workspace_read_only`` so the workspace write-permission check skips
+    them and read-only roles (viewers) can reach them.
+
+    Prefer this over adding the path to a string allow-list: the intent
+    lives at the view definition, so it cannot drift out of sync when the
+    route changes, and it is impossible to add a read-only POST endpoint
+    without the marker travelling with it.
+    """
+    view_cls.workspace_write_exempt = True
+    return view_cls
+
+
+def _resolve_view_class(request):
+    """Return the class-based view handling this request, if resolvable.
+
+    Django attaches ``.cls`` to the function produced by ``View.as_view()``;
+    by the time authentication runs the URL is already resolved, so
+    ``request.resolver_match`` is populated.
+    """
+    match = getattr(request, "resolver_match", None)
+    return getattr(getattr(match, "func", None), "cls", None)
+
+
+def _is_workspace_write_exempt_view(request):
+    """True when the resolved view is marked ``@workspace_read_only``.
+
+    Fail-closed: if the view cannot be resolved, returns ``False`` so the
+    write check still runs — a resolution failure can never grant write
+    access.
+    """
+    return bool(
+        getattr(_resolve_view_class(request), "workspace_write_exempt", False)
+    )
+
+
 class APIKeyAuthentication(BaseAuthentication):
     def authenticate_header(self, request):
         return "ApiKey"
@@ -201,7 +241,6 @@ class APIKeyAuthentication(BaseAuthentication):
         excluded_paths = [
             "workspace/switch/",
             "organizations/switch/",
-            "get-eval-templates",
             "update-user-full-name",  # Users can always update their own profile
             "onboarding/",  # Users can always update their own onboarding profile
             "logout/",  # Users can always invalidate their own access token
@@ -210,9 +249,11 @@ class APIKeyAuthentication(BaseAuthentication):
             "passkeys/",  # Users can always manage their own passkey records
         ]
 
-        should_skip_write_check = any(
-            excluded_path in request.path for excluded_path in excluded_paths
-        ) or _is_annotation_queue_role_scoped_write_path(request.path)
+        should_skip_write_check = (
+            _is_workspace_write_exempt_view(request)
+            or any(excluded_path in request.path for excluded_path in excluded_paths)
+            or _is_annotation_queue_role_scoped_write_path(request.path)
+        )
 
         if (
             request.method in ["POST", "PUT", "PATCH", "DELETE"]

@@ -339,6 +339,11 @@ func spanToRow(
 	endUserID := identity.endUserColumn()
 	traceSessionID := identity.sessionColumn()
 
+	versionNanos := uint64(0)
+	if startNanos.UnixNano() != 0 {
+		versionNanos = uint64(time.Now().UTC().UnixNano())
+	}
+
 	row := map[string]any{
 		"project_id":        coalesceUUID(projectID),
 		"observation_type":  observationType,
@@ -375,9 +380,7 @@ func spanToRow(
 		"tags":              "[]",
 		"span_events":       spanEventsJSON(span.Events()),
 		"semconv_source":    semconv,
-		// _version comes from start_time nanos so newer spans always win
-		// the ReplacingMergeTree dedup; matches the adapter.py convention.
-		"_version":   uint64(startNanos.UnixNano()),
+		"_version":   versionNanos,
 		"is_deleted": uint8(0),
 	}
 	return row, identity, nil

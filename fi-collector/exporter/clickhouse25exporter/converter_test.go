@@ -252,27 +252,49 @@ func TestConvertWithIdentities_NoTraceWhenStartTimeZero(t *testing.T) {
 	}
 }
 
-func TestConvertWithIdentities_VersionCappedForFutureStart(t *testing.T) {
+func TestConvertWithIdentities_VersionIsIngestTimeNotFutureStart(t *testing.T) {
 	traces := buildOTLPSpan()
-	// Producer clock skewed 24h ahead: _version is capped at ingest wall-clock so
-	// the app mirror's time.time_ns() still wins.
+	// Producer clock skewed 24h ahead: _version is ingest wall-clock, not the
+	// span start, so a future start can't outrank the app mirror's time.time_ns().
 	future := time.Now().Add(24 * time.Hour)
 	traces.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).
 		SetStartTimestamp(pcommon.NewTimestampFromTime(future))
+	before := uint64(time.Now().UTC().UnixNano())
 	rows, ids, err := ConvertWithIdentities(traces)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ts := ids.Traces()
-	if len(ts) != 1 {
-		t.Fatalf("expected 1 trace, got %d", len(ts))
+	if len(ids.Traces()) != 1 {
+		t.Fatalf("expected 1 trace, got %d", len(ids.Traces()))
 	}
-	rawVersion := rows[0]["_version"].(uint64) // = future start nanos
-	if ts[0].Version >= rawVersion {
-		t.Errorf("future start: trace.Version=%d must be CAPPED below the raw start nanos=%d", ts[0].Version, rawVersion)
+	version := rows[0]["_version"].(uint64)
+	futureNs := uint64(future.UTC().UnixNano())
+	if version >= futureNs {
+		t.Errorf("_version=%d must be ingest wall-clock, not the future start=%d", version, futureNs)
 	}
-	if ts[0].Version > uint64(time.Now().UTC().UnixNano()) {
-		t.Errorf("trace.Version=%d must not exceed ingest wall-clock", ts[0].Version)
+	if version < before {
+		t.Errorf("_version=%d must be >= ingest time captured before convert (%d)", version, before)
+	}
+	if ts := ids.Traces(); ts[0].Version != version {
+		t.Errorf("trace.Version=%d must equal span _version=%d", ts[0].Version, version)
+	}
+}
+
+func TestConvertWithIdentities_VersionAdvancesAcrossRePolls(t *testing.T) {
+	// Same deterministic id re-polled later must get a STRICTLY newer _version so
+	// the completed / recording-bearing row wins RMT dedup over the earlier poll.
+	convertOnce := func() uint64 {
+		rows, _, err := ConvertWithIdentities(buildOTLPSpan())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return rows[0]["_version"].(uint64)
+	}
+	first := convertOnce()
+	time.Sleep(time.Millisecond)
+	second := convertOnce()
+	if second <= first {
+		t.Errorf("re-poll _version must advance: first=%d second=%d", first, second)
 	}
 }
 

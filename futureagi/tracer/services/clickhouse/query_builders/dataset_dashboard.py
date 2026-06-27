@@ -62,6 +62,30 @@ DATASET_SYSTEM_METRICS: Dict[str, Tuple[str, str]] = {
 # Metrics whose column expression emits a 0/1 indicator per row.
 _RATE_INDICATOR_METRICS = frozenset({"cell_error_rate"})
 
+_DATASET_NAME_EXPR = "dictGetOrDefault('dataset_dict', 'name', c.dataset_id, '')"
+_COLUMN_NAME_EXPR = "dictGetOrDefault('column_dict', 'name', c.column_id, '')"
+_COLUMN_SOURCE_EXPR = "dictGetOrDefault('column_dict', 'source', c.column_id, '')"
+
+_STRING_DIMENSION_METRICS = frozenset(
+    {
+        "dataset",
+        "eval_template",
+        "column_name",
+        "column_source",
+        "cell_status",
+    }
+)
+
+DATASET_SYSTEM_METRICS.update(
+    {
+        "dataset": ("model_hub_cell", _DATASET_NAME_EXPR),
+        "eval_template": ("model_hub_cell", _COLUMN_NAME_EXPR),
+        "column_name": ("model_hub_cell", _COLUMN_NAME_EXPR),
+        "column_source": ("model_hub_cell", _COLUMN_SOURCE_EXPR),
+        "cell_status": ("model_hub_cell", "c.status"),
+    }
+)
+
 DATASET_METRIC_UNITS: Dict[str, str] = {
     "row_count": "",
     "prompt_tokens": "tokens",
@@ -69,6 +93,11 @@ DATASET_METRIC_UNITS: Dict[str, str] = {
     "total_tokens": "tokens",
     "response_time": "ms",
     "cell_error_rate": "%",
+    "dataset": "",
+    "eval_template": "",
+    "column_name": "",
+    "column_source": "",
+    "cell_status": "",
 }
 
 # Extend base aggregations with dataset-specific ones
@@ -106,10 +135,10 @@ DATASET_AGGREGATIONS: Dict[str, str] = {
 
 # Breakdown dimensions for dataset workflow
 DATASET_BREAKDOWN_COLUMNS: Dict[str, str] = {
-    "dataset": "dictGet('dataset_dict', 'name', c.dataset_id)",
-    "eval_template": "dictGet('column_dict', 'name', c.column_id)",
-    "column_name": "dictGet('column_dict', 'name', c.column_id)",
-    "column_source": "dictGet('column_dict', 'source', c.column_id)",
+    "dataset": _DATASET_NAME_EXPR,
+    "eval_template": _COLUMN_NAME_EXPR,
+    "column_name": _COLUMN_NAME_EXPR,
+    "column_source": _COLUMN_SOURCE_EXPR,
     "cell_status": "c.status",
 }
 
@@ -224,9 +253,16 @@ class DatasetQueryBuilder(DashboardQueryBuilderBase):
         if metric_name == "row_count" and aggregation not in ("count", "sum"):
             aggregation = "count"
 
-        agg_expr = DATASET_AGGREGATIONS.get(aggregation, "avg({col})").format(
-            col=col_expr
-        )
+        if metric_name in _STRING_DIMENSION_METRICS:
+            is_present = f"{col_expr} IS NOT NULL AND {col_expr} != ''"
+            if aggregation == "count":
+                agg_expr = f"countIf({is_present})"
+            else:
+                agg_expr = f"uniqIf({col_expr}, {is_present})"
+        else:
+            agg_expr = DATASET_AGGREGATIONS.get(aggregation, "avg({col})").format(
+                col=col_expr
+            )
 
         if metric_name in _RATE_INDICATOR_METRICS:
             agg_expr = rescale_rate_to_percent(agg_expr, aggregation)
@@ -508,6 +544,25 @@ class DatasetQueryBuilder(DashboardQueryBuilderBase):
         if col:
             return col
         return None
+
+    def metric_info(self, metric: dict) -> dict:
+        info = super().metric_info(metric)
+        info["aggregation"] = self._effective_aggregation(metric)
+        return info
+
+    @staticmethod
+    def _effective_aggregation(metric: dict) -> str:
+        metric_type = metric.get("type", "system_metric")
+        metric_name = metric.get("id") or metric.get("name", "")
+        aggregation = metric.get("aggregation", "avg")
+
+        if metric_type != "system_metric":
+            return aggregation
+        if metric_name == "row_count" and aggregation not in ("count", "sum"):
+            return "count"
+        if metric_name in _STRING_DIMENSION_METRICS:
+            return "count" if aggregation == "count" else "count_distinct"
+        return aggregation
 
     @staticmethod
     def _dataset_scope_subquery() -> str:

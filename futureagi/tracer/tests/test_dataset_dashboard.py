@@ -140,6 +140,11 @@ class TestDatasetSystemMetricsConstants:
             "total_tokens",
             "response_time",
             "cell_error_rate",
+            "dataset",
+            "eval_template",
+            "column_name",
+            "column_source",
+            "cell_status",
         }
         assert set(DATASET_SYSTEM_METRICS.keys()) == expected
 
@@ -264,6 +269,61 @@ class TestDatasetSystemMetricQueries:
         builder = DatasetQueryBuilder(base_query_config)
         sql, _ = builder.build_metric_query(base_query_config["metrics"][0])
         assert "CASE WHEN status = 'error'" in sql
+
+    def test_dataset_string_metric_defaults_to_count_distinct(
+        self, base_query_config
+    ):
+        base_query_config["metrics"] = [
+            {
+                "id": "dataset",
+                "name": "dataset",
+                "type": "system_metric",
+                "aggregation": "avg",
+            }
+        ]
+        builder = DatasetQueryBuilder(base_query_config)
+
+        queries = builder.build_all_queries()
+        sql, _, metric_info = queries[0]
+
+        assert "uniqIf(" in sql
+        assert "dataset_dict" in sql
+        assert metric_info["aggregation"] == "count_distinct"
+
+    def test_dataset_string_metric_count_counts_present_values(
+        self, base_query_config
+    ):
+        base_query_config["metrics"] = [
+            {
+                "id": "dataset",
+                "name": "dataset",
+                "type": "system_metric",
+                "aggregation": "count",
+            }
+        ]
+        builder = DatasetQueryBuilder(base_query_config)
+
+        sql, _ = builder.build_metric_query(base_query_config["metrics"][0])
+
+        assert "countIf(" in sql
+        assert "dataset_dict" in sql
+
+    def test_column_source_string_metric_is_queryable(self, base_query_config):
+        base_query_config["metrics"] = [
+            {
+                "id": "column_source",
+                "name": "column_source",
+                "type": "system_metric",
+                "aggregation": "count_distinct",
+            }
+        ]
+        builder = DatasetQueryBuilder(base_query_config)
+
+        sql, _ = builder.build_metric_query(base_query_config["metrics"][0])
+
+        assert "uniqIf(" in sql
+        assert "column_dict" in sql
+        assert "source" in sql
 
     def test_total_tokens_sum(self, base_query_config):
         base_query_config["metrics"] = [

@@ -180,11 +180,8 @@ class ObservabilityProviderViewSet(BaseModelViewSetMixinWithUserOrg, ModelViewSe
         try:
             provider = request.data.get("provider")
             api_key = request.data.get("api_key")
-            if provider in [
-                ProviderChoices.VAPI,
-                ProviderChoices.RETELL,
-                ProviderChoices.OTHERS,
-            ]:
+            # Only VAPI/RETELL support key verification; reject the rest clearly.
+            if provider in (ProviderChoices.VAPI, ProviderChoices.RETELL):
                 status_code = ObservabilityService.verify_api_key(
                     provider=provider,
                     api_key=api_key,
@@ -193,13 +190,10 @@ class ObservabilityProviderViewSet(BaseModelViewSetMixinWithUserOrg, ModelViewSe
                     return self._gm.success_response("API key verified successfully.")
                 else:
                     return self._gm.bad_request("Invalid API key.")
-            # elif provider == ProviderChoices.ELEVEN_LABS:
-            #     return ObservabilityService.verify_api_key(
-            #         api_endpoint=ObservabilityRoutes.ELEVEN_LABS_CONVERSATIONS_URL.value,
-            #         api_key=api_key,
-            #     )
             else:
-                return self._gm.bad_request(f"Invalid choice for provider: {provider}")
+                return self._gm.bad_request(
+                    f"API key verification is not supported for provider: {provider}"
+                )
         except Exception as e:
             logger.exception(f"Error verifying API key: {e}")
             return self._gm.bad_request(f"Error verifying API key: {e}")
@@ -210,11 +204,8 @@ class ObservabilityProviderViewSet(BaseModelViewSetMixinWithUserOrg, ModelViewSe
             assistant_id = request.data.get("assistant_id")
             api_key = request.data.get("api_key")
             provider = request.data.get("provider")
-            if provider in [
-                ProviderChoices.VAPI,
-                ProviderChoices.RETELL,
-                ProviderChoices.OTHERS,
-            ]:
+            # Only VAPI/RETELL have an assistant model to verify against.
+            if provider in (ProviderChoices.VAPI, ProviderChoices.RETELL):
                 status_code = ObservabilityService.verify_assistant_id(
                     provider=provider,
                     assistant_id=assistant_id,
@@ -227,7 +218,9 @@ class ObservabilityProviderViewSet(BaseModelViewSetMixinWithUserOrg, ModelViewSe
                 else:
                     return self._gm.bad_request("Invalid assistant ID.")
             else:
-                return self._gm.bad_request(f"Invalid choice for provider: {provider}")
+                return self._gm.bad_request(
+                    f"Assistant ID verification is not supported for provider: {provider}"
+                )
         except Exception as e:
             logger.exception(f"Error verifying assistant ID: {e}")
             return self._gm.bad_request(f"Error verifying assistant ID: {e}")

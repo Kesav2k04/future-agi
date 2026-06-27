@@ -481,3 +481,21 @@ def retell_signature(payload, api_key):
 
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
     return symmetric["sign"](body, api_key)
+
+
+@pytest.mark.parametrize("endpoint", ["verify_api_key", "verify_assistant_id"])
+@pytest.mark.parametrize(
+    "provider",
+    [ProviderChoices.BLAND, ProviderChoices.TWILIO, ProviderChoices.OTHERS],
+)
+def test_verify_endpoints_reject_unsupported_providers(endpoint, provider):
+    """Unsupported providers get a clear 400 and never call the verify service."""
+    from unittest.mock import MagicMock
+
+    from tracer.views.observability_provider import ObservabilityProviderViewSet
+
+    request = MagicMock()
+    request.data = {"provider": provider, "api_key": "x", "assistant_id": "y"}
+    response = getattr(ObservabilityProviderViewSet(), endpoint)(request)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "not supported" in json.dumps(response.data).lower()

@@ -4,9 +4,16 @@
  * These test the GENERATED client — the layer the frontend actually imports —
  * not the backend runtime. That is the layer that has silently broken across
  * multiple rounds of this PR.
+ *
+ * NOTE: this file lives outside src/generated/ on purpose. orval wipes the
+ * generated directory on every codegen run, so any test inside that tree
+ * silently disappears.
  */
 import { describe, it, expect } from "vitest";
-import { ModelHubExperimentsV2CreateBody, ModelHubExperimentsV2UpdateBody } from "../api.zod";
+import {
+  ModelHubExperimentsV2CreateBody,
+  ModelHubExperimentsV2UpdateBody,
+} from "src/generated/api-contracts/api.zod";
 
 const MINIMAL_PAYLOAD = {
   name: "my experiment",

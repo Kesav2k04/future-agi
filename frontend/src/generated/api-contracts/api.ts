@@ -62311,7 +62311,7 @@ export type tracerObservationSpanListSpansObserveResponseError = (tracerObservat
 
 export type tracerObservationSpanListSpansObserveResponse = (tracerObservationSpanListSpansObserveResponseSuccess | tracerObservationSpanListSpansObserveResponseError)
 
-export const getTracerObservationSpanListSpansObserveUrl = (params: TracerObservationSpanListSpansObserveParams,) => {
+export const getTracerObservationSpanListSpansObserveUrl = (params?: TracerObservationSpanListSpansObserveParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -62330,7 +62330,7 @@ export const getTracerObservationSpanListSpansObserveUrl = (params: TracerObserv
   return stringifiedParams.length > 0 ? `/tracer/observation-span/list_spans_observe/?${stringifiedParams}` : `/tracer/observation-span/list_spans_observe/`
 }
 
-export const tracerObservationSpanListSpansObserve = async (params: TracerObservationSpanListSpansObserveParams, options?: RequestInit): Promise<tracerObservationSpanListSpansObserveResponse> => {
+export const tracerObservationSpanListSpansObserve = async (params?: TracerObservationSpanListSpansObserveParams, options?: RequestInit): Promise<tracerObservationSpanListSpansObserveResponse> => {
 
   return apiMutator<tracerObservationSpanListSpansObserveResponse>(getTracerObservationSpanListSpansObserveUrl(params),
   {

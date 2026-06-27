@@ -2102,6 +2102,78 @@ class TestDashboardQueryExecution:
         assert "sp.trace_session_id" in sql
 
     @pytest.mark.django_db
+    @patch(
+        "tracer.services.clickhouse.v2.trace_session_dict_reader."
+        "resolve_session_fields"
+    )
+    @patch("tracer.views.dashboard.AnalyticsQueryService")
+    @patch("tracer.views.dashboard.is_clickhouse_enabled", return_value=True)
+    def test_filter_values_sessions_source_labels_session_ids(
+        self,
+        _mock_enabled,
+        mock_analytics_cls,
+        mock_resolve_session_fields,
+        auth_client,
+        observe_project,
+    ):
+        session_id = str(uuid.uuid4())
+        mock_service = MagicMock()
+        mock_result = MagicMock()
+        mock_result.data = [{"val": session_id}]
+        mock_service.execute_ch_query.return_value = mock_result
+        mock_analytics_cls.return_value = mock_service
+        mock_resolve_session_fields.return_value = {
+            session_id: {
+                "external_session_id": "session-alpha",
+                "display_name": None,
+            }
+        }
+
+        response = auth_client.get(
+            "/tracer/dashboard/filter_values/",
+            {
+                "source": "sessions",
+                "metric_name": "session",
+                "metric_type": "system_metric",
+                "project_ids": str(observe_project.id),
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["result"]["values"] == [
+            {"value": session_id, "label": "session-alpha"}
+        ]
+
+    @pytest.mark.django_db
+    @patch("tracer.views.dashboard.AnalyticsQueryService")
+    @patch("tracer.views.dashboard.is_clickhouse_enabled", return_value=True)
+    def test_filter_values_sessions_source_uses_span_backed_values(
+        self, _mock_enabled, mock_analytics_cls, auth_client, observe_project
+    ):
+        mock_service = MagicMock()
+        mock_result = MagicMock()
+        mock_result.data = [{"val": "gpt-4o-mini"}]
+        mock_service.execute_ch_query.return_value = mock_result
+        mock_analytics_cls.return_value = mock_service
+
+        response = auth_client.get(
+            "/tracer/dashboard/filter_values/",
+            {
+                "source": "sessions",
+                "metric_name": "model",
+                "metric_type": "system_metric",
+                "project_ids": str(observe_project.id),
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["result"]["values"] == [
+            {"value": "gpt-4o-mini", "label": "gpt-4o-mini"}
+        ]
+        sql = mock_service.execute_ch_query.call_args.args[0]
+        assert "SELECT DISTINCT model AS val FROM spans" in sql
+
+    @pytest.mark.django_db
     def test_filter_values_annotation_annotator_returns_project_annotators(
         self, auth_client, project, observation_span, user, organization, workspace
     ):

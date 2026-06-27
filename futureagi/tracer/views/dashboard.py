@@ -2264,7 +2264,26 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                     )
                     values = []
 
-                if metric_name == "project":
+                if metric_name == "session" and source == "sessions":
+                    from tracer.services.clickhouse.v2.trace_session_dict_reader import (
+                        resolve_session_fields,
+                    )
+
+                    session_fields = resolve_session_fields(values)
+                    values = [
+                        {
+                            "value": value,
+                            "label": str(
+                                session_fields.get(value, {}).get("display_name")
+                                or session_fields.get(value, {}).get(
+                                    "external_session_id"
+                                )
+                                or value
+                            ),
+                        }
+                        for value in values
+                    ]
+                elif metric_name == "project":
                     name_map = dict(
                         Project.objects.filter(
                             id__in=project_ids,

@@ -2035,3 +2035,30 @@ func TestMapGeminiErrorType(t *testing.T) {
 		})
 	}
 }
+
+// Gemini reports thinking tokens as thoughtsTokenCount, separate from
+// candidatesTokenCount, but bills them as output. CompletionTokens must fold
+// them in, or thinking-on runs (the cluster-RCA agent's default) under-bill by
+// exactly their thinking cost — invisibly, since cost is derived from it.
+func TestTranslateResponse_FoldsThinkingTokensIntoCompletion(t *testing.T) {
+	resp := &geminiResponse{
+		UsageMetadata: &geminiUsageMetadata{
+			PromptTokenCount:     100,
+			CandidatesTokenCount: 40,
+			ThoughtsTokenCount:   25,
+			TotalTokenCount:      165,
+		},
+	}
+
+	out := translateResponse(resp, "gemini-3.5-flash")
+
+	if out.Usage == nil {
+		t.Fatal("expected usage to be populated")
+	}
+	if got, want := out.Usage.CompletionTokens, 65; got != want {
+		t.Fatalf("CompletionTokens = %d, want %d (candidates 40 + thoughts 25)", got, want)
+	}
+	if got, want := out.Usage.PromptTokens, 100; got != want {
+		t.Fatalf("PromptTokens = %d, want %d", got, want)
+	}
+}

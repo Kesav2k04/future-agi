@@ -159,7 +159,11 @@ type geminiCandidate struct {
 type geminiUsageMetadata struct {
 	PromptTokenCount     int `json:"promptTokenCount"`
 	CandidatesTokenCount int `json:"candidatesTokenCount"`
-	TotalTokenCount      int `json:"totalTokenCount"`
+	// Gemini reports thinking tokens separately from candidatesTokenCount but
+	// bills them as output. Fold them into CompletionTokens so thinking-on runs
+	// aren't under-billed (OpenAI's completion_tokens includes reasoning too).
+	ThoughtsTokenCount int `json:"thoughtsTokenCount"`
+	TotalTokenCount    int `json:"totalTokenCount"`
 }
 
 type geminiErrorResponse struct {
@@ -741,7 +745,7 @@ func translateResponse(resp *geminiResponse, model string) *models.ChatCompletio
 	if resp.UsageMetadata != nil {
 		result.Usage = &models.Usage{
 			PromptTokens:     resp.UsageMetadata.PromptTokenCount,
-			CompletionTokens: resp.UsageMetadata.CandidatesTokenCount,
+			CompletionTokens: resp.UsageMetadata.CandidatesTokenCount + resp.UsageMetadata.ThoughtsTokenCount,
 			TotalTokens:      resp.UsageMetadata.TotalTokenCount,
 		}
 	}

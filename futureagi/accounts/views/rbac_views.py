@@ -33,6 +33,7 @@ from accounts.serializers.rbac import (
     WorkspaceMemberRoleUpdateResponseSerializer,
     WorkspaceMemberRoleUpdateSerializer,
 )
+from accounts.services import member_role_service
 from accounts.utils import (
     existing_member_access_will_change,
     generate_password,
@@ -833,159 +834,20 @@ class MemberRoleUpdateAPIView(APIView):
         user_id = data["user_id"]
 
         try:
-            target_membership = OrganizationMembership.objects.get(
-                user_id=user_id,
+            changes = member_role_service.update_member_role(
                 organization=organization,
+                actor=request.user,
+                target_user_id=user_id,
+                org_level=data.get("org_level"),
+                ws_level=data.get("ws_level"),
+                workspace_id=data.get("workspace_id"),
+                workspace_access=data.get("workspace_access"),
+                workspace_access_provided="workspace_access" in request.data,
             )
-        except OrganizationMembership.DoesNotExist:
-            return gm.bad_request(get_error_message("MEMBER_NOT_IN_ORG"))
-
-        # BUG-3 fix: reject role changes for deactivated members (but allow for pending invites)
-        # A pending invite has an OrganizationInvite record; a deactivated member does not.
-        if not target_membership.is_active:
-            target_user = User.objects.filter(id=user_id).first()
-            has_pending_invite = (
-                target_user
-                and OrganizationInvite.objects.filter(
-                    organization=organization,
-                    target_email__iexact=target_user.email,
-                    status=InviteStatus.PENDING,
-                ).exists()
-            )
-            if not has_pending_invite:
-                return gm.bad_request(
-                    get_error_message("MEMBER_DEACTIVATED_ROLE_UPDATE")
-                )
-
-        changes = {}
-
-        with transaction.atomic():
-            # Update org level — with escalation guard
-            if data.get("org_level") is not None:
-                old_level = target_membership.level_or_legacy
-                new_level = data["org_level"]
-
-                actor_membership = get_org_membership(request.user)
-                actor_level = (
-                    actor_membership.level_or_legacy if actor_membership else 0
-                )
-                if not can_invite_at_level(actor_level, new_level):
-                    return gm.forbidden_response(
-                        get_error_message("ROLE_ASSIGN_FORBIDDEN")
-                    )
-
-                # B4 fix: Race-safe last-owner check with select_for_update
-                if old_level >= Level.OWNER and new_level < Level.OWNER:
-                    owner_count = (
-                        OrganizationMembership.objects.select_for_update()
-                        .filter(
-                            organization=organization,
-                            is_active=True,
-                            level__gte=Level.OWNER,
-                        )
-                        .count()
-                    )
-                    legacy_owner_count = (
-                        OrganizationMembership.objects.select_for_update()
-                        .filter(
-                            organization=organization,
-                            is_active=True,
-                            level__isnull=True,
-                            role="Owner",
-                        )
-                        .count()
-                    )
-                    if (owner_count + legacy_owner_count) <= 1:
-                        return gm.bad_request(get_error_message("LAST_OWNER_DEMOTE"))
-
-                target_membership.level = new_level
-                target_membership.role = Level.to_org_string(new_level)
-                target_membership.save(update_fields=["level", "role"])
-                changes["org_level"] = {"old": old_level, "new": new_level}
-
-                if new_level >= Level.ADMIN:
-                    # Promote to workspace_admin across all org workspaces
-                    # for consistency with implicit global access.
-                    org_workspaces = Workspace.objects.filter(organization=organization)
-                    for ws in org_workspaces:
-                        WorkspaceMembership._base_manager.update_or_create(
-                            workspace=ws,
-                            user_id=user_id,
-                            defaults={
-                                "level": Level.WORKSPACE_ADMIN,
-                                "role": Level.to_ws_role(Level.WORKSPACE_ADMIN),
-                                "organization_membership": target_membership,
-                                "granted_by": request.user,
-                                "is_active": True,
-                                "deleted": False,
-                                "deleted_at": None,
-                            },
-                        )
-                else:
-                    # Below Admin — use workspace_access to grant explicit memberships.
-                    ws_access = data.get("workspace_access") or []
-                    default_ws_level = (
-                        Level.WORKSPACE_MEMBER
-                        if new_level >= Level.MEMBER
-                        else Level.WORKSPACE_VIEWER
-                    )
-                    for ws_entry in ws_access:
-                        ws_id = ws_entry.get("workspace_id")
-                        ws_level = ws_entry.get("level", default_ws_level)
-                        if ws_id:
-                            WorkspaceMembership._base_manager.update_or_create(
-                                workspace_id=ws_id,
-                                user_id=user_id,
-                                defaults={
-                                    "level": ws_level,
-                                    "role": Level.to_ws_role(ws_level),
-                                    "organization_membership": target_membership,
-                                    "granted_by": request.user,
-                                    "is_active": True,
-                                    "deleted": False,
-                                    "deleted_at": None,
-                                },
-                            )
-
-                # Also update User.organization_role for backward compat
-                User.objects.filter(id=user_id).update(
-                    organization_role=Level.to_org_string(new_level)
-                )
-
-                # Also update OrganizationInvite if user has a pending invite
-                target_user = User.objects.filter(id=user_id).first()
-                if target_user:
-                    OrganizationInvite.objects.filter(
-                        organization=organization,
-                        target_email__iexact=target_user.email,
-                        status=InviteStatus.PENDING,
-                    ).update(level=new_level)
-
-            # Update ws level
-            if data.get("ws_level") is not None and data.get("workspace_id"):
-                # Use all_objects to bypass workspace context filtering and
-                # include soft-deleted rows — the DB unique constraint on
-                # (workspace_id, user_id) still holds for deleted rows.
-                existing_ws = WorkspaceMembership.all_objects.filter(
-                    workspace_id=data["workspace_id"],
-                    user_id=user_id,
-                ).first()
-                old_ws = existing_ws.level_or_legacy if existing_ws else None
-
-                WorkspaceMembership.all_objects.update_or_create(
-                    workspace_id=data["workspace_id"],
-                    user_id=user_id,
-                    defaults={
-                        "level": data["ws_level"],
-                        "role": Level.to_ws_role(data["ws_level"]),
-                        "organization_membership": target_membership,
-                        "granted_by": request.user,
-                        "is_active": True,
-                        "deleted": False,
-                        "deleted_at": None,
-                    },
-                )
-                changes["ws_level"] = {"old": old_ws, "new": data["ws_level"]}
+        except member_role_service.MemberRoleUpdateError as exc:
+            if exc.status_code == 403:
+                return gm.forbidden_response(get_error_message(exc.code))
+            return gm.bad_request(get_error_message(exc.code))
 
         log_audit(
             organization=organization,
@@ -1019,7 +881,10 @@ class MemberRemoveAPIView(APIView):
 
     @validated_request(
         request_serializer=MemberRemoveSerializer,
-        responses={200: MemberUserMutationResponseSerializer, **ACCOUNTS_ERROR_RESPONSES},
+        responses={
+            200: MemberUserMutationResponseSerializer,
+            **ACCOUNTS_ERROR_RESPONSES,
+        },
         reject_unknown_fields=True,
     )
     def delete(self, request):
@@ -1129,7 +994,10 @@ class MemberReactivateAPIView(APIView):
 
     @validated_request(
         request_serializer=MemberRemoveSerializer,
-        responses={200: MemberUserMutationResponseSerializer, **ACCOUNTS_ERROR_RESPONSES},
+        responses={
+            200: MemberUserMutationResponseSerializer,
+            **ACCOUNTS_ERROR_RESPONSES,
+        },
         reject_unknown_fields=True,
     )
     def post(self, request):
@@ -1579,7 +1447,10 @@ class WorkspaceMemberRemoveAPIView(APIView):
 
     @validated_request(
         request_serializer=WorkspaceMemberRemoveSerializer,
-        responses={200: MemberUserMutationResponseSerializer, **ACCOUNTS_ERROR_RESPONSES},
+        responses={
+            200: MemberUserMutationResponseSerializer,
+            **ACCOUNTS_ERROR_RESPONSES,
+        },
         reject_unknown_fields=True,
     )
     def delete(self, request, workspace_id):

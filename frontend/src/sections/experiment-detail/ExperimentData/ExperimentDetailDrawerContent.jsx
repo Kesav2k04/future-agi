@@ -14,6 +14,7 @@ import { AgGridReact } from "ag-grid-react";
 import PropTypes from "prop-types";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Iconify from "src/components/iconify";
+import CustomTooltip from "src/components/tooltip/CustomTooltip";
 import { useAgThemeWith } from "src/hooks/use-ag-theme";
 import ExperimentDescriptionCell from "./ExperimentDescriptionCell";
 import DatapointCard from "src/sections/common/DatapointCard";
@@ -23,8 +24,8 @@ import { LoadingButton } from "@mui/lab";
 import { getUniqueColorPalette, copyToClipboard } from "src/utils/utils";
 import { enqueueSnackbar } from "notistack";
 import {
-  getLabel,
   getStatusColor,
+  normalizeEvalResult,
 } from "src/sections/develop-detail/DataTab/common";
 import { ShowComponent } from "src/components/show/ShowComponent";
 import SvgColor from "src/components/svg-color/svg-color";
@@ -45,13 +46,12 @@ const SkeletonLoader = () => (
   />
 );
 
-// StatusCellRenderer that properly handles different data types like the dataset detail drawer
 export const StatusCellRenderer = (props) => {
   const theme = useTheme();
   const { value } = props;
-  let cellValue = value?.cellValue;
+  const cellValue = value?.cell_value ?? value?.cellValue;
   const status = value?.status;
-  const type = props?.data?.dataType;
+  const outputType = props?.data?.output_type ?? props?.data?.outputType;
 
   if (status === "running") return <SkeletonLoader />;
   if (status === "error") {
@@ -68,52 +68,68 @@ export const StatusCellRenderer = (props) => {
     );
   }
 
-  if (type === OutputTypes.NUMERIC) {
+  if (outputType === OutputTypes.NUMERIC) {
     return <NumericCell value={cellValue} sx={{ padding: "0 12px" }} />;
   }
 
-  if (cellValue?.startsWith("['") && cellValue?.endsWith("']")) {
-    cellValue = JSON.parse(cellValue.replace(/'/g, '"'));
-  }
-  if (
-    !cellValue ||
-    cellValue === "[]" ||
-    cellValue === undefined ||
-    cellValue === ""
-  )
-    return "-";
+  const result = normalizeEvalResult(cellValue, outputType);
+  if (result.kind === "empty") return "-";
 
+  const chipSx = (v) => ({
+    ...getStatusColor(v, theme),
+    transition: "none",
+    "&:hover": {
+      backgroundColor: getStatusColor(v, theme).backgroundColor,
+      boxShadow: "none",
+    },
+  });
+
+  if (result.kind === "score") {
+    const pct = result.score <= 1 ? result.score * 100 : result.score;
+    return (
+      <Chip
+        variant="soft"
+        label={`${Math.round(pct)}%`}
+        size="small"
+        sx={chipSx(result.score)}
+      />
+    );
+  }
+
+  if (result.kind === "passfail") {
+    return (
+      <Chip
+        variant="soft"
+        label={result.label}
+        size="small"
+        sx={chipSx(result.label)}
+      />
+    );
+  }
+
+  const first = result.items[0];
   return (
     <Box>
       <Chip
         variant="soft"
-        label={getLabel(cellValue)}
+        label={first}
         size="small"
-        sx={{
-          ...getStatusColor(cellValue, theme),
-          marginRight: "10px",
-          transition: "none",
-          "&:hover": {
-            backgroundColor: getStatusColor(cellValue, theme).backgroundColor, // Lock it to same color
-            boxShadow: "none",
-          },
-        }}
+        sx={{ ...chipSx(first), marginRight: "10px" }}
       />
-
-      {Array.isArray(cellValue) && cellValue.length > 1 && (
-        <Chip
-          variant="soft"
-          label={`+${cellValue.length - 1}`}
+      {result.items.length > 1 && (
+        <CustomTooltip
+          show
+          title={result.items.slice(1).join(", ")}
+          arrow
           size="small"
-          sx={{
-            ...getStatusColor(cellValue, theme),
-            transition: "none",
-            "&:hover": {
-              backgroundColor: getStatusColor(cellValue, theme).backgroundColor, // Lock it to same color
-              boxShadow: "none",
-            },
-          }}
-        />
+        >
+          <Chip
+            variant="soft"
+            label={`+${result.items.length - 1}`}
+            size="small"
+            sx={{ ...chipSx(first), cursor: "default" }}
+          />
+        </CustomTooltip>
       )}
     </Box>
   );
@@ -121,12 +137,13 @@ export const StatusCellRenderer = (props) => {
 
 StatusCellRenderer.propTypes = {
   value: PropTypes.shape({
+    cell_value: PropTypes.any,
     cellValue: PropTypes.any,
     status: PropTypes.string,
-    dataType: PropTypes.string,
   }),
   data: PropTypes.shape({
-    dataType: PropTypes.string,
+    output_type: PropTypes.string,
+    outputType: PropTypes.string,
   }),
 };
 
@@ -271,7 +288,7 @@ export default function ExperimentDetailDrawerContent({
     }
 
     return tabs;
-  }, [showDescription]);
+  }, [showDescription, row]);
   // Custom overlay for empty evaluation data
   const CustomNoRowsOverlay = () => (
     <Box
@@ -302,15 +319,17 @@ export default function ExperimentDetailDrawerContent({
     const datasetEvaluations = {};
     const evaluations = columnConfig?.filter((i) => {
       // Only include evaluation columns, but exclude summary/reason columns
-      return i?.originType === "evaluation" && !i?.name?.includes("-reason");
+      const originType = i?.origin_type ?? i?.originType;
+      return originType === "evaluation" && !i?.name?.includes("-reason");
     });
 
     if (evaluations && evaluations?.length > 0) {
       for (const item of evaluations) {
-        if (datasetEvaluations[item?.datasetId]) {
-          datasetEvaluations[item?.datasetId].push(item);
+        const dsId = item?.dataset_id ?? item?.datasetId;
+        if (datasetEvaluations[dsId]) {
+          datasetEvaluations[dsId].push(item);
         } else {
-          datasetEvaluations[item?.datasetId] = [item];
+          datasetEvaluations[dsId] = [item];
         }
       }
     }
@@ -936,7 +955,9 @@ export default function ExperimentDetailDrawerContent({
                         suppressContextMenu={true}
                         columnDefs={TabColumnDefs}
                         defaultColDef={defaultColDef}
-                        rowData={evalsData?.[col?.datasetId] ?? []}
+                        rowData={
+                          evalsData?.[col?.dataset_id ?? col?.datasetId] ?? []
+                        }
                         domLayout="normal"
                         suppressRowDrag={true}
                         noRowsOverlayComponent={CustomNoRowsOverlay}
@@ -1092,7 +1113,7 @@ export default function ExperimentDetailDrawerContent({
               ...evalData,
               userEvalMetricId: evalData?.group?.id,
               sourceId: evalData?.id,
-              rowData: { rowId: row?.rowId },
+              rowData: { row_id: row?.row_id ?? row?.rowId },
             });
             setOpenDetailRow(null);
           }}

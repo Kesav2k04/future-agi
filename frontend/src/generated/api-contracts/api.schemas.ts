@@ -3947,7 +3947,6 @@ export interface ConversationCreateRequestApi {
   title?: string;
   /** @maxLength 500 */
   context_page?: string;
-  hidden?: boolean;
 }
 
 export type FalconMessageApiRole = typeof FalconMessageApiRole[keyof typeof FalconMessageApiRole];
@@ -10530,6 +10529,7 @@ export interface MessageItemApi {
   tool_calls?: MessageItemApiToolCalls;
   /** @minLength 1 */
   tool_call_id?: string;
+  /** @minLength 1 */
   id?: string;
   [key: string]: unknown;
  }

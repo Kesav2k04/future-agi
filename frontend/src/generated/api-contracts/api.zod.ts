@@ -9572,12 +9572,11 @@ export const falconAiConversationsCreateBodyTitleMax = 255;
 
 export const falconAiConversationsCreateBodyContextPageMax = 500;
 
-export const falconAiConversationsCreateBodyHiddenDefault = false;
+
 
 export const FalconAiConversationsCreateBody = zod.object({
   "title": zod.string().max(falconAiConversationsCreateBodyTitleMax).optional(),
-  "context_page": zod.string().max(falconAiConversationsCreateBodyContextPageMax).optional(),
-  "hidden": zod.boolean().default(falconAiConversationsCreateBodyHiddenDefault)
+  "context_page": zod.string().max(falconAiConversationsCreateBodyContextPageMax).optional()
 })
 
 
@@ -20235,6 +20234,7 @@ export const modelHubExperimentsV2CreateBodyPromptConfigItemOutputFormatDefault 
 
 
 
+
 export const modelHubExperimentsV2CreateBodyUserEvalMetricsItemNameMax = 2000;
 
 export const modelHubExperimentsV2CreateBodyUserEvalMetricsItemModelDefault = ``;
@@ -20285,7 +20285,7 @@ export const ModelHubExperimentsV2CreateBody = zod.object({
 
 }).passthrough().optional().describe('Any valid JSON value.'),
   "tool_call_id": zod.string().min(1).optional(),
-  "id": zod.string().optional()
+  "id": zod.string().min(1).optional()
 })).optional(),
   "voice_input_column_id": zod.string().uuid().optional()
 })),
@@ -20473,6 +20473,7 @@ export const modelHubExperimentsV2UpdateBodyPromptConfigItemOutputFormatDefault 
 
 
 
+
 export const modelHubExperimentsV2UpdateBodyUserEvalMetricsItemNameMax = 2000;
 
 export const modelHubExperimentsV2UpdateBodyUserEvalMetricsItemModelDefault = ``;
@@ -20520,7 +20521,7 @@ export const ModelHubExperimentsV2UpdateBody = zod.object({
 
 }).passthrough().optional().describe('Any valid JSON value.'),
   "tool_call_id": zod.string().min(1).optional(),
-  "id": zod.string().optional()
+  "id": zod.string().min(1).optional()
 })).optional(),
   "voice_input_column_id": zod.string().uuid().optional()
 })).optional(),

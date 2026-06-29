@@ -49368,11 +49368,6 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "title": "Context page",
           "type": "string",
           "maxLength": 500
-        },
-        "hidden": {
-          "title": "Hidden",
-          "type": "boolean",
-          "default": false
         }
       }
     },
@@ -93054,7 +93049,8 @@ export const OPENAPI_CONTRACT = Object.freeze({
         },
         "id": {
           "title": "Id",
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         }
       },
       "additionalProperties": true

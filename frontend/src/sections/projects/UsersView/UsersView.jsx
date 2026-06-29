@@ -207,7 +207,6 @@ const UsersView = ({
     activeViewConfig: activeViewConfigCtx,
     setActiveViewConfig,
     registerGetViewConfig,
-    registerGetTabType,
   } = useObserveHeader();
   // Prefer prop (set by UserList for /dashboard/users) over context
   // (set by ObservePage for the Users fixed tab).
@@ -771,11 +770,6 @@ const UsersView = ({
     registerGetViewConfig(getConfig);
     return () => registerGetViewConfig(null);
   }, [registerGetViewConfig, getConfig]);
-
-  useEffect(() => {
-    registerGetTabType(() => "users");
-    return () => registerGetTabType(null);
-  }, [registerGetTabType]);
 
   // Deps watch only activeViewConfig — applyConfig's identity changes with
   // columns, and it mutates columns, so keeping it in deps would loop.

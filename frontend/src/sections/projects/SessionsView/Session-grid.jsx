@@ -69,6 +69,7 @@ const SessionGrid = React.forwardRef(
       pendingCustomColumnsRef,
       canonicalOrderRef,
       isOnSavedView = false,
+      onUserReorder,
     },
     gridApiRef,
   ) => {
@@ -422,9 +423,12 @@ const SessionGrid = React.forwardRef(
         const changed =
           next.length !== columns.length ||
           next.some((c, i) => c.id !== columns[i]?.id);
-        if (changed) setColumns(next);
+        if (changed) {
+          onUserReorder?.();
+          setColumns(next);
+        }
       },
-      [columns, setColumns],
+      [columns, setColumns, onUserReorder],
     );
 
     const onRowClicked = (event) => {
@@ -522,6 +526,7 @@ SessionGrid.propTypes = {
   updateObj: PropTypes.objectOf(PropTypes.bool).isRequired,
   columns: PropTypes.array,
   setColumns: PropTypes.func,
+  onUserReorder: PropTypes.func,
   filters: PropTypes.array,
   onGridReady: PropTypes.func,
   projectId: PropTypes.string,

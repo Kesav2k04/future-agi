@@ -185,7 +185,6 @@ const SessionsView = ({ mode = "project", userIdForUserMode = null }) => {
     activeViewConfig,
     setActiveViewConfig,
     registerGetViewConfig,
-    registerGetTabType,
   } = useObserveHeader();
 
   // --- Filter & date state (reuse trace filter hook) ---
@@ -447,11 +446,6 @@ const SessionsView = ({ mode = "project", userIdForUserMode = null }) => {
     return () => registerGetViewConfig(null);
   }, [registerGetViewConfig, buildViewConfig]);
 
-  useEffect(() => {
-    registerGetTabType(() => "sessions");
-    return () => registerGetTabType(null);
-  }, [registerGetTabType]);
-
   const { mutate: updateSavedView } = useUpdateSavedView(observeId);
   const { mutate: updateWorkspaceSavedView } =
     useUpdateWorkspaceSavedView(USER_DETAIL_TAB_TYPE);
@@ -565,6 +559,9 @@ const SessionsView = ({ mode = "project", userIdForUserMode = null }) => {
   // (cols land/leave), so it survives the grid-fetch race a one-shot apply lost.
   const pendingSessionOrderRef = useRef(null);
   const appliedSessionIdSetRef = useRef(null);
+  // Set once the user manually drags a column; the saved-order re-apply then
+  // stops reordering, so an add/remove (id-set change) doesn't revert the drag.
+  const sessionUserReorderedRef = useRef(false);
   // Set when the apply effect fires before the grid mounts (hard refresh
   // into a saved view). Drained in onGridReady, otherwise the pending
   // custom-col ref is stranded.
@@ -593,6 +590,7 @@ const SessionsView = ({ mode = "project", userIdForUserMode = null }) => {
       pendingColumnStateRef.current = null;
       pendingSessionOrderRef.current = null;
       appliedSessionIdSetRef.current = null;
+      sessionUserReorderedRef.current = false;
       pendingCustomColumnsRef.current = [];
       setSessionColumns((prev) =>
         reorderColumns(
@@ -692,6 +690,7 @@ const SessionsView = ({ mode = "project", userIdForUserMode = null }) => {
       // land (applyColumnState alone is clobbered by the next columnDefs rebuild).
       pendingSessionOrderRef.current = columnStateToOrder(display.columnState);
       appliedSessionIdSetRef.current = null;
+      sessionUserReorderedRef.current = false;
       // Queue widths/sort when customs pending — AG Grid drops unknown colIds.
       if (savedCustomCols.length > 0) {
         pendingColumnStateRef.current = display.columnState;
@@ -923,9 +922,13 @@ const SessionsView = ({ mode = "project", userIdForUserMode = null }) => {
       .join("|");
     if (idSetKey !== appliedSessionIdSetRef.current) {
       appliedSessionIdSetRef.current = idSetKey;
-      setSessionColumns((prev) =>
-        reorderColumns(prev, pendingSessionOrderRef.current),
-      );
+      // Skip the saved-order re-apply once the user has manually reordered, so
+      // an add/remove (id-set change) doesn't revert the drag.
+      if (!sessionUserReorderedRef.current) {
+        setSessionColumns((prev) =>
+          reorderColumns(prev, pendingSessionOrderRef.current),
+        );
+      }
     }
   }, [sessionColumns]);
 
@@ -1159,6 +1162,9 @@ const SessionsView = ({ mode = "project", userIdForUserMode = null }) => {
         <SessionGrid
           columns={sessionColumns}
           setColumns={setSessionColumns}
+          onUserReorder={() => {
+            sessionUserReorderedRef.current = true;
+          }}
           ref={sessionGridApiRef}
           updateObj={updateObj}
           filters={finalFilters}

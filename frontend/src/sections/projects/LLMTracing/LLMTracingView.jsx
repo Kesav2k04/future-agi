@@ -159,6 +159,8 @@ import {
 } from "./common";
 import {
   applySavedColumns,
+  restampColumns,
+  columnStateToHideMap,
   reorderColumns,
   isColumnVisibilityDirty,
   isColumnOrderDirty,
@@ -972,7 +974,6 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
     activeViewConfig,
     setActiveViewConfig,
     registerGetViewConfig,
-    registerGetTabType,
   } = useObserveHeader();
 
   // keepPrevious: hold `source` across refetch so projectSource doesn't flicker
@@ -2123,11 +2124,21 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
         .join("|");
       if (idSetKey !== appliedIdSetKeyRef.current) {
         appliedIdSetKeyRef.current = idSetKey;
-        const next = applySavedColumns(
-          columns,
-          pendingSavedColsRef.current,
-          userToggledColsRef.current,
-        );
+        // While hydrating, position late-merging columns per the saved order.
+        // Once hydrated the user owns the order — only restamp visibility, so a
+        // manual drag isn't reverted when the id-set changes (add/remove a
+        // custom column). userToggledColsRef guards visibility; this guards order.
+        const next = isHydratingView
+          ? applySavedColumns(
+              columns,
+              pendingSavedColsRef.current,
+              userToggledColsRef.current,
+            )
+          : restampColumns(
+              columns,
+              columnStateToHideMap(pendingSavedColsRef.current),
+              userToggledColsRef.current,
+            );
         if (next !== columns) setColumns(next);
       }
       // Hydration done once all the view's custom columns have merged in.
@@ -2426,12 +2437,6 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
     registerGetViewConfig(buildViewConfig);
     return () => registerGetViewConfig(null);
   }, [registerGetViewConfig, buildViewConfig]);
-
-  useEffect(() => {
-    const getTabType = () => (selectedTab === "spans" ? "spans" : "traces");
-    registerGetTabType(getTabType);
-    return () => registerGetTabType(null);
-  }, [registerGetTabType, selectedTab]);
 
   // Bound to ObserveToolbar's Save view button.
   const handleSaveView = useCallback(() => {

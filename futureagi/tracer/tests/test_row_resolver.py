@@ -4,6 +4,7 @@ deterministic hash sampling, the fixed order/limit, batched streaming, per-
 row_type id resolution, project scoping, and the reused v2 filter compiler."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -66,8 +67,13 @@ def _make_spans(
                 name=f"span-{prefix}-{i}",
                 observation_type=observation_type,
                 span_attributes=span_attributes or {},
+                start_time=datetime.now(UTC) - timedelta(minutes=1),
             )
         )
+    # created_at is auto_now_add; override the in-memory value the CH seed reads
+    # so rows land safely inside the builders' default time window.
+    for s in spans:
+        s.created_at = datetime.now(UTC) - timedelta(minutes=1)
     seed_ch_spans(spans)
     return spans
 
@@ -217,3 +223,64 @@ class TestScopingAndFilters:
         spans = _make_spans(project, 5)
         task = _make_task(project, filters={"observation_type": []})
         assert set(_ids(task)) == {s.id for s in spans}
+
+
+def _builder_ids(builder):
+    """Run a UI builder's build_id_query against CH and return its id set."""
+    from tracer.services.clickhouse.v2 import get_reader
+
+    sql, params = builder.build_id_query()
+    reader = get_reader()
+    try:
+        rows = reader._client.query(sql, parameters=params).result_rows
+    finally:
+        reader.close()
+    return {str(r[0]) for r in rows}
+
+
+@pytest.mark.integration
+@pytest.mark.django_db
+class TestApiFilterParity:
+    """The resolver must select the same rows the UI list endpoints return for
+    the same filters (the 'same as API' guarantee)."""
+
+    def test_span_set_equals_list_builder_with_date_filter(self, project):
+        from tracer.services.clickhouse.v2.dispatch import get_v2_class
+
+        spans = _make_spans(project, 8)
+        now = datetime.now(UTC)
+        rng = [
+            (now - timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+            (now + timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+        ]
+        task = _make_task(project, filters={"date_range": rng}, sampling_rate=100.0)
+        resolver_ids = set(_ids(task))
+
+        ui_filters = [
+            {
+                "column_id": "created_at",
+                "filter_config": {
+                    "filter_type": "datetime",
+                    "filter_op": "between",
+                    "filter_value": rng,
+                },
+            }
+        ]
+        ui_ids = _builder_ids(
+            get_v2_class("SPAN_LIST")(project_id=str(project.id), filters=ui_filters)
+        )
+
+        assert resolver_ids == ui_ids
+        assert resolver_ids == {s.id for s in spans}
+
+    def test_past_only_date_filter_excludes_recent_spans(self, project):
+        _make_spans(project, 4)
+        rng = ["2000-01-01T00:00:00.000Z", "2000-01-02T00:00:00.000Z"]
+        task = _make_task(project, filters={"date_range": rng}, sampling_rate=100.0)
+        assert _ids(task) == []
+
+    def test_voicecalls_select_only_conversation_roots(self, project):
+        calls = _make_spans(project, 3, observation_type="conversation", prefix="call")
+        _make_spans(project, 4, observation_type="llm", prefix="llm")
+        task = _make_task(project, row_type=RowType.VOICE_CALLS, sampling_rate=100.0)
+        assert set(_ids(task)) == {c.id for c in calls}

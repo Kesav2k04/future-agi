@@ -34,7 +34,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import clickhouse_connect
@@ -357,6 +357,55 @@ class CHSpanReader:
         if not rows:
             return None
         return _row_to_chspan(rows[0])
+
+    # ─── One trace's curated fields (the `traces` store the list endpoints read)
+    def get_trace_row(
+        self, trace_id: str, *, project_id: str | None = None
+    ) -> dict | None:
+        """Read one trace's curated fields from the CH ``traces`` table by id."""
+        where = ["id = %(tid)s", "is_deleted = 0"]
+        params: dict[str, Any] = {"tid": str(trace_id)}
+        if project_id:
+            where.append("project_id = %(pid)s")
+            params["pid"] = str(project_id)
+        keys = (
+            "id",
+            "project_id",
+            "project_version_id",
+            "name",
+            "session_id",
+            "external_id",
+            "tags",
+            "metadata",
+            "input",
+            "output",
+            "error",
+            "error_analysis_status",
+            "created_at",
+        )
+        cols = (
+            "toString(id)",
+            "toString(project_id)",
+            "toString(project_version_id)",
+            "name",
+            "toString(session_id)",
+            "external_id",
+            "tags",
+            "metadata",
+            "input",
+            "output",
+            "error",
+            "error_analysis_status",
+            "created_at",
+        )
+        rows = self._client.query(
+            f"SELECT {', '.join(cols)} FROM traces FINAL "
+            f"WHERE {' AND '.join(where)} LIMIT 1",
+            parameters=params,
+        ).result_rows
+        if not rows:
+            return None
+        return dict(zip(keys, rows[0], strict=False))
 
     # ─── All spans in a trace ────────────────────────────────────────────────
     def list_by_trace(
@@ -774,7 +823,7 @@ class CHSpanReader:
         off this so the watermark is a real CH timestamp (clock-skew-proof).
         tz-aware so it compares against Django's tz-aware ``last_swept_at``."""
         dt = self._client.query("SELECT now64(6, 'UTC')").result_rows[0][0]
-        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
     # created_at is unindexed, but spans is PARTITION BY toDate(start_time) /
     # PK toStartOfHour(start_time). A trace's start_time precedes its created_at,
@@ -817,10 +866,7 @@ class CHSpanReader:
         # CH hands back created_at tz-naive even for a DateTime64(_, 'UTC')
         # column; force UTC (as ch_now does) so the caller can compare it
         # against the tz-aware watermark without a naive/aware TypeError.
-        return [
-            (r[0], r[1] if r[1].tzinfo else r[1].replace(tzinfo=timezone.utc))
-            for r in rows
-        ]
+        return [(r[0], r[1] if r[1].tzinfo else r[1].replace(tzinfo=UTC)) for r in rows]
 
     # ─── Distinct end_users per trace (feed user-count rollup) ────────────────
     def distinct_end_users_by_trace_ids(
@@ -1367,42 +1413,20 @@ class CHSpanReader:
         # caller's responsibility; this helper stays narrow.
         return out
 
-    def iter_sample_row_ids(
+    def stream_query(
         self,
+        sql: str,
+        params: dict[str, Any] | None = None,
         *,
-        project_id: str,
-        row_type: str,
-        salt: str,
-        sampling_rate: float = 100.0,
-        filters: dict | None = None,
-        limit: int | None = None,
         batch_size: int = 10_000,
     ) -> Iterator[list[str]]:
-        """Stream deterministically sampled, ordered identity ids for an eval
-        task's desired row set, in batches of ``batch_size``.
-
-        Sampling is ``modulo(cityHash64(salt, <id>), 100) < rate`` — process-
-        stable, so the reconciler always re-selects the same rows across runs.
-        ``filters['filters']`` items reuse the v2 list-endpoint compiler
-        (``ClickHouseFilterBuilderV2``); top-level ``observation_type`` /
-        ``date_range`` apply as span-level predicates. Order is
-        ``(created_at, id)`` so a row limit takes a reproducible prefix.
-
-        The result is streamed block-by-block (clickhouse-connect) and
-        re-chunked to ``batch_size`` so neither the client nor the caller holds
-        the full set in memory — a large historical task can materialize
-        millions of entries in waves.
-        """
-        sql, params = self._build_sample_query(
-            project_id=project_id,
-            row_type=row_type,
-            salt=salt,
-            sampling_rate=sampling_rate,
-            filters=filters,
-            limit=limit,
-        )
+        """Stream a query's first column as strings, re-chunked to ``batch_size``
+        so neither the client nor the caller holds the full result in memory — a
+        large historical scan can be consumed in waves."""
         batch: list[str] = []
-        with self._client.query_row_block_stream(sql, parameters=params) as stream:
+        with self._client.query_row_block_stream(
+            sql, parameters=params or {}
+        ) as stream:
             for block in stream:
                 for row in block:
                     batch.append(str(row[0]))
@@ -1411,95 +1435,6 @@ class CHSpanReader:
                         batch = []
         if batch:
             yield batch
-
-    def _build_sample_query(
-        self,
-        *,
-        project_id: str,
-        row_type: str,
-        salt: str,
-        sampling_rate: float,
-        filters: dict | None,
-        limit: int | None,
-    ) -> tuple[str, dict[str, Any]]:
-        """Build the sampled-row-ids SQL + params for the given row_type."""
-        from tracer.services.clickhouse.v2.query_builders.filters import (
-            ClickHouseFilterBuilderV2,
-        )
-
-        filters = filters or {}
-        where = ["is_deleted = 0", "project_id = %(pid)s"]
-        params: dict[str, Any] = {
-            "pid": str(project_id),
-            "salt": str(salt),
-            "rate": float(sampling_rate),
-        }
-        join = ""
-
-        if row_type in ("spans", "voiceCalls"):
-            query_mode = ClickHouseFilterBuilderV2.QUERY_MODE_SPAN
-            id_expr, select_expr, group_by = "id", "id", ""
-            order_by = "ORDER BY created_at, id"
-        elif row_type == "traces":
-            query_mode = ClickHouseFilterBuilderV2.QUERY_MODE_TRACE
-            id_expr, select_expr = "toString(trace_id)", "trace_id"
-            group_by = "GROUP BY trace_id"
-            order_by = "ORDER BY min(created_at), trace_id"
-        elif row_type == "sessions":
-            query_mode = ClickHouseFilterBuilderV2.QUERY_MODE_TRACE
-            join, _ = self._session_filter_remap()
-            resolved_ts = resolved_id_expr("spans.trace_session_id", "ts_remap")
-            id_expr, select_expr = f"toString({resolved_ts})", f"{resolved_ts} AS sid"
-            group_by = f"GROUP BY {resolved_ts}"
-            order_by = "ORDER BY min(created_at), sid"
-            where.append("trace_session_id IS NOT NULL")
-        else:
-            raise ValueError(f"Unsupported row_type: {row_type!r}")
-
-        filter_items = filters.get("filters") or []
-        if filter_items:
-            builder = ClickHouseFilterBuilderV2(
-                table="spans",
-                query_mode=query_mode,
-                project_id=str(project_id),
-                score_date_scope=False,
-            )
-            fragment, fragment_params = builder.translate(filter_items)
-            if fragment:
-                where.append(fragment)
-                params.update(fragment_params)
-
-        # An empty observation_type list is falsy → treated as no constraint
-        # (parity with count_with_filters), not "match nothing".
-        observation_type = filters.get("observation_type")
-        if observation_type:
-            otypes = (
-                list(observation_type)
-                if isinstance(observation_type, list | tuple | set)
-                else [observation_type]
-            )
-            where.append("observation_type IN %(otypes)s")
-            params["otypes"] = tuple(str(o) for o in otypes)
-
-        date_range = filters.get("date_range")
-        if isinstance(date_range, list | tuple) and len(date_range) == 2:
-            where.append("created_at BETWEEN %(cr_s)s AND %(cr_e)s")
-            params["cr_s"], params["cr_e"] = date_range[0], date_range[1]
-
-        # modulo() not `%` — clickhouse-connect treats a literal `%` as a
-        # parameter-format marker.
-        where.append(f"modulo(cityHash64(%(salt)s, {id_expr}), 100) < %(rate)s")
-
-        limit_sql = ""
-        if limit is not None:
-            limit_sql = "LIMIT %(lim)s"
-            params["lim"] = int(limit)
-
-        sql = (
-            f"SELECT {select_expr} FROM spans FINAL {join} "
-            f"WHERE {' AND '.join(where)} {group_by} {order_by} {limit_sql}"
-        )
-        return sql, params
 
     # ─── Wave-3 reader extensions (commit 2f7d55e14 follow-up) ────────────────
 

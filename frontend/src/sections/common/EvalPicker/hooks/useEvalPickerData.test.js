@@ -60,23 +60,45 @@ describe("normalizeOldEndpointEval", () => {
     expect(attached.userEvalId).toBe("uem-1");
   });
 
-  it("derives evalType from tags when eval_type is missing", () => {
+  it("derives eval_type from tags when eval_type is missing", () => {
     expect(
       normalizeOldEndpointEval({
         id: "e",
         name: "n",
         eval_template_tags: ["CODE_EVAL"],
-      }).evalType,
+      }).eval_type,
     ).toBe("code");
     expect(
       normalizeOldEndpointEval({
         id: "e",
         name: "n",
         eval_template_tags: ["AGENT_EVAL"],
-      }).evalType,
+      }).eval_type,
     ).toBe("agent");
     expect(
-      normalizeOldEndpointEval({ id: "e", name: "n" }).evalType,
+      normalizeOldEndpointEval({ id: "e", name: "n" }).eval_type,
     ).toBe("llm");
+  });
+
+  it("emits snake_case keys for template_type / output_type / last_updated / current_version", () => {
+    const out = normalizeOldEndpointEval({
+      id: "e1",
+      name: "my eval",
+      template_type: "composite",
+      output_type: "score",
+      updated_at: "2026-06-29T10:00:00Z",
+      current_version: "v2",
+      eval_template_tags: ["AGENT_EVAL"],
+    });
+    expect(out.template_type).toBe("composite");
+    expect(out.output_type).toBe("score");
+    expect(out.last_updated).toBe("2026-06-29T10:00:00Z");
+    expect(out.current_version).toBe("v2");
+    expect(out.eval_template_tags).toEqual(["AGENT_EVAL"]);
+    expect(out).not.toHaveProperty("templateType");
+    expect(out).not.toHaveProperty("outputType");
+    expect(out).not.toHaveProperty("lastUpdated");
+    expect(out).not.toHaveProperty("currentVersion");
+    expect(out).not.toHaveProperty("evalTemplateTags");
   });
 });

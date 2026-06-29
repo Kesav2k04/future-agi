@@ -8,7 +8,9 @@ via the per-target_type unique indexes (``bulk_create(ignore_conflicts=True)``).
 
 from __future__ import annotations
 
+import contextvars
 from collections.abc import Iterable
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 from django.db import transaction
@@ -32,6 +34,71 @@ _TARGET_TYPE = {
 }
 
 _MATERIALIZE_BATCH = 5_000
+
+# Set to the materialized entry's id while the engine runs one entry; the eval
+# core's result write then lands on that entry instead of creating a new row.
+_engine_entry_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "eval_engine_entry_id", default=None
+)
+
+# Identity / FK / lifecycle columns the materialized entry already owns — the
+# result write must not touch them (status + hash are stamped by mark_terminal;
+# the FKs are db_constraint=False and may point at CH-only rows).
+_RESULT_SKIP = {
+    "id",
+    "trace",
+    "trace_id",
+    "observation_span",
+    "observation_span_id",
+    "trace_session",
+    "trace_session_id",
+    "custom_eval_config",
+    "eval_task_id",
+    "target_type",
+    "value",
+    "log_id",
+    "feedback_id",
+    "deleted",
+    "deleted_at",
+    "created_at",
+    "updated_at",
+    "status",
+    "config_hash",
+    "attempts",
+}
+
+
+@contextmanager
+def writing_onto_entry(entry_id):
+    """Within this block, eval result writes update the materialized entry in
+    place instead of creating a new (colliding) EvalLogger row."""
+    token = _engine_entry_id.set(str(entry_id))
+    try:
+        yield
+    finally:
+        _engine_entry_id.reset(token)
+
+
+def in_engine_write_mode() -> bool:
+    """True while the eval-task engine is running one entry — result writes
+    should update that entry rather than create a new EvalLogger row."""
+    return _engine_entry_id.get() is not None
+
+
+def persist_eval_result(logger_kwargs: dict[str, Any]):
+    """Persist an eval result. In engine mode (inside ``writing_onto_entry``)
+    update the materialized entry — a queryset update that skips the live-unique
+    create conflict and ``full_clean`` (so a CH-only FK is fine). Otherwise
+    create a new EvalLogger row (legacy cron behavior)."""
+    entry_id = _engine_entry_id.get()
+    if entry_id is None:
+        return EvalLogger.objects.create(**logger_kwargs)
+    valid = {f.name for f in EvalLogger._meta.concrete_fields}
+    fields = {
+        k: v for k, v in logger_kwargs.items() if k in valid and k not in _RESULT_SKIP
+    }
+    EvalLogger.objects.filter(id=entry_id).update(**fields)
+    return EvalLogger.objects.filter(id=entry_id).first()
 
 
 def materialize_pending(task: EvalTask) -> int:

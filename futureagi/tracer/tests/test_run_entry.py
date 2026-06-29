@@ -13,7 +13,7 @@ from tracer.models.observation_span import (
 )
 from tracer.models.trace_session import TraceSession
 from tracer.services.eval_tasks.run_entry import run_entry
-from tracer.tests._ch_seed import seed_ch_span
+from tracer.tests._ch_seed import seed_ch_span, seed_ch_trace_sessions
 
 _TERMINAL = {
     EvalEntryStatus.COMPLETED,
@@ -150,6 +150,7 @@ class TestRunEntryTraceAndSession:
         stub_cost_log,
     ):
         session = TraceSession.objects.create(project=observe_project, name="sess")
+        seed_ch_trace_sessions([session])  # forced CH reads the curated session.
         entry = EvalLogger.objects.create(
             target_type=EvalTargetType.SESSION,
             trace_session=session,

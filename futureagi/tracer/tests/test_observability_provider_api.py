@@ -489,19 +489,38 @@ def retell_signature(payload, api_key):
     return symmetric["sign"](body, api_key)
 
 
-@pytest.mark.parametrize("endpoint", ["verify_api_key", "verify_assistant_id"])
+@pytest.mark.parametrize(
+    "serializer_cls",
+    ["VerifyApiKeyRequestSerializer", "VerifyAssistantIdRequestSerializer"],
+)
 @pytest.mark.parametrize(
     "provider",
-    [ProviderChoices.BLAND, ProviderChoices.TWILIO, ProviderChoices.OTHERS],
+    [
+        ProviderChoices.BLAND,
+        ProviderChoices.TWILIO,
+        ProviderChoices.OTHERS,
+        ProviderChoices.ELEVEN_LABS,
+    ],
 )
-def test_verify_endpoints_reject_unsupported_providers(endpoint, provider):
-    """Unsupported providers get a clear 400 and never call the verify service."""
-    from unittest.mock import MagicMock
+def test_verify_request_serializer_rejects_unsupported_providers(serializer_cls, provider):
+    """The verify request schema only advertises VAPI/RETELL, so an unsupported
+    provider is rejected at validation (discoverable to clients), not at runtime."""
+    import tracer.serializers.observability_provider as ser
 
-    from tracer.views.observability_provider import ObservabilityProviderViewSet
+    s = getattr(ser, serializer_cls)(
+        data={"provider": provider, "api_key": "x", "assistant_id": "y", "agent_id": "z"}
+    )
+    assert not s.is_valid()
+    assert "provider" in s.errors
 
-    request = MagicMock()
-    request.data = {"provider": provider, "api_key": "x", "assistant_id": "y"}
-    response = getattr(ObservabilityProviderViewSet(), endpoint)(request)
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "not supported" in json.dumps(response.data).lower()
+
+@pytest.mark.parametrize(
+    "serializer_cls",
+    ["VerifyApiKeyRequestSerializer", "VerifyAssistantIdRequestSerializer"],
+)
+@pytest.mark.parametrize("provider", [ProviderChoices.VAPI, ProviderChoices.RETELL])
+def test_verify_request_serializer_accepts_supported_providers(serializer_cls, provider):
+    import tracer.serializers.observability_provider as ser
+
+    s = getattr(ser, serializer_cls)(data={"provider": provider, "api_key": "x"})
+    assert s.is_valid(), s.errors

@@ -1306,6 +1306,9 @@ import type {
   ValidateLiveKitCredentialsRequestApi,
   ValidateLiveKitCredentialsResponseApi,
   VectorDBColumnRequestApi,
+  VerifyApiKeyRequestApi,
+  VerifyAssistantIdRequestApi,
+  VerifyResponseApi,
   WalletBalanceResponseApi,
   WebAuthnCredentialApi,
   WebhookIngestResponseApi,
@@ -61313,20 +61316,25 @@ export const tracerObservabilityProviderCreate = async (observabilityProviderApi
 
 
 
-export type tracerObservabilityProviderVerifyApiKeyResponse201 = {
-  data: ObservabilityProviderApi
-  status: 201
+export type tracerObservabilityProviderVerifyApiKeyResponse200 = {
+  data: VerifyResponseApi
+  status: 200
+}
+
+export type tracerObservabilityProviderVerifyApiKeyResponse400 = {
+  data: ApiErrorResponseApi
+  status: 400
 }
 
 export type tracerObservabilityProviderVerifyApiKeyResponseDefault = {
   data: ManagementAPIErrorResponseApi
-  status: Exclude<HTTPStatusCodes, 201>
+  status: Exclude<HTTPStatusCodes, 200 | 400>
 }
 
-export type tracerObservabilityProviderVerifyApiKeyResponseSuccess = (tracerObservabilityProviderVerifyApiKeyResponse201) & {
+export type tracerObservabilityProviderVerifyApiKeyResponseSuccess = (tracerObservabilityProviderVerifyApiKeyResponse200) & {
   headers: Headers;
 };
-export type tracerObservabilityProviderVerifyApiKeyResponseError = (tracerObservabilityProviderVerifyApiKeyResponseDefault) & {
+export type tracerObservabilityProviderVerifyApiKeyResponseError = (tracerObservabilityProviderVerifyApiKeyResponse400 | tracerObservabilityProviderVerifyApiKeyResponseDefault) & {
   headers: Headers;
 };
 
@@ -61343,7 +61351,7 @@ export const getTracerObservabilityProviderVerifyApiKeyUrl = () => {
 /**
  * API endpoints for managing Observability Providers.
  */
-export const tracerObservabilityProviderVerifyApiKey = async (observabilityProviderApi: NonReadonly<ObservabilityProviderApi>, options?: RequestInit): Promise<tracerObservabilityProviderVerifyApiKeyResponse> => {
+export const tracerObservabilityProviderVerifyApiKey = async (verifyApiKeyRequestApi: VerifyApiKeyRequestApi, options?: RequestInit): Promise<tracerObservabilityProviderVerifyApiKeyResponse> => {
 
   return apiMutator<tracerObservabilityProviderVerifyApiKeyResponse>(getTracerObservabilityProviderVerifyApiKeyUrl(),
   {
@@ -61351,26 +61359,31 @@ export const tracerObservabilityProviderVerifyApiKey = async (observabilityProvi
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      observabilityProviderApi,)
+      verifyApiKeyRequestApi,)
   }
 );}
 
 
 
-export type tracerObservabilityProviderVerifyAssistantIdResponse201 = {
-  data: ObservabilityProviderApi
-  status: 201
+export type tracerObservabilityProviderVerifyAssistantIdResponse200 = {
+  data: VerifyResponseApi
+  status: 200
+}
+
+export type tracerObservabilityProviderVerifyAssistantIdResponse400 = {
+  data: ApiErrorResponseApi
+  status: 400
 }
 
 export type tracerObservabilityProviderVerifyAssistantIdResponseDefault = {
   data: ManagementAPIErrorResponseApi
-  status: Exclude<HTTPStatusCodes, 201>
+  status: Exclude<HTTPStatusCodes, 200 | 400>
 }
 
-export type tracerObservabilityProviderVerifyAssistantIdResponseSuccess = (tracerObservabilityProviderVerifyAssistantIdResponse201) & {
+export type tracerObservabilityProviderVerifyAssistantIdResponseSuccess = (tracerObservabilityProviderVerifyAssistantIdResponse200) & {
   headers: Headers;
 };
-export type tracerObservabilityProviderVerifyAssistantIdResponseError = (tracerObservabilityProviderVerifyAssistantIdResponseDefault) & {
+export type tracerObservabilityProviderVerifyAssistantIdResponseError = (tracerObservabilityProviderVerifyAssistantIdResponse400 | tracerObservabilityProviderVerifyAssistantIdResponseDefault) & {
   headers: Headers;
 };
 
@@ -61387,7 +61400,7 @@ export const getTracerObservabilityProviderVerifyAssistantIdUrl = () => {
 /**
  * API endpoints for managing Observability Providers.
  */
-export const tracerObservabilityProviderVerifyAssistantId = async (observabilityProviderApi: NonReadonly<ObservabilityProviderApi>, options?: RequestInit): Promise<tracerObservabilityProviderVerifyAssistantIdResponse> => {
+export const tracerObservabilityProviderVerifyAssistantId = async (verifyAssistantIdRequestApi: VerifyAssistantIdRequestApi, options?: RequestInit): Promise<tracerObservabilityProviderVerifyAssistantIdResponse> => {
 
   return apiMutator<tracerObservabilityProviderVerifyAssistantIdResponse>(getTracerObservabilityProviderVerifyAssistantIdUrl(),
   {
@@ -61395,7 +61408,7 @@ export const tracerObservabilityProviderVerifyAssistantId = async (observability
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      observabilityProviderApi,)
+      verifyAssistantIdRequestApi,)
   }
 );}
 

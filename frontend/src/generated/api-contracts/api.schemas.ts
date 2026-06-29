@@ -19460,6 +19460,40 @@ export interface ObservabilityProviderApi {
   readonly updated_at?: string;
 }
 
+export type VerifyApiKeyRequestApiProvider = typeof VerifyApiKeyRequestApiProvider[keyof typeof VerifyApiKeyRequestApiProvider];
+
+
+export const VerifyApiKeyRequestApiProvider = {
+  vapi: 'vapi',
+  retell: 'retell',
+} as const;
+
+export interface VerifyApiKeyRequestApi {
+  provider: VerifyApiKeyRequestApiProvider;
+  api_key?: string;
+  agent_id?: string;
+}
+
+export interface VerifyResponseApi {
+  status?: boolean;
+  /** @minLength 1 */
+  result: string;
+}
+
+export type VerifyAssistantIdRequestApiProvider = typeof VerifyAssistantIdRequestApiProvider[keyof typeof VerifyAssistantIdRequestApiProvider];
+
+
+export const VerifyAssistantIdRequestApiProvider = {
+  vapi: 'vapi',
+  retell: 'retell',
+} as const;
+
+export interface VerifyAssistantIdRequestApi {
+  provider: VerifyAssistantIdRequestApiProvider;
+  assistant_id?: string;
+  api_key?: string;
+}
+
 export type ObservationSpanApiObservationType = typeof ObservationSpanApiObservationType[keyof typeof ObservationSpanApiObservationType];
 
 

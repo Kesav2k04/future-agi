@@ -26,7 +26,12 @@ from tfc.utils.error_codes import get_error_message
 from tfc.utils.general_methods import GeneralMethods
 from tracer.models.observability_provider import ProviderChoices
 from tracer.models.project import ProjectSourceChoices
-from tracer.serializers.observability_provider import ObservabilityProviderSerializer
+from tracer.serializers.observability_provider import (
+    ObservabilityProviderSerializer,
+    VerifyApiKeyRequestSerializer,
+    VerifyAssistantIdRequestSerializer,
+    VerifyResponseSerializer,
+)
 from tracer.services.observability_providers import ObservabilityService
 from tracer.utils.observability_provider import normalize_and_store_logs
 from tracer.utils.otel import get_or_create_project
@@ -180,6 +185,10 @@ class ObservabilityProviderViewSet(BaseModelViewSetMixinWithUserOrg, ModelViewSe
             workspace=getattr(self.request, "workspace", None),
         )
 
+    @validated_request(
+        request_serializer=VerifyApiKeyRequestSerializer,
+        responses={200: VerifyResponseSerializer, 400: ApiErrorResponseSerializer},
+    )
     @action(detail=False, methods=["post"])
     def verify_api_key(self, request):
         try:
@@ -215,6 +224,10 @@ class ObservabilityProviderViewSet(BaseModelViewSetMixinWithUserOrg, ModelViewSe
             logger.exception(f"Error verifying API key: {e}")
             return self._gm.bad_request(f"Error verifying API key: {e}")
 
+    @validated_request(
+        request_serializer=VerifyAssistantIdRequestSerializer,
+        responses={200: VerifyResponseSerializer, 400: ApiErrorResponseSerializer},
+    )
     @action(detail=False, methods=["post"])
     def verify_assistant_id(self, request):
         try:

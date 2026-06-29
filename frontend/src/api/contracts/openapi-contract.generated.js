@@ -32081,15 +32081,18 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/tracer/observability-provider/verify_api_key/": {
       "post": {
         "operationId": "tracer_observability-provider_verify_api_key",
-        "runtimeRequestValidation": false,
-        "runtimeResponseValidation": false,
+        "runtimeRequestValidation": true,
+        "runtimeResponseValidation": true,
         "requestBody": {
-          "$ref": "#/definitions/ObservabilityProvider"
+          "$ref": "#/definitions/VerifyApiKeyRequest"
         },
         "queryParameters": {},
         "responses": {
-          "201": {
-            "$ref": "#/definitions/ObservabilityProvider"
+          "200": {
+            "$ref": "#/definitions/VerifyResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
           },
           "default": {
             "$ref": "#/definitions/ManagementAPIErrorResponse"
@@ -32100,15 +32103,18 @@ export const OPENAPI_CONTRACT = Object.freeze({
     "/tracer/observability-provider/verify_assistant_id/": {
       "post": {
         "operationId": "tracer_observability-provider_verify_assistant_id",
-        "runtimeRequestValidation": false,
-        "runtimeResponseValidation": false,
+        "runtimeRequestValidation": true,
+        "runtimeResponseValidation": true,
         "requestBody": {
-          "$ref": "#/definitions/ObservabilityProvider"
+          "$ref": "#/definitions/VerifyAssistantIdRequest"
         },
         "queryParameters": {},
         "responses": {
-          "201": {
-            "$ref": "#/definitions/ObservabilityProvider"
+          "200": {
+            "$ref": "#/definitions/VerifyResponse"
+          },
+          "400": {
+            "$ref": "#/definitions/ApiErrorResponse"
           },
           "default": {
             "$ref": "#/definitions/ManagementAPIErrorResponse"
@@ -73787,6 +73793,76 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "vector_length": {
           "title": "Vector length",
           "type": "integer"
+        }
+      }
+    },
+    "VerifyApiKeyRequest": {
+      "required": [
+        "provider"
+      ],
+      "type": "object",
+      "properties": {
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "enum": [
+            "vapi",
+            "retell"
+          ]
+        },
+        "api_key": {
+          "title": "Api key",
+          "type": "string",
+          "x-nullable": true
+        },
+        "agent_id": {
+          "title": "Agent id",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "VerifyAssistantIdRequest": {
+      "required": [
+        "provider"
+      ],
+      "type": "object",
+      "properties": {
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "enum": [
+            "vapi",
+            "retell"
+          ]
+        },
+        "assistant_id": {
+          "title": "Assistant id",
+          "type": "string",
+          "x-nullable": true
+        },
+        "api_key": {
+          "title": "Api key",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "VerifyResponse": {
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "boolean",
+          "default": true
+        },
+        "result": {
+          "title": "Result",
+          "type": "string",
+          "minLength": 1
         }
       }
     },

@@ -55113,7 +55113,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
           "additionalProperties": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "#/definitions/ExperimentRowDiffCell"
+              "$ref": "#/definitions/ExperimentRowCell"
             }
           }
         }
@@ -80771,7 +80771,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
-    "ExperimentRowDiffCell": {
+    "ExperimentRowCell": {
       "type": "object",
       "properties": {
         "cell_value": {
@@ -80786,7 +80786,11 @@ export const OPENAPI_CONTRACT = Object.freeze({
         },
         "status": {
           "title": "Status",
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
+        },
+        "metadata": {
+          "$ref": "#/definitions/ExperimentRowCellMetadata"
         },
         "value_infos": {
           "title": "Value infos",
@@ -80858,7 +80862,7 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "table": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/definitions/ExperimentTableRow"
           }
         },
         "metadata": {
@@ -93170,6 +93174,34 @@ export const OPENAPI_CONTRACT = Object.freeze({
         }
       }
     },
+    "ExperimentRowCellMetadata": {
+      "type": "object",
+      "properties": {
+        "response_time_ms": {
+          "title": "Response time ms",
+          "type": "number",
+          "x-nullable": true
+        },
+        "token_count": {
+          "title": "Token count",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "cost": {
+          "title": "Cost",
+          "type": "object",
+          "x-nullable": true
+        },
+        "cell_metadata": {
+          "$ref": "#/definitions/ExperimentRowCellInnerMetadata"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
     "ExperimentStatsColumnConfig": {
       "required": [
         "name"
@@ -93227,6 +93259,19 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "reruns": {
           "title": "Reruns",
           "type": "boolean"
+        }
+      }
+    },
+    "ExperimentTableRow": {
+      "required": [
+        "row_id"
+      ],
+      "type": "object",
+      "properties": {
+        "row_id": {
+          "title": "Row id",
+          "type": "string",
+          "format": "uuid"
         }
       }
     },
@@ -98215,6 +98260,26 @@ export const OPENAPI_CONTRACT = Object.freeze({
         "total_tokens": {
           "title": "Total tokens",
           "type": "integer"
+        }
+      }
+    },
+    "ExperimentRowCellInnerMetadata": {
+      "type": "object",
+      "properties": {
+        "explanation": {
+          "title": "Explanation",
+          "type": "string",
+          "x-nullable": true
+        },
+        "error_analysis": {
+          "title": "Error analysis",
+          "type": "object",
+          "x-nullable": true
+        },
+        "selected_input_key": {
+          "title": "Selected input key",
+          "type": "string",
+          "x-nullable": true
         }
       }
     },

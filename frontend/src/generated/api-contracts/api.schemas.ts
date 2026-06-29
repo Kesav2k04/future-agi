@@ -8454,20 +8454,39 @@ export interface DatasetRowDiffRequestApi {
   compare_column_ids: string[];
 }
 
-export type ExperimentRowDiffCellApiCellValue = { [key: string]: unknown };
+export type ExperimentRowCellInnerMetadataApiErrorAnalysis = { [key: string]: unknown };
 
-export type ExperimentRowDiffCellApiCellDiffValue = { [key: string]: unknown };
-
-export type ExperimentRowDiffCellApiValueInfos = { [key: string]: unknown };
-
-export interface ExperimentRowDiffCellApi {
-  cell_value?: ExperimentRowDiffCellApiCellValue;
-  cell_diff_value?: ExperimentRowDiffCellApiCellDiffValue;
-  status?: string;
-  value_infos?: ExperimentRowDiffCellApiValueInfos;
+export interface ExperimentRowCellInnerMetadataApi {
+  explanation?: string;
+  error_analysis?: ExperimentRowCellInnerMetadataApiErrorAnalysis;
+  selected_input_key?: string;
 }
 
-export type ExperimentRowDiffResponseApiResult = {[key: string]: {[key: string]: ExperimentRowDiffCellApi}};
+export type ExperimentRowCellMetadataApiCost = { [key: string]: unknown };
+
+export interface ExperimentRowCellMetadataApi {
+  response_time_ms?: number;
+  token_count?: number;
+  cost?: ExperimentRowCellMetadataApiCost;
+  cell_metadata?: ExperimentRowCellInnerMetadataApi;
+  reason?: string;
+}
+
+export type ExperimentRowCellApiCellValue = { [key: string]: unknown };
+
+export type ExperimentRowCellApiCellDiffValue = { [key: string]: unknown };
+
+export type ExperimentRowCellApiValueInfos = { [key: string]: unknown };
+
+export interface ExperimentRowCellApi {
+  cell_value?: ExperimentRowCellApiCellValue;
+  cell_diff_value?: ExperimentRowCellApiCellDiffValue;
+  status?: string;
+  metadata?: ExperimentRowCellMetadataApi;
+  value_infos?: ExperimentRowCellApiValueInfos;
+}
+
+export type ExperimentRowDiffResponseApiResult = {[key: string]: {[key: string]: ExperimentRowCellApi}};
 
 export interface ExperimentRowDiffResponseApi {
   status: boolean;
@@ -10991,6 +11010,10 @@ export interface ExperimentTableRowsColumnConfigApi {
   is_final?: boolean;
 }
 
+export interface ExperimentTableRowApi {
+  row_id: string;
+}
+
 export type ExperimentTableRowsMetadataApiDescription = {[key: string]: string};
 
 export interface ExperimentTableRowsMetadataApi {
@@ -11002,11 +11025,9 @@ export interface ExperimentTableRowsMetadataApi {
   description?: ExperimentTableRowsMetadataApiDescription;
 }
 
-export type ExperimentTableRowsResultApiTableItem = { [key: string]: unknown };
-
 export interface ExperimentTableRowsResultApi {
   column_config: ExperimentTableRowsColumnConfigApi[];
-  table?: ExperimentTableRowsResultApiTableItem[];
+  table?: ExperimentTableRowApi[];
   metadata?: ExperimentTableRowsMetadataApi;
   output_format?: string;
   status?: string;

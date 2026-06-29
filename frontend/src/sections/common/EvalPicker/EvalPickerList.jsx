@@ -194,6 +194,7 @@ const EvalDetailPanel = ({ evalData }) => {
   // detail fetch hasn't resolved yet so the panel still renders something.
   const templateType =
     configData?.template_type ||
+    configData?.templateType ||
     evalData?.template_type ||
     "single";
   const isComposite = templateType === "composite";

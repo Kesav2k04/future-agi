@@ -370,11 +370,31 @@ export const applyQuickFilters =
     }
 
     if (filter) {
+      // Quick filters skip the toolbar normalization, so attach the col_type
+      // the backend needs — without it the list 400s on a NORMAL col_type.
+      let field = filter.column_id;
+      let fieldName;
+      const apiColType =
+        col?.groupBy === "Annotation Metrics" ? "ANNOTATION" : "SYSTEM_METRIC";
+      let operator = filter.filter_config?.filter_op;
+      let value = filter.filter_config?.filter_value;
+
+      // Trace Name's column id is `trace_name`, but the backend canonical
+      // field is `name`. Remap to the wire shape the panel sends.
+      if (field === "trace_name") {
+        field = "name";
+        fieldName = "Trace Name";
+        operator = "in";
+        value = Array.isArray(value) ? value : [value];
+      }
+
       const extraFilter = buildApiFilterFromPanelRow({
-        field: filter.column_id,
+        field,
+        fieldName,
         fieldType: filter.filter_config?.filter_type,
-        operator: filter.filter_config?.filter_op,
-        value: filter.filter_config?.filter_value,
+        apiColType,
+        operator,
+        value,
       });
       setFilters((prev) => {
         const exists = (prev || []).some(

@@ -570,7 +570,7 @@ class DatasetQueryBuilder(DashboardQueryBuilderBase):
     def _dataset_scope_subquery() -> str:
         return (
             "SELECT id FROM model_hub_dataset FINAL "
-            "WHERE _peerdb_is_deleted = 0"
+            "WHERE _peerdb_is_deleted = 0 AND deleted = 0"
         )
 
     def _build_base_where(self, params: dict) -> List[str]:

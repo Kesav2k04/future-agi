@@ -614,7 +614,7 @@ class TestDatasetFilters:
         sql, params = builder.build_metric_query(system_metric_config["metrics"][0])
         assert "FROM model_hub_dataset FINAL" in sql
         assert "WHERE _peerdb_is_deleted = 0" in sql
-        assert "AND deleted = 0" not in sql
+        assert "AND deleted = 0" in sql
         assert "AND name IN %(df_0_val)s" in sql
         assert "IN" in sql
         assert "df_0_val" in params
@@ -624,7 +624,7 @@ class TestDatasetFilters:
         sql, params = builder.build_metric_query(system_metric_config["metrics"][0])
         assert "SELECT id FROM model_hub_dataset FINAL" in sql
         assert "WHERE _peerdb_is_deleted = 0" in sql
-        assert "AND deleted = 0" not in sql
+        assert "AND deleted = 0" in sql
         assert "workspace_id = toUUID(%(workspace_id)s)" in sql
         assert "workspace_id" in params
 

@@ -13,7 +13,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 
 from model_hub.models.evals_metric import EvalTemplate
-from tfc.temporal.eval_tasks.client import start_eval_task_workflow_sync
+from tfc.temporal.eval_tasks.client import (
+    signal_pause_eval_task_workflow,
+    start_eval_task_workflow_sync,
+)
 from tfc.utils.api_contracts import validated_request
 from tfc.utils.api_serializers import EmptyRequestSerializer
 from tfc.utils.base_viewset import BaseModelViewSetMixin
@@ -21,7 +24,7 @@ from tfc.utils.general_methods import GeneralMethods
 from tfc.utils.pagination import ExtendedPageNumberPagination
 from tracer.models.custom_eval_config import CustomEvalConfig
 from tracer.models.eval_task import EvalTask, EvalTaskLogger, EvalTaskStatus, RunType
-from tracer.models.observation_span import EvalLogger
+from tracer.models.observation_span import EvalEntryStatus, EvalLogger
 from tracer.models.project import Project
 from tracer.serializers.eval_task import (
     EditEvalTaskSerializer,
@@ -575,16 +578,22 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
                 id=eval_task_id,
             )
 
-            # Pass/fail counts — cheap aggregate, two indexed COUNTs.
+            # Progress counts — cheap aggregate, indexed COUNTs. Counted by the
+            # entry's lifecycle ``status`` (not the ``error``/``skipped_reason``
+            # result columns): a pending/running entry has error=False and
+            # skipped_reason=null, so result-column counting would tally every
+            # not-yet-run entry as a success. ``total_count`` is every
+            # materialized entry (the manager already excludes soft-deleted),
+            # so while a task is pending Total shows the full set and success/
+            # errors start at 0 and climb as the drain executes.
             counts = EvalLogger.objects.filter(eval_task_id=eval_task_id).aggregate(
-                errors_count=Count("id", filter=Q(error=True)),
-                success_count=Count(
-                    "id", filter=Q(error=False, skipped_reason__isnull=True)
-                ),
+                total_count=Count("id"),
+                success_count=Count("id", filter=Q(status=EvalEntryStatus.COMPLETED)),
+                errors_count=Count("id", filter=Q(status=EvalEntryStatus.ERRORED)),
                 # Skipped: the eval never ran (e.g. a mapped span attribute
                 # was absent). Counted separately so it stays out of the
                 # success and failure tallies.
-                skipped_count=Count("id", filter=Q(skipped_reason__isnull=False)),
+                skipped_count=Count("id", filter=Q(status=EvalEntryStatus.SKIPPED)),
                 # Partial-input warnings live in
                 # output_metadata.warnings as a JSON array. has_key on
                 # the JSONField gives us a cheap "any warnings?" filter
@@ -684,20 +693,23 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
                 reverse=True,
             )[: self._WARNING_GROUPS_LIMIT]
 
-            total_count = (
-                counts["errors_count"]
-                + counts["success_count"]
-                + counts["skipped_count"]
-            )
-
             result = {
                 "start_time": eval_task.start_time,
                 "end_time": eval_task.end_time,
+                # Task status travels with the counts (same response) so the
+                # frontend can keep polling until it observes a terminal status,
+                # and the fetch that first sees "completed" already carries the
+                # final tallies — no off-by-one-tick stale count.
+                "status": eval_task.status,
+                # Duration is only meaningful for historical runs (which finalize
+                # with an end_time). Continuous tasks never end, so the frontend
+                # hides the Duration card based on this.
+                "run_type": eval_task.run_type,
                 "errors_count": counts["errors_count"],
                 "success_count": counts["success_count"],
                 "skipped_count": counts["skipped_count"],
                 "warnings_count": counts["warnings_count"],
-                "total_count": total_count,
+                "total_count": counts["total_count"],
                 "error_groups": error_groups,
                 "warning_groups": warning_groups,
                 # Indicates whether we capped at _ERROR_GROUPS_LIMIT — the
@@ -1248,6 +1260,11 @@ class EvalTaskView(BaseModelViewSetMixin, ModelViewSet):
 
             eval_task.status = EvalTaskStatus.PAUSED
             eval_task.save()
+
+            # Nudge the running workflow to stop launching new evals immediately.
+            # Best-effort: the paused status above is the durable signal the
+            # workflow also honours at its next batch boundary.
+            signal_pause_eval_task_workflow(eval_task.id)
 
             return self._gm.success_response(
                 {"message": "Eval task paused successfully"}

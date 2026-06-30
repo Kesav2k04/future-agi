@@ -222,6 +222,76 @@ class TestHistoricalWorkflow:
         assert counts["running"] == 0  # nothing left mid-flight
         assert counts["pending"] == 3  # paused before the first claim
 
+    async def test_pause_signal_stops_launching_mid_batch(
+        self, workflow_environment, eval_task, make_pending_entries, monkeypatch
+    ):
+        """A pause that lands while a batch is draining lets the in-flight evals
+        finish but launches no new ones — the unstarted entries return to pending
+        and the run exits paused, with nothing stranded as running. Without the
+        in-drain pause check the whole claimed batch would complete first."""
+        from tfc.temporal.eval_tasks import get_activities, get_workflows
+        from tfc.temporal.eval_tasks.types import EvalTaskWorkflowInput
+        from tfc.temporal.eval_tasks.workflows import HistoricalEvalTaskWorkflow
+
+        await sync_to_async(make_pending_entries)(eval_task, 6)
+        _patch_noop_reconcile(monkeypatch)
+
+        started = []
+        lock = threading.Lock()
+        two_inflight = threading.Event()
+        release = threading.Event()
+
+        def _blocking(entry):
+            with lock:
+                started.append(str(entry.id))
+                if len(started) >= 2:
+                    two_inflight.set()
+            release.wait(timeout=15)
+            EvalLogger.objects.filter(id=entry.id).update(
+                status=EvalEntryStatus.COMPLETED, config_hash="0" * 64, error=False
+            )
+            return EvalEntryStatus.COMPLETED
+
+        monkeypatch.setattr("tracer.services.eval_tasks.run_entry.run_entry", _blocking)
+
+        env = workflow_environment
+        queue = f"eval-task-test-{uuid.uuid4().hex[:8]}"
+        task_id = str(eval_task.id)
+
+        async with Worker(
+            env.client,
+            task_queue=queue,
+            workflows=get_workflows(),
+            activities=get_activities(),
+            workflow_runner=UnsandboxedWorkflowRunner(),
+        ):
+            handle = await env.client.start_workflow(
+                HistoricalEvalTaskWorkflow.run,
+                EvalTaskWorkflowInput(
+                    task_id=task_id, task_queue=queue, batch_size=6, max_concurrent=2
+                ),
+                id=f"eval-task-{task_id}",
+                task_queue=queue,
+            )
+
+            # Two evals are in flight (concurrency bound); pause now. The signal
+            # stops new launches; the DB flag lets the loop exit.
+            assert await sync_to_async(two_inflight.wait)(10) is True
+            await handle.signal("pause")
+            await _set_status(task_id, EvalTaskStatus.PAUSED)
+            release.set()
+            result = await handle.result()
+
+        await asyncio.sleep(0.2)
+        await sync_to_async(close_old_connections)()
+
+        assert result.status == "paused"
+        assert len(started) == 2  # only the in-flight pair ran; no new launches
+        counts = await _status_counts(task_id)
+        assert counts["completed"] == 2
+        assert counts["pending"] == 4  # the unstarted entries were requeued
+        assert counts["running"] == 0  # nothing stranded
+
     async def test_crash_leftovers_reclaimed_and_drained(
         self, workflow_environment, eval_task, make_pending_entries, monkeypatch
     ):
@@ -343,6 +413,67 @@ class TestHistoricalWorkflow:
         assert result.status == "completed"
         final = await _status_counts(task_id)
         assert final["completed"] == 1 and final["running"] == 0
+
+    async def test_task_status_passes_through_running_in_db(
+        self, workflow_environment, eval_task, make_pending_entries, monkeypatch
+    ):
+        """The EvalTask.status DB row (the UI's source of truth) must move
+        pending -> running -> completed, not jump pending -> completed. A barrier
+        in the run_entry stub freezes the drain so the test can read the live row
+        and confirm it is RUNNING mid-flight, then COMPLETED once released."""
+        from tfc.temporal.eval_tasks import get_activities, get_workflows
+        from tfc.temporal.eval_tasks.types import EvalTaskWorkflowInput
+        from tfc.temporal.eval_tasks.workflows import HistoricalEvalTaskWorkflow
+
+        await sync_to_async(make_pending_entries)(eval_task, 1)
+        _patch_noop_reconcile(monkeypatch)
+        assert await _task_status(str(eval_task.id)) == EvalTaskStatus.PENDING
+
+        reached_running = threading.Event()
+        release = threading.Event()
+
+        def _blocking(e):
+            reached_running.set()
+            release.wait(timeout=15)
+            EvalLogger.objects.filter(id=e.id).update(
+                status=EvalEntryStatus.COMPLETED, config_hash="0" * 64, error=False
+            )
+            return EvalEntryStatus.COMPLETED
+
+        monkeypatch.setattr("tracer.services.eval_tasks.run_entry.run_entry", _blocking)
+
+        env = workflow_environment
+        queue = f"eval-task-test-{uuid.uuid4().hex[:8]}"
+        task_id = str(eval_task.id)
+
+        async with Worker(
+            env.client,
+            task_queue=queue,
+            workflows=get_workflows(),
+            activities=get_activities(),
+            workflow_runner=UnsandboxedWorkflowRunner(),
+        ):
+            handle = await env.client.start_workflow(
+                HistoricalEvalTaskWorkflow.run,
+                EvalTaskWorkflowInput(
+                    task_id=task_id, task_queue=queue, batch_size=1, max_concurrent=1
+                ),
+                id=f"eval-task-{task_id}",
+                task_queue=queue,
+            )
+
+            assert await sync_to_async(reached_running.wait)(10) is True
+            # Drain is in flight: the DB row must already read RUNNING.
+            assert await _task_status(task_id) == EvalTaskStatus.RUNNING
+
+            release.set()
+            result = await handle.result()
+
+        await asyncio.sleep(0.2)
+        await sync_to_async(close_old_connections)()
+
+        assert result.status == "completed"
+        assert await _task_status(task_id) == EvalTaskStatus.COMPLETED
 
 
 # =============================================================================

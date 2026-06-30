@@ -21,8 +21,12 @@ from tfc.temporal.eval_tasks.types import (
     ReapOutput,
     ReconcileActivityInput,
     ReconcileActivityOutput,
+    RequeueEntriesInput,
+    RequeueEntriesOutput,
     RunEntryInput,
     RunEntryOutput,
+    SetStatusInput,
+    SetStatusOutput,
     TaskStateInput,
     TaskStateOutput,
     WorkflowLabelsInput,
@@ -220,6 +224,66 @@ def _get_workflow_labels_sync(task_id: str) -> dict:
         close_old_connections()
 
 
+def _requeue_entries_sync(task_id: str, entry_ids: list[str]) -> dict:
+    """Reset claimed-but-unrun entries (skipped when a pause landed mid-drain)
+    from ``running`` back to ``pending`` so a resume re-drains them. Filtered on
+    ``running`` so an entry that actually completed in the meantime is untouched.
+    """
+    close_old_connections()
+    try:
+        from tracer.models.observation_span import EvalEntryStatus, EvalLogger
+
+        requeued = EvalLogger.objects.filter(
+            id__in=entry_ids,
+            eval_task_id=task_id,
+            status=EvalEntryStatus.RUNNING,
+        ).update(status=EvalEntryStatus.PENDING)
+        return {"requeued": int(requeued)}
+    finally:
+        close_old_connections()
+
+
+def _set_task_status_sync(
+    task_id: str, status: str, expected_status: str | None = None
+) -> dict:
+    """Set the task's DB ``status`` (the UI's source of truth), optionally only
+    when it is currently ``expected_status``.
+
+    The workflow advertises status via a Temporal Search Attribute, but the UI
+    reads ``EvalTask.status`` from the DB — so the row must be written here too.
+    ``expected_status`` makes the change a guarded, atomic transition: the
+    filtered ``update`` touches the row only if it still holds that status, so a
+    concurrent pause/delete is never clobbered. The lifecycle timestamp that goes
+    with a status is stamped alongside it (``running`` → ``start_time``, terminal
+    ``completed``/``failed`` → ``end_time``).
+    """
+    close_old_connections()
+    try:
+        from django.utils import timezone
+
+        from tracer.models.eval_task import EvalTask, EvalTaskStatus
+
+        fields: dict = {"status": status}
+        if status == EvalTaskStatus.RUNNING:
+            fields["start_time"] = timezone.now()
+        elif status in (EvalTaskStatus.COMPLETED, EvalTaskStatus.FAILED):
+            fields["end_time"] = timezone.now()
+
+        qs = EvalTask.objects.filter(id=task_id)
+        if expected_status is not None:
+            qs = qs.filter(status=expected_status)
+        changed = qs.update(**fields)
+
+        task = EvalTask.objects.get(id=task_id)
+        return {
+            "task_id": str(task_id),
+            "changed": bool(changed),
+            "status": task.status or "",
+        }
+    finally:
+        close_old_connections()
+
+
 def _finalize_task_sync(task_id: str) -> dict:
     """Mark the task completed once the drain is fully done.
 
@@ -337,6 +401,30 @@ async def get_workflow_labels_activity(
 
 
 @activity.defn
+async def requeue_eval_entries_activity(
+    input: RequeueEntriesInput,
+) -> RequeueEntriesOutput:
+    async with Heartbeater():
+        result = await otel_sync_to_async(
+            _requeue_entries_sync, thread_sensitive=False
+        )(input.task_id, input.entry_ids)
+    return RequeueEntriesOutput(requeued=result["requeued"])
+
+
+@activity.defn
+async def set_eval_task_status_activity(input: SetStatusInput) -> SetStatusOutput:
+    async with Heartbeater():
+        result = await otel_sync_to_async(
+            _set_task_status_sync, thread_sensitive=False
+        )(input.task_id, input.status, input.expected_status)
+    return SetStatusOutput(
+        task_id=result["task_id"],
+        changed=result["changed"],
+        status=result["status"],
+    )
+
+
+@activity.defn
 async def finalize_eval_task_activity(input: FinalizeInput) -> FinalizeOutput:
     async with Heartbeater():
         result = await otel_sync_to_async(_finalize_task_sync, thread_sensitive=False)(
@@ -357,5 +445,7 @@ __all__ = [
     "reap_stale_running_activity",
     "get_eval_task_state_activity",
     "get_workflow_labels_activity",
+    "requeue_eval_entries_activity",
+    "set_eval_task_status_activity",
     "finalize_eval_task_activity",
 ]

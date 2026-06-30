@@ -33,6 +33,7 @@ from tfc.temporal.eval_tasks.search_attributes import (
     RUN_TYPE,
     STATUS_COMPLETED,
     STATUS_PAUSED,
+    STATUS_PENDING,
     STATUS_RUNNING,
     TASK_STATUS,
 )
@@ -46,7 +47,9 @@ from tfc.temporal.eval_tasks.types import (
     FinalizeInput,
     ReapInput,
     ReconcileActivityInput,
+    RequeueEntriesInput,
     RunEntryInput,
+    SetStatusInput,
     TaskStateInput,
     WorkflowLabelsInput,
 )
@@ -103,6 +106,30 @@ def _set_status(status: str) -> None:
     workflow.upsert_search_attributes([TASK_STATUS.value_set(status)])
 
 
+async def _set_db_status(
+    task_id: str, status: str, expected_status: str | None = None
+) -> None:
+    """Persist ``status`` on the task's DB row (the UI's source of truth).
+
+    The Search Attribute set by ``_set_status`` is for Temporal queries only;
+    the DB row is what the UI reads. ``expected_status`` makes it a guarded
+    transition (e.g. only flip ``pending`` → ``running``).
+    """
+    await workflow.execute_activity(
+        "set_eval_task_status_activity",
+        SetStatusInput(task_id=task_id, status=status, expected_status=expected_status),
+        start_to_close_timeout=_CONTROL_TIMEOUT,
+        retry_policy=CONTROL_RETRY_POLICY,
+    )
+
+
+async def _mark_running(task_id: str) -> None:
+    """Flip the task's DB row ``pending`` → ``running`` at drain start, so the UI
+    shows the running state (and the pause endpoint, which requires ``running``,
+    becomes reachable)."""
+    await _set_db_status(task_id, STATUS_RUNNING, expected_status=STATUS_PENDING)
+
+
 async def _reconcile(task_id: str) -> None:
     await workflow.execute_activity(
         "reconcile_eval_task_activity",
@@ -150,7 +177,9 @@ async def _finalize(task_id: str) -> None:
     )
 
 
-async def _drain_batch(entry_ids: list[str], max_concurrent: int) -> None:
+async def _drain_batch(
+    entry_ids: list[str], max_concurrent: int, is_paused=None
+) -> list[str]:
     """Run a claimed batch, capping concurrent eval activities at the per-task
     bound. run_entry self-converges to a terminal state, so retries
     here only cover worker/DB infra blips.
@@ -159,11 +188,24 @@ async def _drain_batch(entry_ids: list[str], max_concurrent: int) -> None:
     fault) is caught and its entry marked errored, so one bad item neither leaves
     work stranded as ``running`` nor fails the whole drain. ``return_exceptions``
     is the backstop for the rare case the fail activity itself can't run.
+
+    Checks ``is_paused`` before launching each eval so a mid-batch pause lets
+    in-flight evals finish but starts no new ones; the unstarted entries are
+    returned for the caller to requeue.
     """
     semaphore = asyncio.Semaphore(max_concurrent)
+    skipped: list[str] = []
 
     async def _run_one(entry_id: str) -> None:
+        if is_paused is not None and is_paused():
+            skipped.append(entry_id)
+            return
         async with semaphore:
+            # Re-check after clearing the gate: entries that were queued behind
+            # in-flight evals skip as soon as a slot frees once paused.
+            if is_paused is not None and is_paused():
+                skipped.append(entry_id)
+                return
             try:
                 await workflow.execute_activity(
                     "run_eval_entry_activity",
@@ -181,6 +223,18 @@ async def _drain_batch(entry_ids: list[str], max_concurrent: int) -> None:
                 )
 
     await asyncio.gather(*[_run_one(eid) for eid in entry_ids], return_exceptions=True)
+    return skipped
+
+
+async def _requeue(task_id: str, entry_ids: list[str]) -> None:
+    """Reset entries claimed-but-not-run (skipped on pause) back to pending so a
+    resume re-drains them instead of leaving them stranded as ``running``."""
+    await workflow.execute_activity(
+        "requeue_eval_entries_activity",
+        RequeueEntriesInput(task_id=task_id, entry_ids=entry_ids),
+        start_to_close_timeout=_CONTROL_TIMEOUT,
+        retry_policy=CONTROL_RETRY_POLICY,
+    )
 
 
 def _should_continue_as_new(batches: int, threshold) -> bool:
@@ -191,11 +245,13 @@ def _should_continue_as_new(batches: int, threshold) -> bool:
 
 class _ObservableEvalWorkflow:
     """Shared observability surface for the eval-task workflows: a ``phase``
-    query and a ``request_recheck`` pause/edit nudge signal."""
+    query, a ``request_recheck`` pause/edit nudge signal, and a ``pause`` signal
+    that stops the in-flight batch from launching new evals."""
 
     def __init__(self) -> None:
         self._phase = PHASE_STARTING
         self._recheck = False
+        self._paused = False
 
     @workflow.query
     def phase(self) -> str:
@@ -205,6 +261,14 @@ class _ObservableEvalWorkflow:
     def request_recheck(self) -> None:
         # The DB is the source of truth; this only wakes the loop to
         # re-check pause/edit sooner than its next poll boundary.
+        self._recheck = True
+
+    @workflow.signal
+    def pause(self) -> None:
+        # Stops the current drain from launching new evals at once; the loop's
+        # DB status check (the durable fallback) then exits the run. _recheck
+        # wakes a continuous task that's sleeping between polls.
+        self._paused = True
         self._recheck = True
 
     async def _sleep_or_recheck(self, seconds: int) -> None:
@@ -227,6 +291,9 @@ class HistoricalEvalTaskWorkflow(_ObservableEvalWorkflow):
         await _apply_labels(input.task_id)
         _set_status(STATUS_RUNNING)
         if not input.already_reconciled:
+            # First run only: flip the DB row pending → running (re-runs after a
+            # continue-as-new are already running).
+            await _mark_running(input.task_id)
             await _reconcile(input.task_id)
             # Reclaim entries left RUNNING by a crashed prior execution.
             await _reap(input.task_id)
@@ -250,12 +317,20 @@ class HistoricalEvalTaskWorkflow(_ObservableEvalWorkflow):
             if not entry_ids:
                 break
 
-            await _drain_batch(entry_ids, input.max_concurrent)
-            processed += len(entry_ids)
+            skipped = await _drain_batch(
+                entry_ids, input.max_concurrent, lambda: self._paused
+            )
+            if skipped:
+                # Pause landed mid-batch: return the unstarted entries to pending
+                # and loop back so the DB status check exits the run.
+                await _requeue(input.task_id, skipped)
+            processed += len(entry_ids) - len(skipped)
             batches += 1
             self._recheck = False
 
-            if _should_continue_as_new(batches, input.continue_as_new_after_batches):
+            if not self._paused and _should_continue_as_new(
+                batches, input.continue_as_new_after_batches
+            ):
                 workflow.continue_as_new(
                     EvalTaskWorkflowInput(
                         task_id=input.task_id,
@@ -284,6 +359,9 @@ class ContinuousEvalTaskWorkflow(_ObservableEvalWorkflow):
         self._phase = PHASE_MATERIALIZING
         await _apply_labels(state.task_id)
         _set_status(STATUS_RUNNING)
+        # Idempotent: only the first run (pending row) actually transitions;
+        # continue-as-new hops find it already running and no-op.
+        await _mark_running(state.task_id)
         await _reconcile(state.task_id)
         await _reap(state.task_id)
 
@@ -298,8 +376,12 @@ class ContinuousEvalTaskWorkflow(_ObservableEvalWorkflow):
             entry_ids = batch["entry_ids"]
             if entry_ids:
                 self._phase = PHASE_DRAINING
-                await _drain_batch(entry_ids, state.max_concurrent)
-                state.processed += len(entry_ids)
+                skipped = await _drain_batch(
+                    entry_ids, state.max_concurrent, lambda: self._paused
+                )
+                if skipped:
+                    await _requeue(state.task_id, skipped)
+                state.processed += len(entry_ids) - len(skipped)
                 state.batches += 1
             else:
                 self._phase = PHASE_SLEEPING
@@ -307,7 +389,7 @@ class ContinuousEvalTaskWorkflow(_ObservableEvalWorkflow):
                 self._phase = PHASE_MATERIALIZING
                 await _reconcile(state.task_id)
 
-            if _should_continue_as_new(
+            if not self._paused and _should_continue_as_new(
                 state.batches, state.continue_as_new_after_batches
             ):
                 # Reset the per-run batch counter; keep lifetime ``processed``.

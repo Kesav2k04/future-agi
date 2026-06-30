@@ -146,6 +146,97 @@ class TestWorkflowLabelsActivitySync:
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
+class TestRequeueEntriesActivitySync:
+    def test_running_entries_reset_to_pending(self, eval_task, make_pending_entries):
+        entries = make_pending_entries(eval_task, 3, status=EvalEntryStatus.RUNNING)
+        ids = [str(e.id) for e in entries]
+        from tfc.temporal.eval_tasks.activities import _requeue_entries_sync
+
+        out = _requeue_entries_sync(str(eval_task.id), ids)
+        assert out == {"requeued": 3}
+        assert (
+            EvalLogger.objects.filter(
+                eval_task_id=str(eval_task.id), status=EvalEntryStatus.PENDING
+            ).count()
+            == 3
+        )
+
+    def test_completed_entries_left_untouched(self, eval_task, make_pending_entries):
+        # An entry that finished between the skip and the requeue must not be
+        # dragged back to pending — only still-running ones are reset.
+        [done] = make_pending_entries(eval_task, 1, status=EvalEntryStatus.COMPLETED)
+        [running] = make_pending_entries(eval_task, 1, status=EvalEntryStatus.RUNNING)
+        from tfc.temporal.eval_tasks.activities import _requeue_entries_sync
+
+        out = _requeue_entries_sync(str(eval_task.id), [str(done.id), str(running.id)])
+        assert out == {"requeued": 1}
+        done.refresh_from_db()
+        running.refresh_from_db()
+        assert done.status == EvalEntryStatus.COMPLETED
+        assert running.status == EvalEntryStatus.PENDING
+
+
+@pytest.mark.integration
+@pytest.mark.django_db(transaction=True)
+class TestSetStatusActivitySync:
+    def test_guarded_flip_pending_to_running_stamps_start_time(self, eval_task):
+        from tfc.temporal.eval_tasks.activities import _set_task_status_sync
+
+        assert eval_task.status == EvalTaskStatus.PENDING
+        out = _set_task_status_sync(
+            str(eval_task.id),
+            EvalTaskStatus.RUNNING,
+            expected_status=EvalTaskStatus.PENDING,
+        )
+
+        assert out["changed"] is True
+        assert out["status"] == EvalTaskStatus.RUNNING
+        refreshed = EvalTask.objects.get(id=eval_task.id)
+        assert refreshed.status == EvalTaskStatus.RUNNING
+        assert refreshed.start_time is not None
+
+    def test_guard_noop_when_status_mismatch(self, eval_task):
+        eval_task.status = EvalTaskStatus.RUNNING
+        eval_task.save(update_fields=["status"])
+        from tfc.temporal.eval_tasks.activities import _set_task_status_sync
+
+        out = _set_task_status_sync(
+            str(eval_task.id),
+            EvalTaskStatus.RUNNING,
+            expected_status=EvalTaskStatus.PENDING,
+        )
+        assert out["changed"] is False
+        assert out["status"] == EvalTaskStatus.RUNNING
+
+    def test_guard_does_not_clobber_paused(self, eval_task):
+        # A pause landing between create and workflow start must survive: the
+        # guarded update only touches a still-pending row.
+        eval_task.status = EvalTaskStatus.PAUSED
+        eval_task.save(update_fields=["status"])
+        from tfc.temporal.eval_tasks.activities import _set_task_status_sync
+
+        out = _set_task_status_sync(
+            str(eval_task.id),
+            EvalTaskStatus.RUNNING,
+            expected_status=EvalTaskStatus.PENDING,
+        )
+        assert out["changed"] is False
+        assert EvalTask.objects.get(id=eval_task.id).status == EvalTaskStatus.PAUSED
+
+    def test_unconditional_set_to_terminal_stamps_end_time(self, eval_task):
+        eval_task.status = EvalTaskStatus.RUNNING
+        eval_task.save(update_fields=["status"])
+        from tfc.temporal.eval_tasks.activities import _set_task_status_sync
+
+        out = _set_task_status_sync(str(eval_task.id), EvalTaskStatus.FAILED)
+        assert out["changed"] is True
+        refreshed = EvalTask.objects.get(id=eval_task.id)
+        assert refreshed.status == EvalTaskStatus.FAILED
+        assert refreshed.end_time is not None
+
+
+@pytest.mark.integration
+@pytest.mark.django_db(transaction=True)
 class TestFinalizeActivitySync:
     def test_finalizes_when_drained(self, eval_task, make_pending_entries):
         make_pending_entries(eval_task, 2, status=EvalEntryStatus.COMPLETED)

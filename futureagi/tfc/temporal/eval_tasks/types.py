@@ -108,6 +108,33 @@ class TaskStateOutput:
 
 
 @dataclass
+class RequeueEntriesInput:
+    task_id: str
+    entry_ids: list[str]
+
+
+@dataclass
+class RequeueEntriesOutput:
+    requeued: int
+
+
+@dataclass
+class SetStatusInput:
+    task_id: str
+    status: str
+    # Optional atomic guard: only change the row if it is currently this status
+    # (so a concurrent pause/delete is never clobbered). None = unconditional.
+    expected_status: str | None = None
+
+
+@dataclass
+class SetStatusOutput:
+    task_id: str
+    changed: bool
+    status: str
+
+
+@dataclass
 class FinalizeInput:
     task_id: str
 
@@ -154,6 +181,10 @@ __all__ = [
     "ReapOutput",
     "TaskStateInput",
     "TaskStateOutput",
+    "RequeueEntriesInput",
+    "RequeueEntriesOutput",
+    "SetStatusInput",
+    "SetStatusOutput",
     "FinalizeInput",
     "FinalizeOutput",
     "WorkflowLabelsInput",

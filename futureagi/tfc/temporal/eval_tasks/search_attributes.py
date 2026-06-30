@@ -24,6 +24,7 @@ SEARCH_ATTRIBUTE_NAMES = [key.name for key in ALL_KEYS]
 
 # TaskStatus SA values — mirror tracer.models.eval_task.EvalTaskStatus (the
 # workflow can't import the Django enum inside the sandbox).
+STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
 STATUS_PAUSED = "paused"
 STATUS_COMPLETED = "completed"

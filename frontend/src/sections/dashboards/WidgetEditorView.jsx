@@ -1128,6 +1128,9 @@ export default function WidgetEditorView() {
   const [moreMenuAnchor, setMoreMenuAnchor] = useState(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
+  const incomingTimePreset = searchParams.get("timePreset");
+  const dashboardDetailUrl = `${paths.dashboard.dashboards.detail(dashboardId)}${incomingTimePreset ? `?timePreset=${incomingTimePreset}` : ""}`;
+
   const confirmDeleteWidget = () => {
     if (!isEditing) {
       setConfirmDeleteOpen(false);
@@ -1145,8 +1148,6 @@ export default function WidgetEditorView() {
       },
     );
   };
-  const incomingTimePreset = searchParams.get("timePreset");
-  const dashboardDetailUrl = `${paths.dashboard.dashboards.detail(dashboardId)}${incomingTimePreset ? `?timePreset=${incomingTimePreset}` : ""}`;
 
   const [timePreset, setTimePreset] = useState(
     incomingTimePreset || "30D",

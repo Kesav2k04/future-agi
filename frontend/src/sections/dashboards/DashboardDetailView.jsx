@@ -643,7 +643,7 @@ export default function DashboardDetailView() {
 
   // Global date filter — restore from URL so returning from widget editor
   // preserves the previously selected preset.
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [datePreset, setDatePreset] = useState(
     () => searchParams.get("timePreset") || null,
   );

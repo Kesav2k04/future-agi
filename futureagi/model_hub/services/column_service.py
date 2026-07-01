@@ -351,59 +351,51 @@ def delete_eval_column_and_dependents(column, organization_id):
     and DeleteAndRunUserEvalView so both fix the Cell full-scan (TH-5508) and
     stay in sync if the logic ever changes.
 
-    Must run inside ``transaction.atomic()``. Steps 2-6 write to four tables
-    (Cell, Dataset, UserEvalMetric, Column); a non-atomic run leaves half-
-    applied state on any failure mid-sequence. The assert below makes that
-    requirement enforced, not documented — a future caller cannot forget.
+    Self-atomic: opens its own ``transaction.atomic()`` internally so callers
+    can't accidentally run it non-atomically. Callers that need to bundle
+    additional writes (e.g. ``eval_metric.save()`` in ``DeleteEvalsView``)
+    can wrap the call in their own outer ``transaction.atomic()`` — Django's
+    nested atomic uses savepoints, so the outer transaction becomes the boss
+    and the service's inner atomic becomes a savepoint.
     """
-    from django.db import connection
     from django.db.models import Q
     from django.utils import timezone
 
     from model_hub.models.develop_dataset import Cell, Column, Dataset
     from model_hub.models.evals_metric import UserEvalMetric
 
-    # Explicit raise rather than ``assert`` — ``python -O`` /
-    # ``PYTHONOPTIMIZE=1`` strips ``assert`` statements, which would silently
-    # remove this fail-closed invariant. The service writes to four tables
-    # (Cell, Dataset, UserEvalMetric, Column); without an atomic surround,
-    # a mid-sequence failure leaves half-applied state.
-    if not connection.in_atomic_block:
-        raise RuntimeError(
-            "delete_eval_column_and_dependents requires transaction.atomic()"
+    with transaction.atomic():
+        now = timezone.now()
+
+        # 1. Collect ALL related column IDs in a single indexed query.
+        col_ids = list(
+            Column.objects.filter(
+                Q(id=column.id) | Q(source_id__startswith=f"{column.id}-sourceid-"),
+                deleted=False,
+            ).values_list("id", flat=True)
         )
+        col_id_strs = {str(c) for c in col_ids}
 
-    now = timezone.now()
+        # 2. Soft-delete cells by indexed column_id IN — no JOIN on source_id.
+        if col_ids:
+            Cell.objects.filter(
+                column_id__in=col_ids, deleted=False
+            ).update(deleted=True, deleted_at=now)
 
-    # 1. Collect ALL related column IDs in a single indexed query.
-    col_ids = list(
-        Column.objects.filter(
-            Q(id=column.id) | Q(source_id__startswith=f"{column.id}-sourceid-"),
-            deleted=False,
-        ).values_list("id", flat=True)
-    )
-    col_id_strs = {str(c) for c in col_ids}
+        # 3. Prune column_order AND column_config in one Dataset row update.
+        prune_dataset_columns(column.dataset, col_id_strs)
 
-    # 2. Soft-delete cells by indexed column_id IN — no JOIN on source_id.
-    if col_ids:
-        Cell.objects.filter(
-            column_id__in=col_ids, deleted=False
-        ).update(deleted=True, deleted_at=now)
+        # 4. Flag other metrics that referenced this column BEFORE deleting it
+        #    (column must still be visible for get_metrics_using_column to find it).
+        metrics = UserEvalMetric.get_metrics_using_column(organization_id, column.id)
+        other_metric_ids = [m.id for m in metrics]
+        if other_metric_ids:
+            UserEvalMetric.objects.filter(id__in=other_metric_ids).update(
+                column_deleted=True
+            )
 
-    # 3. Prune column_order AND column_config in one Dataset row update.
-    prune_dataset_columns(column.dataset, col_id_strs)
-
-    # 4. Flag other metrics that referenced this column BEFORE deleting it
-    #    (column must still be visible for get_metrics_using_column to find it).
-    metrics = UserEvalMetric.get_metrics_using_column(organization_id, column.id)
-    other_metric_ids = [m.id for m in metrics]
-    if other_metric_ids:
-        UserEvalMetric.objects.filter(id__in=other_metric_ids).update(
-            column_deleted=True
-        )
-
-    # 5. Soft-delete the columns.
-    if col_ids:
-        Column.objects.filter(id__in=col_ids).update(
-            deleted=True, deleted_at=now
-        )
+        # 5. Soft-delete the columns.
+        if col_ids:
+            Column.objects.filter(id__in=col_ids).update(
+                deleted=True, deleted_at=now
+            )

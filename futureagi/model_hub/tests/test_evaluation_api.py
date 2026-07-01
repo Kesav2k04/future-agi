@@ -1150,19 +1150,18 @@ class TestDeleteEvalsView:
             f"found full-scan query in: {cell_sql}"
         )
 
-    def test_delete_eval_service_requires_atomic_block(
+    def test_delete_eval_service_is_self_atomic(
         self, dataset, organization, workspace, eval_template
     ):
-        """The service must refuse to run outside transaction.atomic() so a
-        future caller cannot accidentally leave half-applied state on failure.
+        """The service opens its own ``transaction.atomic()`` so callers
+        can't accidentally run it non-atomically.
 
-        Note: @pytest.mark.django_db already wraps every test in an atomic
-        block, so we mock connection.in_atomic_block to False to simulate
-        a caller that forgot to open one.
+        Verifies by spying on ``transaction.atomic`` in the service module
+        and asserting it was called during the delete.
         """
         from unittest.mock import patch
 
-        from django.db import connection
+        from django.db import transaction as _tx
 
         from model_hub.services.column_service import delete_eval_column_and_dependents
 
@@ -1182,12 +1181,17 @@ class TestDeleteEvalsView:
             source=SourceChoices.EVALUATION.value,
             source_id=str(metric.id),
         )
-        with patch.object(connection, "in_atomic_block", False):
-            # ``RuntimeError`` rather than ``AssertionError`` — ``assert``s are
-            # stripped under ``python -O``, which would silently drop this
-            # invariant. The service now uses an explicit ``raise RuntimeError``.
-            with pytest.raises(RuntimeError, match="transaction.atomic"):
-                delete_eval_column_and_dependents(eval_col, organization.id)
+
+        with patch(
+            "model_hub.services.column_service.transaction.atomic",
+            side_effect=_tx.atomic,
+        ) as spy:
+            delete_eval_column_and_dependents(eval_col, organization.id)
+
+        assert spy.call_count >= 1, (
+            "service must open its own transaction.atomic() so callers "
+            "can't accidentally run it non-atomically"
+        )
 
     def test_delete_eval_prunes_column_config(
         self, dataset, organization, workspace, eval_template

@@ -7749,32 +7749,29 @@ class DeleteEvalsView(APIView):
                         eval_metric.deleted_at = now
                         eval_metric.save(update_fields=["deleted", "deleted_at"])
                 else:
-                    # Check if column exists before attempting deletion
-                    column = Column.objects.filter(
-                        source_id=eval_metric.id,
-                        dataset=dataset,
-                        deleted=False,
-                    ).first()
-                    if column:
-                        from model_hub.services.column_service import (
-                            delete_eval_column_and_dependents,
-                        )
-                        with transaction.atomic():
+                    # SELECT + service call + metric soft-delete all in one
+                    # atomic. If the column got deleted between the SELECT and
+                    # the service call, the service's inner queryset filters
+                    # deleted=False and no-ops — safe either way.
+                    from model_hub.services.column_service import (
+                        delete_eval_column_and_dependents,
+                    )
+                    with transaction.atomic():
+                        column = Column.objects.filter(
+                            source_id=eval_metric.id,
+                            dataset=dataset,
+                            deleted=False,
+                        ).first()
+                        if column:
                             # delete_eval_column_and_dependents flags ALL metrics
                             # referencing this column with column_deleted=True,
                             # including eval_metric. That flag is immediately
                             # superseded by deleted=True below, so it is never
                             # visible — this is deliberate behaviour.
                             delete_eval_column_and_dependents(column, organization.id)
-                            eval_metric.deleted = True
-                            eval_metric.deleted_at = now
-                            eval_metric.save(update_fields=["deleted", "deleted_at"])
-                    else:
-                        # Column already gone; just delete the metric itself.
-                        with transaction.atomic():
-                            eval_metric.deleted = True
-                            eval_metric.deleted_at = now
-                            eval_metric.save(update_fields=["deleted", "deleted_at"])
+                        eval_metric.deleted = True
+                        eval_metric.deleted_at = now
+                        eval_metric.save(update_fields=["deleted", "deleted_at"])
             else:
                 # Only hide from sidebar if delete_column is False
                 eval_metric.show_in_sidebar = False

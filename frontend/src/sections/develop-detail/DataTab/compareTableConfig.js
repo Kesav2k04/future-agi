@@ -17,8 +17,12 @@ export const ExperimentDataDefaultColDef = {
 };
 
 export const getEachCompareColumnDef = (eachCol, diffModeRef) => {
-  const colDataType = eachCol?.data_type ?? eachCol?.dataType;
-  const colOriginType = eachCol?.origin_type ?? eachCol?.originType;
+  const colDataType =
+    eachCol?.data_type !== undefined ? eachCol.data_type : eachCol?.dataType;
+  const colOriginType =
+    eachCol?.origin_type !== undefined
+      ? eachCol.origin_type
+      : eachCol?.originType;
   return {
     field: eachCol.id,
     headerName: eachCol.name,

@@ -982,16 +982,18 @@ export const enhanceCol = (col, averageMetaData) => {
   return {
     ...col,
     metadata: columnConfig?.metadata,
-    data_type: col?.data_type ?? col?.dataType,
-    dataType: col?.data_type ?? col?.dataType,
-    origin_type: col?.origin_type ?? col?.originType,
-    originType: col?.origin_type ?? col?.originType,
-    is_frozen: col?.is_frozen ?? col?.isFrozen,
-    isFrozen: col?.is_frozen ?? col?.isFrozen,
-    is_visible: col?.is_visible ?? col?.isVisible,
-    isVisible: col?.is_visible ?? col?.isVisible,
-    source_id: col?.source_id ?? col?.sourceId,
-    sourceId: col?.source_id ?? col?.sourceId,
+    data_type: col?.data_type !== undefined ? col.data_type : col?.dataType,
+    dataType: col?.data_type !== undefined ? col.data_type : col?.dataType,
+    origin_type:
+      col?.origin_type !== undefined ? col.origin_type : col?.originType,
+    originType:
+      col?.origin_type !== undefined ? col.origin_type : col?.originType,
+    is_frozen: col?.is_frozen !== undefined ? col.is_frozen : col?.isFrozen,
+    isFrozen: col?.is_frozen !== undefined ? col.is_frozen : col?.isFrozen,
+    is_visible: col?.is_visible !== undefined ? col.is_visible : col?.isVisible,
+    isVisible: col?.is_visible !== undefined ? col.is_visible : col?.isVisible,
+    source_id: col?.source_id !== undefined ? col.source_id : col?.sourceId,
+    sourceId: col?.source_id !== undefined ? col.source_id : col?.sourceId,
   };
 };
 

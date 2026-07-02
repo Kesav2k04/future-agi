@@ -137,8 +137,7 @@ export const transformDefaultData = (editConfigData, allColumns) => {
   const resolvedModelType =
     runPromptConfig?.model_type || runPromptConfig?.modelType;
 
-  const rawResponseFormat =
-    editConfigData?.response_format ?? editConfigData?.responseFormat;
+  const rawResponseFormat = editConfigData?.response_format;
   const resolvedResponseFormat =
     typeof rawResponseFormat === "object"
       ? rawResponseFormat?.name ?? "text"

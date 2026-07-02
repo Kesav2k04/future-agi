@@ -841,7 +841,11 @@ class TestMetricsEndpoint:
         auth_client,
         observe_project,
     ):
-        """`metric_name=name` (Trace Name) must scope to root spans."""
+        """`metric_name=name` (Trace Name) must scope to root spans.
+
+        CH25 v2 spans write '' (not NULL) on the non-nullable parent_span_id
+        for root spans, so the clause must match both forms or it returns 0 rows.
+        """
         mock_result = MagicMock()
         mock_result.data = []
         mock_analytics_cls.return_value.execute_ch_query.return_value = mock_result
@@ -853,7 +857,7 @@ class TestMetricsEndpoint:
         )
 
         sql_arg = mock_analytics_cls.return_value.execute_ch_query.call_args[0][0]
-        assert "parent_span_id IS NULL" in sql_arg
+        assert "(parent_span_id IS NULL OR parent_span_id = '')" in sql_arg
 
     @pytest.mark.parametrize("metric_name", ["span_name", "service_name"])
     @pytest.mark.django_db

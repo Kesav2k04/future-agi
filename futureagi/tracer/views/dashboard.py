@@ -2202,7 +2202,9 @@ class DashboardViewSet(BaseModelViewSetMixin, ModelViewSet):
                     null_uuid = "00000000-0000-0000-0000-000000000000"
                     # Trace Name = root span name; restrict to root spans.
                     root_only_clause = (
-                        "AND parent_span_id IS NULL " if metric_name == "name" else ""
+                        "AND (parent_span_id IS NULL OR parent_span_id = '') "
+                        if metric_name == "name"
+                        else ""
                     )
 
                     if metric_name == "session":

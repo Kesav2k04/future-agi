@@ -229,7 +229,7 @@ const TaskDetailPage = () => {
         project: data.project,
         run_type: data.runType,
         sampling_rate: data.samplingRate,
-        spans_limit: data.spansLimit ? String(data.spansLimit) : undefined,
+        spans_limit: data.spansLimit ? Number(data.spansLimit) : undefined,
         edit_type: editType,
       };
       updateTask(transformedData);

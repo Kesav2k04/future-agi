@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Box, CircularProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, CircularProgress, Stack, Typography } from "@mui/material";
 import ChartLegend from "./ChartLegend";
 import ReactApexChart from "react-apexcharts";
 import { useTheme } from "@mui/material/styles";
@@ -13,6 +13,7 @@ import {
   getAutoDecimals,
   getSeriesAverage,
   getSuggestedUnitConfig,
+  getYAxisRangeWarning,
 } from "./widgetUtils";
 import { toTimeRangePayload } from "./dashboardDateRange";
 
@@ -153,6 +154,11 @@ export default function WidgetChart({ widget, globalDateRange }) {
     if (visibleSeries === null) return series;
     return series.filter((_, i) => visibleSeries.has(i));
   }, [series, visibleSeries]);
+
+  const outOfRangeWarning = useMemo(
+    () => getYAxisRangeWarning(chartSeries, axisConfig),
+    [chartSeries, axisConfig],
+  );
 
   const pieValues = useMemo(
     () =>
@@ -816,6 +822,27 @@ export default function WidgetChart({ widget, globalDateRange }) {
             );
           })}
         </Box>
+      </Box>
+    );
+  }
+
+  if (outOfRangeWarning) {
+    return (
+      <Box
+        ref={containerRef}
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100%",
+          height: "100%",
+          minHeight: 0,
+          px: 2,
+        }}
+      >
+        <Alert severity="warning" sx={{ width: "100%" }}>
+          {outOfRangeWarning}
+        </Alert>
       </Box>
     );
   }

@@ -1362,3 +1362,8 @@ export const stripAttributePathPrefix = (key) =>
   String(key ?? "")
     .replace(/^observation_span\.\d+\.(?:span_attributes\.)?/, "")
     .replace(/(^|\.)span_attributes\./g, "$1");
+
+export const getVersionLabel = (templateVersion) => {
+  const tv = String(templateVersion ?? "");
+  return tv.startsWith("v") ? tv : `v${tv}`;
+};

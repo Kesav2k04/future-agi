@@ -616,12 +616,12 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         # Get session-level aggregates from CH
         agg_query = f"""
             SELECT
-                min(start_time) AS start_time,
-                max(end_time) AS end_time,
+                min(start_time) AS session_start,
+                max(end_time) AS session_end,
                 round(sum(cost), 6) AS total_cost,
                 sum(total_tokens) AS total_tokens,
                 count(DISTINCT trace_id) AS total_traces,
-                toString(argMaxIf(end_user_id, spans.start_time, isNotNull(end_user_id) AND end_user_id != toUUID('00000000-0000-0000-0000-000000000000'))) AS end_user_id
+                toString(argMaxIf(end_user_id, start_time, isNotNull(end_user_id) AND end_user_id != toUUID('00000000-0000-0000-0000-000000000000'))) AS end_user_id
             FROM spans
             {ts_remap_join}
             WHERE project_id = %(project_id)s
@@ -635,8 +635,8 @@ class TraceSessionView(BaseModelViewSetMixin, ModelViewSet):
         )
 
         agg = agg_result.data[0] if agg_result.data else {}
-        session_start = agg.get("start_time")
-        session_end = agg.get("end_time")
+        session_start = agg.get("session_start")
+        session_end = agg.get("session_end")
         duration = 0
         if session_start and session_end:
             try:

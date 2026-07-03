@@ -1197,9 +1197,8 @@ const ModelSelector = ({
                 Your Models
               </Typography>
               {apiModels.map((m) => {
-                // API is snake_case; read camelCase too in case the contract changes.
-                const available = (m.isAvailable ?? m.is_available) !== false;
-                const logoUrl = m.logoUrl || m.logo_url;
+                const available = m.is_available !== false;
+                const logoUrl = m.logo_url;
                 return (
                   <MenuItem
                     key={m.model_name}

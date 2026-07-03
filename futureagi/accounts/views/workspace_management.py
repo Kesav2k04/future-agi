@@ -66,7 +66,12 @@ from accounts.services.workspace_membership import (
     create_workspace_membership,
     resolve_org_membership,
 )
-from accounts.utils import generate_password, resolve_org, resolve_org_role
+from accounts.utils import (
+    generate_password,
+    persist_pending_org_invite,
+    resolve_org,
+    resolve_org_role,
+)
 from analytics.mixpanel_util import mixpanel_tracker
 from analytics.utils import (
     MixpanelEvents,
@@ -152,34 +157,6 @@ def clear_user_redis_cache(user_id):
     except Exception as e:
         logger.error(f"Error clearing Redis cache for user {user_id}: {str(e)}")
         return False
-
-
-def persist_pending_org_invite(
-    organization, target_email, org_role, workspace_role, workspaces, invited_by
-):
-    """Persist a PENDING OrganizationInvite for a newly invited user.
-
-    The accept-invite flow (accept_invitation_mail) rejects any link that has
-    no pending invite, and invite.accept() materializes the org + workspace
-    memberships from level/workspace_access. Without this row the invite email
-    link always renders as "expired or invalid".
-    """
-    from accounts.models.organization_invite import InviteStatus, OrganizationInvite
-
-    org_level = Level.from_string(org_role) if org_role else Level.VIEWER
-    ws_level = Level.from_string(Level.normalize_ws_role(workspace_role))
-    OrganizationInvite.objects.update_or_create(
-        organization=organization,
-        target_email=target_email,
-        status=InviteStatus.PENDING,
-        defaults={
-            "level": org_level,
-            "workspace_access": [
-                {"workspace_id": str(w.id), "level": ws_level} for w in workspaces
-            ],
-            "invited_by": invited_by,
-        },
-    )
 
 
 class WorkspaceListAPIView(APIView):

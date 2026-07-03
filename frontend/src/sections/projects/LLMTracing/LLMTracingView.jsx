@@ -1944,24 +1944,37 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
     primarySpansPendingRef.current = [];
     compareSpansPendingRef.current = [];
 
-    // Queue this view's customs into its own tab's refs (primary + compare for a
-    // later compare-mode toggle). Clone per slot so we don't mutate the cache.
+    // Land this view's customs in its own tab's slots (primary + compare for a
+    // later compare-mode toggle). Pending refs only drain on a datasource
+    // fetch, and a warm slot may never refetch (params unchanged) — so merge
+    // straight into non-empty slots and queue only for empty ones, whose
+    // mount fetch drains reliably. Clone per slot so we don't mutate the cache.
     if (display.customColumns?.length > 0) {
-      if (viewTabType === "trace") {
-        primaryTracePendingRef.current = display.customColumns.map((c) => ({
-          ...c,
-        }));
-        compareTracePendingRef.current = display.customColumns.map((c) => ({
-          ...c,
-        }));
-      } else {
-        primarySpansPendingRef.current = display.customColumns.map((c) => ({
-          ...c,
-        }));
-        compareSpansPendingRef.current = display.customColumns.map((c) => ({
-          ...c,
-        }));
-      }
+      const targets =
+        viewTabType === "trace"
+          ? [
+              ["primary-trace", primaryTracePendingRef],
+              ["compare-trace", compareTracePendingRef],
+            ]
+          : [
+              ["primary-spans", primarySpansPendingRef],
+              ["compare-spans", compareSpansPendingRef],
+            ];
+      setColumns((prev) => {
+        const next = { ...prev };
+        targets.forEach(([slot, pendingRef]) => {
+          const fresh = display.customColumns.map((c) => ({ ...c }));
+          const nonCustom = (prev[slot] || []).filter(
+            (c) => c.groupBy !== "Custom Columns",
+          );
+          if (nonCustom.length > 0) {
+            next[slot] = [...nonCustom, ...fresh];
+          } else {
+            pendingRef.current = fresh;
+          }
+        });
+        return next;
+      });
     }
 
     // Voice/simulator: same-tab-type saved-view switch doesn't trigger
@@ -2177,11 +2190,19 @@ const LLMTracingView = ({ mode = "project", userIdForUserMode = null }) => {
 
   // Fallback: release the gate even if a saved custom col never loads, so the
   // Save-view button can't get stuck hidden (the merge check above clears sooner).
+  // Armed only once the view's slot has columns and re-armed on every columns
+  // change — on a cold load the first fetch can outlast the timer, and releasing
+  // before columns exist skips the order-applying branch above for good.
   useEffect(() => {
     if (!isHydratingView) return undefined;
+    const slotKey = slotKeyFromColumnState(
+      pendingSavedColsRef.current,
+      selectedTab === "trace" ? "primary-trace" : "primary-spans",
+    );
+    if ((columns[slotKey] || []).length === 0) return undefined;
     const t = setTimeout(() => setIsHydratingView(false), 2500);
     return () => clearTimeout(t);
-  }, [isHydratingView]);
+  }, [isHydratingView, columns, selectedTab]);
 
   // ---------------------------------------------------------------------------
   // View persistence — auto-save display + reset/default

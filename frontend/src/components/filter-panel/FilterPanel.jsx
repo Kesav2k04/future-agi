@@ -578,11 +578,15 @@ const RANGE_NUMERIC_TYPES = new Set([
   "long",
 ]);
 const RANGE_DATE_TYPES = new Set(["date", "datetime", "timestamp"]);
+// Numeric ranges stay type="text": type="number" swallows invalid keystrokes
+// with no feedback (same rationale as the Basic-tab inputs, TH-5195).
 const rangeInputTypeFor = (fieldType) => {
   if (RANGE_DATE_TYPES.has(fieldType)) return "date";
-  if (RANGE_NUMERIC_TYPES.has(fieldType)) return "number";
   return "text";
 };
+
+const isValidRangeNumericInput = (v) =>
+  v === "" || /^-?\d*\.?\d*$/.test(String(v).trim());
 
 const QueryInput = forwardRef(function QueryInput(
   {
@@ -643,6 +647,11 @@ const QueryInput = forwardRef(function QueryInput(
   const rangeInputType = isRangePhase
     ? rangeInputTypeFor(fieldMap[partialField]?.type)
     : "text";
+  const isNumericRange =
+    isRangePhase && RANGE_NUMERIC_TYPES.has(fieldMap[partialField]?.type);
+  const rangeFromInvalid =
+    isNumericRange && !isValidRangeNumericInput(rangeFrom);
+  const rangeToInvalid = isNumericRange && !isValidRangeNumericInput(rangeTo);
 
   const options = useMemo(() => {
     if (phase === "field")
@@ -714,8 +723,17 @@ const QueryInput = forwardRef(function QueryInput(
 
   const commitRange = useCallback(() => {
     if (rangeFrom === "" || rangeTo === "") return;
+    if (rangeFromInvalid || rangeToInvalid) return;
     commitFilter(partialField, partialOp, [rangeFrom, rangeTo]);
-  }, [rangeFrom, rangeTo, partialField, partialOp, commitFilter]);
+  }, [
+    rangeFrom,
+    rangeTo,
+    rangeFromInvalid,
+    rangeToInvalid,
+    partialField,
+    partialOp,
+    commitFilter,
+  ]);
 
   // Imperative API used by the parent (TraceFilterPanel etc.) when Apply
   // is clicked while a complete partial token is still pending. Without
@@ -732,6 +750,7 @@ const QueryInput = forwardRef(function QueryInput(
         if (!partialField || !partialOp) return null;
         if (isRangePhase) {
           if (rangeFrom === "" || rangeTo === "") return null;
+          if (rangeFromInvalid || rangeToInvalid) return null;
           const updated = [
             ...tokens,
             {
@@ -768,6 +787,8 @@ const QueryInput = forwardRef(function QueryInput(
       isRangePhase,
       rangeFrom,
       rangeTo,
+      rangeFromInvalid,
+      rangeToInvalid,
       inputValue,
     ],
   );
@@ -834,14 +855,26 @@ const QueryInput = forwardRef(function QueryInput(
         setInputValue("");
       } else {
         setPartialOp(token.operator);
-        if (Array.isArray(token.value) && token.value.length === 2) {
+        // Key off the operator, not the array shape — in/not_in and
+        // multi-select values are also 2-element arrays.
+        if (
+          opDefFor(token.field, token.operator)?.range &&
+          Array.isArray(token.value) &&
+          token.value.length === 2
+        ) {
           setRangeFrom(token.value[0] ?? "");
           setRangeTo(token.value[1] ?? "");
           setInputValue("");
         } else {
           setRangeFrom("");
           setRangeTo("");
-          setInputValue(typeof token.value === "string" ? token.value : "");
+          setInputValue(
+            Array.isArray(token.value)
+              ? token.value.join(", ")
+              : typeof token.value === "string"
+                ? token.value
+                : "",
+          );
         }
       }
       setTimeout(() => setDropdownOpen(true), 0);
@@ -1024,11 +1057,13 @@ const QueryInput = forwardRef(function QueryInput(
           size="small"
           type={rangeInputType}
           value={rangeFrom}
-          onChange={(e) => setRangeFrom(e.target.value)}
+          error={rangeFromInvalid}
+          onChange={(e) => setRangeFrom(e.target.value.trim())}
           placeholder="from"
           autoFocus
           onKeyDown={onRangeKeyDown}
           sx={rangeFieldSx}
+          inputProps={isNumericRange ? { inputMode: "decimal" } : undefined}
         />
         <Box
           component="span"
@@ -1040,15 +1075,22 @@ const QueryInput = forwardRef(function QueryInput(
           size="small"
           type={rangeInputType}
           value={rangeTo}
-          onChange={(e) => setRangeTo(e.target.value)}
+          error={rangeToInvalid}
+          onChange={(e) => setRangeTo(e.target.value.trim())}
           placeholder="to"
           onKeyDown={onRangeKeyDown}
           sx={rangeFieldSx}
+          inputProps={isNumericRange ? { inputMode: "decimal" } : undefined}
         />
         <IconButton
           size="small"
           onClick={commitRange}
-          disabled={rangeFrom === "" || rangeTo === ""}
+          disabled={
+            rangeFrom === "" ||
+            rangeTo === "" ||
+            rangeFromInvalid ||
+            rangeToInvalid
+          }
           sx={{ p: 0.5 }}
         >
           <Iconify icon="mdi:check" width={16} />

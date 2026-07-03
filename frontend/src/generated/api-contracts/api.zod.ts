@@ -15682,62 +15682,80 @@ export const ModelHubDatasetOptimizationCreateBody = zod.object({
 
 
 /**
- * Returns data in the same format as AgentPromptOptimiserRunViewSet.retrieve()
-to allow reuse of frontend simulation components.
- * @summary Get run details with trial comparison table.
+ * Get run details; payload matches AgentPromptOptimiserRunViewSet.retrieve().
  */
 export const ModelHubDatasetOptimizationReadParams = zod.object({
   "id": zod.string().uuid().describe('A UUID string identifying this optimize dataset.')
 })
 
-export const modelHubDatasetOptimizationReadResponseNameMax = 255;
 
 
-export const modelHubDatasetOptimizationReadResponseStepsItemNameMax = 255;
 
-export const modelHubDatasetOptimizationReadResponseStepsItemStepNumberMin = -2147483648;
-export const modelHubDatasetOptimizationReadResponseStepsItemStepNumberMax = 2147483647;
 
-export const modelHubDatasetOptimizationReadResponseTrialsItemTrialNumberMin = -2147483648;
-export const modelHubDatasetOptimizationReadResponseTrialsItemTrialNumberMax = 2147483647;
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 export const ModelHubDatasetOptimizationReadResponse = zod.object({
-  "id": zod.string().uuid().optional(),
-  "name": zod.string().min(1).max(modelHubDatasetOptimizationReadResponseNameMax),
-  "column": zod.string().uuid().optional().describe('Column being optimized'),
-  "optimizer_algorithm": zod.enum(['random_search', 'bayesian', 'metaprompt', 'protegi', 'promptwizard', 'gepa']).optional(),
-  "optimizer_model": zod.string().uuid().optional().describe('Model used for optimization (separate from eval model)'),
-  "optimizer_config": zod.object({
-
-}).passthrough().optional().describe('Optimizer-specific configuration (num_trials, etc.)'),
-  "status": zod.enum(['not_started', 'pending', 'running', 'completed', 'failed', 'cancelled']).optional(),
-  "error_message": zod.string().optional(),
-  "best_score": zod.number().optional(),
-  "baseline_score": zod.number().optional(),
-  "optimized_k_prompts": zod.array(zod.string().min(1)).optional(),
-  "steps": zod.array(zod.object({
-  "id": zod.string().uuid().optional(),
-  "name": zod.string().min(1).max(modelHubDatasetOptimizationReadResponseStepsItemNameMax),
-  "description": zod.string().optional(),
-  "status": zod.enum(['pending', 'running', 'completed', 'failed']).optional(),
-  "metadata": zod.object({
+  "status": zod.boolean(),
+  "result": zod.object({
+  "optimiser_name": zod.string().min(1).optional(),
+  "optimiser_type": zod.string().min(1).optional(),
+  "model": zod.string().min(1).optional(),
+  "provider_logo": zod.string().min(1).optional(),
+  "configuration": zod.object({
 
 }).passthrough().optional(),
-  "step_number": zod.number().min(modelHubDatasetOptimizationReadResponseStepsItemStepNumberMin).max(modelHubDatasetOptimizationReadResponseStepsItemStepNumberMax),
-  "created_at": zod.string().datetime({"offset":true}).optional(),
-  "updated_at": zod.string().datetime({"offset":true}).optional()
+  "status": zod.enum(['not_started', 'pending', 'running', 'completed', 'failed', 'cancelled']).optional(),
+  "error_message": zod.string().optional(),
+  "start_time": zod.string().datetime({"offset":true}).optional(),
+  "parameters": zod.array(zod.object({
+  "key": zod.string().min(1),
+  "label": zod.string().min(1),
+  "description": zod.string(),
+  "value": zod.object({
+
+}).passthrough()
 })).optional(),
-  "trials": zod.array(zod.object({
-  "id": zod.string().uuid().optional(),
-  "trial_number": zod.number().min(modelHubDatasetOptimizationReadResponseTrialsItemTrialNumberMin).max(modelHubDatasetOptimizationReadResponseTrialsItemTrialNumberMax),
-  "is_baseline": zod.boolean().optional(),
-  "average_score": zod.number(),
-  "created_at": zod.string().datetime({"offset":true}).optional()
+  "column_id": zod.string().min(1).optional(),
+  "column_name": zod.string().min(1).optional(),
+  "best_score": zod.number().optional(),
+  "baseline_score": zod.number().optional(),
+  "table": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "trial": zod.string().min(1),
+  "prompt": zod.string(),
+  "is_best": zod.boolean(),
+  "score_percentage_change": zod.number().optional(),
+  "eval_scores": zod.record(zod.string(), zod.object({
+  "score": zod.number().optional(),
+  "percentage_change": zod.number().optional()
+}))
 })).optional(),
-  "trial_count": zod.string().optional(),
-  "created_at": zod.string().datetime({"offset":true}).optional()
+  "column_config": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "name": zod.string().min(1),
+  "is_visible": zod.boolean()
+})).optional(),
+  "optimizer_model_id": zod.string().min(1).optional(),
+  "user_eval_templates": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "eval_id": zod.string().min(1),
+  "name": zod.string().min(1),
+  "template_id": zod.string().min(1)
+})).optional()
+})
 })
 
 
@@ -17314,13 +17332,31 @@ export const ModelHubDevelopsGetCellDataCreateResponse = zod.object({
   "cell_value": zod.object({
 
 }).passthrough().optional(),
+  "cell_diff_value": zod.object({
+
+}).passthrough().optional(),
   "status": zod.string().optional(),
   "value_infos": zod.object({
 
 }).passthrough().optional(),
   "feedback_info": zod.object({
 
-}).passthrough().optional()
+}).passthrough().optional(),
+  "metadata": zod.object({
+  "response_time_ms": zod.number().optional(),
+  "token_count": zod.number().optional(),
+  "cost": zod.object({
+
+}).passthrough().optional(),
+  "cell_metadata": zod.object({
+  "explanation": zod.string().optional(),
+  "error_analysis": zod.object({
+
+}).passthrough().optional(),
+  "selected_input_key": zod.string().optional()
+}).optional(),
+  "reason": zod.string().optional()
+}).optional()
 })))
 })
 
@@ -18103,8 +18139,8 @@ export const ModelHubDevelopsGetDatasetTableListResponse = zod.object({
 }).passthrough()
 })),
   "table": zod.array(zod.object({
-
-}).passthrough()).optional(),
+  "row_id": zod.string().uuid()
+})).optional(),
   "dataset_config": zod.object({
 
 }).passthrough().optional(),
@@ -18533,8 +18569,8 @@ export const ModelHubDevelopsGetExperimentDatasetTableListResponse = zod.object(
 }).passthrough()
 })),
   "table": zod.array(zod.object({
-
-}).passthrough()).optional(),
+  "row_id": zod.string().uuid()
+})).optional(),
   "dataset_config": zod.object({
 
 }).passthrough().optional(),
@@ -19721,7 +19757,10 @@ export const ModelHubEvalTemplatesFeedbackListListResponse = zod.object({
   "source_id": zod.string(),
   "action_type": zod.string(),
   "user_name": zod.string(),
-  "created_at": zod.string().min(1)
+  "created_at": zod.string().min(1),
+  "user_eval_metric_id": zod.string(),
+  "custom_eval_config_id": zod.string(),
+  "experiment_id": zod.string()
 })),
   "total": zod.number(),
   "page": zod.number(),
@@ -20878,9 +20917,7 @@ export const ModelHubExperimentsV2FeedbackSubmitFeedbackCreateBody = zod.object(
   "action_type": zod.enum(['retune', 'recalculate_row', 'recalculate_dataset', 'retune_recalculate']),
   "feedback_id": zod.string().uuid(),
   "user_eval_metric_id": zod.string().uuid(),
-  "value": zod.object({
-
-}).passthrough().optional(),
+  "value": zod.string().optional(),
   "explanation": zod.string().optional()
 })
 
@@ -21492,31 +21529,21 @@ export const ModelHubFeedbackGetFeedbackDetailsQueryParams = zod.object({
   "limit": zod.number().optional().describe('Number of results to return per page.')
 })
 
-export const modelHubFeedbackGetFeedbackDetailsResponseResultsItemSourceIdMax = 255;
-
-
-export const modelHubFeedbackGetFeedbackDetailsResponseResultsItemRowIdMax = 255;
-
-export const modelHubFeedbackGetFeedbackDetailsResponseResultsItemActionTypeMax = 255;
 
 
 
 export const ModelHubFeedbackGetFeedbackDetailsResponse = zod.object({
-  "count": zod.number(),
-  "next": zod.string().url().optional(),
-  "previous": zod.string().url().optional(),
-  "results": zod.array(zod.object({
-  "id": zod.string().uuid().optional(),
-  "source_id": zod.string().min(1).max(modelHubFeedbackGetFeedbackDetailsResponseResultsItemSourceIdMax),
-  "source": zod.enum(['dataset', 'prompt', 'sdk', 'trace', 'experiment', 'observe', 'eval_playground']),
-  "user_eval_metric": zod.string().uuid().optional(),
-  "value": zod.string().min(1),
-  "explanation": zod.string().optional(),
-  "row_id": zod.string().max(modelHubFeedbackGetFeedbackDetailsResponseResultsItemRowIdMax).optional(),
-  "custom_eval_config_id": zod.string().uuid().optional(),
-  "feedback_improvement": zod.string().optional(),
-  "action_type": zod.string().max(modelHubFeedbackGetFeedbackDetailsResponseResultsItemActionTypeMax).optional()
-}))
+  "status": zod.boolean(),
+  "result": zod.object({
+  "feedback": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "value": zod.string(),
+  "comment": zod.string(),
+  "created_at": zod.string().min(1),
+  "action_type": zod.string()
+})),
+  "total_count": zod.number()
+})
 })
 
 

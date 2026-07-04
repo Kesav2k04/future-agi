@@ -32,7 +32,6 @@ from tfc.temporal.eval_tasks.search_attributes import (
     PROJECT_ID,
     RUN_TYPE,
     STATUS_COMPLETED,
-    STATUS_PAUSED,
     STATUS_RUNNING,
     TASK_STATUS,
 )
@@ -237,7 +236,9 @@ class HistoricalEvalTaskWorkflow(_ObservableEvalWorkflow):
         while True:
             state = await _task_state(input.task_id)
             if not state["active"]:
-                _set_status(STATUS_PAUSED)
+                # Stamp the real terminal status (paused / failed / deleted),
+                # not a blanket "paused" — the fleet is filtered by it.
+                _set_status(state["status"])
                 self._phase = PHASE_DONE
                 return EvalTaskWorkflowOutput(
                     task_id=input.task_id,
@@ -290,7 +291,9 @@ class ContinuousEvalTaskWorkflow(_ObservableEvalWorkflow):
         while True:
             tstate = await _task_state(state.task_id)
             if not tstate["active"]:
-                _set_status(STATUS_PAUSED)
+                # Stamp the real terminal status (paused / failed / deleted),
+                # not a blanket "paused" — the fleet is filtered by it.
+                _set_status(tstate["status"])
                 self._phase = PHASE_DONE
                 return
 

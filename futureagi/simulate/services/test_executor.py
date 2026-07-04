@@ -4677,14 +4677,13 @@ class TestExecutor:
                 chain.from_iterable(scenario_column_order_qs)
             )
 
-            # Get agent_version with fallback to latest_version if not set on call_execution.
-            # Prefer test_execution.agent_definition (per-execution snapshot), fall back to
-            # run_test.agent_definition, matching the resolution order in xl.py.
+            # Get agent_version with fallback to latest_version if not set on call_execution
             agent_version = call_execution.agent_version
             if not agent_version:
-                agent_def = call_execution.test_execution.agent_definition
-                if not agent_def:
-                    agent_def = call_execution.test_execution.run_test.agent_definition
+                agent_def = (
+                    call_execution.test_execution.agent_definition
+                    or call_execution.test_execution.run_test.agent_definition
+                )
                 if agent_def:
                     agent_version = agent_def.latest_version
                     logger.debug(
@@ -4860,10 +4859,6 @@ class TestExecutor:
             # Get organization
             organization = call_execution.test_execution.run_test.organization
 
-            # Build call_context for data_injection support — gives agent-eval
-            # tools access to the full call payload (explore_trace etc.). Gated
-            # on the eval's data_injection.call_context flag because the payload
-            # includes PII (phone_number, recording_url).
             from common.utils.data_injection import is_enabled as _di_enabled
 
             _di_cfg = (
@@ -4879,23 +4874,15 @@ class TestExecutor:
                     "call_type": call_execution.call_type,
                     "simulation_call_type": call_execution.simulation_call_type,
                     "phone_number": call_execution.phone_number,
-                    "started_at": (
-                        str(call_execution.started_at) if call_execution.started_at else None
-                    ),
-                    "ended_at": (
-                        str(call_execution.ended_at) if call_execution.ended_at else None
-                    ),
+                    "started_at": str(call_execution.started_at) if call_execution.started_at else None,
+                    "ended_at": str(call_execution.ended_at) if call_execution.ended_at else None,
                     "duration_seconds": call_execution.duration_seconds,
                     "recording_url": call_execution.recording_url,
                     "call_summary": call_execution.call_summary,
                     "ended_reason": call_execution.ended_reason,
                     "error_message": call_execution.error_message,
                     "message_count": call_execution.message_count,
-                    "overall_score": (
-                        float(call_execution.overall_score)
-                        if call_execution.overall_score is not None
-                        else None
-                    ),
+                    "overall_score": float(call_execution.overall_score) if call_execution.overall_score is not None else None,
                 }
 
             # Run the evaluation

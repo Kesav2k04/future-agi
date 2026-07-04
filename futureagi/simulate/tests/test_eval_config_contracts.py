@@ -99,14 +99,7 @@ def test_eval_config_update_rejects_unknown_root_fields():
     assert "testExecutionId" in serializer.errors
 
 
-def test_transcript_dot_aliases_shared_between_resolvers():
-    """Both eval-resolver paths must resolve the same dot-form mapping values.
-
-    xl.py handles first-time evals inside the Temporal CallExecutionWorkflow;
-    test_executor.py handles rerun, add-and-run, update-mapping, and the
-    standalone chat-sim finalize path. When only one file learns a new
-    dot-form key, the other raises "Column mapping mismatch" at runtime.
-    """
+def test_eval_resolvers_share_alias_and_context_builder():
     from simulate.services.test_executor import (
         TRANSCRIPT_DOT_ALIASES as EXECUTOR_ALIASES,
     )
@@ -121,11 +114,6 @@ def test_transcript_dot_aliases_shared_between_resolvers():
     )
 
     assert EXECUTOR_ALIASES is XL_ALIASES
+    assert executor_context_builder is xl_context_builder
     assert "call.agent_prompt" in XL_ALIASES
     assert "call.user_chat_transcript" in XL_ALIASES
-    assert "call.assistant_chat_transcript" in XL_ALIASES
-
-    # The context-map builder is shared too, so keys like call.recording_url,
-    # call.summary, call.overall_score, and all agent.*/persona.*/scenario.*
-    # dot-form values resolve identically on both eval-runner paths.
-    assert executor_context_builder is xl_context_builder

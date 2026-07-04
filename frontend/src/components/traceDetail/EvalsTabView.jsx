@@ -249,7 +249,7 @@ const EvalTableRow = ({
           {indicatorStatus ? (
             <EvalStatusIndicator
               status={indicatorStatus}
-              skippedReason={ev.skipped_reason || ev.skippedReason}
+              skippedReason={ev.skipped_reason}
             />
           ) : ev.score_items?.length ? (
             ev.score_items.map((item, i) => (

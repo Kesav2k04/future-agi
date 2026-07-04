@@ -22,7 +22,7 @@ from tracer.services.eval_tasks.entries import materialize_pending
 # created_at. The unique index makes the re-scan free of duplicates; this only
 # needs to exceed normal ingestion lag (pause/downtime gaps are covered by the
 # persisted cursor, not this overlap).
-_CONTINUOUS_CURSOR_OVERLAP = timedelta(minutes=15)
+_CONTINUOUS_CURSOR_OVERLAP = timedelta(minutes=5)
 
 
 @dataclass

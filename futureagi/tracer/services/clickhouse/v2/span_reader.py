@@ -678,6 +678,7 @@ class CHSpanReader:
         self,
         span_ids: list[str],
         *,
+        include_heavy: bool = True,
         project_id: str | None = None,
         org_id: str | None = None,
     ) -> list[CHSpan]:
@@ -686,9 +687,14 @@ class CHSpanReader:
         Result order is NOT preserved relative to the input list (CH orders
         by id for determinism). Callers that need a specific order should
         sort the result themselves.
+
+        With ``include_heavy=False`` the fat JSON columns (attributes_extra /
+        span_events / resource_attrs) come back as '' — opt out when only
+        id/scalar columns are needed.
         """
         if not span_ids:
             return []
+        select = _SELECT_SQL if include_heavy else _LEAN_SELECT_SQL
         where = ["id IN %(ids)s", "is_deleted = 0"]
         params: dict[str, Any] = {"ids": tuple(span_ids)}
         if project_id:
@@ -698,9 +704,7 @@ class CHSpanReader:
             where.append("org_id = %(oid)s")
             params["oid"] = str(org_id)
         rows = self._client.query(
-            f"SELECT {_SELECT_SQL} FROM spans FINAL "
-            f"WHERE {' AND '.join(where)} "
-            "ORDER BY id",
+            f"SELECT {select} FROM spans FINAL WHERE {' AND '.join(where)} ORDER BY id",
             parameters=params,
         ).result_rows
         return [_row_to_chspan(r) for r in rows]
@@ -757,10 +761,7 @@ class CHSpanReader:
             },
         ).result_rows
 
-        return {
-            str(row[0]): dict(zip(aliases, row, strict=False))
-            for row in rows
-        }
+        return {str(row[0]): dict(zip(aliases, row, strict=False)) for row in rows}
 
     # ─── Batch helpers for dataset child-tree export ─────────────────────────
 
@@ -2004,6 +2005,7 @@ class CHSpanReader:
         self,
         trace_ids: list[str],
         *,
+        include_heavy: bool = True,
         observation_type: str | None = None,
     ) -> dict[str, CHSpan]:
         """For each trace_id, return the root span (parent_span_id = '').
@@ -2018,9 +2020,14 @@ class CHSpanReader:
 
         Used by model_hub/services/bulk_selection.py for per-trace root
         lookups + annotation_queues.py default-queue resolution.
+
+        With ``include_heavy=False`` the fat JSON columns (attributes_extra /
+        span_events / resource_attrs) come back as '' — opt out when only
+        id/scalar columns are needed.
         """
         if not trace_ids:
             return {}
+        select = _SELECT_SQL if include_heavy else _LEAN_SELECT_SQL
         where = [
             "is_deleted = 0",
             "trace_id IN %(tids)s",
@@ -2033,7 +2040,7 @@ class CHSpanReader:
         # Single CH query; ORDER BY trace_id, start_time, id; then dedupe by
         # trace_id in Python keeping the first per trace_id (= earliest).
         rows = self._client.query(
-            f"SELECT {_SELECT_SQL} FROM spans FINAL "
+            f"SELECT {select} FROM spans FINAL "
             f"WHERE {' AND '.join(where)} "
             "ORDER BY trace_id, start_time, id",
             parameters=params,

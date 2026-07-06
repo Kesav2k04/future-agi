@@ -39,6 +39,7 @@ import Iconify from "src/components/iconify";
 import CustomTooltip from "src/components/tooltip/CustomTooltip";
 import axios, { endpoints } from "src/utils/axios";
 import { useDashboardFilterValues } from "src/hooks/useDashboards";
+import { useDebounce } from "src/hooks/use-debounce";
 import { useAIFilter } from "src/hooks/use-ai-filter";
 import { QueryInput } from "src/components/filter-panel";
 import {
@@ -956,7 +957,7 @@ function ValuePicker({
 }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [search, setSearch] = useState("");
-  const debouncedSearch = search; // could add debounce for large datasets
+  const debouncedSearch = useDebounce(search, 500);
 
   // If the property declares its own static choices (e.g. the Project filter
   // on the cross-project user-detail page), use them directly. Skips both
@@ -979,6 +980,8 @@ function ValuePicker({
   const isSessionField =
     !hasStaticChoices && SESSION_VALUE_FIELDS.has(propertyId);
 
+  const isIdOnlyField = !hasStaticChoices && ID_ONLY_FIELDS.has(propertyId);
+
   // Primary: dashboard API values
   const {
     data: dashboardOptions = [],
@@ -989,7 +992,11 @@ function ValuePicker({
     metricType,
     projectIds: projectId ? [projectId] : [],
     source,
-    enabled: !hasStaticChoices && Boolean(anchorEl),
+    search: isIdOnlyField ? debouncedSearch : "",
+    enabled:
+      !hasStaticChoices &&
+      Boolean(anchorEl) &&
+      (!isIdOnlyField || Boolean(debouncedSearch)),
   });
 
   // Fallback: session filter values endpoint (for session-specific fields)
@@ -1025,12 +1032,12 @@ function ValuePicker({
   const isError = !hasStaticChoices && !isSessionField && dashError;
 
   const filtered = useMemo(() => {
-    if (!search || isSessionField) return options; // session endpoint already filters server-side
+    if (!search || isSessionField || isIdOnlyField) return options;
     const q = search.toLowerCase();
     return options.filter((o) =>
       getPickerOptionSearchText(o).toLowerCase().includes(q),
     );
-  }, [options, search, isSessionField]);
+  }, [options, search, isSessionField, isIdOnlyField]);
 
   const selectedValues = useMemo(() => normalizePickerValues(value), [value]);
 

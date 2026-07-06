@@ -329,7 +329,7 @@ import type {
   DatasetNamesResponseApi,
   DatasetOptimizationApi,
   DatasetOptimizationCreateApi,
-  DatasetOptimizationDetailApiResponseApi,
+  DatasetOptimizationDetailApi,
   DatasetRowDataRequestApi,
   DatasetRowDataResponseApi,
   DatasetRowDiffRequestApi,
@@ -482,7 +482,6 @@ import type {
   FeedStatsApiResponseApi,
   FeedUpdateBodyApi,
   FeedbackApi,
-  FeedbackDetailsResponseApi,
   FetchAssistantRequestApi,
   FetchAssistantResponseApi,
   FileUploadResponseApi,
@@ -669,6 +668,7 @@ import type {
   ModelHubExperimentsDataListParams,
   ModelHubExperimentsV2ListList200,
   ModelHubExperimentsV2ListListParams,
+  ModelHubFeedbackGetFeedbackDetails200,
   ModelHubFeedbackGetFeedbackDetailsParams,
   ModelHubFeedbackGetFeedbackSummary200,
   ModelHubFeedbackGetFeedbackSummaryParams,
@@ -27365,7 +27365,7 @@ export const modelHubDatasetOptimizationCreate = async (datasetOptimizationCreat
 
 
 export type modelHubDatasetOptimizationReadResponse200 = {
-  data: DatasetOptimizationDetailApiResponseApi
+  data: DatasetOptimizationDetailApi
   status: 200
 }
 
@@ -27392,7 +27392,9 @@ export const getModelHubDatasetOptimizationReadUrl = (id: string,) => {
 }
 
 /**
- * Get run details; payload matches AgentPromptOptimiserRunViewSet.retrieve().
+ * Returns data in the same format as AgentPromptOptimiserRunViewSet.retrieve()
+to allow reuse of frontend simulation components.
+ * @summary Get run details with trial comparison table.
  */
 export const modelHubDatasetOptimizationRead = async (id: string, options?: RequestInit): Promise<modelHubDatasetOptimizationReadResponse> => {
 
@@ -38851,44 +38853,19 @@ export const modelHubFeedbackCreate = async (feedbackApi: NonReadonly<FeedbackAp
 
 
 export type modelHubFeedbackGetFeedbackDetailsResponse200 = {
-  data: FeedbackDetailsResponseApi
+  data: ModelHubFeedbackGetFeedbackDetails200
   status: 200
-}
-
-export type modelHubFeedbackGetFeedbackDetailsResponse400 = {
-  data: ModelHubErrorResponseApi
-  status: 400
-}
-
-export type modelHubFeedbackGetFeedbackDetailsResponse403 = {
-  data: ModelHubErrorResponseApi
-  status: 403
-}
-
-export type modelHubFeedbackGetFeedbackDetailsResponse404 = {
-  data: ModelHubErrorResponseApi
-  status: 404
-}
-
-export type modelHubFeedbackGetFeedbackDetailsResponse409 = {
-  data: ModelHubErrorResponseApi
-  status: 409
-}
-
-export type modelHubFeedbackGetFeedbackDetailsResponse500 = {
-  data: ModelHubErrorResponseApi
-  status: 500
 }
 
 export type modelHubFeedbackGetFeedbackDetailsResponseDefault = {
   data: ManagementAPIErrorResponseApi
-  status: Exclude<HTTPStatusCodes, 200 | 400 | 403 | 404 | 409 | 500>
+  status: Exclude<HTTPStatusCodes, 200>
 }
 
 export type modelHubFeedbackGetFeedbackDetailsResponseSuccess = (modelHubFeedbackGetFeedbackDetailsResponse200) & {
   headers: Headers;
 };
-export type modelHubFeedbackGetFeedbackDetailsResponseError = (modelHubFeedbackGetFeedbackDetailsResponse400 | modelHubFeedbackGetFeedbackDetailsResponse403 | modelHubFeedbackGetFeedbackDetailsResponse404 | modelHubFeedbackGetFeedbackDetailsResponse409 | modelHubFeedbackGetFeedbackDetailsResponse500 | modelHubFeedbackGetFeedbackDetailsResponseDefault) & {
+export type modelHubFeedbackGetFeedbackDetailsResponseError = (modelHubFeedbackGetFeedbackDetailsResponseDefault) & {
   headers: Headers;
 };
 
@@ -75982,3 +75959,6 @@ export const v1HealthList = async ( options?: RequestInit): Promise<v1HealthList
 
   }
 );}
+
+
+

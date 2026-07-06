@@ -121,7 +121,7 @@ class EvalConfigUpdateRequestSerializer(StrictInputSerializer):
     )
     filters = filter_list_field(
         required=False,
-        default=list,
+        allow_null=True,
         help_text="Updated canonical filter list to restrict which test results are evaluated.",
     )
     name = serializers.CharField(

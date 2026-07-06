@@ -125,6 +125,39 @@ def word_count_eval_template(db, organization, workspace):
     )
 
 
+@pytest.fixture
+def char_count_eval_template(db, organization, workspace):
+    """Second template for testing template switches."""
+    return EvalTemplate.objects.create(
+        name="char_count_contract",
+        description="Character count contract template",
+        organization=organization,
+        workspace=workspace,
+        config={
+            "required_keys": ["content"],
+            "optional_keys": [],
+            "output": "Pass/Fail",
+            "eval_type_id": "char_count_in_range",
+            "function_params_schema": {
+                "min_chars": {
+                    "type": "integer",
+                    "required": True,
+                    "default": 10,
+                    "minimum": 0,
+                },
+                "max_chars": {
+                    "type": "integer",
+                    "required": True,
+                    "default": 100,
+                    "minimum": 1,
+                },
+            },
+            "config": {},
+        },
+        eval_tags=["api-contract"],
+    )
+
+
 @pytest.mark.integration
 @pytest.mark.api
 class TestRunTestListPromptVersionRegression:
@@ -486,6 +519,321 @@ class TestRunTestRuntimeContracts:
         assert "already exists" in str(response.content)
         second.refresh_from_db()
         assert second.name == "second_name"
+
+    def test_update_switches_eval_template_to_different_template(
+        self,
+        auth_client,
+        run_test_with_v10_scenario,
+        word_count_eval_template,
+        char_count_eval_template,
+    ):
+        """Send {template_id: <second_template>, config, mapping}. Assert template switched."""
+        eval_config = SimulateEvalConfig.objects.create(
+            name="template_switch_test",
+            eval_template=word_count_eval_template,
+            run_test=run_test_with_v10_scenario,
+            config={"params": {"min_words": 2, "max_words": 8}},
+            mapping={"text": "transcript"},
+        )
+
+        response = auth_client.post(
+            f"/simulate/run-tests/{run_test_with_v10_scenario.id}/eval-configs/"
+            f"{eval_config.id}/update/",
+            {
+                "template_id": str(char_count_eval_template.id),
+                "config": {
+                    "params": {"min_chars": "10", "max_chars": "100"},
+                    "run_config": {"pass_threshold": 0.8},
+                },
+                "mapping": {"content": "agent_output"},
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK, response.content
+        eval_config.refresh_from_db()
+        assert eval_config.eval_template_id == char_count_eval_template.id
+        assert eval_config.config["params"] == {"min_chars": 10, "max_chars": 100}
+        assert eval_config.mapping == {"content": "agent_output"}
+
+    def test_update_rejects_template_from_other_workspace(
+        self,
+        auth_client,
+        organization,
+        user,
+        run_test_with_v10_scenario,
+        word_count_eval_template,
+    ):
+        """Create a template in other_workspace. Assert 400 when user in default workspace tries to use it."""
+        other_workspace = Workspace.objects.create(
+            name="Other workspace for update",
+            organization=organization,
+            is_default=False,
+            is_active=True,
+            created_by=user,
+        )
+        other_template = EvalTemplate.objects.create(
+            name="other_workspace_eval_update",
+            description="Not visible from default workspace",
+            organization=organization,
+            workspace=other_workspace,
+            config=word_count_eval_template.config,
+        )
+
+        eval_config = SimulateEvalConfig.objects.create(
+            name="workspace_scope_test",
+            eval_template=word_count_eval_template,
+            run_test=run_test_with_v10_scenario,
+        )
+
+        response = auth_client.post(
+            f"/simulate/run-tests/{run_test_with_v10_scenario.id}/eval-configs/"
+            f"{eval_config.id}/update/",
+            {"template_id": str(other_template.id)},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        eval_config.refresh_from_db()
+        assert eval_config.eval_template_id == word_count_eval_template.id
+
+    def test_update_accepts_global_system_template(
+        self,
+        auth_client,
+        organization,
+        run_test_with_v10_scenario,
+        word_count_eval_template,
+    ):
+        """Create a template with organization=None. Assert 200 and template switch persisted."""
+        global_template = EvalTemplate.objects.create(
+            name="global_system_eval",
+            description="Global system template",
+            organization=None,
+            workspace=None,
+            config=word_count_eval_template.config,
+        )
+
+        eval_config = SimulateEvalConfig.objects.create(
+            name="global_template_test",
+            eval_template=word_count_eval_template,
+            run_test=run_test_with_v10_scenario,
+        )
+
+        response = auth_client.post(
+            f"/simulate/run-tests/{run_test_with_v10_scenario.id}/eval-configs/"
+            f"{eval_config.id}/update/",
+            {"template_id": str(global_template.id)},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK, response.content
+        eval_config.refresh_from_db()
+        assert eval_config.eval_template_id == global_template.id
+
+    def test_update_returns_400_for_nonexistent_template(
+        self, auth_client, run_test_with_v10_scenario, word_count_eval_template
+    ):
+        """Send {template_id: <random uuid4>}. Assert 400 with 'Evaluation template not found'."""
+        eval_config = SimulateEvalConfig.objects.create(
+            name="nonexistent_template_test",
+            eval_template=word_count_eval_template,
+            run_test=run_test_with_v10_scenario,
+        )
+
+        response = auth_client.post(
+            f"/simulate/run-tests/{run_test_with_v10_scenario.id}/eval-configs/"
+            f"{eval_config.id}/update/",
+            {"template_id": str(uuid4())},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Evaluation template not found" in str(response.content)
+
+    def test_update_renormalizes_config_when_only_template_id_sent(
+        self,
+        auth_client,
+        run_test_with_v10_scenario,
+        word_count_eval_template,
+        char_count_eval_template,
+    ):
+        """Send {template_id: <second_template>} alone. Assert 400 when old config params don't match new template."""
+        eval_config = SimulateEvalConfig.objects.create(
+            name="renormalize_test",
+            eval_template=word_count_eval_template,
+            run_test=run_test_with_v10_scenario,
+            config={"params": {"min_words": 2, "max_words": 8}},
+        )
+
+        response = auth_client.post(
+            f"/simulate/run-tests/{run_test_with_v10_scenario.id}/eval-configs/"
+            f"{eval_config.id}/update/",
+            {"template_id": str(char_count_eval_template.id)},
+            format="json",
+        )
+
+        # When switching templates without providing new config, the old config
+        # params (min_words, max_words) don't match the new template's schema
+        # (min_chars, max_chars), so the endpoint returns 400.
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        eval_config.refresh_from_db()
+        # Template should NOT have switched since config validation failed
+        assert eval_config.eval_template_id == word_count_eval_template.id
+
+    def test_update_rejects_stale_mapping_when_template_changes(
+        self,
+        auth_client,
+        run_test_with_v10_scenario,
+        word_count_eval_template,
+        char_count_eval_template,
+    ):
+        """Send {template_id: <second_template>} alone where mapping has stale keys. Assert mapping cleared."""
+        eval_config = SimulateEvalConfig.objects.create(
+            name="stale_mapping_test",
+            eval_template=word_count_eval_template,
+            run_test=run_test_with_v10_scenario,
+            mapping={
+                "text": "transcript"
+            },  # "text" is valid for word_count but not char_count
+        )
+
+        response = auth_client.post(
+            f"/simulate/run-tests/{run_test_with_v10_scenario.id}/eval-configs/"
+            f"{eval_config.id}/update/",
+            {"template_id": str(char_count_eval_template.id)},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK, response.content
+        eval_config.refresh_from_db()
+        # Mapping should be cleared since "text" is not a valid key for char_count template
+        # (char_count expects "content" as the input variable)
+        assert eval_config.mapping is None
+
+    def test_update_preserves_valid_mapping_keys_when_template_changes(
+        self,
+        auth_client,
+        run_test_with_v10_scenario,
+        word_count_eval_template,
+        organization,
+        workspace,
+    ):
+        """Switching to a template sharing a required key preserves the shared mapping key."""
+        second_template = EvalTemplate.objects.create(
+            name="word_count_v2",
+            description="Another word count template",
+            organization=organization,
+            workspace=workspace,
+            config={
+                "required_keys": ["text"],
+                "optional_keys": [],
+                "output": "Pass/Fail",
+                "eval_type_id": "word_count_in_range_v2",
+                "function_params_schema": {
+                    "min_words": {
+                        "type": "integer",
+                        "required": True,
+                        "default": 5,
+                        "minimum": 1,
+                    },
+                    "max_words": {
+                        "type": "integer",
+                        "required": True,
+                        "default": 50,
+                        "minimum": 1,
+                    },
+                },
+                "config": {},
+            },
+            eval_tags=["api-contract"],
+        )
+
+        eval_config = SimulateEvalConfig.objects.create(
+            name="preserve_mapping_test",
+            eval_template=word_count_eval_template,
+            run_test=run_test_with_v10_scenario,
+            mapping={"text": "transcript"},
+        )
+
+        response = auth_client.post(
+            f"/simulate/run-tests/{run_test_with_v10_scenario.id}/eval-configs/"
+            f"{eval_config.id}/update/",
+            {"template_id": str(second_template.id)},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK, response.content
+        eval_config.refresh_from_db()
+        assert eval_config.eval_template_id == second_template.id
+        # "text" is valid for both templates - mapping must be preserved
+        assert eval_config.mapping == {"text": "transcript"}
+
+    def test_update_persists_empty_filters_list(
+        self, auth_client, run_test_with_v10_scenario, word_count_eval_template
+    ):
+        """Send {filters: []}. Assert eval_config.filters == [] in database."""
+        eval_config = SimulateEvalConfig.objects.create(
+            name="empty_filters_test",
+            eval_template=word_count_eval_template,
+            run_test=run_test_with_v10_scenario,
+            filters=[{"column_id": "status", "filter_config": {"filter_op": "equals"}}],
+        )
+
+        response = auth_client.post(
+            f"/simulate/run-tests/{run_test_with_v10_scenario.id}/eval-configs/"
+            f"{eval_config.id}/update/",
+            {"filters": []},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK, response.content
+        eval_config.refresh_from_db()
+        assert eval_config.filters == []
+
+    def test_update_preserves_existing_fields_when_only_filters_sent(
+        self, auth_client, run_test_with_v10_scenario, word_count_eval_template
+    ):
+        """Send {filters: [...]} alone. Assert mapping, config, name, model unchanged."""
+        eval_config = SimulateEvalConfig.objects.create(
+            name="preserve_fields_test",
+            eval_template=word_count_eval_template,
+            run_test=run_test_with_v10_scenario,
+            config={"params": {"min_words": 5, "max_words": 15}},
+            mapping={"text": "transcript"},
+            model="turing_small",
+        )
+
+        original_config = eval_config.config.copy()
+        original_mapping = eval_config.mapping.copy()
+        original_name = eval_config.name
+        original_model = eval_config.model
+
+        response = auth_client.post(
+            f"/simulate/run-tests/{run_test_with_v10_scenario.id}/eval-configs/"
+            f"{eval_config.id}/update/",
+            {
+                "filters": [
+                    {
+                        "column_id": "status",
+                        "filter_config": {
+                            "filter_type": "text",
+                            "filter_op": "equals",
+                            "filter_value": "completed",
+                        },
+                    }
+                ]
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK, response.content
+        eval_config.refresh_from_db()
+        assert eval_config.config == original_config
+        assert eval_config.mapping == original_mapping
+        assert eval_config.name == original_name
+        assert eval_config.model == original_model
+        assert len(eval_config.filters) == 1
+        assert eval_config.filters[0]["filter_config"]["filter_op"] == "equals"
 
     def test_run_test_delete_soft_deletes_eval_configs(
         self, auth_client, run_test_with_v10_scenario, word_count_eval_template

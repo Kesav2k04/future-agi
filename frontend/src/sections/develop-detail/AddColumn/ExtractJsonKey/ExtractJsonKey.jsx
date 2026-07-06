@@ -41,12 +41,7 @@ export const ExtractJsonKeyChild = ({
   const { refreshGrid } = useDevelopDetailContext();
 
   const { control, handleSubmit, reset } = useForm({
-    defaultValues: {
-      column_id: "",
-      json_key: "",
-      new_column_name: "",
-      concurrency: "",
-    },
+    defaultValues: getDefaultValue(),
     resolver: zodResolver(
       ExtractJsonKeyValidationSchema(!!onFormSubmit, !!editId),
     ),

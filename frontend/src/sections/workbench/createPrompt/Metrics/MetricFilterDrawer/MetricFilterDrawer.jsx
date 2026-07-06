@@ -30,6 +30,8 @@ const isFilterComplete = (f) => {
   return !isEmptyValue(value);
 };
 
+const isBlankDraft = (f) => !f?.column_id;
+
 const MetricFilterDrawer = React.memo(() => {
   const {
     isFilterDrawerOpen,
@@ -107,7 +109,9 @@ const MetricFilterDrawer = React.memo(() => {
   }, [tempFilters, setFilters, handleClose]);
 
   const hasValidFilters = useMemo(
-    () => tempFilters.some(isFilterComplete),
+    () =>
+      tempFilters.some(isFilterComplete) &&
+      tempFilters.every((f) => isBlankDraft(f) || isFilterComplete(f)),
     [tempFilters],
   );
 

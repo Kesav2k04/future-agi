@@ -921,9 +921,8 @@ class TestRunTestRuntimeContracts:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST, response.content
         eval_config.refresh_from_db()
-        # Mapping should be cleared since "text" is not a valid key for char_count template
-        # (char_count expects "content" as the input variable)
-        assert eval_config.mapping is None
+        # Mapping should be preserved (unchanged) since the 400 response prevents save
+        assert eval_config.mapping == {"text": "transcript"}
 
     def test_update_preserves_valid_mapping_keys_when_template_changes(
         self,

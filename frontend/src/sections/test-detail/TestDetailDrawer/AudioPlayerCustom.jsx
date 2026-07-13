@@ -11,6 +11,7 @@ import Iconify from "src/components/iconify";
 import LoadingStateComponent from "src/components/CallLogsDetailDrawer/LoadingStateComponent";
 import { getLoadingStateWithRespectiveStatus } from "../common";
 import { normalizeRecordings } from "src/utils/utils";
+import { safeAudioUrl } from "src/utils/safeAudioUrl";
 import useStereoChannels from "src/hooks/use-stereo-channels";
 
 const isUpdatedWithinTwoMinutes = (timestamp) => {
@@ -42,19 +43,24 @@ export const StereoMultiTrackPlayer = ({
   const assistantColor = primary;
   const customerColor = theme.palette.mode === "dark" ? "#FF9933" : "#E9690C";
 
+  const stereoUrl = safeAudioUrl(recordings?.stereo) || "";
   const {
     assistantUrl: stereoAssistant,
     customerUrl: stereoCustomer,
     loading: stereoLoading,
     error: stereoError,
-  } = useStereoChannels(recordings?.stereo || "");
+  } = useStereoChannels(stereoUrl);
 
   // Use stereo-split channels when available, fall back to separate mono files
   const useStereo =
-    recordings?.stereo && !stereoError && (stereoLoading || stereoAssistant);
+    stereoUrl && !stereoError && (stereoLoading || stereoAssistant);
 
-  const assistantUrl = useStereo ? stereoAssistant : recordings?.assistant;
-  const customerUrl = useStereo ? stereoCustomer : recordings?.customer;
+  const assistantUrl = safeAudioUrl(
+    useStereo ? stereoAssistant : recordings?.assistant,
+  );
+  const customerUrl = safeAudioUrl(
+    useStereo ? stereoCustomer : recordings?.customer,
+  );
   const trackUrls = useMemo(
     () => [
       {
@@ -140,6 +146,7 @@ const AudioPlayerCustom = ({ data, onInstance }) => {
     }
 
     if (data?.callMetadata?.provider === "retell") {
+      const safeUrl = safeAudioUrl(data?.recording_url) || "";
       return (
         <Stack
           height={50}
@@ -151,7 +158,7 @@ const AudioPlayerCustom = ({ data, onInstance }) => {
           <AudioPlaybackProvider>
             <CustomAudioPlayer
               audioData={{
-                url: data?.recording_url,
+                url: safeUrl,
               }}
               customLoaderComponent={
                 <Box
@@ -177,7 +184,7 @@ const AudioPlayerCustom = ({ data, onInstance }) => {
           </AudioPlaybackProvider>
           <AudioDownloadButton
             audioUrls={{
-              mono: data.recording_url,
+              mono: safeUrl,
               stereo: "",
               assistant: "",
               customer: "",
@@ -208,12 +215,22 @@ const AudioPlayerCustom = ({ data, onInstance }) => {
 
   // Normalize recordings structure to flat format: {stereo, combined, assistant, customer}
   const recordings = normalizeRecordings(data?.recordings);
+  // Guard each URL through safeAudioUrl so a dead Vapi provider URL is
+  // never rendered into an <audio> element.
+  const safeRecordings = {
+    ...recordings,
+    stereo: safeAudioUrl(recordings.stereo) || "",
+    assistant: safeAudioUrl(recordings.assistant) || "",
+    customer: safeAudioUrl(recordings.customer) || "",
+    combined: safeAudioUrl(recordings.combined) || "",
+  };
+  const safeAudioUrlFallback = safeAudioUrl(data?.audio_url ?? data?.audioUrl);
   const hasRecordingData =
-    (data?.audio_url ?? data?.audioUrl) ||
-    recordings?.assistant ||
-    recordings?.customer ||
-    recordings?.stereo ||
-    recordings?.combined;
+    safeAudioUrlFallback ||
+    safeRecordings?.assistant ||
+    safeRecordings?.customer ||
+    safeRecordings?.stereo ||
+    safeRecordings?.combined;
 
   if (
     data?.status === "completed" &&
@@ -234,7 +251,7 @@ const AudioPlayerCustom = ({ data, onInstance }) => {
   if (hasRecordingData) {
     return (
       <StereoMultiTrackPlayer
-        recordings={recordings}
+        recordings={safeRecordings}
         id={data?.id}
         onInstance={onInstance}
       />

@@ -8,12 +8,55 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
-def download_audio_from_url(audio_url, max_retries=5, timeout=200):
+def download_audio_from_url(
+    audio_url,
+    max_retries=5,
+    timeout=200,
+    *,
+    provider: str | None = None,
+    api_key: str | None = None,
+    call_id: str | None = None,
+    artifact_type: str | None = None,
+):
     # PYTHONWARNINGS="error::AssertionError"
     """
     Downloads an audio file from the provided URL with retries and error handling.
     Processes audio data in memory and converts to MP3 format if needed.
+
+    When ``provider == "vapi"`` and ``api_key`` + ``call_id`` +
+    ``artifact_type`` are all supplied, the download is routed through
+    the authenticated ``api.vapi.ai`` endpoint (Bearer auth + 302 follow)
+    before falling back to the unauthenticated URL fetch.
     """
+    # Route Vapi fetches through the authenticated endpoint when the
+    # caller supplies the provider call context.  Lazy import so this
+    # module degrades gracefully in environments without tracer.
+    if provider == "vapi" and api_key and call_id and artifact_type:
+        try:
+            from tracer.utils.vapi_recording import (
+                VapiArtifactNotReadyError,
+                VapiAuthError,
+                VapiRateLimitError,
+                VapiRecordingService,
+            )
+
+            return VapiRecordingService.download_artifact_sync(
+                call_id=call_id,
+                artifact_type=artifact_type,
+                api_key=api_key,
+                timeout_seconds=timeout,
+            )
+        except (VapiAuthError, VapiArtifactNotReadyError, VapiRateLimitError):
+            raise
+        except Exception:
+            logger.warning(
+                "vapi_authenticated_download_failed_falling_back",
+                audio_url=audio_url,
+                call_id=call_id,
+                artifact_type=artifact_type,
+                exc_info=True,
+            )
+
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "

@@ -329,7 +329,12 @@ class ObservabilityService:
             return None
 
     @staticmethod
-    def _process_vapi_logs(raw_log: dict) -> VoiceCallLogs:
+    def _process_vapi_logs(
+        raw_log: dict,
+        span_attributes: dict | None = None,
+    ) -> VoiceCallLogs:
+
+        sa = span_attributes or {}
 
         def raw_log_get(key: str) -> Any:
             return raw_log.get(key)
@@ -343,18 +348,20 @@ class ObservabilityService:
         created_at = raw_log_get("createdAt")
         ended_at = raw_log_get("endedAt")
         status = "completed" if raw_log_get("status") == "ended" else "in-progress"
-        # Mono recording — prefer new path (artifact.recording.mono.combinedUrl),
-        # fall back to top-level legacy raw_log.recordingUrl
+        # Mono recording — prefer S3-rehosted alias first, then new shape,
+        # then legacy top-level field.  Matches the Site-4 fallback order
+        # in separate_evals.py so every consumer prefers the durable URL.
         recording_url = (
-            raw_log.get("artifact", {}).get("recording", {}).get("mono", {}).get("combinedUrl")
-            or raw_log.get("recordingUrl")          # OLD: top-level, NOT under artifact
+            sa.get("recording_url")                                       # (a) flat S3 alias — mirror target
+            or raw_log.get("artifact", {}).get("recording", {}).get("mono", {}).get("combinedUrl")  # (c) new shape
+            or raw_log.get("recordingUrl")                                 # (d) legacy, NOT under artifact
         )
 
-        # Stereo recording — prefer new path (artifact.recording.stereoUrl),
-        # fall back to artifact-level legacy artifact.stereoRecordingUrl
+        # Stereo recording — same order as mono.
         stereo_recording_url = (
-            raw_log.get("artifact", {}).get("recording", {}).get("stereoUrl")
-            or (raw_log.get("artifact") or {}).get("stereoRecordingUrl")  # OLD: under artifact
+            sa.get("stereo_recording_url")                                # (b) flat S3 alias — mirror target
+            or raw_log.get("artifact", {}).get("recording", {}).get("stereoUrl")  # (c) new shape
+            or (raw_log.get("artifact") or {}).get("stereoRecordingUrl")  # (d) legacy, under artifact
         )
 
         recording_available = bool(recording_url)
@@ -697,18 +704,28 @@ class ObservabilityService:
             ValueError: If provider is not recognized
         """
         if provider == ProviderChoices.VAPI:
-            processed = ObservabilityService._process_vapi_logs(raw_log)
+            processed = ObservabilityService._process_vapi_logs(raw_log, span_attributes)
         elif provider == ProviderChoices.RETELL:
             processed = ObservabilityService._process_retell_logs(raw_log)
         else:
             raise ValueError(f"Invalid choice for provider: {provider}")
 
+        # Post-processing: if span_attributes carry S3 URLs that the
+        # inner method missed (e.g. because it was read from the nested
+        # path rather than the flat alias), apply them here.  Guard so a
+        # durable S3 URL is never clobbered by a stale overlay.
         if span_attributes:
-            mono_combined = span_attributes.get("conversation.recording.mono.combined")
-            stereo = span_attributes.get("conversation.recording.stereo")
-            if mono_combined:
-                processed["recording_url"] = mono_combined
-            if stereo:
-                processed["stereo_recording_url"] = stereo
+            from tracer.utils.vapi_recording import VapiRecordingService
+
+            mono_s3 = span_attributes.get("recording_url")
+            stereo_s3 = span_attributes.get("stereo_recording_url")
+            if mono_s3 and not VapiRecordingService.is_s3_url(
+                processed.get("recording_url")
+            ):
+                processed["recording_url"] = mono_s3
+            if stereo_s3 and not VapiRecordingService.is_s3_url(
+                processed.get("stereo_recording_url")
+            ):
+                processed["stereo_recording_url"] = stereo_s3
 
         return processed

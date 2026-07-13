@@ -1,4 +1,7 @@
 // ── Audio detection helpers (pure, no React) ──────────────────
+
+import { isDeadVapiUrl } from "src/utils/safeAudioUrl";
+
 // Keys whose string value should be rendered as an audio player.
 // Handles both snake_case and squashed (no-separator) forms.
 const AUDIO_KEY_NAMES = new Set([
@@ -64,7 +67,11 @@ export function collectRecordingTracks(recordingObj) {
           v.startsWith("blob:") ||
           v.startsWith("data:audio")
         ) {
-          tracks.push({ label, url: v });
+          // Skip dead Vapi provider URLs — the browser cannot attach
+          // the required Bearer token to an <audio src> tag.
+          if (!isDeadVapiUrl(v)) {
+            tracks.push({ label, url: v });
+          }
         }
       } else if (typeof v === "object" && !Array.isArray(v)) {
         walk(v, label);

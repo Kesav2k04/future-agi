@@ -20,6 +20,7 @@ from simulate.temporal.utils.async_storage import (
 )
 from tfc.temporal import temporal_activity
 from tracer.models.observability_provider import ProviderChoices
+from tracer.selectors import get_agent_api_key
 from tracer.models.observation_span import ObservationSpan
 from tracer.utils.otel import ConversationAttributes
 from tracer.utils.usage_emit import emit_span_ingestion_usage
@@ -101,6 +102,16 @@ def rehost_external_recordings(span_id: str) -> None:
         logger.warning("rehost_external_recordings: span not found", span_id=span_id)
         return
 
+    # Resolve Vapi API key for bearer-authenticated recording download.
+    # If None, download falls back to unauthenticated artifact URL (legacy path).
+    api_key = get_agent_api_key(span.project_id, "vapi") if span.provider == ProviderChoices.VAPI else None
+    if not api_key and span.provider == ProviderChoices.VAPI:
+        logger.warning(
+            "rehost_external_recordings: no Vapi API key for project_id=%s — "
+            "recording download will use unauthenticated artifact URL (may 401/403)",
+            span.project_id,
+        )
+
     keys = RECORDING_KEYS_BY_PROVIDER.get(span.provider) or []
     if not keys:
         return
@@ -127,7 +138,7 @@ def rehost_external_recordings(span_id: str) -> None:
     async def _rehost_all() -> list[tuple[str, int]]:
         return await asyncio.gather(
             *(
-                convert_audio_url_to_s3_async_with_size(call_id, url, url_type)
+                convert_audio_url_to_s3_async_with_size(call_id, url, url_type, api_key=api_key)
                 for _, url, url_type in jobs
             )
         )

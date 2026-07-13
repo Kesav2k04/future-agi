@@ -343,15 +343,23 @@ class ObservabilityService:
         created_at = raw_log_get("createdAt")
         ended_at = raw_log_get("endedAt")
         status = "completed" if raw_log_get("status") == "ended" else "in-progress"
-        stereo_recording_url = (
-            raw_log_get("artifact").get("stereoRecordingUrl")
-            if raw_log_get("artifact")
-            else None
+        # Mono recording — prefer new path (artifact.recording.mono.combinedUrl),
+        # fall back to top-level legacy raw_log.recordingUrl
+        recording_url = (
+            raw_log.get("artifact", {}).get("recording", {}).get("mono", {}).get("combinedUrl")
+            or raw_log.get("recordingUrl")          # OLD: top-level, NOT under artifact
         )
+
+        # Stereo recording — prefer new path (artifact.recording.stereoUrl),
+        # fall back to artifact-level legacy artifact.stereoRecordingUrl
+        stereo_recording_url = (
+            raw_log.get("artifact", {}).get("recording", {}).get("stereoUrl")
+            or (raw_log.get("artifact") or {}).get("stereoRecordingUrl")  # OLD: under artifact
+        )
+
+        recording_available = bool(recording_url)
         summary = raw_log_get("summary")
         ended_reason = raw_log_get("endedReason")
-        recording_url = raw_log_get("recordingUrl")
-        recording_available = bool(recording_url)
         messages = raw_log_get("messages") or []
         transcript_available = len(messages) > 0
         cost = raw_log_get("cost")

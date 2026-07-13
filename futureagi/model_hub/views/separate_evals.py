@@ -5295,13 +5295,15 @@ def _build_span_context(span) -> dict:
         raw_log = {}
 
     base["recording_url"] = (
-        raw_log.get("recordingUrl")
+        raw_log.get("artifact", {}).get("recording", {}).get("mono", {}).get("combinedUrl")
+        or raw_log.get("recordingUrl")          # top-level legacy
         or raw_log.get("recording_url")
         or sa.get("recording_url")
         or sa.get("recordingUrl")
     )
     base["stereo_recording_url"] = (
-        raw_log.get("stereoRecordingUrl")
+        raw_log.get("artifact", {}).get("recording", {}).get("stereoUrl")
+        or raw_log.get("stereoRecordingUrl")    # top-level legacy
         or raw_log.get("stereo_recording_url")
         or sa.get("stereo_recording_url")
     )

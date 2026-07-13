@@ -23,6 +23,7 @@ async def download_audio_from_url_async(
     audio_url: str,
     max_retries: int = 5,
     timeout: float = DOWNLOAD_TIMEOUT,
+    api_key: str = None,
 ) -> bytes:
     """
     Async version of download_audio_from_url using httpx.
@@ -34,6 +35,7 @@ async def download_audio_from_url_async(
         audio_url: URL to download audio from
         max_retries: Number of retry attempts
         timeout: Request timeout in seconds
+        api_key: Optional Bearer token for authenticated downloads (e.g. Vapi)
 
     Returns:
         bytes: Raw audio data
@@ -43,6 +45,9 @@ async def download_audio_from_url_async(
         ValueError: If file exceeds size limit
     """
     last_error = None
+    headers = {}
+    if api_key and "vapi.ai" in audio_url:
+        headers["Authorization"] = f"Bearer {api_key}"
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         for attempt in range(max_retries):
@@ -50,7 +55,7 @@ async def download_audio_from_url_async(
                 logger.debug(f"Downloading audio (attempt {attempt + 1}): {audio_url}")
 
                 # Stream the response to handle large files
-                async with client.stream("GET", audio_url) as response:
+                async with client.stream("GET", audio_url, headers=headers) as response:
                     response.raise_for_status()
 
                     chunks = []
@@ -91,6 +96,7 @@ async def _convert_audio_url_to_s3_async_with_size(
     call_id: str,
     audio_url: str,
     url_type: str = "audio",
+    api_key: str = None,
 ) -> tuple[str, int]:
     """Internal worker that does the download + upload and reports size.
 
@@ -109,8 +115,8 @@ async def _convert_audio_url_to_s3_async_with_size(
     try:
         logger.info(f"Converting {url_type} URL to S3: {audio_url}")
 
-        # Async download
-        audio_bytes = await download_audio_from_url_async(audio_url)
+        # Async download (pass api_key for Bearer-authenticated endpoints)
+        audio_bytes = await download_audio_from_url_async(audio_url, api_key=api_key)
 
         # S3 upload (still sync - minio client doesn't have async support)
         # We use run_in_executor for just the upload, which is faster than download
@@ -146,6 +152,7 @@ async def convert_audio_url_to_s3_async(
     call_id: str,
     audio_url: str,
     url_type: str = "audio",
+    api_key: str = None,
 ) -> str:
     """
     Async version of convert_audio_url_to_s3.
@@ -159,12 +166,13 @@ async def convert_audio_url_to_s3_async(
         call_id: Call ID for organizing S3 path
         audio_url: Source URL to download from
         url_type: Type for logging ("recording", "stereo_recording", etc.)
+        api_key: Optional Bearer token for authenticated downloads
 
     Returns:
         str: S3 URL or original URL if conversion fails
     """
     s3_url, _ = await _convert_audio_url_to_s3_async_with_size(
-        call_id, audio_url, url_type
+        call_id, audio_url, url_type, api_key=api_key
     )
     return s3_url
 
@@ -173,6 +181,7 @@ async def convert_audio_url_to_s3_async_with_size(
     call_id: str,
     audio_url: str,
     url_type: str = "audio",
+    api_key: str = None,
 ) -> tuple[str, int]:
     """Like `convert_audio_url_to_s3_async` but also reports uploaded bytes.
 
@@ -181,5 +190,5 @@ async def convert_audio_url_to_s3_async_with_size(
     billing call sites can sum it directly without re-checking the URL.
     """
     return await _convert_audio_url_to_s3_async_with_size(
-        call_id, audio_url, url_type
+        call_id, audio_url, url_type, api_key=api_key
     )

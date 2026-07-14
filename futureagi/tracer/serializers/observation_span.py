@@ -65,11 +65,10 @@ class ObservationSpanSerializer(serializers.ModelSerializer):
         return None
 
     def get_span_attributes(self, obj):
-        """Return span_attributes (falling back to eval_attributes), sanitized for dead-provider URLs."""
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        raw = obj.span_attributes if obj.span_attributes else obj.eval_attributes
-        return VapiRecordingService.sanitize_recording_urls_in_attrs(raw or {})
+        """Return span_attributes (falls back to eval_attributes for old data)."""
+        if obj.span_attributes and obj.span_attributes != {}:
+            return obj.span_attributes
+        return obj.eval_attributes or {}
 
 
 class SpanExportSerializer(serializers.Serializer):

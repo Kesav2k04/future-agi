@@ -471,7 +471,6 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
     def _retrieve_clickhouse(self, request, observation_span_id, analytics):
         """Retrieve span detail from ClickHouse with eval metrics."""
         from tracer.constants.provider_logos import PROVIDER_LOGOS
-        from tracer.utils.vapi_recording import VapiRecordingService
 
         # Fetch span from CH — query the denormalized `spans` table which has
         # renamed columns vs PG. Map them back to the expected field names.
@@ -589,9 +588,7 @@ class ObservationSpanView(BaseModelViewSetMixin, ModelViewSet):
             "span_events": _parse_json(row.get("span_events"), default=[]),
             "provider": provider,
             "provider_logo": PROVIDER_LOGOS.get(provider.lower()) if provider else None,
-            "span_attributes": VapiRecordingService.sanitize_recording_urls_in_attrs(
-                span_attrs
-            ),
+            "span_attributes": span_attrs,
             "custom_eval_config": (
                 str(row["custom_eval_config_id"])
                 if row.get("custom_eval_config_id")

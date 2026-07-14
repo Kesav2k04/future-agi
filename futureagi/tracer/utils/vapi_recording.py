@@ -19,7 +19,6 @@ logger = structlog.get_logger(__name__)
 
 
 VAPI_API_BASE_URL = "https://api.vapi.ai"
-_DEAD_PROVIDER_HOSTS = ("storage.vapi.ai", "calllogs.vapi.ai")
 
 
 class VapiArtifactType(str):
@@ -72,12 +71,6 @@ class VapiRecordingService:
         return _URL_TYPE_TO_ARTIFACT.get(url_type)
 
     @classmethod
-    def is_dead_provider_url(cls, url: Optional[str]) -> bool:
-        """Currently returns False; re-enabled when historic URLs are backfilled to S3."""
-        del url
-        return False
-
-    @classmethod
     def is_authenticated_download(
         cls,
         provider: Optional[str],
@@ -98,75 +91,6 @@ class VapiRecordingService:
         if not url:
             return False
         return any(marker in url for marker in S3_URL_MARKERS)
-
-    @classmethod
-    def _recording_key_tuple(cls) -> tuple[str, ...]:
-        from tracer.utils.otel import ConversationAttributes
-
-        base = ConversationAttributes.CONVERSATION_RECORDING
-        return (
-            f"{base}.{ConversationAttributes.MONO_COMBINED}",
-            f"{base}.{ConversationAttributes.MONO_CUSTOMER}",
-            f"{base}.{ConversationAttributes.MONO_ASSISTANT}",
-            f"{base}.{ConversationAttributes.STEREO}",
-            "recording_url",
-            "stereo_recording_url",
-            "recordingUrl",
-            "stereoRecordingUrl",
-        )
-
-    @classmethod
-    def sanitize_recording_urls_in_attrs(
-        cls, attrs: Optional[dict[str, Any]]
-    ) -> dict[str, Any]:
-        """Return a shallow copy of attrs with dead-Vapi recording URLs replaced with None."""
-        if not isinstance(attrs, dict) or not attrs:
-            return dict(attrs) if isinstance(attrs, dict) else {}
-        cleaned = dict(attrs)
-        for key in cls._recording_key_tuple():
-            value = cleaned.get(key)
-            if isinstance(value, str) and cls.is_dead_provider_url(value):
-                cleaned[key] = None
-        return cleaned
-
-    @classmethod
-    def sanitize_provider_call_data(
-        cls, provider_call_data: Optional[dict[str, Any]]
-    ) -> dict[str, Any]:
-        """Return a shallow copy of provider_call_data with dead-Vapi recording URLs replaced with None."""
-        if not isinstance(provider_call_data, dict) or not provider_call_data:
-            return dict(provider_call_data) if isinstance(provider_call_data, dict) else {}
-        cleaned_root: dict[str, Any] = {}
-        for provider_key, payload in provider_call_data.items():
-            if not isinstance(payload, dict):
-                cleaned_root[provider_key] = payload
-                continue
-            cleaned_payload = dict(payload)
-            artifact = cleaned_payload.get("artifact")
-            if isinstance(artifact, dict):
-                artifact = dict(artifact)
-                recording = artifact.get("recording")
-                if isinstance(recording, dict):
-                    recording = dict(recording)
-                    mono = recording.get("mono")
-                    if isinstance(mono, dict):
-                        mono = dict(mono)
-                        for k in ("combinedUrl", "customerUrl", "assistantUrl"):
-                            v = mono.get(k)
-                            if isinstance(v, str) and cls.is_dead_provider_url(v):
-                                mono[k] = None
-                        recording["mono"] = mono
-                    stereo = recording.get("stereoUrl")
-                    if isinstance(stereo, str) and cls.is_dead_provider_url(stereo):
-                        recording["stereoUrl"] = None
-                    artifact["recording"] = recording
-                cleaned_payload["artifact"] = artifact
-            for k in ("recordingUrl", "stereoRecordingUrl"):
-                v = cleaned_payload.get(k)
-                if isinstance(v, str) and cls.is_dead_provider_url(v):
-                    cleaned_payload[k] = None
-            cleaned_root[provider_key] = cleaned_payload
-        return cleaned_root
 
     @classmethod
     def get_api_key_for_project(cls, project_id: Any) -> Optional[str]:

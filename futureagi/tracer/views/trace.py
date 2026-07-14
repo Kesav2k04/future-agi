@@ -703,8 +703,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
 
         import json as _json
 
-        from tracer.utils.vapi_recording import VapiRecordingService
-
         def _parse_json(val, default=None):
             if default is None:
                 default = {}
@@ -796,9 +794,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                 "provider_logo": (
                     PROVIDER_LOGOS.get(provider.lower()) if provider else None
                 ),
-                "span_attributes": VapiRecordingService.sanitize_recording_urls_in_attrs(
-                    span_attrs
-                ),
+                "span_attributes": span_attrs,
                 "custom_eval_config": (
                     str(row["custom_eval_config_id"])
                     if row.get("custom_eval_config_id")
@@ -1057,34 +1053,20 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
 
     @staticmethod
     def _build_recording_dict(attrs):
-        """Build a recording dict from span attributes. Shared by list &
-        detail.
-
-        Any URL that still points at a provider host (rehost has not
-        completed for this span yet) is replaced with ``None`` so the FE
-        renders a "processing" state instead of a broken audio element.
-        """
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        def _get(key):
-            value = attrs.get(key)
-            if VapiRecordingService.is_dead_provider_url(value):
-                return None
-            return value
-
+        """Build a recording dict from span attributes; shared by list and detail."""
         return {
             "mono": {
-                "combined_url": _get(
+                "combined_url": attrs.get(
                     f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.MONO_COMBINED}"
                 ),
-                "customer_url": _get(
+                "customer_url": attrs.get(
                     f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.MONO_CUSTOMER}"
                 ),
-                "assistant_url": _get(
+                "assistant_url": attrs.get(
                     f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.MONO_ASSISTANT}"
                 ),
             },
-            "stereo_url": _get(
+            "stereo_url": attrs.get(
                 f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.STEREO}"
             ),
         }
@@ -3900,7 +3882,6 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
         from tracer.services.clickhouse.query_builders.trace_list import (
             TraceListQueryBuilder,
         )
-        from tracer.utils.vapi_recording import VapiRecordingService
 
         # 1. Fetch root conversation span for this trace
         root_query = """
@@ -4020,9 +4001,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                 ),
                 "latency_ms": row.get("latency_ms"),
                 "provider": provider,
-                "span_attributes": VapiRecordingService.sanitize_recording_urls_in_attrs(
-                    span_attrs
-                ),
+                "span_attributes": span_attrs,
                 "metadata": metadata,
             }
         ]
@@ -4080,9 +4059,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                         if child.get("parent_span_id")
                         else None
                     ),
-                    "span_attributes": VapiRecordingService.sanitize_recording_urls_in_attrs(
-                        child_span_attrs
-                    ),
+                    "span_attributes": child_span_attrs,
                     "metadata": child.get("metadata_map") or {},
                     "tags": child.get("tags") or [],
                 }
@@ -4841,22 +4818,12 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                     lines.append(f"{role}: {content}")
                 transcript_text = "\n".join(lines)
 
-            # Build recording URL from nested recording dict. Provider
-            # URLs whose rehost has not landed yet are dropped from the
-            # export so downstream pipelines never carry a URL that
-            # requires customer credentials to fetch.
-            from tracer.utils.vapi_recording import VapiRecordingService
-
             recording = result.get("recording", {}) or {}
             mono = recording.get("mono", {}) or {}
             recording_url = result.get("recording_url") or mono.get("combinedUrl") or ""
             stereo_url = (
                 result.get("stereo_recording_url") or recording.get("stereoUrl") or ""
             )
-            if VapiRecordingService.is_dead_provider_url(recording_url):
-                recording_url = ""
-            if VapiRecordingService.is_dead_provider_url(stereo_url):
-                stereo_url = ""
 
             row_data = {
                 "ID": result.get("id", ""),
@@ -5383,27 +5350,11 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
             entry.setdefault("observation_span", [])
 
             # Include span attributes for custom columns (skip heavy/nested values).
-            # Sanitize first so a dead Vapi recording URL in span_attributes
-            # cannot be lifted into a custom column and served to the FE.
-            from tracer.utils.vapi_recording import VapiRecordingService
-
-            sanitized_attrs = VapiRecordingService.sanitize_recording_urls_in_attrs(
-                span_attrs
-            )
-            for key, value in sanitized_attrs.items():
+            for key, value in span_attrs.items():
                 if key in ("raw_log", "call") or key in entry:
                     continue
                 if isinstance(value, (str, int, float, bool)):
                     entry[key] = value
-
-            # Guard the flat `recording_url` on the list row so the badge /
-            # play button never receives a raw storage.vapi.ai URL.
-            entry_recording = entry.get("recording_url")
-            if entry_recording and VapiRecordingService.is_dead_provider_url(entry_recording):
-                entry["recording_url"] = None
-            entry_stereo = entry.get("stereo_recording_url")
-            if entry_stereo and VapiRecordingService.is_dead_provider_url(entry_stereo):
-                entry["stereo_recording_url"] = None
 
             # Add eval metrics
             trace_evals = eval_map.get(trace_id, {})

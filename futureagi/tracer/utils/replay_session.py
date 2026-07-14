@@ -680,22 +680,15 @@ def _load_voice_conversation_spans(trace_query: QuerySet) -> list[dict]:
 
 
 def _extract_recording_urls_from_spans(spans: list[dict]) -> dict[str, str]:
-    """Return trace_id -> best recording URL (mono then stereo), skipping dead-provider URLs."""
-    from tracer.utils.vapi_recording import VapiRecordingService
-
+    """Return trace_id -> best recording URL, preferring mono over stereo."""
     recording_key_stereo = f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.STEREO}"
     recording_key_mono = f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.MONO_COMBINED}"
 
     recordings_map: dict[str, str] = {}
     for span in spans:
         attrs = merge_span_attrs(span)
-        for candidate in (
-            attrs.get(recording_key_mono),
-            attrs.get(recording_key_stereo),
-        ):
-            if candidate and not VapiRecordingService.is_dead_provider_url(candidate):
-                recordings_map[str(span["trace_id"])] = candidate
-                break
+        if url := attrs.get(recording_key_mono) or attrs.get(recording_key_stereo):
+            recordings_map[str(span["trace_id"])] = url
 
     return recordings_map
 

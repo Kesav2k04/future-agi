@@ -501,9 +501,7 @@ def fetch_voice_trace_comparison_transcripts(
 
 
 def fetch_baseline_trace_recordings(trace_id: str, _span: dict | None = None) -> dict:
-    """Return recording URLs from a baseline voice trace, filtered by is_dead_provider_url."""
-    from tracer.utils.vapi_recording import VapiRecordingService
-
+    """Return recording URLs from a baseline voice trace's span attributes."""
     try:
         span = _span or fetch_voice_conversation_span(trace_id)
     except ValueError:
@@ -512,21 +510,13 @@ def fetch_baseline_trace_recordings(trace_id: str, _span: dict | None = None) ->
     sa = span["span_attributes"] or {}
     recordings = {}
     for label, attr_key in RECORDING_ATTR_KEYS.items():
-        url = sa.get(attr_key)
-        if url and not VapiRecordingService.is_dead_provider_url(url):
+        if url := sa.get(attr_key):
             recordings[label] = url
     return recordings
 
 
 def fetch_simulated_call_recordings(call_execution: CallExecution) -> dict:
     """Recording URLs for a simulated call: model fields first, provider_call_data fallback."""
-    from tracer.utils.vapi_recording import VapiRecordingService
-
-    def _safe(url):
-        if not url or VapiRecordingService.is_dead_provider_url(url):
-            return None
-        return url
-
     model_recordings = _fallback_model_recordings(call_execution)
 
     provider_data = call_execution.provider_call_data
@@ -544,13 +534,13 @@ def fetch_simulated_call_recordings(call_execution: CallExecution) -> dict:
 
     mono = recording.get("mono") or {}
     recordings: dict[str, str] = {}
-    if combined := model_recordings.get("mono_combined") or _safe(mono.get("combinedUrl")):
+    if combined := model_recordings.get("mono_combined") or mono.get("combinedUrl"):
         recordings["mono_combined"] = combined
-    if stereo := model_recordings.get("stereo") or _safe(recording.get("stereoUrl")):
+    if stereo := model_recordings.get("stereo") or recording.get("stereoUrl"):
         recordings["stereo"] = stereo
-    if customer_url := _safe(mono.get("customerUrl")):
+    if customer_url := mono.get("customerUrl"):
         recordings["mono_customer"] = customer_url
-    if assistant_url := _safe(mono.get("assistantUrl")):
+    if assistant_url := mono.get("assistantUrl"):
         recordings["mono_assistant"] = assistant_url
 
     return recordings
@@ -558,14 +548,10 @@ def fetch_simulated_call_recordings(call_execution: CallExecution) -> dict:
 
 def _fallback_model_recordings(call_execution: CallExecution) -> dict:
     """Read the durable S3-mirrored recording URLs off the model."""
-    from tracer.utils.vapi_recording import VapiRecordingService
-
     recordings = {}
-    stereo = call_execution.stereo_recording_url
-    mono = call_execution.recording_url
-    if stereo and not VapiRecordingService.is_dead_provider_url(stereo):
+    if stereo := call_execution.stereo_recording_url:
         recordings["stereo"] = stereo
-    if mono and not VapiRecordingService.is_dead_provider_url(mono):
+    if mono := call_execution.recording_url:
         recordings["mono_combined"] = mono
     return recordings
 

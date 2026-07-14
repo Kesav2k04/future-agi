@@ -65,39 +65,11 @@ class CallExecutionSnapshotSerializer(serializers.ModelSerializer):
     # Return customer_call_id from parent CallExecution for frontend compatibility
     service_provider_call_id = serializers.SerializerMethodField()
 
-    # Snapshots taken before the rehost mirror landed still carry the
-    # raw Vapi URL on these columns; guard on read so consumers never
-    # receive a URL that requires Bearer to fetch.
-    recording_url = serializers.SerializerMethodField()
-    stereo_recording_url = serializers.SerializerMethodField()
-    provider_call_data = serializers.SerializerMethodField()
-
     def get_service_provider_call_id(self, obj):
         """Get customer_call_id from the parent CallExecution"""
         if obj.call_execution:
             return obj.call_execution.customer_call_id
         return None
-
-    def get_recording_url(self, obj):
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        url = obj.recording_url
-        if url and VapiRecordingService.is_dead_provider_url(url):
-            return None
-        return url
-
-    def get_stereo_recording_url(self, obj):
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        url = obj.stereo_recording_url
-        if url and VapiRecordingService.is_dead_provider_url(url):
-            return None
-        return url
-
-    def get_provider_call_data(self, obj):
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        return VapiRecordingService.sanitize_provider_call_data(obj.provider_call_data)
 
     class Meta:
         model = CallExecutionSnapshot
@@ -171,15 +143,7 @@ class CallExecutionDetailSerializer(serializers.ModelSerializer):
     scenario = serializers.CharField(source="scenario.name", read_only=True)
     overall_score = serializers.SerializerMethodField()
     response_time = serializers.SerializerMethodField()
-    audio_url = serializers.SerializerMethodField()
-
-    def get_audio_url(self, obj):
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        url = obj.recording_url
-        if url and VapiRecordingService.is_dead_provider_url(url):
-            return None
-        return url
+    audio_url = serializers.URLField(source="recording_url", read_only=True)
     recordings = serializers.SerializerMethodField()
     customer_name = serializers.CharField(source="customer_number", read_only=True)
     eval_outputs = serializers.SerializerMethodField()
@@ -341,13 +305,6 @@ class CallExecutionDetailSerializer(serializers.ModelSerializer):
         if not self.context.get("detail_mode", True):
             return {}
 
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        def _safe(url):
-            if not url or VapiRecordingService.is_dead_provider_url(url):
-                return None
-            return url
-
         provider_payload = None
         if hasattr(obj, "provider_call_data") and isinstance(
             obj.provider_call_data, dict
@@ -360,13 +317,13 @@ class CallExecutionDetailSerializer(serializers.ModelSerializer):
         if isinstance(provider_payload, dict):
             raw_shortcut = provider_payload.get("recording")
             if isinstance(raw_shortcut, dict):
-                shortcut = {k: v for k, v in raw_shortcut.items() if _safe(v)}
+                shortcut = raw_shortcut
 
         recordings: dict[str, str] = {}
-        combined = _safe(obj.recording_url) or shortcut.get("combined")
+        combined = obj.recording_url or shortcut.get("combined")
         if combined:
             recordings["combined"] = combined
-        stereo = _safe(obj.stereo_recording_url) or shortcut.get("stereo")
+        stereo = obj.stereo_recording_url or shortcut.get("stereo")
         if stereo:
             recordings["stereo"] = stereo
         if shortcut.get("customer"):
@@ -379,8 +336,7 @@ class CallExecutionDetailSerializer(serializers.ModelSerializer):
         if not isinstance(provider_payload, dict) or VoiceServiceManager is None:
             return {}
         vsm = VoiceServiceManager(system_voice_provider=ProviderChoices.VAPI)
-        raw = vsm.get_recording_urls(provider_payload) or {}
-        return {k: v for k, v in raw.items() if _safe(v)}
+        return vsm.get_recording_urls(provider_payload) or {}
 
     def get_provider(self, obj):
         """Return the provider that produced this call's stored provider payload.
@@ -1019,34 +975,6 @@ class CallExecutionSerializer(serializers.ModelSerializer):
     service_provider_call_id = serializers.CharField(
         source="customer_call_id", read_only=True
     )
-    # Historic rows (no rehost activity fired) still hold raw Vapi URLs
-    # on these columns; guard on read so consumers never receive a URL
-    # that requires Bearer to fetch.
-    recording_url = serializers.SerializerMethodField()
-    stereo_recording_url = serializers.SerializerMethodField()
-    provider_call_data = serializers.SerializerMethodField()
-
-    def get_recording_url(self, obj):
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        url = obj.recording_url
-        if url and VapiRecordingService.is_dead_provider_url(url):
-            return None
-        return url
-
-    def get_stereo_recording_url(self, obj):
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        url = obj.stereo_recording_url
-        if url and VapiRecordingService.is_dead_provider_url(url):
-            return None
-        return url
-
-    def get_provider_call_data(self, obj):
-        from tracer.utils.vapi_recording import VapiRecordingService
-
-        return VapiRecordingService.sanitize_provider_call_data(obj.provider_call_data)
-
     class Meta:
         model = CallExecution
         fields = [

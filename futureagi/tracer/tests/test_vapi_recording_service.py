@@ -55,21 +55,6 @@ class TestArtifactForUrlType:
         }
 
 
-class TestIsDeadProviderUrl:
-    """Guard is intentionally a permanent False today."""
-
-    def test_returns_false_for_raw_vapi_host(self):
-        assert VapiRecordingService.is_dead_provider_url("https://storage.vapi.ai/x.mp3") is False
-        assert VapiRecordingService.is_dead_provider_url("https://calllogs.vapi.ai/x.gz") is False
-
-    def test_returns_false_for_s3_url(self):
-        assert VapiRecordingService.is_dead_provider_url("https://bucket.s3.amazonaws.com/x.mp3") is False
-
-    def test_returns_false_for_none_and_empty(self):
-        assert VapiRecordingService.is_dead_provider_url(None) is False
-        assert VapiRecordingService.is_dead_provider_url("") is False
-
-
 class TestIsAuthenticatedDownload:
     def test_all_args_and_vapi_provider_returns_true(self):
         assert VapiRecordingService.is_authenticated_download(
@@ -107,107 +92,6 @@ class TestIsS3Url:
     )
     def test_matches_s3_markers(self, url, expected):
         assert VapiRecordingService.is_s3_url(url) is expected
-
-
-class TestSanitizeRecordingUrlsInAttrs:
-    """With is_dead_provider_url a no-op today, sanitize returns a shallow copy unchanged."""
-
-    def test_empty_dict_returns_empty(self):
-        assert VapiRecordingService.sanitize_recording_urls_in_attrs({}) == {}
-
-    def test_none_returns_empty(self):
-        assert VapiRecordingService.sanitize_recording_urls_in_attrs(None) == {}
-
-    def test_non_dict_returns_empty(self):
-        assert VapiRecordingService.sanitize_recording_urls_in_attrs("not-a-dict") == {}
-
-    def test_preserves_raw_vapi_url(self):
-        attrs = {"recording_url": "https://storage.vapi.ai/x.mp3", "other": "keep-me"}
-        out = VapiRecordingService.sanitize_recording_urls_in_attrs(attrs)
-        assert out["recording_url"] == "https://storage.vapi.ai/x.mp3"
-        assert out["other"] == "keep-me"
-
-    def test_preserves_s3_url(self):
-        attrs = {"recording_url": "https://x.s3.amazonaws.com/y.mp3"}
-        out = VapiRecordingService.sanitize_recording_urls_in_attrs(attrs)
-        assert out["recording_url"] == "https://x.s3.amazonaws.com/y.mp3"
-
-    def test_returns_shallow_copy_not_mutated(self):
-        attrs = {"recording_url": "https://storage.vapi.ai/x.mp3"}
-        out = VapiRecordingService.sanitize_recording_urls_in_attrs(attrs)
-        out["recording_url"] = "different"
-        assert attrs["recording_url"] == "https://storage.vapi.ai/x.mp3"
-
-    def test_scrubs_when_guard_flipped(self):
-        """When is_dead_provider_url is toggled to fire, the sanitizer replaces raw hosts with None."""
-        attrs = {
-            "recording_url": "https://storage.vapi.ai/x.mp3",
-            "stereo_recording_url": "https://bucket.s3.amazonaws.com/y.mp3",
-        }
-        with patch.object(
-            VapiRecordingService,
-            "is_dead_provider_url",
-            side_effect=lambda url: "storage.vapi.ai" in (url or ""),
-        ):
-            out = VapiRecordingService.sanitize_recording_urls_in_attrs(attrs)
-        assert out["recording_url"] is None
-        assert out["stereo_recording_url"] == "https://bucket.s3.amazonaws.com/y.mp3"
-
-
-class TestSanitizeProviderCallData:
-    def test_empty_returns_empty(self):
-        assert VapiRecordingService.sanitize_provider_call_data({}) == {}
-
-    def test_none_returns_empty(self):
-        assert VapiRecordingService.sanitize_provider_call_data(None) == {}
-
-    def test_preserves_shape_and_urls_by_default(self):
-        pcd = {
-            "vapi": {
-                "artifact": {
-                    "recording": {
-                        "mono": {
-                            "combinedUrl": "https://storage.vapi.ai/x.mp3",
-                            "customerUrl": "https://storage.vapi.ai/c.mp3",
-                            "assistantUrl": "https://storage.vapi.ai/a.mp3",
-                        },
-                        "stereoUrl": "https://storage.vapi.ai/s.mp3",
-                    }
-                },
-                "recordingUrl": "https://storage.vapi.ai/x.mp3",
-            }
-        }
-        out = VapiRecordingService.sanitize_provider_call_data(pcd)
-        recording = out["vapi"]["artifact"]["recording"]
-        assert recording["mono"]["combinedUrl"] == "https://storage.vapi.ai/x.mp3"
-        assert recording["stereoUrl"] == "https://storage.vapi.ai/s.mp3"
-        assert out["vapi"]["recordingUrl"] == "https://storage.vapi.ai/x.mp3"
-
-    def test_scrubs_when_guard_flipped(self):
-        pcd = {
-            "vapi": {
-                "artifact": {
-                    "recording": {
-                        "mono": {"combinedUrl": "https://storage.vapi.ai/x.mp3"},
-                        "stereoUrl": "https://storage.vapi.ai/y.mp3",
-                    }
-                }
-            }
-        }
-        with patch.object(
-            VapiRecordingService,
-            "is_dead_provider_url",
-            side_effect=lambda url: "storage.vapi.ai" in (url or ""),
-        ):
-            out = VapiRecordingService.sanitize_provider_call_data(pcd)
-        recording = out["vapi"]["artifact"]["recording"]
-        assert recording["mono"]["combinedUrl"] is None
-        assert recording["stereoUrl"] is None
-
-    def test_non_dict_provider_payload_left_alone(self):
-        pcd = {"vapi": "not-a-dict"}
-        out = VapiRecordingService.sanitize_provider_call_data(pcd)
-        assert out == {"vapi": "not-a-dict"}
 
 
 class _FakeHttpResponse:

@@ -1,7 +1,7 @@
 """Tests for read-path integration wiring the Vapi migration set up.
 
 Covers:
- - replay_session._extract_recording_urls_from_spans mono/stereo independence.
+ - replay_session._extract_recording_urls_from_spans mono-preferred ordering.
  - CallExecutionDetailSerializer.get_recordings preserving customer + assistant.
  - session_comparison.fetch_simulated_call_recordings model-first ordering.
  - tfc.utils.storage.download_audio_from_url delegating Vapi to the service.
@@ -15,8 +15,6 @@ import pytest
 
 
 class TestExtractRecordingUrlsFromSpans:
-    """Locks in the mono/stereo independent-check fix."""
-
     def _span(self, mono, stereo, trace_id="t1"):
         return {
             "trace_id": trace_id,
@@ -26,60 +24,27 @@ class TestExtractRecordingUrlsFromSpans:
             },
         }
 
-    def _run_with_guard(self, spans, dead_hosts=("storage.vapi.ai",)):
+    def test_prefers_mono_over_stereo(self):
         from tracer.utils import replay_session
-        from tracer.utils.vapi_recording import VapiRecordingService
 
-        def _fake_dead(url):
-            if not url:
-                return False
-            return any(host in url for host in dead_hosts)
-
-        with patch.object(VapiRecordingService, "is_dead_provider_url", side_effect=_fake_dead):
-            with patch.object(replay_session, "merge_span_attrs", side_effect=lambda span: span["span_attributes"]):
-                return replay_session._extract_recording_urls_from_spans(spans)
-
-    def test_mono_dead_stereo_live_returns_stereo(self):
-        """If mono is a raw-vapi URL and stereo has been rehosted, stereo wins.
-
-        Pre-fix behaviour picked mono first via ``mono or stereo``, then dropped
-        the whole entry because mono failed the dead-URL check. This test
-        pins the corrected independent-candidate behaviour.
-        """
-        spans = [self._span(
-            mono="https://storage.vapi.ai/x.mp3",
-            stereo="https://bucket.s3.amazonaws.com/x.mp3",
-        )]
-        out = self._run_with_guard(spans)
-        assert out == {"t1": "https://bucket.s3.amazonaws.com/x.mp3"}
-
-    def test_both_live_returns_mono(self):
         spans = [self._span(
             mono="https://bucket.s3.amazonaws.com/mono.mp3",
             stereo="https://bucket.s3.amazonaws.com/stereo.mp3",
         )]
-        out = self._run_with_guard(spans)
+        with patch.object(replay_session, "merge_span_attrs", side_effect=lambda span: span["span_attributes"]):
+            out = replay_session._extract_recording_urls_from_spans(spans)
         assert out == {"t1": "https://bucket.s3.amazonaws.com/mono.mp3"}
 
-    def test_both_dead_returns_nothing(self):
-        spans = [self._span(
-            mono="https://storage.vapi.ai/x.mp3",
-            stereo="https://storage.vapi.ai/y.mp3",
-        )]
-        out = self._run_with_guard(spans)
-        assert out == {}
-
-    def test_default_guard_off_surfaces_raw_url(self):
-        """With the guard at its shipped default (False), even raw-vapi URLs surface."""
+    def test_falls_back_to_stereo_when_mono_missing(self):
         from tracer.utils import replay_session
 
         spans = [self._span(
-            mono="https://storage.vapi.ai/x.mp3",
-            stereo=None,
+            mono=None,
+            stereo="https://bucket.s3.amazonaws.com/stereo.mp3",
         )]
         with patch.object(replay_session, "merge_span_attrs", side_effect=lambda span: span["span_attributes"]):
             out = replay_session._extract_recording_urls_from_spans(spans)
-        assert out == {"t1": "https://storage.vapi.ai/x.mp3"}
+        assert out == {"t1": "https://bucket.s3.amazonaws.com/stereo.mp3"}
 
 
 class TestCallExecutionDetailSerializerGetRecordings:

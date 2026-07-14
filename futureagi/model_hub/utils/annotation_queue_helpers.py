@@ -9,6 +9,7 @@ from model_hub.models.choices import (
     AutomationRuleTriggerFrequency,
     QueueItemSourceType,
 )
+from tracer.utils.vapi_recording import VapiRecordingService
 
 logger = structlog.get_logger(__name__)
 
@@ -430,7 +431,7 @@ def resolve_source_content(item):
                     if primary_span
                     else None
                 ),
-                "span_attributes": (
+                "span_attributes": VapiRecordingService.sanitize_recording_urls_in_attrs(
                     getattr(primary_span, "span_attributes", {}) if primary_span else {}
                 ),
                 "resource_attributes": (
@@ -470,9 +471,13 @@ def resolve_source_content(item):
                 "status": getattr(span, "status", None),
                 "status_message": getattr(span, "status_message", None),
                 "tags": getattr(span, "tags", []),
-                "span_attributes": getattr(span, "span_attributes", {}),
+                "span_attributes": VapiRecordingService.sanitize_recording_urls_in_attrs(
+                    getattr(span, "span_attributes", {})
+                ),
                 "resource_attributes": getattr(span, "resource_attributes", {}),
-                "eval_attributes": getattr(span, "eval_attributes", {}),
+                "eval_attributes": VapiRecordingService.sanitize_recording_urls_in_attrs(
+                    getattr(span, "eval_attributes", {})
+                ),
             }
 
         elif item.source_type == QueueItemSourceType.PROTOTYPE_RUN.value:
@@ -527,7 +532,9 @@ def resolve_source_content(item):
                 "output": getattr(call, "output", None),
                 "metadata": getattr(call, "call_metadata", {}) or {},
                 "call_metadata": getattr(call, "call_metadata", {}) or {},
-                "provider_call_data": getattr(call, "provider_call_data", {}) or {},
+                "provider_call_data": VapiRecordingService.sanitize_provider_call_data(
+                    getattr(call, "provider_call_data", {}) or {}
+                ),
                 "monitor_call_data": getattr(call, "monitor_call_data", {}) or {},
                 "analysis_data": getattr(call, "analysis_data", {}) or {},
                 "evaluation_data": getattr(call, "evaluation_data", {}) or {},

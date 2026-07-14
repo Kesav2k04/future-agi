@@ -196,11 +196,7 @@ def rehost_external_recordings(span_id: str) -> None:
         # (flat span-attribute aliases, CallExecution + Snapshot columns)
         # so downstream readers never see a raw provider URL.
         new_attrs = VapiRecordingService.mirror_s3_url_to_consumer_fields(
-            span=type(
-                "SpanFacade",
-                (),
-                {"span_attributes": new_attrs},
-            )(),
+            attrs=new_attrs,
             call_id=call_id,
             s3_url_by_url_type=s3_url_by_url_type,
         )

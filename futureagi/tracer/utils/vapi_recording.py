@@ -159,6 +159,86 @@ class VapiRecordingService:
             return False
         return any(marker in url for marker in S3_URL_MARKERS)
 
+    @classmethod
+    def sanitize_recording_urls_in_attrs(
+        cls, attrs: Optional[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Return a shallow copy of ``attrs`` with recording-URL values
+        that still point at a Vapi provider host replaced by ``None``.
+
+        Applied at every read boundary that surfaces raw span attributes
+        or provider payloads to a consumer — shared trace links,
+        annotation-queue detail, CallExecution serializers, voice call
+        list. A downstream `<audio src>` never receives a URL it cannot
+        fetch, and external viewers of shared trace links never see the
+        raw ``storage.vapi.ai`` host.
+        """
+        if not isinstance(attrs, dict) or not attrs:
+            return dict(attrs) if isinstance(attrs, dict) else {}
+        cleaned = dict(attrs)
+        # Nested `conversation.recording.*` keys (STEP 1 storage
+        # location) and the flat aliases the rehost mirror writes to.
+        keys = (
+            "conversation.recording.mono_combined",
+            "conversation.recording.mono_customer",
+            "conversation.recording.mono_assistant",
+            "conversation.recording.stereo",
+            "recording_url",
+            "stereo_recording_url",
+            "recordingUrl",
+            "stereoRecordingUrl",
+        )
+        for key in keys:
+            value = cleaned.get(key)
+            if isinstance(value, str) and cls.is_dead_provider_url(value):
+                cleaned[key] = None
+        return cleaned
+
+    @classmethod
+    def sanitize_provider_call_data(
+        cls, provider_call_data: Optional[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Return a shallow copy of ``provider_call_data`` with any
+        Vapi-hosted recording URL inside ``<provider>.artifact.recording.*``
+        replaced by ``None``. Preserves the payload shape so downstream
+        consumers still find the keys they expect.
+        """
+        if not isinstance(provider_call_data, dict) or not provider_call_data:
+            return dict(provider_call_data) if isinstance(provider_call_data, dict) else {}
+        cleaned_root: dict[str, Any] = {}
+        for provider_key, payload in provider_call_data.items():
+            if not isinstance(payload, dict):
+                cleaned_root[provider_key] = payload
+                continue
+            cleaned_payload = dict(payload)
+            artifact = cleaned_payload.get("artifact")
+            if isinstance(artifact, dict):
+                artifact = dict(artifact)
+                recording = artifact.get("recording")
+                if isinstance(recording, dict):
+                    recording = dict(recording)
+                    mono = recording.get("mono")
+                    if isinstance(mono, dict):
+                        mono = dict(mono)
+                        for k in ("combinedUrl", "customerUrl", "assistantUrl"):
+                            v = mono.get(k)
+                            if isinstance(v, str) and cls.is_dead_provider_url(v):
+                                mono[k] = None
+                        recording["mono"] = mono
+                    stereo = recording.get("stereoUrl")
+                    if isinstance(stereo, str) and cls.is_dead_provider_url(stereo):
+                        recording["stereoUrl"] = None
+                    artifact["recording"] = recording
+                cleaned_payload["artifact"] = artifact
+            # Top-level provider-payload shortcuts sometimes carry the
+            # legacy `recordingUrl` / `stereoRecordingUrl` too.
+            for k in ("recordingUrl", "stereoRecordingUrl"):
+                v = cleaned_payload.get(k)
+                if isinstance(v, str) and cls.is_dead_provider_url(v):
+                    cleaned_payload[k] = None
+            cleaned_root[provider_key] = cleaned_payload
+        return cleaned_root
+
     # =====================================================================
     # API key resolution
     # =====================================================================
@@ -467,7 +547,7 @@ class VapiRecordingService:
     def mirror_s3_url_to_consumer_fields(
         cls,
         *,
-        span,
+        attrs: Optional[dict[str, Any]],
         call_id: str,
         s3_url_by_url_type: dict[str, str],
     ) -> dict[str, Any]:
@@ -492,12 +572,11 @@ class VapiRecordingService:
           (best-effort — snapshots are immutable but pre-mirror
           snapshots must not surface the dead URL).
 
-        Callers pass an already-computed dict mapping
-        ``url_type -> s3_url``. The method mutates ``span.span_attributes``
-        in place and returns the mutated attrs dict for the caller to
-        persist alongside its own writes (single ``.save`` per span).
+        Accepts the span-attributes dict directly (not the span row)
+        and returns a fresh dict for the caller to persist alongside
+        its own writes (single ``.save`` per span).
         """
-        attrs = dict(span.span_attributes or {}) if span is not None else {}
+        attrs = dict(attrs or {})
 
         logger.info("mirror_s3_url_to_consumer_fields", call_id=call_id, url_types=list(s3_url_by_url_type.keys()))
 

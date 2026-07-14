@@ -5373,12 +5373,28 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                 entry.pop(key, None)
             entry.setdefault("observation_span", [])
 
-            # Include span attributes for custom columns (skip heavy/nested values)
-            for key, value in span_attrs.items():
+            # Include span attributes for custom columns (skip heavy/nested values).
+            # Sanitize first so a dead Vapi recording URL in span_attributes
+            # cannot be lifted into a custom column and served to the FE.
+            from tracer.utils.vapi_recording import VapiRecordingService
+
+            sanitized_attrs = VapiRecordingService.sanitize_recording_urls_in_attrs(
+                span_attrs
+            )
+            for key, value in sanitized_attrs.items():
                 if key in ("raw_log", "call") or key in entry:
                     continue
                 if isinstance(value, (str, int, float, bool)):
                     entry[key] = value
+
+            # Guard the flat `recording_url` on the list row so the badge /
+            # play button never receives a raw storage.vapi.ai URL.
+            entry_recording = entry.get("recording_url")
+            if entry_recording and VapiRecordingService.is_dead_provider_url(entry_recording):
+                entry["recording_url"] = None
+            entry_stereo = entry.get("stereo_recording_url")
+            if entry_stereo and VapiRecordingService.is_dead_provider_url(entry_stereo):
+                entry["stereo_recording_url"] = None
 
             # Add eval metrics
             trace_evals = eval_map.get(trace_id, {})

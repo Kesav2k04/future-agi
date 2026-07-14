@@ -65,7 +65,10 @@ class ObservationSpanSerializer(serializers.ModelSerializer):
         return None
 
     def get_span_attributes(self, obj):
-        """Return span_attributes (falls back to eval_attributes for old data)."""
+        """
+        Return span_attributes as the canonical source.
+        Falls back to eval_attributes for old data.
+        """
         if obj.span_attributes and obj.span_attributes != {}:
             return obj.span_attributes
         return obj.eval_attributes or {}

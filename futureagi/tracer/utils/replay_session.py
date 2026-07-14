@@ -680,14 +680,19 @@ def _load_voice_conversation_spans(trace_query: QuerySet) -> list[dict]:
 
 
 def _extract_recording_urls_from_spans(spans: list[dict]) -> dict[str, str]:
-    """Return trace_id -> best recording URL, preferring mono over stereo."""
+    """
+    Extract the best recording URL for each voice trace from pre-loaded spans.
+    Prefers mono_combined (single-channel mixed audio), falls back to stereo.
+    """
+
     recording_key_stereo = f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.STEREO}"
     recording_key_mono = f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.MONO_COMBINED}"
 
     recordings_map: dict[str, str] = {}
     for span in spans:
         attrs = merge_span_attrs(span)
-        if url := attrs.get(recording_key_mono) or attrs.get(recording_key_stereo):
+        url = attrs.get(recording_key_mono) or attrs.get(recording_key_stereo)
+        if url:
             recordings_map[str(span["trace_id"])] = url
 
     return recordings_map

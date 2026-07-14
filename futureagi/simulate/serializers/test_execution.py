@@ -975,6 +975,7 @@ class CallExecutionSerializer(serializers.ModelSerializer):
     service_provider_call_id = serializers.CharField(
         source="customer_call_id", read_only=True
     )
+
     class Meta:
         model = CallExecution
         fields = [

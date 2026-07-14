@@ -1053,20 +1053,24 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
 
     @staticmethod
     def _build_recording_dict(attrs):
-        """Build a recording dict from span attributes; shared by list and detail."""
+        """Build a recording dict from span attributes. Shared by list & detail."""
+
+        def _get(key):
+            return attrs.get(key)
+
         return {
             "mono": {
-                "combined_url": attrs.get(
+                "combined_url": _get(
                     f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.MONO_COMBINED}"
                 ),
-                "customer_url": attrs.get(
+                "customer_url": _get(
                     f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.MONO_CUSTOMER}"
                 ),
-                "assistant_url": attrs.get(
+                "assistant_url": _get(
                     f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.MONO_ASSISTANT}"
                 ),
             },
-            "stereo_url": attrs.get(
+            "stereo_url": _get(
                 f"{ConversationAttributes.CONVERSATION_RECORDING}.{ConversationAttributes.STEREO}"
             ),
         }
@@ -4818,6 +4822,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                     lines.append(f"{role}: {content}")
                 transcript_text = "\n".join(lines)
 
+            # Build recording URL from nested recording dict
             recording = result.get("recording", {}) or {}
             mono = recording.get("mono", {}) or {}
             recording_url = result.get("recording_url") or mono.get("combinedUrl") or ""
@@ -5349,7 +5354,7 @@ class TraceView(BaseModelViewSetMixin, ModelViewSet):
                 entry.pop(key, None)
             entry.setdefault("observation_span", [])
 
-            # Include span attributes for custom columns (skip heavy/nested values).
+            # Include span attributes for custom columns (skip heavy/nested values)
             for key, value in span_attrs.items():
                 if key in ("raw_log", "call") or key in entry:
                     continue

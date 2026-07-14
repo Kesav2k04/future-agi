@@ -9,6 +9,7 @@ from model_hub.models.choices import (
     AutomationRuleTriggerFrequency,
     QueueItemSourceType,
 )
+
 logger = structlog.get_logger(__name__)
 
 # Maps source_type to (app_label.ModelName, fk_field_name)
